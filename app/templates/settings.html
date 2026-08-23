@@ -1,0 +1,1569 @@
+{% extends "settings_layout.html" %}
+{% block panel %}
+            <div class="settings-container container mt-3">
+
+                {% if admin_account_created == false %}
+                <div class="alert alert-danger" role="alert">
+                    <h4 class="alert-heading">{{ t('settings.missing_admin_heading') }}</h4>
+                    <p>{{ t('settings.missing_admin_body') }}
+                        <br>
+                        <a href="/admin/settings#Authentication" class="alert-link">{{ t('settings.missing_admin_link') }}</a>
+                    </p>
+                </div>
+                {% endif %}
+
+                <div id="missingKeysAlert" class="alert alert-warning alert-dismissible fade show d-none" role="alert">
+                    <h4 class="alert-heading">{{ t('settings.missing_keys_heading') }}</h4>
+                    {{ t('settings.missing_keys_body') }}</br>
+                    <strong>{{ t('settings.missing_keys_warning') }}</strong>
+                    {{ t('settings.missing_keys_guide_link') }} <a target="_blank" href="https://gitea.com/KudbiOdd/easy-switch-hacking-shise/wiki/Dump-device-keys" class="alert-link">↗</a>
+                    {{ t('settings.missing_keys_guide_suffix') }}
+                    <a href="/admin/settings#consoleKeysInputLabel" class="alert-link">↗</a>
+                    <hr>
+                    {{ t('settings.missing_keys_fallback') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+
+                <div id="missingShopHostAlert" class="alert alert-warning alert-dismissible fade show" role="alert" style="display: none;">
+                    <h4 class="alert-heading">{{ t('settings.missing_host_heading') }}</h4>
+                    {{ t('settings.missing_host_body') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+
+                <h2 id="Authentication">{{ t('auth.heading') }}</h2>
+
+                <div class="table-responsive">
+                    <table class="table table-hover caption-top" id="userTable">
+                        <caption>{{ t('auth.user_list_caption') }}</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">{{ t('auth.col_user') }}</th>
+                                <th scope="col">{{ t('auth.col_permissions') }}</th>
+                                <th scope="col">{{ t('auth.col_actions') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p class="d-inline-flex gap-1">
+                    <button class="btn btn-primary" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#collapseNewUser" aria-expanded="false" aria-controls="collapseNewUser">
+                        {{ t('auth.add_new_user') }}
+                    </button>
+                </p>
+                <div class="collapse" id="collapseNewUser">
+                    <div class="card card-body">
+                        <label class="form-label">{{ t('auth.add_a_new_user') }}</label>
+                        <form class="row g-3">
+                            <div class="col-auto">
+                                <label for="inputNewUser" class="visually-hidden">Email</label>
+                                <input type="text" class="form-control" id="inputNewUser" placeholder="{{ t('auth.username') }}">
+                            </div>
+                            <div class="col-auto">
+                                <label for="inputNewUserPassword" class="visually-hidden">Password</label>
+                                <input type="password" class="form-control" id="inputNewUserPassword"
+                                    placeholder="{{ t('auth.password') }}">
+                            </div>
+                            <div class="col-auto p-2">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="checkboxNewUserShopAccess"
+                                        checked>
+                                    <label class="form-check-label" for="checkboxNewUserShopAccess">{{ t('auth.shop_access') }}</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="checkboxNewUserBackupAccess">
+                                    <label class="form-check-label" for="checkboxNewUserBackupAccess">{{ t('auth.backup_access') }}</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="checkboxNewUserAdminAccess">
+                                    <label class="form-check-label" for="checkboxNewUserAdminAccess">{{ t('auth.admin_access') }}</label>
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <button type="button" class="btn btn-primary mb-3"
+                                    onClick='submitNewUser()'>{{ t('auth.submit') }}</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Delete User Modal -->
+                <div class="modal fade" id="deleteUserModal" tabindex="-1" aria-labelledby="deleteUserModalLabel"
+                    aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h1 class="modal-title fs-5" id="deleteUserModalLabel">{{ t('auth.delete_user') }}</h1>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                    aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                ...
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t('auth.cancel') }}</button>
+                                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">{{ t('auth.delete') }}</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="hr-settings">
+
+                <h2>{{ t('sections.library') }}</h2>
+
+                <h3 class="pt-3 pb-2">{{ t('lib.paths_heading') }}</h3>
+                <p class="mb-2">{{ t('lib.paths_desc') }}</p>
+                <div class="table-responsive">
+                    <table class="table table-hover caption-top" id="pathsTable">
+                        <thead>
+                            <tr>
+                                <th scope="col">{{ t('lib.col_path') }}</th>
+                                <th scope="col">{{ t('lib.col_actions') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="alert alert-danger d-none" id="pathsAlert" role="alert"></div>
+
+                <!-- Library buttons -->
+                <div class="row g-3">
+                    <div class="col-auto">
+                        <button class="btn btn-primary" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#collapseNewPath" aria-expanded="false" aria-controls="collapseNewPath">
+                            {{ t('lib.add_library_path') }}
+                        </button>
+                    </div>
+
+                    <div class="col-auto">
+                        <button type="button" class="btn btn-primary mb-3 scanBtn" onClick='scanLibrary()'>{{ t('lib.scan_library') }}</button>
+                    </div>
+                </div>
+
+                <div class="collapse" id="collapseNewPath">
+                    <div class="card card-body">
+                        <label class="form-label">{{ t('lib.add_a_new_directory') }}</label>
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <input type="text" class="form-control" id="libraryPathInput" placeholder="{{ t('lib.path_placeholder') }}">
+                            </div>
+                            <div class="col-auto">
+                                <button type="button" id="submitNewLibraryPathBtn" class="btn btn-primary mb-3"
+                                    onClick='submitNewLibraryPath()'>{{ t('lib.submit') }}</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Delete User Modal -->
+                <div class="modal fade" id="deletePathModal" tabindex="-1" aria-labelledby="deletePathModalLabel"
+                    aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h1 class="modal-title fs-5" id="deletePathModalLabel">{{ t('lib.delete_library_path') }}</h1>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                    aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                ...
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="pt-4 pb-2">{{ t('lib.watcher_heading') }}</h3>
+                <p>{{ t('lib.watcher_desc') }}</p>
+                <div class="row g-3 align-items-center mb-3">
+                    <div class="col-auto">
+                        <div class="form-check form-switch mb-0">
+                            <input type="checkbox" class="form-check-input" id="watcherEnabledCheck">
+                            <label class="form-check-label" for="watcherEnabledCheck">{{ t('lib.enable_watcher') }}</label>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <label class="col-form-label" for="watcherIntervalInput">{{ t('lib.polling_interval') }}</label>
+                    </div>
+                    <div class="col-auto">
+                        <div class="input-group">
+                            <input type="number" min="1" class="form-control" id="watcherIntervalInput" style="width:100px;">
+                            <span class="input-group-text">s</span>
+                        </div>
+                        <div id="watcherIntervalFeedback"></div>
+                    </div>
+                </div>
+                <button type="button" id="submitWatcherSettingsBtn" class="btn btn-primary mb-3"
+                    onClick='submitWatcherSettings()'>{{ t('lib.save') }}</button>
+
+                <h3 class="pt-4 pb-2">{{ t('lib.management_heading') }}</h3>
+                <p>{{ t('lib.management_desc') }}</p>
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="deleteOlderUpdatesCheck">
+                    <label class="form-check-label" for="deleteOlderUpdatesCheck">{{ t('lib.delete_older_updates') }}</label>
+                    <div class="form-text">{{ t('lib.delete_older_updates_help') }}</div>
+                </div>
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="webDownloadsEnabledCheck">
+                    <label class="form-check-label" for="webDownloadsEnabledCheck">{{ t('lib.web_downloads_label') }}</label>
+                    <div class="form-text">{{ t('lib.web_downloads_help') }}</div>
+                </div>
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="autoResolveDuplicatesCheck">
+                    <label class="form-check-label" for="autoResolveDuplicatesCheck">{{ t('lib.auto_resolve_duplicates_label') }}</label>
+                    <div class="form-text">{{ t('lib.auto_resolve_duplicates_help') }}</div>
+                </div>
+                <div class="mb-3 form-check ms-4">
+                    <input type="checkbox" class="form-check-input" id="preferLargerOnTieCheck">
+                    <label class="form-check-label" for="preferLargerOnTieCheck">{{ t('lib.prefer_larger_on_tie_label') }}</label>
+                    <div class="form-text">{{ t('lib.prefer_larger_on_tie_help') }}</div>
+                </div>
+
+                <h4 class="py-2">{{ t('sections.compression') }}</h4>
+                <p>{{ t('compression.desc') }}</p>
+                <div class="row">
+                    <div class="col-7">
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="compressFilesCheck">
+                            <label class="form-check-label" for="compressFilesCheck">{{ t('compression.enable') }}</label>
+                            <div class="form-text">{{ t('compression.enable_help') }}</div>
+                        </div>
+                        <div class="row g-3 align-items-center mb-3">
+                            <div class="col-auto">
+                                <label class="col-form-label" for="compressionLevelInput">{{ t('compression.level_label') }}</label>
+                            </div>
+                            <div class="col-auto">
+                                <input type="number" min="1" max="22" class="form-control" id="compressionLevelInput" style="width:100px;">
+                            </div>
+                            <div class="col-12">
+                                <div class="form-text">{{ t('compression.level_help') }}</div>
+                            </div>
+                        </div>
+                        <div class="accordion mb-3" id="compressionAdvancedAccordion">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                        data-bs-target="#compressionAdvanced" aria-expanded="false" aria-controls="compressionAdvanced">
+                                        {{ t('compression.advanced_toggle') }}
+                                    </button>
+                                </h2>
+                                <div id="compressionAdvanced" class="accordion-collapse collapse" data-bs-parent="#compressionAdvancedAccordion">
+                                    <div class="accordion-body">
+                                        <div class="mb-3 form-check">
+                                            <input type="checkbox" class="form-check-input" id="compressLongDistanceCheck">
+                                            <label class="form-check-label" for="compressLongDistanceCheck">{{ t('compression.long_distance') }}</label>
+                                            <div class="form-text">{{ t('compression.long_distance_help') }}</div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="compressModeSelect" class="form-label">{{ t('compression.mode_label') }}</label>
+                                            <select class="form-select" id="compressModeSelect">
+                                                <option value="auto">{{ t('compression.mode_auto') }}</option>
+                                                <option value="solid">{{ t('compression.mode_solid') }}</option>
+                                                <option value="block">{{ t('compression.mode_block') }}</option>
+                                            </select>
+                                            <div class="form-text">{{ t('compression.mode_help') }}</div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="compressBlockSizeInput" class="form-label">{{ t('compression.block_size_label') }}</label>
+                                            <input type="number" class="form-control" min="14" max="32" id="compressBlockSizeInput">
+                                            <div class="form-text">{{ t('compression.block_size_help') }}</div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="compressThreadsInput" class="form-label">{{ t('compression.threads_label') }}</label>
+                                            <input type="number" class="form-control" min="0" max="64" id="compressThreadsInput">
+                                            <div class="form-text">{{ t('compression.threads_help') }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h4 class="py-2">{{ t('sections.verification') }}</h4>
+                <p>{{ t('verification.desc') }}</p>
+                <div class="row">
+                    <div class="col-7">
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="verifyFilesCheck">
+                            <label class="form-check-label" for="verifyFilesCheck">{{ t('verification.enable') }}</label>
+                            <div class="form-text">{{ t('verification.enable_help') }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="verificationDepth"
+                                       id="verificationDepthSignature" value="signature">
+                                <label class="form-check-label" for="verificationDepthSignature">{{ t('verification.signature_only') }}</label>
+                                <div class="form-text">{{ t('verification.signature_only_help') }}</div>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="verificationDepth"
+                                       id="verificationDepthHash" value="hash">
+                                <label class="form-check-label" for="verificationDepthHash">{{ t('verification.full_hash') }}</label>
+                                <div class="form-text">{{ t('verification.full_hash_help') }}</div>
+                            </div>
+                        </div>
+                        <div class="alert alert-warning d-none" id="verificationKeysAlert" role="alert">
+                            {{ t('verification.keys_alert') }}
+                        </div>
+                    </div>
+                </div>
+
+                <h4 class="py-2">{{ t('sections.organizer') }}</h4>
+                <p>{{ t('organizer.desc') }}</p>
+                <div class="row">
+                    <div class="col-7">
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="organizerEnabledCheck">
+                            <label class="form-check-label" for="organizerEnabledCheck">{{ t('organizer.enable') }}</label>
+                            <div class="form-text">{{ t('organizer.enable_help') }}</div>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="removeEmptyFoldersCheck">
+                            <label class="form-check-label" for="removeEmptyFoldersCheck">{{ t('organizer.remove_empty') }}</label>
+                            <div class="form-text">{{ t('organizer.remove_empty_help') }}</div>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="windowsCompatibleCheck">
+                            <label class="form-check-label" for="windowsCompatibleCheck">{{ t('organizer.windows_compat') }}</label>
+                            <div class="form-text">{{ t('organizer.windows_compat_help') }}</div>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="cleanNamesCheck">
+                            <label class="form-check-label" for="cleanNamesCheck">{{ t('organizer.clean_names_label') }}</label>
+                            <div class="form-text">{{ t('organizer.clean_names_help') }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-check-label d-block">{{ t('organizer.naming_language') }}</label>
+                            <div class="form-text mb-2">{{ t('organizer.naming_language_help') }}</div>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <select id="organizerNameRegionSelect" class="form-select form-select-sm" aria-label="Select organizer naming region">
+                                        <option value="">{{ t('organizer.same_as_library') }}</option>
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <select id="organizerNameLanguageSelect" class="form-select form-select-sm" aria-label="Select organizer naming language"></select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h5 class="pb-3 pt-2">{{ t('templates.heading') }}</h5>
+                <p>{{ t('templates.desc') }}</p>
+                <div class="row">
+                    <div class="col-7">
+                        <div class="mb-3">
+                            <label for="baseTemplateInput" class="form-label">{{ t('templates.base') }}</label>
+                            <input type="text" class="form-control form-control-code" id="baseTemplateInput">
+                        </div>
+                        <div class="mb-3">
+                            <label for="updateTemplateInput" class="form-label">{{ t('templates.update') }}</label>
+                            <input type="text" class="form-control form-control-code" id="updateTemplateInput">
+                        </div>
+                        <div class="mb-3">
+                            <label for="dlcTemplateInput" class="form-label">{{ t('templates.dlc') }}</label>
+                            <input type="text" class="form-control form-control-code" id="dlcTemplateInput">
+                        </div>
+                        <div class="mb-3">
+                            <label for="multiTemplateInput" class="form-label">{{ t('templates.multi') }}</label>
+                            <input type="text" class="form-control form-control-code" id="multiTemplateInput">
+                        </div>
+                        <p class="text-break"><strong>{{ t('templates.tinfoil_note') }}</strong></p>
+                    </div>
+                    <div class="col-5">
+                        <div class="alert alert-dark">
+                            <p>{{ t('templates.attrs_all') }}</p>
+                            <ul>
+                                <li><code>{extension}</code>: {{ t('templates.attr_extension') }}</li>
+                                <li><code>{titleId}</code>: {{ t('templates.attr_title_id') }}</li>
+                                <li><code>{titleName}</code>: {{ t('templates.attr_title_name') }}</li>
+                            </ul>
+                            <p>{{ t('templates.attrs_base_update_dlc') }}</p>
+                            <ul>
+                                <li><code>{appId}</code>: {{ t('templates.attr_app_id') }}</li>
+                                <li><code>{appVersion}</code>: {{ t('templates.attr_app_version') }}</li>
+                                <li><code>{patchLevel}</code>: {{ t('templates.attr_patch_level') }}</li>
+                                <li><code>{appName}</code>: {{ t('templates.attr_app_name') }}</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <button type="button" id="submitLibraryManagementSettingsBtn" class="btn btn-primary"
+                        onClick='submitLibraryManagementSettings()'>{{ t('lib.submit') }}</button>
+                </div>
+
+                <hr class="hr-settings">
+                <h2 class="pb-2">{{ t('sections.titles') }}</h2>
+                <p>{{ t('titles.desc') }}</p>
+                <div class="row mb-4">
+                    <div class="col">
+                        <label for="selectRegion" class="form-label">{{ t('titles.region_label') }}</label>
+                        <select id="selectRegion" class="form-select" aria-label="Select library region">
+                        </select>
+                    </div>
+                    <div class="col">
+                        <label for="selectLanguage" class="form-label">{{ t('titles.language_label') }}</label>
+                        <select id="selectLanguage" class="form-select" aria-label="Select library language">
+                        </select>
+                    </div>
+                    <div id="selectRegionLanguageHelp" class="form-text">{{ t('titles.region_language_help') }}</div>
+                </div>
+
+                <div class="row mb-3">
+                    <!-- Console key upload form -->
+                    <div class="col-6">
+                        <label id="consoleKeysInputLabel" for="consoleKeysInput" class="form-label">{{ t('titles.console_keys_label') }}</label>
+                        <input class="form-control" type="file"
+                            accept=".keys,.txt" id="consoleKeysInput">
+                        <div id="consoleKeysFeedback">
+                        </div>
+                        <div id="consoleKeysHelp" class="form-text">{{ t('titles.console_keys_help') }}</div>
+                    </div>
+
+                    <!-- Missing console keys -->
+                    <div class="col-6">
+                        <label for="keysAlert" class="form-label">{{ t('titles.master_key_revisions') }}</label>
+                        <div id="keysAlert" class="alert alert-secondary py-2 mb-0">
+                            <p id="keysMissingLabel" class="mb-0"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <button type="button" id="submitTitlesSettingsBtn" class="btn btn-primary"
+                        onClick='submitTitlesSettings()'>{{ t('lib.submit') }}</button>
+                </div>
+                </form>
+                <hr class="hr-settings">
+
+                <h2 class="pb-2">{{ t('sections.shop') }}</h2>
+                <p>{{ t('shop.desc') }}</p>
+                <!-- Shop URL -->
+                <div class="mb-3">
+                    <label for="shopHostInput" class="form-label">{{ t('shop.url_label') }}</label>
+                    <input class="form-control" id="shopHostInput" aria-describedby="shopHostHelp"
+                        placeholder="shop.domain.tld">
+                    <div id="shopHostHelp" class="form-text">{{ t('shop.url_help') }}</div>
+                </div>
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="publicShopCheck"
+                        aria-describedby="publicShopCheckHelp">
+                    <label class="form-check-label" for="publicShopCheck">{{ t('shop.public') }}</label>
+                    <div id="publicShopCheckHelp" class="form-text">{{ t('shop.public_help') }}</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="shopMotdTextArea" class="form-label">{{ t('shop.motd_label') }}</label>
+                    <textarea class="form-control" id="shopMotdTextArea" rows="3"></textarea>
+                    <div id="shopMotdTextAreaHelp" class="form-text">{{ t('shop.motd_help') }}</div>
+                </div>
+
+                <h4 class="pt-3 pb-2">{{ t('sections.clients') }}</h4>
+                <h5 class="pb-2">{{ t('clients.tinfoil') }}</h5>
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="tinfoilEnabledCheck"
+                        aria-describedby="tinfoilEnabledCheckHelp">
+                    <label class="form-check-label" for="tinfoilEnabledCheck">{{ t('clients.enabled') }}</label>
+                    <div id="tinfoilEnabledCheckHelp" class="form-text">{{ t('clients.tinfoil_enabled_help') }}</div>
+                </div>
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="tinfoilEncryptShopCheck"
+                        aria-describedby="tinfoilEncryptShopCheckHelp">
+                    <label class="form-check-label" for="tinfoilEncryptShopCheck">{{ t('clients.encrypt_shop') }}</label>
+                    <div id="tinfoilEncryptShopCheckHelp" class="form-text">{{ t('clients.encrypt_shop_help') }}</div>
+                </div>
+
+                <h5 class="pb-2">{{ t('clients.sphaira') }}</h5>
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="sphairaEnabledCheck"
+                        aria-describedby="sphairaEnabledCheckHelp">
+                    <label class="form-check-label" for="sphairaEnabledCheck">{{ t('clients.enabled') }}</label>
+                    <div id="sphairaEnabledCheckHelp" class="form-text">{{ t('clients.sphaira_enabled_help') }}</div>
+                </div>
+
+                <h5 class="pb-2">{{ t('clients.cyberfoil') }}</h5>
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="cyberfoilEnabledCheck"
+                        aria-describedby="cyberfoilEnabledCheckHelp">
+                    <label class="form-check-label" for="cyberfoilEnabledCheck">{{ t('clients.enabled') }}</label>
+                    <div id="cyberfoilEnabledCheckHelp" class="form-text">{{ t('clients.cyberfoil_enabled_help') }}</div>
+                </div>
+
+                <div class="mb-3">
+                    <button type="button" id="submitShopSettingsBtn" class="btn btn-primary"
+                        onClick='submitShopSettings()'>{{ t('lib.submit') }}</button>
+                </div>
+
+                
+                <hr class="hr-settings">
+                <h2 class="pb-2">{{ t('sections.scheduler') }}</h2>
+                <p>{{ t('scheduler.desc') }}</p>
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <label for="titledbUpdateIntervalInput" class="form-label">{{ t('scheduler.titledb_interval_label') }}</label>
+                        <input type="text" class="form-control" id="titledbUpdateIntervalInput" aria-describedby="titledbUpdateIntervalHelp" placeholder="2h">
+                        <div id="titledbUpdateIntervalFeedback"></div>
+                        <div id="titledbUpdateIntervalHelp" class="form-text">{{ t('scheduler.titledb_interval_help') }}</div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <button type="button" id="submitSchedulerSettingsBtn" class="btn btn-primary"
+                        onClick='submitSchedulerSettings()'>{{ t('lib.submit') }}</button>
+                </div>
+
+                <hr class="hr-settings">
+                <h2 class="pb-2">{{ t('sections.workers') }}</h2>
+                <p>{{ t('workers.desc') }}</p>
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <label for="workerCountInput" class="form-label">{{ t('workers.count_label') }}</label>
+                        <input type="number" class="form-control" id="workerCountInput" min="1" step="1">
+                        <div id="workerCountFeedback"></div>
+                        <div id="workerCountHelp" class="form-text">{{ t('workers.count_help') }}</div>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <label for="ioLimitInput" class="form-label">{{ t('workers.io_limit_label') }}</label>
+                        <input type="number" class="form-control" id="ioLimitInput" min="1" step="1">
+                        <div id="ioLimitFeedback"></div>
+                        <div id="ioLimitHelp" class="form-text">
+                            {{ t('workers.io_limit_intro') }}
+                            <ul class="mb-0">
+                                <li>{{ t('workers.io_limit_hdd') }}</li>
+                                <li>{{ t('workers.io_limit_ssd') }}</li>
+                                <li>{{ t('workers.io_limit_nvme') }}</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <button type="button" id="submitWorkerSettingsBtn" class="btn btn-primary"
+                        onClick='submitWorkerSettings()'>{{ t('lib.submit') }}</button>
+                </div>
+
+                <hr class="hr-settings">
+                <h2 class="pb-2">{{ t('backup.heading') }}</h2>
+                <p class="text-secondary">{{ t('backup.description') }}</p>
+                <div class="row g-3 align-items-end">
+                    <div class="col-auto">
+                        <a href="/api/settings/export" class="btn btn-outline-secondary" download>
+                            <i class="bi bi-download"></i> {{ t('backup.export') }}
+                        </a>
+                    </div>
+                    <div class="col-auto">
+                        <label for="importSettingsFile" class="form-label d-block mb-1">{{ t('backup.import') }}</label>
+                        <div class="d-flex gap-2">
+                            <input type="file" class="form-control" id="importSettingsFile" accept=".yaml,.yml">
+                            <button type="button" id="importSettingsBtn" class="btn btn-outline-warning text-nowrap">
+                                {{ t('backup.import_button') }}
+                            </button>
+                        </div>
+                        <div id="importSettingsFeedback" class="form-text"></div>
+                    </div>
+                </div>
+
+            </div>
+{% endblock %}
+
+{% block panel_scripts %}
+<script>
+
+    // Strings the JS below needs but can't hardcode in English.
+    const I18N = {
+        shop: {{ t('auth.shop') | tojson }},
+        backup: {{ t('auth.backup') | tojson }},
+        admin: {{ t('auth.admin') | tojson }},
+    };
+
+    settings_map = {
+        'library/path': 'libraryPathInput'
+    };
+
+
+    // allUsers = [];
+
+    function getInputVal(inputId) {
+        return $("#" + inputId).val();
+    };
+
+    function setInputVal(inputId, value) {
+        return $("#" + inputId).val(value);
+    };
+
+    function getCheckboxStatus(checkboxId) {
+        return $('#' + checkboxId).is(":checked")
+    }
+
+    // Scans one library, or every configured one when path is null.
+    const SCAN_MUTATION = `
+        mutation Scan($path: String) {
+            scanLibrary(path: $path) { id status }
+        }`;
+
+    async function scanLibrary(path = null) {
+        $('.scanBtn').prop('disabled', true);
+        try {
+            const r = await fetch('/api/graphql', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+                credentials: 'same-origin',
+                body: JSON.stringify({query: SCAN_MUTATION, variables: {path: path}}),
+            });
+            if (!r.ok) throw new Error(`GraphQL HTTP ${r.status}`);
+            const body = await r.json();
+            if (body.errors && body.errors.length) {
+                throw new Error('GraphQL errors: ' + JSON.stringify(body.errors));
+            }
+            console.log('Scan enqueued:', body.data.scanLibrary);
+            showPathsError(null);
+        } catch (e) {
+            console.error(e);
+            showPathsError('Could not start scan: ' + e.message);
+        } finally {
+            $('.scanBtn').prop('disabled', false);
+        }
+    }
+
+    // Shows API `errors` (or a plain message) above the paths table; falsy clears it.
+    function showPathsError(errors) {
+        const text = Array.isArray(errors) ? errors.map(e => e.error || e).join(' ') : errors;
+        $('#pathsAlert').text(text || '').toggleClass('d-none', !text);
+    }
+
+    function fillLibraryTable() {
+        $('#pathsTable tbody').empty();
+
+        $.getJSON("/api/settings/library/paths", function (result) {
+
+            if (!result['success']) {
+                if (result['status_code'] == '302') {
+                    window.location.href = result['location']
+                    return
+                }
+            }
+            paths = result.paths;
+            if (paths === null || !paths.length) {
+                $('#pathsTable tbody').append(
+                    '<tr><td>-</td><td>-</td><td>');
+            } else {
+                paths.forEach(path => {
+                    // The path is set with .text()/.attr(): concatenating it into markup, or into an
+                    // inline handler, makes the browser eat backslashes in Windows paths (issue #297).
+                    const scanBtn = $('<button type="button" class="btn btn-outline-info btn-sm scanBtn"><i class="bi bi-arrow-clockwise"></i></button>').attr('data-bs-path', path);
+                    const deleteBtn = $('<button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deletePathModal"><i class="bi bi-x-circle"></i></button>').attr('data-bs-path', path);
+                    $('#pathsTable tbody').append(
+                        $('<tr>').append($('<td>').text(path), $('<td>').append(scanBtn, ' ', deleteBtn)));
+                })
+            }
+            const watcher = result.watcher || { enabled: true, polling_interval: 60 };
+            $('#watcherEnabledCheck').prop('checked', watcher.enabled);
+            $('#watcherIntervalInput').val(watcher.polling_interval);
+        });
+
+    }
+
+    function submitWatcherSettings() {
+        $('#submitWatcherSettingsBtn').prop('disabled', true);
+        data = {
+            enabled: getCheckboxStatus("watcherEnabledCheck"),
+            polling_interval: parseInt($('#watcherIntervalInput').val(), 10)
+        }
+        $.ajax({
+            url: "/api/settings/library/watcher",
+            type: 'POST',
+            data: JSON.stringify(data),
+            contentType: "application/json",
+            success: function (result) {
+                if (!result['success']) {
+                    if (result['errors']) {
+                        result['errors'].forEach(error => {
+                            $('#watcherIntervalFeedback').text(error['error']);
+                            $('#watcherIntervalFeedback').addClass('invalid-feedback d-block');
+                            $("#watcherIntervalInput").removeClass('is-valid').addClass('is-invalid');
+                        });
+                    }
+                } else {
+                    $('#watcherIntervalFeedback').text('').removeClass('invalid-feedback d-block');
+                    $("#watcherIntervalInput").removeClass('is-invalid').addClass('is-valid');
+                }
+                $('#submitWatcherSettingsBtn').prop('disabled', false);
+            }
+        });
+    }
+
+    function fillUserTable() {
+        $('#userTable tbody').empty();
+        $.getJSON("/api/users", function (result) {
+            if (!result['success']) {
+                if (result['status_code'] == '302') {
+                    window.location.href = result['location']
+                    return
+                }
+            }
+            allUsers = result;
+            allUsernames = [];
+            if (!result.length) {
+                $('#userTable tbody').append(
+                    '<tr><td>-</td><td>-</td><td>-</td></tr>');
+            }
+            result.forEach(user => {
+                allUsernames.push(user['user']);
+                base_input = '<input class="form-check-input" type="checkbox" onclick="return false" checked>';
+                shop_input = base_input;
+                backup_input = base_input;
+                admin_input = base_input;
+                if (!user['shop_access']) {
+                    shop_input = shop_input.replace(' checked', '');
+                }
+                if (!user['backup_access']) {
+                    backup_input = backup_input.replace(' checked', '');
+                }
+                if (!user['admin_access']) {
+                    admin_input = shop_input.replace(' checked', '');
+                }
+                $('#userTable tbody').append(
+                    '<tr><td>' + user['user'] + '</td><td>'
+                    + `
+                        <div class="form-check form-check-inline">`
+                    + shop_input + `
+                            <label class="form-check-label">` + I18N.shop + `</label>
+                        </div>
+                        <div class="form-check form-check-inline">`
+                    + backup_input + `
+                            <label class="form-check-label">` + I18N.backup + `</label>
+                        </div>
+                        <div class="form-check form-check-inline">`
+                    + admin_input + `
+                            <label class="form-check-label">` + I18N.admin + `</label>
+                        </div>`
+                    + '</td><td>' +
+                    '<button type="button" class="btn btn-outline-info btn-sm" disabled=""><i class="bi bi-pencil-square"></i></button> ' +
+                    '<button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteUserModal" data-bs-id="' + user['id'] + '" data-bs-user="' + user['user'] + '"\'><i class="bi bi-x-circle"></i></button>' +
+                    '</td></tr>');
+            });
+        })
+
+    }
+
+    function updateKeysElements(titlesSettings) {
+        // Verification cannot run without keys: nstools needs them to open a container.
+        const validKeys = Boolean(titlesSettings['valid_keys']);
+        $('#verifyFilesCheck, #verificationDepthSignature, #verificationDepthHash').prop('disabled', !validKeys);
+        $('#verificationKeysAlert').toggleClass('d-none', validKeys);
+
+        // Keys alert
+        if (titlesSettings['valid_keys']) {
+            $('#consoleKeysFeedback').text("Keys are valid!");
+            $('#consoleKeysFeedback').removeClass('invalid-feedback');
+            $('#consoleKeysFeedback').addClass('valid-feedback d-block');
+            $('#missingKeysAlert').removeClass('d-block');
+            $('#missingKeysAlert').addClass('d-none');
+        } else {
+            $('#consoleKeysFeedback').removeClass('valid-feedback');
+            $('#consoleKeysFeedback').addClass('invalid-feedback d-block');
+            $('#missingKeysAlert').removeClass('d-none');
+            $("#missingKeysAlert").addClass('d-block');
+            if (titlesSettings['valid_keys'] === null) {
+                $('#consoleKeysFeedback').text("Missing keys file! Use the button above to upload a new file.");
+            } else {
+                $('#consoleKeysFeedback').text("Invalid keys file! At least one master key is incorrect. Use the button above to upload a new file.");
+            }
+        }
+
+        // Missing and invalid master key revisions
+        if (titlesSettings['valid_keys'] === null) {
+            $('#keysAlert').css("border-color", "var(--bs-danger-border-subtle)");
+            $("#keysMissingLabel").text("Missing console keys file.");
+        } else if ((titlesSettings['missing_keys'] && titlesSettings['missing_keys'].length > 0) || (titlesSettings['corrupt_keys'] && titlesSettings['corrupt_keys'].length > 0)) {
+            $('#keysAlert').css("border-color", "var(--bs-warning-border-subtle)");
+            $("#keysMissingLabel").text("Missing/invalid master key revisions:");
+            $("#keysMissingLabel").next('ul').remove(); // Clear existing ul if any
+            var ul = $('<ul class="mb-0">');
+            if (titlesSettings['corrupt_keys'] && titlesSettings['corrupt_keys'].length > 0) {
+                $.each(titlesSettings['corrupt_keys'], function(index, key) {
+                    ul.append($('<li>').html('<code>' + key + '</code> is invalid'));
+                });
+            }
+            if (titlesSettings['missing_keys'] && titlesSettings['missing_keys'].length > 0) {
+                $.each(titlesSettings['missing_keys'], function(index, key) {
+                    ul.append($('<li>').html('<code>' + key + '</code> is missing'));
+                });
+            }
+            $("#keysMissingLabel").after(ul);
+        } else {
+            $('#keysAlert').css("border-color", "var(--bs-form-valid-border-color)");
+            $("#keysMissingLabel").text("All master key revisions are present and valid.");
+        }
+    }
+
+    // Row buttons carry their path in data-bs-path, read back as a string rather than
+    // re-parsed as markup or JS.
+    $('#pathsTable').on('click', '.scanBtn', function () {
+        scanLibrary($(this).attr('data-bs-path'))
+    })
+
+    const deletePathModal = $('#deletePathModal')
+    if (deletePathModal) {
+        deletePathModal.on('show.bs.modal', event => {
+            const path = event.relatedTarget.getAttribute('data-bs-path')
+            deletePathModal.data('path', path)
+            deletePathModal.find('.modal-body').text("Delete path " + path + " ?")
+        })
+        deletePathModal.find('.btn-danger').on('click', () => deleteLibraryPath(deletePathModal.data('path')))
+    }
+
+    const deleteUserModal = $('#deleteUserModal')
+    if (deleteUserModal) {
+        deleteUserModal.on('show.bs.modal', event => {
+            // Button that triggered the modal
+            const button = event.relatedTarget
+            // Extract info from data-bs-* attributes
+            const user = button.getAttribute('data-bs-user')
+            const id = button.getAttribute('data-bs-id')
+            // If necessary, you could initiate an Ajax request here
+            // and then do the updating in a callback.
+
+            // Update the modal's content.
+            // const modalTitle = deleteUserModal.querySelector('.modal-title')
+            const modalBody = deleteUserModal.find('.modal-body')
+            const deleteBtn = deleteUserModal.find('.btn-danger')
+
+
+            deleteBtn.attr('onClick', 'deleteUser(' + id + ');');
+
+            // modalTitle.textContent = `New message to ${recipient}`
+            modalBody.text("Delete user " + user + " ?")
+        })
+    }
+
+    function deleteUser(userId) {
+        data = {
+            user_id: userId
+        }
+        $.ajax({
+            url: "/api/user",
+            type: 'DELETE',
+            data: JSON.stringify(data),
+            contentType: "application/json",
+            success: function (result) {
+                if (result['success']) {
+                    fillUserTable();
+                }
+            }
+        });
+    }
+
+    function deleteLibraryPath(path) {
+        data = {
+            path: path
+        }
+        $.ajax({
+            url: "/api/settings/library/paths",
+            type: 'DELETE',
+            data: JSON.stringify(data),
+            contentType: "application/json",
+            success: function (result) {
+                showPathsError(result['success'] ? null : result['errors']);
+                if (result['success']) {
+                    fillLibraryTable();
+                }
+            },
+            error: function (xhr) {
+                showPathsError('Could not delete path: HTTP ' + xhr.status + '.');
+            }
+        });
+    }
+
+    $('#checkboxNewUserAdminAccess').change(function () {
+        if (this.checked != false) {
+            $('#checkboxNewUserShopAccess').prop('checked', true).attr("disabled", true);
+            $('#checkboxNewUserBackupAccess').prop('checked', true).attr("disabled", true);
+
+        } else {
+            $('#checkboxNewUserShopAccess').attr("disabled", false);
+            $('#checkboxNewUserBackupAccess').attr("disabled", false);
+
+        }
+    });
+
+    function validatePassword(password) {
+        if (!password) {
+            return {
+                isValid: false,
+                message: "Password cannot be empty"
+            };
+        }
+        
+        // Check for control characters (null, line breaks, etc.)
+        const controlChars = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/;
+        if (controlChars.test(password)) {
+            return {
+                isValid: false,
+                message: "Password contains invalid control characters"
+            };
+        }
+        
+        // Also check for tab, newline, and carriage return explicitly
+        if (password.includes('\t') || password.includes('\n') || password.includes('\r')) {
+            return {
+                isValid: false,
+                message: "Password contains invalid control characters"
+            };
+        }
+        
+        // Check for Tinfoil forbidden characters
+        const tinfoilForbidden = /[@&/?#=]/;
+        if (tinfoilForbidden.test(password)) {
+            return {
+                isValid: false,
+                message: "Password contains invalid characters. Please avoid: @ & / ? # ="
+            };
+        }
+        
+        // Check for UTF-8 encoding validity
+        try {
+            // Try to encode as UTF-8
+            new TextEncoder().encode(password);
+        } catch (e) {
+            return {
+                isValid: false,
+                message: "Password contains invalid UTF-8 characters"
+            };
+        }
+        
+        return { isValid: true, message: "" };
+    }
+
+    function validateUsername(username) {
+        if (!username) {
+            return {
+                isValid: false,
+                message: "Username cannot be empty"
+            };
+        }
+        
+        // Check for colons (not allowed in Basic Auth usernames)
+        if (username.includes(':')) {
+            return {
+                isValid: false,
+                message: "Username cannot contain colons (:)"
+            };
+        }
+        
+        // Check for control characters (null, line breaks, etc.)
+        const controlChars = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/;
+        if (controlChars.test(username)) {
+            return {
+                isValid: false,
+                message: "Username contains invalid control characters"
+            };
+        }
+        
+        // Also check for tab, newline, and carriage return explicitly
+        if (username.includes('\t') || username.includes('\n') || username.includes('\r')) {
+            return {
+                isValid: false,
+                message: "Username contains invalid control characters"
+            };
+        }
+        
+        // Check for UTF-8 encoding validity
+        try {
+            // Try to encode as UTF-8
+            new TextEncoder().encode(username);
+        } catch (e) {
+            return {
+                isValid: false,
+                message: "Username contains invalid UTF-8 characters"
+            };
+        }
+        
+        return { isValid: true, message: "" };
+    }
+
+    function showPasswordError(message) {
+        $('#inputNewUserPassword').addClass('is-invalid');
+        let errorDiv = $('#inputNewUserPassword').siblings('.invalid-feedback');
+        if (errorDiv.length === 0) {
+            errorDiv = $('<div class="invalid-feedback"></div>');
+            $('#inputNewUserPassword').after(errorDiv);
+        }
+        errorDiv.text(message);
+    }
+
+    function clearPasswordError() {
+        $('#inputNewUserPassword').removeClass('is-invalid');
+        $('#inputNewUserPassword').siblings('.invalid-feedback').remove();
+    }
+
+    function showUsernameError(message) {
+        $('#inputNewUser').addClass('is-invalid');
+        let errorDiv = $('#inputNewUser').siblings('.invalid-feedback');
+        if (errorDiv.length === 0) {
+            errorDiv = $('<div class="invalid-feedback"></div>');
+            $('#inputNewUser').after(errorDiv);
+        }
+        errorDiv.text(message);
+    }
+
+    function clearUsernameError() {
+        $('#inputNewUser').removeClass('is-invalid');
+        $('#inputNewUser').siblings('.invalid-feedback').remove();
+    }
+
+    function submitNewUser() {
+        formOk = true;
+        user = getInputVal("inputNewUser")
+        password = getInputVal("inputNewUserPassword")
+        shop_access = getCheckboxStatus("checkboxNewUserShopAccess")
+        backup_access = getCheckboxStatus("checkboxNewUserBackupAccess")
+        admin_access = getCheckboxStatus("checkboxNewUserAdminAccess")
+
+        // Validate username
+        const usernameValidation = validateUsername(user);
+        if (!usernameValidation.isValid) {
+            showUsernameError(usernameValidation.message);
+            formOk = false;
+        } else if (allUsernames.includes(user)) {
+            showUsernameError('User already exists');
+            formOk = false;
+        } else {
+            clearUsernameError();
+        }
+
+        // Validate password
+        const passwordValidation = validatePassword(password);
+        if (!passwordValidation.isValid) {
+            showPasswordError(passwordValidation.message);
+            formOk = false;
+        } else {
+            clearPasswordError();
+        }
+
+
+        if (formOk) {
+            data = {
+                user: user,
+                password: password,
+                shop_access: shop_access,
+                backup_access: backup_access,
+                admin_access: admin_access,
+            }
+
+            $.ajax({
+                url: "/api/user/signup",
+                type: 'POST',
+                data: JSON.stringify(data),
+                contentType: "application/json",
+                success: function (result) {
+                    if (result['success']) {
+                        if (result['status_code'] == '302') {
+                            window.location.href = result['location']
+                            return
+                        }
+                        console.log('Signup Success!');
+                        setInputVal("inputNewUser", "")
+                        setInputVal("inputNewUserPassword", "")
+                        fillUserTable();
+                    } else {
+                        // Handle backend validation errors
+                        if (result['error']) {
+                            $('#inputNewUserPassword').addClass('is-invalid');
+                            let errorDiv = $('#inputNewUserPassword').siblings('.invalid-feedback');
+                            if (errorDiv.length === 0) {
+                                errorDiv = $('<div class="invalid-feedback"></div>');
+                                $('#inputNewUserPassword').after(errorDiv);
+                            }
+                            errorDiv.text(result['error']);
+                        }
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error creating user:', error);
+                    $('#inputNewUserPassword').addClass('is-invalid');
+                    let errorDiv = $('#inputNewUserPassword').siblings('.invalid-feedback');
+                    if (errorDiv.length === 0) {
+                        errorDiv = $('<div class="invalid-feedback"></div>');
+                        $('#inputNewUserPassword').after(errorDiv);
+                    }
+                    errorDiv.text('Error creating user. Please try again.');
+                }
+            });
+        }
+    }
+
+    function submitNewLibraryPath() {
+        $('#submitNewLibraryPathBtn').prop('disabled', true);
+        path = getInputVal("libraryPathInput").trim();
+        data = {
+            path: path
+        }
+
+        $.ajax({
+            url: "/api/settings/library/paths",
+            type: 'POST',
+            data: JSON.stringify(data),
+            contentType: "application/json",
+            success: function (result) {
+                if (result['success']) {
+                    if (result['status_code'] == '302') {
+                        window.location.href = result['location']
+                        return
+                    }
+                    console.log('Sucessfully added path ' + path);
+                    setInputVal("libraryPathInput", "")
+                    showPathsError(null);
+                    fillLibraryTable();
+                } else {
+                    showPathsError(result['errors']);
+                }
+                $('#submitNewLibraryPathBtn').prop('disabled', false);
+            },
+            error: function (xhr) {
+                showPathsError('Could not add path: HTTP ' + xhr.status + '.');
+                $('#submitNewLibraryPathBtn').prop('disabled', false);
+            }
+        });
+    }
+
+    function submitTitlesSettings() {
+        $('#submitTitlesSettingsBtn').prop('disabled', true);
+        data = {
+            region: getInputVal("selectRegion"),
+            language: getInputVal("selectLanguage"),
+        }
+        file = $('#consoleKeysInput').prop('files')[0];
+
+        if (file != undefined) {
+            formData = new FormData();
+            formData.append("file", file);
+            $.ajax({
+                url: "/api/upload",
+                type: 'POST',
+                data: formData,
+                cache: false,
+                contentType: false,
+                processData: false,
+                success: function (result) {
+                    if (result['success']) {
+                        updateKeysElements(result['data']);
+                        $('#consoleKeysInput').val('');
+                    } else {
+                        errors = result['errors'].join(';')
+                        $('#consoleKeysFeedback').text("Failed to upload keys file: " + errors);
+                        $('#consoleKeysFeedback').addClass('invalid-feedback d-block');
+                    }
+                }
+            });
+        }
+
+        $.ajax({
+            url: "/api/settings/titles",
+            type: 'POST',
+            data: JSON.stringify(data),
+            contentType: "application/json",
+            success: function (result) {
+                if (!result['success']) {
+                    console.log('Not Success!');
+                    result['errors'].forEach(error => {
+                        path = error['path'];
+                        formId = settings_map[path];
+                        form = $('#' + formId);
+                        form.addClass('is-invalid');
+                        formTextElement = form.attr('aria-describedby');
+                        $("#" + formTextElement).addClass('invalid-feedback');
+                        $("#" + formTextElement).text(error['error']);
+                    });
+                }
+                $('#consoleKeysInput').val('');
+                $('#submitTitlesSettingsBtn').prop('disabled', false);
+            }
+        });
+    }
+
+    function submitShopSettings() {
+        $('#submitShopSettingsBtn').prop('disabled', true);
+        data = {
+            host: $('#shopHostInput').val(),
+            public: getCheckboxStatus("publicShopCheck"),
+            motd: $('#shopMotdTextArea').val(),
+            clients: {
+                cyberfoil: {
+                    enabled: getCheckboxStatus("cyberfoilEnabledCheck"),
+                },
+                tinfoil: {
+                    enabled: getCheckboxStatus("tinfoilEnabledCheck"),
+                    encrypt: getCheckboxStatus("tinfoilEncryptShopCheck"),
+                },
+                sphaira: {
+                    enabled: getCheckboxStatus("sphairaEnabledCheck"),
+                }
+            }
+        }
+
+        $.ajax({
+            url: "/api/settings/shop",
+            type: 'POST',
+            data: JSON.stringify(data),
+            contentType: "application/json",
+            success: function (result) {
+                if (!result['success']) {
+                    console.log('Not Success!');
+                    result['errors'].forEach(error => {
+                        path = error['path'];
+                        formId = settings_map[path];
+                        form = $('#' + formId);
+                        form.addClass('is-invalid');
+                        formTextElement = form.attr('aria-describedby');
+                        $("#" + formTextElement).addClass('invalid-feedback');
+                        $("#" + formTextElement).text(error['error']);
+                    });
+                }
+                $('#submitShopSettingsBtn').prop('disabled', false);
+            }
+        });
+    }
+
+    function submitLibraryManagementSettings() {
+        $('#submitLibraryManagementSettingsBtn').prop('disabled', true);
+        data = {
+            compression: {
+                enabled: getCheckboxStatus("compressFilesCheck"),
+                level: parseInt(getInputVal("compressionLevelInput")),
+                long_distance: getCheckboxStatus("compressLongDistanceCheck"),
+                mode: getInputVal("compressModeSelect"),
+                block_size_exponent: parseInt(getInputVal("compressBlockSizeInput")),
+                threads: parseInt(getInputVal("compressThreadsInput"))
+            },
+            verification: {
+                enabled: getCheckboxStatus("verifyFilesCheck"),
+                depth: $("input[name='verificationDepth']:checked").val() || "signature"
+            },
+            delete_older_updates: getCheckboxStatus("deleteOlderUpdatesCheck"),
+            web_downloads: {
+                enabled: getCheckboxStatus("webDownloadsEnabledCheck")
+            },
+            duplicates: {
+                auto_resolve: getCheckboxStatus("autoResolveDuplicatesCheck"),
+                prefer_larger_on_tie: getCheckboxStatus("preferLargerOnTieCheck")
+            },
+            organizer: {
+                enabled: getCheckboxStatus("organizerEnabledCheck"),
+                remove_empty_folders: getCheckboxStatus("removeEmptyFoldersCheck"),
+                windows_compatible: getCheckboxStatus("windowsCompatibleCheck"),
+                clean_names: getCheckboxStatus("cleanNamesCheck"),
+                name_region: getInputVal("organizerNameRegionSelect"),
+                name_language: getInputVal("organizerNameRegionSelect") ? getInputVal("organizerNameLanguageSelect") : "",
+                templates: {
+                    base: getInputVal("baseTemplateInput"),
+                    update: getInputVal("updateTemplateInput"),
+                    dlc: getInputVal("dlcTemplateInput"),
+                    multi: getInputVal("multiTemplateInput")
+                }
+            }
+        }
+
+        $.ajax({
+            url: "/api/settings/library/management",
+            type: 'POST',
+            data: JSON.stringify(data),
+            contentType: "application/json",
+            success: function (result) {
+                if (!result['success']) {
+                    console.log('Not Success!');
+                }
+                $('#submitLibraryManagementSettingsBtn').prop('disabled', false);
+            }
+        });
+    }
+
+    function submitSchedulerSettings() {
+        $('#submitSchedulerSettingsBtn').prop('disabled', true);
+        data = {
+            titledb_update_interval: getInputVal("titledbUpdateIntervalInput").trim()
+        }
+
+        $.ajax({
+            url: "/api/settings/scheduler",
+            type: 'POST',
+            data: JSON.stringify(data),
+            contentType: "application/json",
+            success: function (result) {
+                if (!result['success']) {
+                    console.log('Not Success!');
+                    if (result['errors']) {
+                        result['errors'].forEach(error => {
+                            if (error['path'] === 'scheduler/titledb_update_interval') {
+                                $('#titledbUpdateIntervalFeedback').text(error['error']);
+                                $('#titledbUpdateIntervalFeedback').addClass('invalid-feedback d-block');
+                                $("#titledbUpdateIntervalInput").removeClass('is-valid');
+                                $("#titledbUpdateIntervalInput").addClass('is-invalid');
+                            }
+                            console.log('Path:', error['path']);
+                            console.log('Error:', error['error']);
+                        });
+                    }
+                } else {
+                    console.log('Scheduler settings updated successfully!');
+                    $('#titledbUpdateIntervalFeedback').text('');
+                    $('#titledbUpdateIntervalFeedback').removeClass('invalid-feedback d-block');
+                    $("#titledbUpdateIntervalInput").removeClass('is-invalid');
+                    $("#titledbUpdateIntervalInput").addClass('is-valid');
+                }
+                $('#submitSchedulerSettingsBtn').prop('disabled', false);
+            }
+        });
+    }
+
+    function submitWorkerSettings() {
+        $('#submitWorkerSettingsBtn').prop('disabled', true);
+        data = {
+            count: parseInt($('#workerCountInput').val()),
+            group_limits: { io: parseInt($('#ioLimitInput').val()) }
+        }
+
+        $.ajax({
+            url: "/api/settings/worker",
+            type: 'POST',
+            data: JSON.stringify(data),
+            contentType: "application/json",
+            success: function (result) {
+                if (!result['success']) {
+                    if (result['errors']) {
+                        result['errors'].forEach(error => {
+                            if (error['path'] === 'worker/count') {
+                                $('#workerCountFeedback').text(error['error']);
+                                $('#workerCountFeedback').addClass('invalid-feedback d-block');
+                                $("#workerCountInput").removeClass('is-valid');
+                                $("#workerCountInput").addClass('is-invalid');
+                            } else if (error['path'] === 'worker/group_limits') {
+                                $('#ioLimitFeedback').text(error['error']);
+                                $('#ioLimitFeedback').addClass('invalid-feedback d-block');
+                                $("#ioLimitInput").removeClass('is-valid');
+                                $("#ioLimitInput").addClass('is-invalid');
+                            }
+                        });
+                    }
+                } else {
+                    $('#workerCountFeedback').text('');
+                    $('#workerCountFeedback').removeClass('invalid-feedback d-block');
+                    $("#workerCountInput").removeClass('is-invalid');
+                    $("#workerCountInput").addClass('is-valid');
+                    $('#ioLimitFeedback').text('');
+                    $('#ioLimitFeedback').removeClass('invalid-feedback d-block');
+                    $("#ioLimitInput").removeClass('is-invalid');
+                    $("#ioLimitInput").addClass('is-valid');
+                }
+                $('#submitWorkerSettingsBtn').prop('disabled', false);
+            }
+        });
+    }
+
+    function importSettings() {
+        const fileInput = document.getElementById('importSettingsFile');
+        const feedback = $('#importSettingsFeedback');
+        const btn = $('#importSettingsBtn').prop('disabled', true);
+        feedback.removeClass('text-danger text-success').text('');
+
+        if (!fileInput.files.length) {
+            feedback.addClass('text-danger').text({{ t('backup.import_no_file') | tojson }});
+            btn.prop('disabled', false);
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        fetch('/api/settings/import', {method: 'POST', body: formData, credentials: 'same-origin'})
+            .then(r => r.json().then(body => ({ok: r.ok, body})))
+            .then(({ok, body}) => {
+                if (ok && body.success) {
+                    feedback.addClass('text-success').text({{ t('backup.import_success') | tojson }});
+                    fileInput.value = '';
+                } else {
+                    const template = {{ t('backup.import_failed') | tojson }};
+                    feedback.addClass('text-danger').text(template.replace('{error}', body.error || 'unknown error'));
+                }
+            })
+            .catch(e => {
+                const template = {{ t('backup.import_failed') | tojson }};
+                feedback.addClass('text-danger').text(template.replace('{error}', e.message));
+            })
+            .finally(() => btn.prop('disabled', false));
+    }
+    $('#importSettingsBtn').on('click', importSettings);
+
+    $(document).ready(function () {
+        fillUserTable();
+        fillLibraryTable();
+
+        // Add real-time password validation
+        $('#inputNewUserPassword').on('input', function() {
+            const password = $(this).val();
+            const validation = validatePassword(password);
+            if (!validation.isValid) {
+                showPasswordError(validation.message);
+            } else {
+                clearPasswordError();
+            }
+        });
+
+        // Add real-time username validation
+        $('#inputNewUser').on('input', function() {
+            const username = $(this).val();
+            const validation = validateUsername(username);
+            if (!validation.isValid) {
+                showUsernameError(validation.message);
+            } else if (allUsernames.includes(username)) {
+                showUsernameError('User already exists');
+            } else {
+                clearUsernameError();
+            }
+        });
+
+        $.getJSON("/api/settings", function (result) {
+            languages = {{ languages_from_titledb | tojson | safe }};
+            Object.keys(languages).forEach(function (key) {
+                $('#selectRegion').append(`<option value="${key}">${key}</option>`);
+                $('#organizerNameRegionSelect').append(`<option value="${key}">${key}</option>`);
+            });
+
+            $('#selectRegion').on('change', function () {
+                $('#selectLanguage').empty()
+                region = $(this).find(":selected").val();
+                availableLanguages = languages[region];
+                availableLanguages.forEach(function (key) {
+                    $('#selectLanguage').append(`<option value="${key}">${key}</option>`);
+                });
+            });
+
+            // Same cascading region -> language behavior as above, except the region
+            // can also be cleared back to "" ("Same as library language"), which
+            // leaves the language select empty and disables the naming-language
+            // override entirely.
+            $('#organizerNameRegionSelect').on('change', function () {
+                $('#organizerNameLanguageSelect').empty();
+                const region = $(this).find(":selected").val();
+                if (!region) {
+                    $('#organizerNameLanguageSelect').prop('disabled', true);
+                    return;
+                }
+                $('#organizerNameLanguageSelect').prop('disabled', false);
+                (languages[region] || []).forEach(function (key) {
+                    $('#organizerNameLanguageSelect').append(`<option value="${key}">${key}</option>`);
+                });
+            });
+            $('#organizerNameLanguageSelect').prop('disabled', true);
+
+            // Library settings
+            librarySettings = result['library'];
+            // Populate library management settings
+            const compression = librarySettings['management']['compression'];
+            $("#compressFilesCheck").prop("checked", compression['enabled']);
+            setInputVal("compressionLevelInput", compression['level']);
+            $("#compressLongDistanceCheck").prop("checked", compression['long_distance']);
+            setInputVal("compressModeSelect", compression['mode']);
+            setInputVal("compressBlockSizeInput", compression['block_size_exponent']);
+            setInputVal("compressThreadsInput", compression['threads']);
+            const verification = librarySettings['management']['verification'];
+            $("#verifyFilesCheck").prop("checked", verification['enabled']);
+            $("input[name='verificationDepth'][value='" + verification['depth'] + "']").prop("checked", true);
+            $("#deleteOlderUpdatesCheck").prop("checked", librarySettings['management']['delete_older_updates']);
+            $("#webDownloadsEnabledCheck").prop("checked", (librarySettings['management']['web_downloads'] || {}).enabled || false);
+            $("#autoResolveDuplicatesCheck").prop("checked", (librarySettings['management']['duplicates'] || {}).auto_resolve || false);
+            $("#preferLargerOnTieCheck").prop("checked", (librarySettings['management']['duplicates'] || {}).prefer_larger_on_tie || false);
+            $("#organizerEnabledCheck").prop("checked", librarySettings['management']['organizer']['enabled']);
+            $("#removeEmptyFoldersCheck").prop("checked", librarySettings['management']['organizer']['remove_empty_folders']);
+            $("#windowsCompatibleCheck").prop("checked", librarySettings['management']['organizer']['windows_compatible']);
+            $("#cleanNamesCheck").prop("checked", librarySettings['management']['organizer']['clean_names']);
+            setInputVal("baseTemplateInput", librarySettings['management']['organizer']['templates']['base']);
+            setInputVal("updateTemplateInput", librarySettings['management']['organizer']['templates']['update']);
+            setInputVal("dlcTemplateInput", librarySettings['management']['organizer']['templates']['dlc']);
+            setInputVal("multiTemplateInput", librarySettings['management']['organizer']['templates']['multi']);
+
+            // Fill the organizer's naming-language region/language, if configured
+            const organizerNameRegion = librarySettings['management']['organizer']['name_region'] || '';
+            setInputVal("organizerNameRegionSelect", organizerNameRegion);
+            $('#organizerNameRegionSelect').trigger('change');
+            if (organizerNameRegion) {
+                setInputVal("organizerNameLanguageSelect", librarySettings['management']['organizer']['name_language'] || '');
+            }
+
+            // Titles settings
+            titlesSettings = result['titles'];
+            updateKeysElements(titlesSettings);
+
+            // Fill region and language
+            setInputVal("selectRegion", titlesSettings['region']);
+            $('#selectRegion').trigger('change');
+            setInputVal("selectLanguage", titlesSettings['language']);
+
+            // Scheduler settings
+            schedulerSettings = result['scheduler'];
+            if (schedulerSettings && schedulerSettings['titledb_update_interval'] !== undefined) {
+                setInputVal("titledbUpdateIntervalInput", schedulerSettings['titledb_update_interval']);
+            }
+
+            // Worker settings
+            workerSettings = result['worker'];
+            if (workerSettings && workerSettings['count'] !== undefined) {
+                $('#workerCountInput').val(workerSettings['count']);
+            }
+            if (workerSettings && workerSettings['group_limits'] && workerSettings['group_limits']['io'] !== undefined) {
+                $('#ioLimitInput').val(workerSettings['group_limits']['io']);
+            }
+
+            // Shop settings
+            shopSettings = result['shop'];
+            setInputVal("shopHostInput", shopSettings['host']);
+            $("#publicShopCheck").prop("checked", shopSettings['public']);
+            setInputVal("shopMotdTextArea", shopSettings['motd']);
+
+            // Check for missing shop host
+            if (!shopSettings['host']) {
+                $("#missingShopHostAlert").css('display', '');
+            }
+            
+            // Client-specific settings
+            if (shopSettings['clients']) {
+                if (shopSettings['clients']['tinfoil']) {
+                    tinfoilSettings = shopSettings['clients']['tinfoil'];
+                    $("#tinfoilEnabledCheck").prop("checked", tinfoilSettings['enabled']);
+                    $("#tinfoilEncryptShopCheck").prop("checked", tinfoilSettings['encrypt']);
+                }
+                if (shopSettings['clients']['sphaira']) {
+                    sphairaSettings = shopSettings['clients']['sphaira'];
+                    $("#sphairaEnabledCheck").prop("checked", sphairaSettings['enabled']);
+                }
+                if (shopSettings['clients']['cyberfoil']) {
+                    cyberfoilSettings = shopSettings['clients']['cyberfoil'];
+                    $("#cyberfoilEnabledCheck").prop("checked", cyberfoilSettings['enabled']);
+                }
+            }
+        });
+
+    });
+    {% if admin_account_created == false %}
+    $('#checkboxNewUserAdminAccess').prop('checked', true).attr("disabled", true);
+    $('#checkboxNewUserShopAccess').prop('checked', true).attr("disabled", true);
+    $('#checkboxNewUserBackupAccess').prop('checked', true).attr("disabled", true);
+    {% endif %}
+</script>
+
+{% endblock %}

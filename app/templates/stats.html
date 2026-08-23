@@ -1,0 +1,618 @@
+{% extends "settings_layout.html" %}
+{% block panel %}
+<div class="settings-container container mt-3">
+
+    <div class="task-section-head">
+        <h2 class="mb-0">{{ t('stats.title') }}</h2>
+        <button type="button" id="refreshStats" class="icon-btn ms-auto" onClick="loadStats(); loadDuplicateGroups();"
+                title="{{ t('stats.refresh') }}">
+            <i class="bi bi-arrow-clockwise"></i>
+        </button>
+    </div>
+    <p class="text-secondary">{{ t('stats.subtitle') }}</p>
+
+    <div id="statTiles" class="stat-grid"></div>
+
+    <div class="stat-sections mt-4">
+        <section>
+            <h4 class="mb-3">{{ t('stats.extensions') }}</h4>
+            <table class="table table-sm stat-table">
+                <thead><tr><th>{{ t('common.extension') }}</th><th>{{ t('common.files') }}</th><th>{{ t('common.size') }}</th></tr></thead>
+                <tbody id="byExtension"></tbody>
+            </table>
+        </section>
+
+        <section>
+            <h4 class="mb-3">{{ t('stats.libraries') }}</h4>
+            <table class="table table-sm stat-table">
+                <thead><tr><th>{{ t('common.path') }}</th><th>{{ t('common.files') }}</th><th>{{ t('common.size') }}</th></tr></thead>
+                <tbody id="byLibrary"></tbody>
+            </table>
+        </section>
+
+        <section>
+            <div class="d-flex justify-content-between align-items-center mb-3 stat-section-head">
+                <h4 class="mb-0">{{ t('stats.verification_status') }}</h4>
+                <button type="button" id="verifyNowBtn" class="btn btn-sm btn-outline-info">
+                    <i class="bi bi-shield-check"></i> {{ t('stats.verify_now') }}
+                </button>
+            </div>
+            <table class="table table-sm stat-table">
+                <thead><tr><th>{{ t('common.status') }}</th><th>{{ t('common.files') }}</th><th>{{ t('common.size') }}</th></tr></thead>
+                <tbody id="byVerification"></tbody>
+            </table>
+            <p class="text-secondary small mb-0">{{ t('stats.click_row_hint') }}</p>
+        </section>
+
+        <section>
+            <h4 class="mb-3">{{ t('stats.app_types') }}</h4>
+            <table class="table table-sm stat-table">
+                <thead><tr><th>{{ t('common.type') }}</th><th>{{ t('common.tracked') }}</th><th>{{ t('common.owned') }}</th></tr></thead>
+                <tbody id="byAppType"></tbody>
+            </table>
+        </section>
+    </div>
+
+    <div class="mt-4 d-none" id="duplicatesSection">
+        <div class="d-flex justify-content-between align-items-start mb-1 flex-wrap gap-2">
+            <h4 class="mb-0">{{ t('stats.duplicate_files') }}</h4>
+            <button type="button" id="resolveBySizeBtn" class="btn btn-sm btn-outline-success">
+                <i class="bi bi-arrow-down-up"></i> {{ t('stats.duplicate_resolve_by_size') }}
+            </button>
+        </div>
+        <p class="text-secondary small mb-3">{{ t('stats.duplicate_files_hint') }}</p>
+        <div id="duplicateGroups"></div>
+    </div>
+
+</div>
+
+<!-- Files matching a verification status, opened from the table above. -->
+<div class="modal fade" id="verificationFilesModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="verificationFilesModalLabel">{{ t('common.files') }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-sm stat-table">
+                    <thead><tr><th>{{ t('common.title') }}</th><th>{{ t('common.file') }}</th><th>{{ t('common.size') }}</th></tr></thead>
+                    <tbody id="verificationFilesBody"></tbody>
+                </table>
+                <div id="verificationFilesEmpty" class="text-secondary fst-italic d-none">
+                    {{ t('common.nothing_to_report') }}
+                </div>
+                <div id="verificationFilesLoading" class="text-secondary fst-italic d-none">
+                    {{ t('common.loading') }}
+                </div>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <span id="verificationFilesCount" class="text-secondary small"></span>
+                <div>
+                    <button type="button" id="verificationFilesPrev" class="btn btn-sm btn-outline-secondary">{{ t('common.previous') }}</button>
+                    <button type="button" id="verificationFilesNext" class="btn btn-sm btn-outline-secondary">{{ t('common.next') }}</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block panel_scripts %}
+<script src="{{ url_for('static', filename='js/format.js') }}"></script>
+<script>
+    // Strings the JS below needs but can't hardcode in English - injected once here
+    // rather than threading t() through every render function.
+    const I18N = {
+        nothingToReport: {{ t('common.nothing_to_report') | tojson }},
+        tileFilesNote: {{ t('stats.tile.files_note') | tojson }},
+        tileTotalSize: {{ t('stats.tile.total_size') | tojson }},
+        tileTotalSizeNote: {{ t('stats.tile.total_size_note') | tojson }},
+        tileUnidentified: {{ t('stats.tile.unidentified') | tojson }},
+        tileUnidentifiedNote: {{ t('stats.tile.unidentified_note') | tojson }},
+        tileOwnedTitles: {{ t('stats.tile.owned_titles') | tojson }},
+        tileOwnedTitlesNote: {{ t('stats.tile.owned_titles_note') | tojson }},
+        tileComplete: {{ t('stats.tile.complete') | tojson }},
+        tileCompleteNote: {{ t('stats.tile.complete_note') | tojson }},
+        tileUpToDate: {{ t('stats.tile.up_to_date') | tojson }},
+        tileUpToDateNote: {{ t('stats.tile.up_to_date_note') | tojson }},
+        tileOwnedApps: {{ t('stats.tile.owned_apps') | tojson }},
+        tileOwnedAppsNote: {{ t('stats.tile.owned_apps_note') | tojson }},
+        statusLabels: {
+            VALID: {{ t('status.valid') | tojson }},
+            REPACK: {{ t('status.repack') | tojson }},
+            MODIFIED: {{ t('status.modified') | tojson }},
+            CORRUPT: {{ t('status.corrupt') | tojson }},
+            SIGNATURE_OK: {{ t('status.signature_ok') | tojson }},
+            SIGNATURE_FAILED: {{ t('status.signature_failed') | tojson }},
+            UNVERIFIED: {{ t('status.unverified') | tojson }},
+        },
+        verifying: {{ t('stats.verifying') | tojson }},
+        verifyQueued: {{ t('stats.verify_queued') | tojson }},
+        verifyFailed: {{ t('stats.verify_failed') | tojson }},
+        couldNotLoadFiles: {{ t('stats.could_not_load_files') | tojson }},
+        filesPageCount: {{ t('stats.files_page_count') | tojson }},
+        duplicateKeepThis: {{ t('stats.duplicate_keep_this') | tojson }},
+        duplicateResolved: {{ t('stats.duplicate_resolved') | tojson }},
+        duplicateResolveFailed: {{ t('stats.duplicate_resolve_failed') | tojson }},
+        duplicateKeepLargest: {{ t('stats.duplicate_keep_largest') | tojson }},
+        duplicateBulkResolved: {{ t('stats.duplicate_bulk_resolved') | tojson }},
+        duplicateBulkNone: {{ t('stats.duplicate_bulk_none') | tojson }},
+        duplicateBulkFailed: {{ t('stats.duplicate_bulk_failed') | tojson }},
+    };
+    const I18N_FILES_LABEL = {{ t('common.files') | tojson }};
+
+    const STATS_QUERY = `
+        query Stats {
+            stats {
+                totalFiles totalSize identifiedFiles unidentifiedFiles
+                totalTitles ownedTitles completeTitles upToDateTitles
+                totalApps ownedApps
+                filesByExtension { key count size }
+                filesByLibrary { key count size }
+                filesByVerificationStatus { status count size }
+                appsByType { key count owned }
+            }
+        }`;
+
+    function count(n) {
+        return Number(n || 0).toLocaleString();
+    }
+
+    // (label, value, note under it)
+    function tiles(s) {
+        return [
+            [I18N_FILES_LABEL, count(s.totalFiles), I18N.tileFilesNote.replace('{n}', count(s.identifiedFiles))],
+            [I18N.tileTotalSize, formatBytes(s.totalSize), I18N.tileTotalSizeNote],
+            [I18N.tileUnidentified, count(s.unidentifiedFiles), I18N.tileUnidentifiedNote],
+            [I18N.tileOwnedTitles, count(s.ownedTitles), I18N.tileOwnedTitlesNote.replace('{n}', count(s.totalTitles))],
+            [I18N.tileComplete, count(s.completeTitles), I18N.tileCompleteNote],
+            [I18N.tileUpToDate, count(s.upToDateTitles), I18N.tileUpToDateNote],
+            [I18N.tileOwnedApps, count(s.ownedApps), I18N.tileOwnedAppsNote.replace('{n}', count(s.totalApps))],
+        ];
+    }
+
+    function renderTiles(s) {
+        const container = document.getElementById('statTiles');
+        container.innerHTML = '';
+        // Every tile value is a formatted number and every label a literal, so these
+        // interpolate directly. The tables below hold library paths and go through
+        // textContent instead.
+        tiles(s).forEach(([label, value, note]) => {
+            const tile = document.createElement('div');
+            tile.innerHTML = `<div class="stat-value">${value}</div>
+                <div class="stat-label">${label}</div>
+                <div class="stat-note">${note}</div>`;
+            container.appendChild(tile);
+        });
+    }
+
+    /** Fill a table body with rows of cells: first column left, the figures right. */
+    function renderTable(id, rows) {
+        const tbody = document.getElementById(id);
+        tbody.innerHTML = '';
+        if (!rows.length) {
+            const columns = tbody.closest('table').querySelectorAll('thead th').length;
+            tbody.innerHTML = `<tr><td colspan="${columns}"
+                class="text-secondary fst-italic">${I18N.nothingToReport}</td></tr>`;
+            return;
+        }
+        rows.forEach(cells => {
+            const tr = document.createElement('tr');
+            cells.forEach(cell => {
+                const td = document.createElement('td');
+                td.textContent = cell;
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+    }
+
+    /** VERIFICATION_FAILED -> its translated label, falling back to a humanized
+     *  version of the raw key for any status I18N.statusLabels doesn't know about
+     *  (future-proofing against a new enum value landing before the translation does). */
+    function humanize(key) {
+        if (I18N.statusLabels[key]) return I18N.statusLabels[key];
+        const words = key.replace(/_/g, ' ').toLowerCase();
+        return words.charAt(0).toUpperCase() + words.slice(1);
+    }
+
+    async function loadStats() {
+        const button = $('#refreshStats').prop('disabled', true);
+        let data;
+        try {
+            // GET, like the library grid: the endpoint ETags its responses, so a refresh
+            // that changes nothing costs a 304.
+            const params = new URLSearchParams({query: STATS_QUERY});
+            const r = await fetch('/api/graphql?' + params.toString(), {
+                headers: {'Accept': 'application/json'},
+                credentials: 'same-origin',
+            });
+            if (!r.ok) throw new Error(`GraphQL HTTP ${r.status}`);
+            const body = await r.json();
+            if (body.errors && body.errors.length) {
+                throw new Error('GraphQL errors: ' + JSON.stringify(body.errors));
+            }
+            data = body.data.stats;
+        } catch (e) {
+            console.error(e);
+            return;
+        } finally {
+            button.prop('disabled', false);
+        }
+
+        renderTiles(data);
+        renderTable('byExtension', (data.filesByExtension || []).map(
+            b => [b.key || '(none)', count(b.count), formatBytes(b.size)]));
+        renderTable('byLibrary', (data.filesByLibrary || []).map(
+            b => [b.key, count(b.count), formatBytes(b.size)]));
+        renderTable('byVerification', (data.filesByVerificationStatus || []).map(
+            b => [humanize(b.status), count(b.count), formatBytes(b.size)]));
+        // Keep the raw enum value on each row so a click knows what to filter by,
+        // without re-deriving it from the humanized label text.
+        [...document.querySelectorAll('#byVerification tr')].forEach((tr, i) => {
+            const bucket = (data.filesByVerificationStatus || [])[i];
+            if (!bucket) return;
+            tr.dataset.status = bucket.status;
+            tr.style.cursor = 'pointer';
+            tr.addEventListener('click', () => openVerificationFiles(bucket.status, humanize(bucket.status)));
+        });
+        // App types stay as the schema spells them: humanizing BASE/UPDATE/DLC would
+        // turn the last one into "Dlc".
+        renderTable('byAppType', (data.appsByType || []).map(
+            b => [b.key, count(b.count), count(b.owned)]));
+    }
+
+    loadStats();
+
+    // --- Duplicate files: more than one physical file for the same content -------
+
+    const DUPLICATE_GROUPS_QUERY = `
+        query {
+            duplicateFileGroups {
+                titleId titleName appId appType appName
+                files { id filename size verificationStatus }
+            }
+        }`;
+
+    const RESOLVE_DUPLICATE_MUTATION = `
+        mutation ResolveDuplicate($id: ID!) {
+            resolveDuplicateFiles(keepFileId: $id)
+        }`;
+
+    async function loadDuplicateGroups() {
+        let groups;
+        try {
+            const params = new URLSearchParams({query: DUPLICATE_GROUPS_QUERY});
+            const r = await fetch('/api/graphql?' + params.toString(), {
+                headers: {'Accept': 'application/json'},
+                credentials: 'same-origin',
+            });
+            if (!r.ok) throw new Error(`GraphQL HTTP ${r.status}`);
+            const body = await r.json();
+            if (body.errors && body.errors.length) {
+                throw new Error('GraphQL errors: ' + JSON.stringify(body.errors));
+            }
+            groups = body.data.duplicateFileGroups || [];
+        } catch (e) {
+            console.error(e);
+            return;
+        }
+        renderDuplicateGroups(groups);
+    }
+
+    /** One row per file inside a duplicate group's card: name, size, verification
+     *  status, and the button that keeps it (deleting the rest of the group). */
+    function buildDuplicateFileRow(file) {
+        const li = document.createElement('li');
+        li.className = 'list-group-item bg-transparent d-flex justify-content-between align-items-center flex-wrap gap-2';
+
+        const left = document.createElement('span');
+        left.className = 'text-break';
+        left.textContent = file.filename;
+
+        const right = document.createElement('span');
+        right.className = 'd-flex align-items-center gap-2 flex-shrink-0';
+
+        const sizeBadge = document.createElement('span');
+        sizeBadge.className = 'badge text-bg-secondary';
+        sizeBadge.textContent = formatBytes(file.size);
+        right.appendChild(sizeBadge);
+
+        const statusBadge = document.createElement('span');
+        statusBadge.className = 'badge text-bg-dark';
+        statusBadge.textContent = humanize(file.verificationStatus);
+        right.appendChild(statusBadge);
+
+        const keepBtn = document.createElement('button');
+        keepBtn.type = 'button';
+        keepBtn.className = 'btn btn-sm btn-outline-success';
+        keepBtn.textContent = I18N.duplicateKeepThis;
+        keepBtn.addEventListener('click', () => resolveDuplicate(file.id, keepBtn));
+        right.appendChild(keepBtn);
+
+        li.appendChild(left);
+        li.appendChild(right);
+        return li;
+    }
+
+    /** One card per duplicate group: the title/DLC name (plus a quick "keep the
+     *  larger one" shortcut for a group with more than one file, since that's the
+     *  most common single choice), then every physical file currently attached to it
+     *  as a row with its own "keep this one" action. */
+    function buildDuplicateGroupCard(group) {
+        const card = document.createElement('div');
+        card.className = 'card mb-3';
+        const body = document.createElement('div');
+        body.className = 'card-body';
+
+        const header = document.createElement('div');
+        header.className = 'd-flex justify-content-between align-items-center flex-wrap gap-2 mb-2';
+
+        const title = document.createElement('h6');
+        title.className = 'card-title mb-0';
+        title.textContent = group.appType === 'DLC'
+            ? `${group.appName || group.titleName || group.titleId} (DLC)`
+            : (group.titleName || group.titleId);
+        header.appendChild(title);
+
+        if (group.files.length > 1) {
+            const keepLargestBtn = document.createElement('button');
+            keepLargestBtn.type = 'button';
+            keepLargestBtn.className = 'btn btn-sm btn-outline-success';
+            keepLargestBtn.textContent = I18N.duplicateKeepLargest;
+            keepLargestBtn.addEventListener('click', () => {
+                const largest = group.files.reduce((a, b) => (b.size > a.size ? b : a));
+                resolveDuplicate(largest.id, keepLargestBtn);
+            });
+            header.appendChild(keepLargestBtn);
+        }
+        body.appendChild(header);
+
+        const list = document.createElement('ul');
+        list.className = 'list-group list-group-flush';
+        group.files.forEach(file => list.appendChild(buildDuplicateFileRow(file)));
+        body.appendChild(list);
+
+        card.appendChild(body);
+        return card;
+    }
+
+    function renderDuplicateGroups(groups) {
+        const section = document.getElementById('duplicatesSection');
+        const container = document.getElementById('duplicateGroups');
+        container.innerHTML = '';
+
+        // No card at all when there's nothing to resolve - this section only earns
+        // its place on the page while there's an actual decision to make.
+        if (!groups.length) {
+            section.classList.add('d-none');
+            return;
+        }
+        section.classList.remove('d-none');
+        groups.forEach(group => container.appendChild(buildDuplicateGroupCard(group)));
+    }
+
+    async function resolveDuplicate(fileId, button) {
+        const originalHtml = button.innerHTML;
+        button.disabled = true;
+        button.textContent = '...';
+        try {
+            const r = await fetch('/api/graphql', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+                credentials: 'same-origin',
+                body: JSON.stringify({query: RESOLVE_DUPLICATE_MUTATION, variables: {id: String(fileId)}}),
+            });
+            if (!r.ok) throw new Error(`GraphQL HTTP ${r.status}`);
+            const body = await r.json();
+            if (body.errors && body.errors.length) {
+                throw new Error('GraphQL errors: ' + JSON.stringify(body.errors));
+            }
+            if (!body.data.resolveDuplicateFiles) throw new Error('resolution did not succeed');
+            console.info(I18N.duplicateResolved);
+            // The resolved group's card is gone once this reloads - no need to reset
+            // this specific button, its row no longer exists.
+            await Promise.all([loadDuplicateGroups(), loadStats()]);
+        } catch (e) {
+            console.error(e);
+            button.textContent = I18N.duplicateResolveFailed;
+            setTimeout(() => {
+                button.disabled = false;
+                button.innerHTML = originalHtml;
+            }, 3000);
+        }
+    }
+
+    const RESOLVE_BY_SIZE_MUTATION = `
+        mutation ResolveBySize {
+            resolveDuplicatesBySize
+        }`;
+
+    document.getElementById('resolveBySizeBtn').addEventListener('click', async function () {
+        const btn = this;
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '...';
+        try {
+            const r = await fetch('/api/graphql', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+                credentials: 'same-origin',
+                body: JSON.stringify({query: RESOLVE_BY_SIZE_MUTATION}),
+            });
+            if (!r.ok) throw new Error(`GraphQL HTTP ${r.status}`);
+            const body = await r.json();
+            if (body.errors && body.errors.length) {
+                throw new Error('GraphQL errors: ' + JSON.stringify(body.errors));
+            }
+            const resolvedCount = body.data.resolveDuplicatesBySize;
+            btn.innerHTML = resolvedCount > 0
+                ? `<i class="bi bi-check-lg"></i> ${I18N.duplicateBulkResolved.replace('{n}', resolvedCount)}`
+                : `<i class="bi bi-info-circle"></i> ${I18N.duplicateBulkNone}`;
+            await Promise.all([loadDuplicateGroups(), loadStats()]);
+        } catch (e) {
+            console.error(e);
+            btn.innerHTML = `<i class="bi bi-exclamation-triangle"></i> ${I18N.duplicateBulkFailed}`;
+        } finally {
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }, 4000);
+        }
+    });
+
+    loadDuplicateGroups();
+
+    // --- Verification status drill-down: which titles are behind each row above ---
+    const FILES_BY_STATUS_QUERY = `
+        query FilesByStatus($status: VerificationStatus!, $page: Int!, $pageSize: Int!) {
+            files(filter: {verificationStatus: $status}, page: $page, pageSize: $pageSize,
+                  orderBy: {field: ADDED_AT, direction: DESC}) {
+                total
+                items {
+                    filename
+                    size
+                    apps { appType title { name } }
+                }
+            }
+        }`;
+
+    let verificationModal;
+    let verificationStatus = null;
+    let verificationPage = 1;
+    let verificationTotal = 0;
+    const VERIFICATION_PAGE_SIZE = 50;
+
+    /** The title behind a file: its base game's name, or the filename itself when
+     *  nothing identified it (an unverified/unidentified file has no apps). */
+    function titleForFile(file) {
+        const withTitle = (file.apps || []).find(a => a.title && a.title.name);
+        return withTitle ? withTitle.title.name : file.filename;
+    }
+
+    async function loadVerificationFilesPage() {
+        const tbody = document.getElementById('verificationFilesBody');
+        const empty = document.getElementById('verificationFilesEmpty');
+        const loading = document.getElementById('verificationFilesLoading');
+        const prevBtn = document.getElementById('verificationFilesPrev');
+        const nextBtn = document.getElementById('verificationFilesNext');
+
+        tbody.innerHTML = '';
+        empty.classList.add('d-none');
+        loading.classList.remove('d-none');
+        prevBtn.disabled = true;
+        nextBtn.disabled = true;
+
+        let data;
+        try {
+            data = await gqlFetchStats(FILES_BY_STATUS_QUERY, {
+                status: verificationStatus, page: verificationPage, pageSize: VERIFICATION_PAGE_SIZE,
+            });
+        } catch (e) {
+            console.error(e);
+            loading.classList.add('d-none');
+            empty.textContent = I18N.couldNotLoadFiles;
+            empty.classList.remove('d-none');
+            return;
+        }
+
+        loading.classList.add('d-none');
+        verificationTotal = data.files.total;
+        const items = data.files.items || [];
+
+        if (!items.length) {
+            empty.classList.remove('d-none');
+        } else {
+            items.forEach(f => {
+                const tr = document.createElement('tr');
+                [titleForFile(f), f.filename, formatBytes(f.size)].forEach(cell => {
+                    const td = document.createElement('td');
+                    td.textContent = cell;
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+        }
+
+        const totalPages = Math.max(1, Math.ceil(verificationTotal / VERIFICATION_PAGE_SIZE));
+        document.getElementById('verificationFilesCount').textContent = I18N.filesPageCount
+            .replace('{count}', count(verificationTotal))
+            .replace('{s}', verificationTotal === 1 ? '' : 's')
+            .replace('{page}', verificationPage)
+            .replace('{totalPages}', totalPages);
+        prevBtn.disabled = verificationPage <= 1;
+        nextBtn.disabled = verificationPage >= totalPages;
+    }
+
+    async function gqlFetchStats(query, variables) {
+        const params = new URLSearchParams({query, variables: JSON.stringify(variables)});
+        const r = await fetch('/api/graphql?' + params.toString(), {
+            headers: {'Accept': 'application/json'},
+            credentials: 'same-origin',
+        });
+        if (!r.ok) throw new Error(`GraphQL HTTP ${r.status}`);
+        const body = await r.json();
+        if (body.errors && body.errors.length) {
+            throw new Error('GraphQL errors: ' + JSON.stringify(body.errors));
+        }
+        return body.data;
+    }
+
+    function openVerificationFiles(status, label) {
+        verificationStatus = status;
+        verificationPage = 1;
+        document.getElementById('verificationFilesModalLabel').textContent = `${label} files`;
+        if (!verificationModal) {
+            verificationModal = new bootstrap.Modal(document.getElementById('verificationFilesModal'));
+        }
+        verificationModal.show();
+        loadVerificationFilesPage();
+    }
+
+    document.getElementById('verificationFilesPrev').addEventListener('click', () => {
+        if (verificationPage > 1) { verificationPage--; loadVerificationFilesPage(); }
+    });
+    document.getElementById('verificationFilesNext').addEventListener('click', () => {
+        const totalPages = Math.max(1, Math.ceil(verificationTotal / VERIFICATION_PAGE_SIZE));
+        if (verificationPage < totalPages) { verificationPage++; loadVerificationFilesPage(); }
+    });
+
+    // --- Verify library now: resume/trigger verification without a full Scan -----
+
+    const VERIFY_LIBRARY_MUTATION = `
+        mutation VerifyLibraryNow {
+            verifyLibrary { id status }
+        }`;
+
+    document.getElementById('verifyNowBtn').addEventListener('click', async function () {
+        const btn = this;
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<i class="bi bi-hourglass-split"></i> ${I18N.verifying}`;
+        try {
+            const r = await fetch('/api/graphql', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+                credentials: 'same-origin',
+                body: JSON.stringify({query: VERIFY_LIBRARY_MUTATION}),
+            });
+            if (!r.ok) throw new Error(`GraphQL HTTP ${r.status}`);
+            const body = await r.json();
+            if (body.errors && body.errors.length) {
+                throw new Error('GraphQL errors: ' + JSON.stringify(body.errors));
+            }
+            btn.innerHTML = `<i class="bi bi-check-lg"></i> ${I18N.verifyQueued}`;
+        } catch (e) {
+            console.error(e);
+            btn.innerHTML = `<i class="bi bi-exclamation-triangle"></i> ${I18N.verifyFailed}`;
+        } finally {
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }, 3000);
+        }
+    });
+
+</script>
+{% endblock %}

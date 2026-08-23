@@ -1,0 +1,51 @@
+<nav class="navbar navbar-expand-lg bg-body-secondary bg-dark border-bottom border-body" data-bs-theme="dark">
+    <div class="container-fluid">
+        <!-- <a class="navbar-brand" href="#">Ownfoil</a> -->
+        <a class="navbar-brand p-0" href="#">
+            <img class="d-inline-block mb-1" src="{{ url_for('static', filename='logo/logo.svg') }}" alt="logo" width="30" height="22">
+        Ownfoil
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link{% if title == 'Library' %} active" aria-current="page"{% else %}"{% endif %} href="/">{{ t('nav.library') }}</a>
+                </li>
+                {% if admin_account_created == false or (current_user.is_authenticated and current_user.has_shop_access()) %}
+                <li class="nav-item">
+                    <a class="nav-link{% if title == 'Setup' %} active" aria-current="page"{% else %}"{% endif %}" href="/setup">{{ t('nav.setup') }}</a>
+                </li>
+                {% endif %}
+                {% if current_user.is_admin or admin_account_created == false %}
+                <li class="nav-item">
+                    <a class="nav-link{% if request.path.startswith('/admin') %} active" aria-current="page"{% else %}"{% endif %}" href="/admin/settings">{{ t('nav.admin') }}</a>
+                </li>
+                {% endif %}
+            </ul>
+            <ul class="navbar-nav ms-auto align-items-lg-center">
+                <li class="nav-item dropdown me-lg-2">
+                    <a class="nav-link dropdown-toggle" href="#" id="languageDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        {{ t('language.' ~ current_language()) }}
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="languageDropdown">
+                        {% for lang in SUPPORTED_LANGUAGES %}
+                        <li><a class="dropdown-item{% if current_language() == lang %} active{% endif %}" href="/set-language/{{ lang }}">{{ t('language.' ~ lang) }}</a></li>
+                        {% endfor %}
+                    </ul>
+                </li>
+                {% if current_user.is_authenticated %}
+                <li class="nav-item">
+                    <a class="btn btn-outline-secondary me-2" href="/logout" role="button">{{ t('nav.logout') }}</a>
+                </li>
+                {% else %}
+                <li class="nav-item">
+                    <a class="btn btn-outline-secondary me-2" href="/login" role="button">{{ t('nav.login') }}</a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</nav>

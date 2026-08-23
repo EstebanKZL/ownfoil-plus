@@ -1,0 +1,5 @@
+{
+  "tests/test_compression.py::test_process_library_selects_files_with_pending_work": true,
+  "tests/test_compression.py::test_process_library_includes_files_awaiting_organization": true,
+  "tests/test_compression.py::test_process_library_continuation_runs_maintenance": true
+}

@@ -1,0 +1,26 @@
+FROM python:3.14-alpine
+
+# Install platform-specific build dependencies
+ARG TARGETPLATFORM
+RUN apk update && apk add --no-cache bash sudo \
+    && if [ "$TARGETPLATFORM" = "linux/arm/v6" ] || [ "$TARGETPLATFORM" = "linux/arm/v7" ]; then \
+        apk add --no-cache build-base gcc musl-dev jpeg-dev zlib-dev libffi-dev cairo-dev pango-dev gdk-pixbuf-dev; \
+    fi
+
+COPY requirements.txt /tmp/
+RUN pip install --no-cache-dir --requirement /tmp/requirements.txt && rm /tmp/requirements.txt
+RUN if [ "$TARGETPLATFORM" = "linux/arm/v6" ] || [ "$TARGETPLATFORM" = "linux/arm/v7" ]; then \
+        apk del build-base gcc musl-dev jpeg-dev zlib-dev libffi-dev cairo-dev pango-dev gdk-pixbuf-dev; \
+    fi
+
+RUN mkdir /app
+COPY ./app /app
+COPY ./docker/run.sh /app/run.sh
+RUN chmod +x /app/run.sh
+
+RUN mkdir -p /app/data
+
+WORKDIR /app
+
+ENTRYPOINT [ "/app/run.sh" ]
+

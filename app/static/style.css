@@ -1,0 +1,529 @@
+/* body {
+    font-family: Arial, sans-serif;
+    background-color: #2a3a4f;
+    color: #8d97ad;
+} */
+
+.grid-container {
+    padding: 20px;
+}
+
+.game-info {
+    bottom: 0;
+    left: 0;
+    text-align: left !important;
+    /* background-image: linear-gradient(to top, rgba(7, 0, 91, 0.49), #003aa800); */
+    background-image: linear-gradient(to top, rgba(7, 0, 91, 0.71), #001233a1);
+    padding: 10px;
+    border-radius: 0 0 8px 8px;
+    border-top: 1px solid #d5d5d5bd;
+    top: unset;
+}
+
+.game-tag {
+    font-size: 1em;
+    margin-right: 5px;
+}
+
+.card {
+    border-radius: 8px !important;
+    /* linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent 50%), */
+}
+
+.card-img {
+    mask-image: linear-gradient(to top, rgba(7, 0, 91, 0.71), #001233ed);
+    border-bottom-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+}
+
+.game-title {
+    font-size: 1.1rem;
+    /* font-size: 18px; */
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: white;
+}
+
+p.game-description {
+    margin-bottom: 0;
+    font-size: 0.875rem;
+}
+
+.tags-container {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    margin-top: 10px;
+}
+
+/* A title id is one unbreakable 16-character token: without this it pushes the
+   overlay wider than the card and hangs off its edge. */
+.game-title,
+p.game-description {
+    overflow-wrap: break-word;
+}
+
+/* The metadata can only be an overlay while the banner is wide enough to hold it. On
+   a phone the text wraps to several lines, the overlay outgrows the image it is
+   anchored to, and the badges - placed from the card's own corner - land on top of
+   that text. Below md it stops being an overlay and becomes a block under the banner,
+   where growing costs nothing. */
+@media (max-width: 767.98px) {
+    .game-info {
+        position: static;
+    }
+
+    .card-img {
+        /* The fade was there to keep text legible over the banner; nothing sits on it
+           once the metadata is below. */
+        mask-image: none;
+        border-bottom-right-radius: 0;
+        border-bottom-left-radius: 0;
+    }
+
+    .tags-container {
+        position: static;
+        display: flex;
+        justify-content: flex-end;
+        margin-top: .5rem;
+    }
+
+    .game-tag:last-child {
+        margin-right: 0;
+    }
+}
+
+.btn-outline-info {
+    --bs-btn-hover-color: #fff;
+}
+
+.text-bg-warning {
+    color: #fff !important;
+    background-color: RGBA(var(--bs-warning-rgb),var(--bs-bg-opacity,1)) !important;
+    font-weight: normal;
+}
+
+.text-bg-info {
+    color: #fff !important;
+    background-color: RGBA(var(--bs-info-rgb),var(--bs-bg-opacity,1)) !important;
+    font-weight: normal;
+  }
+
+.col-1, .col-2, .col-3, .col-4, .col-6, .col-12 {
+    display: flex;
+    flex-direction: column;
+}
+
+.col-1 > .card, .col-2 > .card, .col-3 > .card, .col-4 > .card, .col-6 > .card, .col-12 > .card {
+    flex: 1;
+}
+
+/* Update popover */
+.popover-body {
+    max-height: 200px; /* Set your desired max height */
+    overflow-y: auto; /* Enable vertical scrolling */
+}
+
+/* Input code form */
+.form-control-code {
+    font-family: monospace;
+    font-size: .875em;
+    background-color: var(--bs-dark-bg-subtle);
+    color: var(--bs-code-color);
+}
+
+/* hr */
+.hr-settings {
+    margin-top: 2rem !important;
+}
+
+/* Settings / Tasks sidebar */
+.settings-sidebar {
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    width: 200px;
+    flex: 0 0 200px;
+    height: 100vh;
+    padding-top: 1rem;
+}
+
+.settings-sidebar .nav-link {
+    color: var(--bs-secondary-color);
+    border-radius: 0;
+    border-left: 3px solid transparent;
+}
+
+.settings-sidebar .nav-link:hover {
+    color: var(--bs-body-color);
+    background-color: var(--bs-secondary-bg);
+}
+
+.settings-sidebar .nav-link.active {
+    color: var(--bs-body-color);
+    background-color: var(--bs-secondary-bg);
+    border-left-color: var(--bs-primary);
+}
+
+.settings-panel {
+    min-width: 0;  /* let long task names shrink instead of widening the row */
+}
+
+/* Below md the sidebar becomes a row of tabs across the top. 767.98 rather than 768,
+   so the switch happens exactly where Bootstrap's own md rules take over. */
+@media (max-width: 767.98px) {
+    .settings-sidebar {
+        position: static;
+        width: 100%;
+        flex-basis: 100%;
+        height: auto;
+        /* The divider now separates the tabs from the panel below them, not from a
+           column beside them. */
+        border-right: 0 !important;
+        border-bottom: var(--bs-border-width) solid var(--bs-border-color);
+    }
+
+    .settings-sidebar .nav {
+        flex-direction: row !important;
+    }
+
+    /* The panel's flex-basis is 0, so a full-width sidebar alone never overflows the
+       row and the two stay on one line: the sidebar takes all of it and the panel is
+       squeezed to nothing against the right edge. Giving the panel a basis of its own
+       is what pushes it onto the next line. */
+    .settings-panel {
+        flex-basis: 100%;
+    }
+
+    /* A left border marks the active item in a column of links; in a row of tabs it
+       belongs underneath. */
+    .settings-sidebar .nav-link {
+        border-left: 0;
+        border-bottom: 3px solid transparent;
+    }
+
+    .settings-sidebar .nav-link.active {
+        border-bottom-color: var(--bs-primary);
+    }
+}
+
+/* Task list */
+.task-list {
+    list-style: none;
+    padding-left: 0;
+    margin-bottom: 0;
+}
+
+.task-row {
+    margin-bottom: .5rem;
+    transition: opacity .5s ease-out;
+}
+
+/* The queue is unbounded — a library scan queues one task per file — so it scrolls
+   inside a fixed frame instead of running the page off the bottom of the screen.
+   The gutter and padding keep the scrollbar off the cancel button, which sits flush
+   right and is otherwise covered by an overlay scrollbar the moment the list overflows. */
+.task-scroll {
+    max-height: 26rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    padding-right: .75rem;
+}
+
+.task-row.task-fading {
+    opacity: 0;
+}
+
+.task-head {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+.task-name {
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.task-meta {
+    margin-left: auto;
+    font-size: .875rem;
+    white-space: nowrap;
+}
+
+/* Bare icon buttons: the rows are already dense, and bordered buttons competed with the
+   status icons for attention. Muted by default; the per-row cross opts into danger. */
+.icon-btn {
+    padding: 0;
+    border: 0;
+    background: none;
+    line-height: 1;
+    color: var(--bs-secondary-color);
+}
+
+.icon-btn:hover:not(:disabled) {
+    color: var(--bs-body-color);
+}
+
+.icon-btn:disabled {
+    opacity: .25;
+}
+
+.task-cancel {
+    font-size: .8rem;
+    color: var(--bs-danger);
+}
+
+.task-cancel:hover:not(:disabled) {
+    color: var(--bs-danger-text-emphasis);
+}
+
+/* Matches the scroll container's padding, so the section's action lines up with the
+   per-row crosses below it rather than sitting a scrollbar's width to their right. */
+.task-section-head {
+    display: flex;
+    align-items: center;
+    padding-right: .75rem;
+}
+
+/* Too slim for a label, so the percentage is shown in the row's meta text instead. */
+.task-progress {
+    height: .8rem;
+    margin-top: .25rem;
+}
+
+/* The bar is driven by percentages arriving a few times a second; easing the width
+   turns those steps into continuous movement. */
+.task-progress .progress-bar {
+    transition: width .3s linear;
+}
+
+.task-children {
+    list-style: none;
+    padding-left: 1.25rem;
+    margin: .375rem 0 0;
+    border-left: 2px solid var(--bs-border-color);
+}
+
+.task-children:empty {
+    display: none;
+}
+
+
+/* Stats */
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 1.25rem;
+}
+
+.stat-value {
+    font-size: 1.75rem;
+    font-weight: 600;
+    line-height: 1.1;
+}
+
+.stat-label {
+    font-weight: 500;
+}
+
+.stat-note {
+    color: var(--bs-secondary-color);
+    font-size: .8rem;
+}
+
+/* Two columns rather than auto-fit: four sections in a row would put each table's
+   figures a screen away from the next, and the tables are all the same shape anyway. */
+.stat-sections {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 2.5rem;
+}
+
+@media (max-width: 767.98px) {
+    .stat-sections {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Three short columns: left to itself the table would stretch across its half of the
+   panel and strand the figures a screen away from their labels. */
+.stat-table {
+    max-width: 30rem;
+}
+
+/* The verify-now header row sits right above the verification table and needs to
+   match its width exactly - otherwise `justify-content-between` right-aligns the
+   button against the wider section column instead of the table's own edge, leaving
+   it floating past where "Size" actually ends. */
+.stat-section-head {
+    max-width: 30rem;
+}
+
+.stat-table th:not(:first-child),
+.stat-table td:not(:first-child) {
+    text-align: right;
+    white-space: nowrap;
+}
+
+/* A library root is a full path, and it now shares the row with a second table:
+   wrapping keeps the figures beside it rather than pushed out of the column. */
+.stat-table td:first-child {
+    overflow-wrap: anywhere;
+}
+
+/* The verification-files modal reuses .stat-table's look but needs the full width of
+   its own (much wider) modal dialog, not the narrow cap the small dashboard tables
+   above use - that cap squeezed the Title column down to a single word per line. */
+#verificationFilesModal .stat-table {
+    max-width: none;
+    width: 100%;
+    table-layout: fixed;
+}
+
+#verificationFilesModal .stat-table th:first-child,
+#verificationFilesModal .stat-table td:first-child {
+    width: 35%;
+}
+
+#verificationFilesModal .stat-table th:nth-child(2),
+#verificationFilesModal .stat-table td:nth-child(2) {
+    width: 50%;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+#verificationFilesModal .stat-table th:last-child,
+#verificationFilesModal .stat-table td:last-child {
+    width: 15%;
+}
+
+/* The library grid's one-line summary above the cards. */
+.library-stats {
+    color: var(--bs-secondary-color);
+    text-align: center;
+}
+
+.library-stats span + span::before {
+    content: " · ";
+}
+
+.spin {
+    display: inline-block;
+    animation: spin 1.4s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Library list view: one row per game, Base/Updates/DLC unified underneath. The
+   banner lives in a fixed-height strip behind only the header - not stretched across
+   however tall the whole card grows once Updates/DLC are expanded. A background image
+   sized to the full (growing) card previously diluted the same gradient over more and
+   more pixels as a list expanded, which is exactly where legibility mattered most: deep
+   in a long list of rows. Below the fixed strip, the body is fully solid - zero image
+   bleed-through, regardless of how many rows are showing. */
+.list-game-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.list-banner-strip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 200px;
+    background-size: cover;
+    background-position: center;
+}
+
+.list-banner-strip::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(180deg, rgba(15, 15, 20, .4) 0%, rgba(33, 37, 41, .93) 60%, rgba(33, 37, 41, 1) 100%);
+}
+
+.list-card-body {
+    position: relative;
+    background-color: rgb(33, 37, 41);
+}
+
+/* The header (title/description/version line) is the one area that still sits
+   partly over the fading banner image rather than the solid body below it - a
+   shadow keeps its text and icons readable regardless of what's busy behind them,
+   without changing their actual color. */
+.list-header-text,
+.list-header-text .icon-btn {
+    text-shadow: 0 1px 3px rgba(0, 0, 0, .85), 0 1px 8px rgba(0, 0, 0, .5);
+}
+
+.list-header-text .icon-btn {
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .85));
+}
+
+.list-cover {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+}
+
+.min-w-0 {
+    min-width: 0;
+}
+
+/* The Updates/DLC group headers: a chevron that flips to point up once expanded,
+   matching the disclosure pattern used elsewhere (e.g. the settings sidebar). */
+.list-section-trigger {
+    cursor: pointer;
+}
+
+.list-chevron {
+    transition: transform .2s ease;
+}
+
+.list-section-trigger[aria-expanded="true"] .list-chevron {
+    transform: rotate(180deg);
+}
+
+/* A further-nested "N older versions" toggle inside an already-expanded Updates
+   section - same disclosure chevron, indented and muted so it doesn't compete with
+   the section header it lives inside. */
+.list-older-trigger {
+    cursor: pointer;
+    color: var(--bs-secondary-color);
+}
+
+.list-older-trigger .list-chevron {
+    font-size: .8rem;
+}
+
+.h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6 {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Only highlight the active filter label, not the entire row */
+.btn-check:active + .btn-outline-primary,
+.btn-check:focus + .btn-outline-primary,
+.btn-check:checked + .btn-outline-primary {
+    background-color: #0d6efd;
+    color: #fff;
+    outline: none;
+    border-color: #0d6efd;
+}
+
+.btn-group:focus-within,
+.btn-group:active,
+.btn-group:focus,
+.dropdown-item:active,
+.dropdown-item:focus {
+    background: none;
+    box-shadow: none;
+}

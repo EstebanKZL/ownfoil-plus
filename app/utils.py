@@ -1,0 +1,426 @@
+import ipaddress
+import logging
+import re
+import socket
+import sys
+import threading
+import time
+from datetime import timedelta
+from functools import wraps
+from pathlib import Path
+from typing import Optional, Tuple
+import json
+import os
+from constants import *
+
+# Shared log format used by the app, workers and the Gunicorn logger
+LOG_FORMAT = '[%(asctime)s.%(msecs)03d] %(levelname)s (%(module)s) %(message)s'
+LOG_DATEFMT = '%Y-%m-%d %H:%M:%S'
+
+
+# Custom logging formatter to support colors
+class ColoredFormatter(logging.Formatter):
+    # Define color codes
+    COLORS = {
+        'DEBUG': '\033[94m',   # Blue
+        'INFO': '\033[92m',    # Green
+        'WARNING': '\033[93m', # Yellow
+        'ERROR': '\033[91m',   # Red
+        'CRITICAL': '\033[95m' # Magenta
+    }
+    RESET = '\033[0m'  # Reset color
+
+    def format(self, record):
+        # Add color to the log level name
+        levelname = record.levelname
+        if levelname in self.COLORS:
+            record.levelname = f"{self.COLORS[levelname]}{levelname}{self.RESET}"
+        
+        return super().format(record)
+    
+# Filter to remove date from http access logs
+class FilterRemoveDateFromWerkzeugLogs(logging.Filter):
+    # '192.168.0.102 - - [30/Jun/2024 01:14:03] "%s" %s %s' -> '192.168.0.102 - "%s" %s %s'
+    pattern: re.Pattern = re.compile(r' - - \[.+?] "')
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.msg = self.pattern.sub(' - "', record.msg)
+        return True
+
+
+# Global registry for debounced function states
+# This ensures all decorator instances share the same state even across different imports
+_debounce_registry = {}
+_debounce_registry_lock = threading.Lock()
+
+def debounce(wait, key=None):
+    """Thread-safe decorator that postpones a function's execution until after `wait` seconds
+    have elapsed since the last time it was invoked. Only allows one execution at a time.
+    Uses a global registry to ensure state is shared across all imports and decorator instances.
+    
+    Args:
+        wait: Number of seconds to wait before executing
+        key: Optional string key to identify this function across different imports.
+             If not provided, uses function qualname (may not work across module reloads).
+    """
+    def decorator(fn):
+        # Use provided key or fall back to qualname
+        func_key = key if key is not None else fn.__qualname__
+        
+        # Initialize state in global registry if not already present
+        with _debounce_registry_lock:
+            if func_key not in _debounce_registry:
+                _debounce_registry[func_key] = {
+                    'timer': None,
+                    'lock': threading.Lock(),
+                    'execution_lock': threading.Lock()
+                }
+        
+        @wraps(fn)
+        def debounced(*args, **kwargs):
+            state = _debounce_registry[func_key]
+            
+            def call_it():
+                # Acquire execution lock to ensure only one instance runs at a time
+                with state['execution_lock']:
+                    fn(*args, **kwargs)
+            
+            # Acquire lock to safely cancel old timer and start new one
+            with state['lock']:
+                # Cancel existing timer if any
+                if state['timer'] is not None:
+                    state['timer'].cancel()
+                
+                # Create and start new timer
+                state['timer'] = threading.Timer(wait, call_it)
+                state['timer'].start()
+        
+        return debounced
+    return decorator
+
+# Global registry for throttled function states
+_throttle_registry = {}
+_throttle_registry_lock = threading.Lock()
+
+def throttle(wait, key_func=None):
+    """Thread-safe decorator that ensures a function executes at most once per `wait` seconds
+    per computed key. The first call within a window executes immediately; subsequent calls
+    within the same window are silently ignored.
+
+    Unlike debounce (which delays the last call), throttle fires on the FIRST call and then
+    suppresses further calls until the window expires.
+
+    Args:
+        wait: Number of seconds to suppress duplicate calls after the first execution.
+        key_func: Optional callable that receives the same arguments as the decorated function
+                  and returns a hashable key used to distinguish independent throttle windows.
+                  If not provided, all calls share a single window (no per-argument distinction).
+
+    Example:
+        @throttle(60, key_func=lambda filepath, host: (filepath, host))
+        def increment_download_count(filepath, host):
+            ...
+    """
+    def decorator(fn):
+        func_id = fn.__qualname__
+
+        @wraps(fn)
+        def throttled(*args, **kwargs):
+            now = time.monotonic()
+
+            # Compute the per-call key
+            if key_func is not None:
+                call_key = key_func(*args, **kwargs)
+            else:
+                call_key = None
+
+            registry_key = (func_id, call_key)
+
+            with _throttle_registry_lock:
+                last_called = _throttle_registry.get(registry_key)
+                if last_called is None or (now - last_called) >= wait:
+                    _throttle_registry[registry_key] = now
+                    should_execute = True
+                else:
+                    should_execute = False
+
+            if should_execute:
+                return fn(*args, **kwargs)
+
+        return throttled
+    return decorator
+
+def path_is_within(path, directory):
+    """True if path is directory itself or lives under it, compared by path component."""
+    root = directory.rstrip('/' + os.sep)
+    return path == root or any(path.startswith(root + sep) for sep in {'/', os.sep})
+
+def get_path_fstype(path):
+    """Return the filesystem type backing path via /proc/mounts, or None if undeterminable."""
+    try:
+        with open('/proc/mounts') as f:
+            mounts = [(p[1], p[2]) for p in (line.split() for line in f) if len(p) >= 3]
+    except OSError:
+        return None
+    abspath = os.path.abspath(path)
+    best_mount, best_fstype = '', None
+    for mountpoint, fstype in mounts:
+        mountpoint = mountpoint.replace('\\040', ' ')
+        if (abspath == mountpoint or abspath.startswith(mountpoint.rstrip('/') + '/')) \
+                and len(mountpoint) >= len(best_mount):
+            best_mount, best_fstype = mountpoint, fstype
+    return best_fstype
+
+def get_windows_drive_type(drive):
+    """Return the GetDriveTypeW code for a drive root (e.g. 'C:\\'), or None if unavailable."""
+    import ctypes
+    try:
+        return ctypes.windll.kernel32.GetDriveTypeW(ctypes.c_wchar_p(drive))
+    except (AttributeError, OSError):
+        return None
+
+def is_windows_network_path(path):
+    """True if path is a UNC share or lives on a mapped network drive.
+    Undeterminable drives are treated as network so they are polled."""
+    from constants import WINDOWS_LOCAL_DRIVE_TYPES
+    import ntpath
+    drive = ntpath.splitdrive(ntpath.abspath(path))[0]
+    if not drive:
+        return True
+    if drive.startswith('\\\\') or drive.startswith('//'):
+        return True  # UNC share, always remote
+    drive_type = get_windows_drive_type(drive + '\\')
+    if drive_type is None:
+        return True
+    return drive_type not in WINDOWS_LOCAL_DRIVE_TYPES
+
+def is_network_path(path):
+    """True if path is on a network filesystem that native watchers can't observe.
+    Windows resolves the drive type; elsewhere the mount table decides. Undeterminable
+    filesystems (e.g. macOS, which has no /proc/mounts) are treated as network so they are polled."""
+    from constants import NETWORK_FSTYPES
+    if sys.platform == 'win32':
+        return is_windows_network_path(path)
+    fstype = get_path_fstype(path)
+    if fstype is None:
+        return True
+    return fstype in NETWORK_FSTYPES
+
+def client_address(request):
+    """The address of the client itself, seen through a reverse proxy.
+
+    remote_addr is the proxy for every request behind one, which collapses all clients into
+    a single identity - enough to make per-client throttling suppress other people's calls.
+    """
+    forwarded = request.headers.get('X-Forwarded-For', '')
+    return forwarded.split(',')[0].strip() or request.remote_addr
+
+def get_lan_ip(family=socket.AF_INET):
+    """Return the IP of the interface that reaches the LAN, or None if undeterminable."""
+    # Werkzeug's trick to show a usable URL when bound to 0.0.0.0: ask the kernel which
+    # local address it routes an arbitrary private address through. Nothing is ever sent.
+    target = 'fd31:f903:5ab5:1::1' if family == socket.AF_INET6 else '10.253.155.219'
+    try:
+        with socket.socket(family, socket.SOCK_DGRAM) as s:
+            s.connect((target, 58162))
+            ip = s.getsockname()[0]
+    except OSError:
+        return None
+    try:
+        address = ipaddress.ip_address(ip.split('%')[0])
+    except ValueError:
+        return None
+    if address.is_loopback or address.is_unspecified:
+        return None
+    return ip
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ['keys', 'txt']
+
+def merge_dicts_recursive(source, destination):
+    """
+    Recursively merges source dictionary into destination dictionary.
+    Adds missing keys from source to destination.
+    Returns True if any changes were made, False otherwise.
+    """
+    changed = False
+    for key, value in source.items():
+        if key not in destination:
+            destination[key] = value
+            changed = True
+            logging.getLogger('main').debug(f'Added missing default setting: {key}')
+        elif isinstance(value, dict) and isinstance(destination[key], dict):
+            if merge_dicts_recursive(value, destination[key]):
+                changed = True
+        # If key exists but types are different, or if it's not a dict and not equal,
+        # we don't overwrite existing settings unless explicitly told to.
+        # For this task, we only add missing keys.
+    return changed
+
+def parse_interval_string(interval_str: str) -> Tuple[int, str]:
+    """Parse interval string like '2h', '30m', '1d', '45s' or '0' into (value, unit)."""
+    if not interval_str or interval_str == '0':
+        return 0, 'h'
+    match = re.match(r'^(\d+)([smhd])$', str(interval_str))
+    if match:
+        return int(match.group(1)), match.group(2)
+    return 0, 'h'
+
+def validate_interval_string(interval_str: str) -> Tuple[bool, Optional[str]]:
+    """Validate interval string format."""
+    if interval_str == '0':
+        return True, None
+    if re.match(r'^\d+[smhd]$', str(interval_str)):
+        return True, None
+    return False, 'Interval must be in format: number+unit (e.g., "2h", "30m", "1d", "45s") or "0" to disable'
+
+def interval_string_to_timedelta(interval_str: str) -> Optional[timedelta]:
+    """Convert interval string to timedelta object."""
+    interval_value, unit = parse_interval_string(interval_str)
+    if interval_value == 0:
+        return None
+    unit_map = {'s': 'seconds', 'm': 'minutes', 'h': 'hours', 'd': 'days'}
+    return timedelta(**{unit_map.get(unit, 'hours'): interval_value})
+
+def delete_empty_folders(path):
+    """
+    Recursively deletes empty folders starting from the given path.
+    Considers folders containing only hidden files as empty.
+    """
+    if not os.path.isdir(path):
+        return
+
+    # Loop until no more empty directories are found and deleted in a pass
+    while True:
+        deleted_any_in_pass = False
+        # Traverse from bottom up to ensure child empty folders are deleted first
+        for dirpath, dirnames, filenames in os.walk(path, topdown=False):
+            # Check if the directory is truly empty (no subdirectories and no files)
+            if not dirnames and not filenames:
+                try:
+                    os.rmdir(dirpath)
+                    logging.getLogger('main').debug(f"Deleted empty directory: {dirpath}")
+                    deleted_any_in_pass = True
+                except OSError as e:
+                    logging.getLogger('main').error(f"Error deleting directory {dirpath}: {e}")
+        
+        # After a full pass, check if the root path itself is now empty and can be deleted
+        # This handles cases where the initial 'path' becomes empty after its children are removed
+        if not os.listdir(path) and os.path.isdir(path):
+            try:
+                os.rmdir(path)
+                logging.getLogger('main').debug(f"Deleted empty root directory: {path}")
+                deleted_any_in_pass = True
+            except OSError as e:
+                logging.getLogger('main').error(f"Error deleting root directory {path}: {e}")
+
+        if not deleted_any_in_pass:
+            break # No more empty directories found in this pass, so we are done
+
+
+def replace_char(c, restricted_chars, control_chars):
+    """Map a character to its filesystem-safe replacement, if any."""
+    if c in restricted_chars:
+        return restricted_chars[c]
+    # Control characters map to their Unicode "control pictures" equivalent
+    if ord(c) < 0x20 and (control_chars or c == '\0'):
+        return chr(0x2400 + ord(c))
+    return c
+
+
+# Legal/trademark symbols that Switch Library Manager strips outright when generating
+# clean file/folder names - decorations with no separating role, so no replacement
+# space is needed where they're removed.
+NAME_SYMBOLS_PATTERN = re.compile(r'[™®©+]')
+# Punctuation that separates two parts of a title but isn't wanted in the organized
+# name - replaced with a space rather than deleted outright, so words on either side
+# never run together. Includes both the plain and fullwidth forms of ':' and '/':
+# titledb names sometimes use the fullwidth form stylistically (official titles like
+# "FINAL FANTASY X／X-2 HD Remaster"), and either form must be gone before
+# `sanitize_filename` runs - a plain ':' left behind would otherwise be converted right
+# back into '：' by Windows-compatible sanitization, undoing the whole point of this.
+SEPARATOR_SYMBOLS_PATTERN = re.compile(r'[:：/／]')
+
+
+def clean_display_name(name):
+    """Strip trademark/copyright symbols (™, ®, ©), '+', and colons/slashes in either
+    their plain or fullwidth form, then tidy the resulting whitespace - mirroring the
+    "clean name" behaviour of Switch Library Manager."""
+    if not name:
+        return name
+    cleaned = NAME_SYMBOLS_PATTERN.sub('', name)
+    cleaned = SEPARATOR_SYMBOLS_PATTERN.sub(' ', cleaned)
+    # Collapse doubled/trailing spaces left behind by the removed symbols
+    # (e.g. "Game ™: Subtitle" -> "Game Subtitle", "Game ™" -> "Game")
+    cleaned = re.sub(r'\s+([\-,.])', r'\1', cleaned)
+    cleaned = re.sub(r'\s{2,}', ' ', cleaned).strip()
+    return cleaned
+
+
+def sanitize_filename(name, windows_compatible=False):
+    """Replace restricted characters with their full-width equivalents."""
+    windows = sys.platform == 'win32' or windows_compatible
+    restricted_chars = RESTRICTED_CHARS_WINDOWS if windows else RESTRICTED_CHARS_UNIX
+    sanitized = ''.join(replace_char(c, restricted_chars, windows) for c in name).strip()
+
+    if windows:
+        # A Windows name cannot end with a period
+        if sanitized.endswith('.'):
+            sanitized = sanitized[:-1] + TRAILING_DOT_WINDOWS
+        # Handle Windows reserved names
+        if sanitized.lower() in RESERVED_NAMES_WINDOWS:
+            sanitized = '_' + sanitized # Prepend an underscore to avoid conflict
+
+    return sanitized
+
+
+def sanitized_path_parts(raw_path, windows_compatible):
+    """Split a formatted path into filesystem-safe path parts."""
+    return [sanitize_filename(part, windows_compatible) for part in Path(raw_path.lstrip('/')).parts]
+
+
+def trim_name(name, length):
+    """Cut a name to length, marking the truncation with an ellipsis."""
+    length = max(length, 1)
+    if len(name) <= length:
+        return name
+    return name[:length - 1].rstrip('. ') + TRUNCATION_MARKER
+
+
+def truncate_path_parts(parts, prefix_len):
+    """Shorten path parts, directories first, so that prefix + path fits within MAX_PATH."""
+    *dirs, filename = parts
+    dirs = [trim_name(d, MAX_PART_WINDOWS) for d in dirs]
+    stem, _, ext = filename.rpartition('.')
+    if not stem:
+        stem, ext = filename, ''
+    ext_len = len(ext) + 1 if ext else 0
+    # Length taken by the directories, each preceded by a separator
+    dirs_len = lambda: sum(len(d) + 1 for d in dirs)
+    # Budget left for the stem, keeping room for its extension and a collision suffix
+    stem_room = lambda: min(MAX_PART_WINDOWS - ext_len,
+                            MAX_PATH_WINDOWS - prefix_len - dirs_len() - 1 - ext_len - COLLISION_SUFFIX_RESERVE)
+
+    # Shrink the longest directory until the filename has room and mkdir's own limit is met
+    while dirs and max(len(d) for d in dirs) > MIN_PART_WINDOWS:
+        if prefix_len + dirs_len() <= MAX_DIR_PATH_WINDOWS and stem_room() >= MIN_PART_WINDOWS:
+            break
+        longest = max(range(len(dirs)), key=lambda i: len(dirs[i]))
+        dirs[longest] = trim_name(dirs[longest], len(dirs[longest]) - 1)
+
+    stem = trim_name(stem, stem_room())
+    filename = f'{stem}.{ext}' if ext else stem
+    if prefix_len + dirs_len() + 1 + len(filename) > MAX_PATH_WINDOWS:
+        logging.getLogger('main').warning(f"Path too long for Windows even after truncation: {os.path.join(*dirs, filename)}")
+
+    return dirs + [filename]
+
+
+def human_size(n):
+    """Format a byte count as a human-readable size (e.g. '2.7 GB')."""
+    size = float(n)
+    for unit in ('B', 'KB', 'MB', 'GB', 'TB'):
+        if size < 1024 or unit == 'TB':
+            return f'{size:.1f} {unit}'
+        size /= 1024
