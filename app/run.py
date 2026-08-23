@@ -45,7 +45,7 @@ def main():
     from auth import init_users
     from settings import get_settings
 
-    logger.info('Starting initialization of Ownfoil...')
+    logger.info('Starting initialization of Ownfoil-Plus...')
 
     init_db(app)
     init_users(app)

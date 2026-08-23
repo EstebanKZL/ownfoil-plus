@@ -42,7 +42,7 @@ def _should_open_browser(no_browser_flag, environ):
 def main():
     parser = argparse.ArgumentParser(
         prog='ownfoil',
-        description='Run Ownfoil locally. A config/ and data/ directory are created inside base_dir.',
+        description='Run Ownfoil-Plus locally. A config/ and data/ directory are created inside base_dir.',
     )
     parser.add_argument(
         'base_dir',

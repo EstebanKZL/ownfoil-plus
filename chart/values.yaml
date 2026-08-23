@@ -1,7 +1,7 @@
 replicas: 1
 
 image: 
-  repository: a1ex4/ownfoil
+  repository: estebankzl/ownfoil-plus
   tag: latest
 
 service:

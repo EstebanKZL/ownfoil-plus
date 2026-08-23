@@ -251,7 +251,7 @@ class File:
     download_count: int = desc("How many times a shop client has downloaded it.",
                                default=0)
     identified: bool = desc(
-        "Ownfoil worked out which app(s) this file contains. Unidentified files stay "
+        "Ownfoil-Plus worked out which app(s) this file contains. Unidentified files stay "
         "in the library but cannot be served meaningfully.", default=False)
     identification_type: Optional[str] = desc(
         "How the file was identified - by reading the file's own metadata, or by "

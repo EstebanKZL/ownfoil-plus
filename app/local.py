@@ -39,7 +39,7 @@ def main(open_browser=False):
     from settings import get_settings
     from worker_pool import WorkerPool
 
-    logger.info('Starting initialization of Ownfoil...')
+    logger.info('Starting initialization of Ownfoil-Plus...')
 
     init_db(app)
     init_users(app)

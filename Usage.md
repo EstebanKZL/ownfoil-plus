@@ -1,6 +1,6 @@
-# Using Ownfoil
+# Using Ownfoil-Plus
 
-Once Ownfoil is running, the Shop Web UI is accessible with your computer/server IP and port, by navigating to `http://<computer/server IP>:8465`, i.e. `http://localhost:8465` from the same computer or `http://192.168.1.100:8465` from a device in your network.
+Once Ownfoil-Plus is running, the Shop Web UI is accessible with your computer/server IP and port, by navigating to `http://<computer/server IP>:8465`, i.e. `http://localhost:8465` from the same computer or `http://192.168.1.100:8465` from a device in your network.
 
 # First steps
 
@@ -8,18 +8,18 @@ Once Ownfoil is running, the Shop Web UI is accessible with your computer/server
 2. Go to `Admin` → `Settings` and __create an admin user__. Until you do, authentication is disabled and anyone who can reach the Web UI can change the configuration of your shop.
 3. Upload your [console keys](#console-keys) under `Titles`, so your files can be identified whatever their name.
 4. Configure the [workers](#workers) to optimize identification for large libraries.
-5. Add the directories containing your games under `Library` → `Paths`. Ownfoil scans a path as soon as you add it.
+5. Add the directories containing your games under `Library` → `Paths`. Ownfoil-Plus scans a path as soon as you add it.
 6. Open the `Setup` page and configure your client on your Nintendo Switch with the values it shows you.
 
 By default the organizer and compression features are disabled until you turn them on, so your library isn't modified unexpectedly.
 
 # Console keys
 
-Console keys are the keys dumped from your own Nintendo Switch. Ownfoil uses them to decrypt the metadata inside your files, which is how it identifies a game regardless of what the file is called.
+Console keys are the keys dumped from your own Nintendo Switch. Ownfoil-Plus uses them to decrypt the metadata inside your files, which is how it identifies a game regardless of what the file is called.
 
-Upload your `prod.keys` (or any `.keys` / `.txt` file with the same content) in the `Settings` under `Titles`, then hit `Submit`. Ownfoil checks every master key revision it contains and tells you if one is missing or wrong. A missing revision means the games released after it cannot be decrypted, so they will not be identified.
+Upload your `prod.keys` (or any `.keys` / `.txt` file with the same content) in the `Settings` under `Titles`, then hit `Submit`. Ownfoil-Plus checks every master key revision it contains and tells you if one is missing or wrong. A missing revision means the games released after it cannot be decrypted, so they will not be identified.
 
-Without keys, Ownfoil falls back to reading the filename, and every file __must contain `[TITLEID][vVERSION]`__ or it won't be recognized.
+Without keys, Ownfoil-Plus falls back to reading the filename, and every file __must contain `[TITLEID][vVERSION]`__ or it won't be recognized.
 
 Three features need valid keys and are unavailable without them:
 
@@ -41,11 +41,11 @@ You can filter by type (base game or DLC), by ownership, by whether an update is
 
 This is the page to use when configuring a client on your Nintendo Switch. It prints the configuration tables for Tinfoil, Sphaira and CyberFoil, already filled in with your own address and port, and the exact menu path to follow in each app.
 
-It has two tabs. `Local Access` is for when your Switch and your Ownfoil server are on the same network, and uses your server's LAN IP. `Remote Access` is for reaching your shop over the internet, and uses the `Shop URL` you configured in the [Shop](#shop) settings.
+It has two tabs. `Local Access` is for when your Switch and your Ownfoil-Plus server are on the same network, and uses your server's LAN IP. `Remote Access` is for reaching your shop over the internet, and uses the `Shop URL` you configured in the [Shop](#shop) settings.
 
 ## Tasks page
 
-Everything Ownfoil does in the background is a task, and this page shows them live: what is queued, what is running with its progress, what is scheduled to run later, and what failed. Failed tasks stay until you dismiss them, so you can see what went wrong earlier.
+Everything Ownfoil-Plus does in the background is a task, and this page shows them live: what is queued, what is running with its progress, what is scheduled to run later, and what failed. Failed tasks stay until you dismiss them, so you can see what went wrong earlier.
 
 The worker section shows what each worker process is doing right now. How many there are is configured in [Workers](#workers), you can use it to see if the backlog of tasks can be optimized.
 
@@ -55,7 +55,7 @@ Admin only, and a single scrolling page.
 
 # Clients
 
-Ownfoil supports multiple clients to install content on your Nintendo Switch. They can be enabled and disabled individually in the [Shop](#client-access) settings.
+Ownfoil-Plus supports multiple clients to install content on your Nintendo Switch. They can be enabled and disabled individually in the [Shop](#client-access) settings.
 
 ## [Tinfoil:](https://tinfoil.io/Download)
 - `HTTP` / `HTTPS` protocol support
@@ -77,7 +77,7 @@ Ownfoil supports multiple clients to install content on your Nintendo Switch. Th
 
 Sphaira browses your shop as a folder tree rather than a shop listing, so what you see is the layout of your library on disk. Opening a file shows a preview of its content, to actually install it press `Options` → `Install`.
 
-Sphaira identifies itself in its requests since version `1.0.6`, which Ownfoil needs to serve the shop. Be sure to use an up to date version if encountering issues.
+Sphaira identifies itself in its requests since version `1.0.6`, which Ownfoil-Plus needs to serve the shop. Be sure to use an up to date version if encountering issues.
 
 ## [CyberFoil:](https://github.com/luketanti/CyberFoil)
 - `HTTP` / `HTTPS` protocol support
@@ -96,13 +96,13 @@ Adding a path to the shop URL configured in your client filters what it serves:
 
 | Path | What you get |
 | --- | --- |
-| `/` | Everything, including files Ownfoil could not identify |
+| `/` | Everything, including files Ownfoil-Plus could not identify |
 | `/base` | Games only |
 | `/update` | Updates only |
 | `/dlc` | DLC only |
 | `/multi` | Files containing more than one content, typically an `xci` bundling a game with its update and DLC |
 
-This is how you get several shops out of one Ownfoil: add one entry per filter in your client and you can browse your updates without scrolling past every game you own.
+This is how you get several shops out of one Ownfoil-Plus: add one entry per filter in your client and you can browse your updates without scrolling past every game you own.
 
 Note that only the unfiltered shop shows unidentified files. If a file shows up in the root shop but in none of the filters, it was not identified.
 
@@ -112,7 +112,7 @@ The sections below follow the order of the `Settings` page.
 
 ## Authentication
 
-Ownfoil requires an `admin` user to be created to enable authentication for your Shop. Create the first one here, it will have admin rights, then you can add more users to your shop the same way.
+Ownfoil-Plus requires an `admin` user to be created to enable authentication for your Shop. Create the first one here, it will have admin rights, then you can add more users to your shop the same way.
 
 Each user has up to three permissions:
 
@@ -126,15 +126,15 @@ You can also create users from [environment variables](./Install.md#environment-
 
 ## Library
 
-This section is where you tell Ownfoil what your library is, how to watch it, and how to automatically manage the files in it.
+This section is where you tell Ownfoil-Plus what your library is, how to watch it, and how to automatically manage the files in it.
 
 Every file goes through the same pipeline, in order: it is __identified__ (what game, which version, base/update/DLC it contains), __verified__, __organized__, then __compressed__. A step that is disabled or already done is skipped, so a settled library does nothing at all. This is why enabling compression on an existing library starts compressing everything.
 
 ### Paths
 
-Add the directories containing your content here. The path has to already exist on the machine running Ownfoil: with Docker that means the path *inside* the container, so `/games`, not the path on your NAS.
+Add the directories containing your content here. The path has to already exist on the machine running Ownfoil-Plus: with Docker that means the path *inside* the container, so `/games`, not the path on your NAS.
 
-Ownfoil scans a path as soon as you add it, looking for `nsp`, `nsz`, `xci` and `xcz` files. The arrows button on a row rescans that one path, and `Scan library` rescans all of them. If enabled, the file watcher below detects changes automatically.
+Ownfoil-Plus scans a path as soon as you add it, looking for `nsp`, `nsz`, `xci` and `xcz` files. The arrows button on a row rescans that one path, and `Scan library` rescans all of them. If enabled, the file watcher below detects changes automatically.
 
 ### File watcher
 
@@ -145,7 +145,7 @@ Ownfoil scans a path as soon as you add it, looking for `nsp`, `nsz`, `xci` and 
 
 Files moved, renamed, added or removed are reflected directly in your library, without a scan.
 
-Local directories are watched through the operating system, which notifies Ownfoil the moment something changes and costs nothing while idle, the polling interval is not used for them at all. Network filesystems (NFS, SMB, a mapped Windows drive) cannot do that, so they are checked at the interval you set instead, which is why a change on a NAS takes up to one interval to show up. Lower it if you want your library to react faster, at the cost of walking the whole tree more often.
+Local directories are watched through the operating system, which notifies Ownfoil-Plus the moment something changes and costs nothing while idle, the polling interval is not used for them at all. Network filesystems (NFS, SMB, a mapped Windows drive) cannot do that, so they are checked at the interval you set instead, which is why a change on a NAS takes up to one interval to show up. Lower it if you want your library to react faster, at the cost of walking the whole tree more often.
 
 ### Management
 
@@ -214,7 +214,7 @@ Verification is disabled entirely, with the controls greyed out, when no valid [
 
 Once a file is identified, the organizer renders the matching template, and moves the file there if it isn't already. Paths are relative to the library path the file is in, and the extension is added automatically.
 
-By default, file names are sanitized based on the system running Ownfoil, for compatible characters. If Ownfoil is running on a Linux server but you are accessing your library on Windows (with an SMB or NFS mount), you can force the organizer to comply with file names that will render correctly in Windows.
+By default, file names are sanitized based on the system running Ownfoil-Plus, for compatible characters. If Ownfoil-Plus is running on a Linux server but you are accessing your library on Windows (with an SMB or NFS mount), you can force the organizer to comply with file names that will render correctly in Windows.
 
 ##### Templates
 
@@ -256,7 +256,7 @@ This is the region and language of your shop, and for now it is the same for all
 
 The available languages depend on the region you pick.
 
-`Console Keys file` is where you upload your keys - see [Console keys](#console-keys). Below it, `Master key revisions` reports what Ownfoil found in the file you uploaded, and names any revision that is missing or invalid.
+`Console Keys file` is where you upload your keys - see [Console keys](#console-keys). Below it, `Master key revisions` reports what Ownfoil-Plus found in the file you uploaded, and names any revision that is missing or invalid.
 
 ## Shop
 
@@ -268,7 +268,7 @@ The available languages depend on the region you pick.
 
 The MOTD is shown by Tinfoil and CyberFoil. Sphaira browses files and does not display it.
 
-Setting `Shop URL` lets Ownfoil tell the client which address the shop is supposed to be served from, and the client refuses to load it from anywhere else. That is what stops someone who got hold of your URL and credentials from rebroadcasting your shop as their own.
+Setting `Shop URL` lets Ownfoil-Plus tell the client which address the shop is supposed to be served from, and the client refuses to load it from anywhere else. That is what stops someone who got hold of your URL and credentials from rebroadcasting your shop as their own.
 
 It only works on secure requests: if your reverse proxy still answers on plain `http`, or doesn't send `X-Forwarded-Proto`, none of this applies and your shop is unprotected. See [Remote access and HTTPS](./Install.md#remote-access-and-https).
 
@@ -281,7 +281,7 @@ It only works on secure requests: if your reverse proxy still answers on plain `
 | `Sphaira` → `Enabled` | enabled | Allow Sphaira to access the shop. |
 | `CyberFoil` → `Enabled` | enabled | Allow CyberFoil to access the shop. |
 
-Disabling a client makes Ownfoil refuse it with a message.
+Disabling a client makes Ownfoil-Plus refuse it with a message.
 
 `Encrypt shop` compresses and encrypts the shop listing in a way only a real Tinfoil build can read, so only a Tinfoil client will be able to inspect the shop's content. Note that if a client other than Tinfoil is enabled (and not encryption is available), the shop content will be served in clear through their headers, rendering encryption useless.
 

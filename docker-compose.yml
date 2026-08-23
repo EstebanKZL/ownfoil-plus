@@ -2,8 +2,8 @@ version: "3"
 
 services:
   ownfoil:
-    container_name: ownfoil
-    image: a1ex4/ownfoil:latest
+    container_name: ownfoil-plus
+    image: estebankzl/ownfoil-plus:latest
     environment:
       # For write permission in config directory
       - PUID=1000
