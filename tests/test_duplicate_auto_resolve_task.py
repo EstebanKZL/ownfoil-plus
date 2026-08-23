@@ -54,9 +54,10 @@ def env(tmp_path):
     ctx.pop()
 
 
-def _settings(auto_resolve, prefer_larger_on_tie=False):
+def _settings(auto_resolve, prefer_larger_on_tie=False, compression_preference="none"):
     return {"library": {"management": {"duplicates": {
         "auto_resolve": auto_resolve, "prefer_larger_on_tie": prefer_larger_on_tie,
+        "compression_preference": compression_preference,
     }}}}
 
 
@@ -180,3 +181,40 @@ def test_verify_library_continuation_enqueues_duplicate_resolution(env, monkeypa
     tasks._verify_library_done()
 
     assert enqueued == ["resolve_duplicate_files"]
+
+
+def test_compression_preference_alone_resolves_a_mixed_format_tie(env, monkeypatch):
+    """The exact case that motivated this setting: a compressed and an uncompressed
+    copy of the same content both verify Valid. compression_preference alone (no
+    prefer_larger_on_tie needed) settles it correctly, keeping the compressed one even
+    though it's the smaller file."""
+    monkeypatch.setattr(tasks, "get_settings",
+                        lambda: _settings(True, compression_preference="compressed"))
+    uncompressed = env.seed("Game.nsp", content=b"BIGGER-UNCOMPRESSED", compressed=False, **VALID)
+    compressed_content = b"SMALL"
+    compressed = env.seed("Game.nsz", content=compressed_content, compressed=True, **VALID)
+    uncompressed_path = uncompressed.filepath
+
+    tasks.resolve_duplicate_files_task()
+
+    assert not os.path.exists(uncompressed_path)
+    # The compressed file survives - possibly renamed if it had a "(n)" suffix, but
+    # here neither file had one, so its own path is untouched.
+    assert open(compressed.filepath, "rb").read() == compressed_content
+
+
+def test_compression_preference_off_by_default_even_with_auto_resolve_and_prefer_larger_on(env, monkeypatch):
+    """compression_preference is independent of prefer_larger_on_tie - turning the
+    latter on must not silently activate the former."""
+    monkeypatch.setattr(tasks, "get_settings",
+                        lambda: _settings(True, prefer_larger_on_tie=True, compression_preference="none"))
+    uncompressed = env.seed("Game.nsp", content=b"BIGGER-UNCOMPRESSED", compressed=False, **VALID)
+    compressed = env.seed("Game.nsz", content=b"SMALL", compressed=True, **VALID)
+    compressed_path = compressed.filepath
+
+    tasks.resolve_duplicate_files_task()
+
+    # With no compression preference, prefer_larger_on_tie alone picks the bigger
+    # (uncompressed) file - the documented, expected nuance.
+    assert not os.path.exists(compressed_path)
+    assert os.path.exists(uncompressed.filepath)

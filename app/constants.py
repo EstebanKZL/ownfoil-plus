@@ -59,6 +59,7 @@ DEFAULT_SETTINGS = {
             "duplicates": {
                 "auto_resolve": False,
                 "prefer_larger_on_tie": False,
+                "compression_preference": "none",
             }
         }
     },

@@ -30,7 +30,7 @@ from library import (
     add_missing_apps_to_db, update_titles, organize_file,
     remove_outdated_update_files,
     duplicate_file_groups, automatic_duplicate_winner, resolve_duplicate_files,
-    duplicate_winner_preferring_largest,
+    duplicate_winner_preferring_largest, duplicate_winner_with_preferences,
 )
 
 logger = logging.getLogger('main')
@@ -990,25 +990,42 @@ def resolve_duplicate_files_task(**kwargs):
     app with more than one physical file attached, automatically keep the healthiest
     one and delete the rest - but only when every copy already has a complete,
     unambiguous Valid/Repack/Corrupt verdict. A group containing an unverified,
-    modified, or signature-only file is left alone entirely regardless of the setting
+    modified, or signature-only file is left alone entirely regardless of the settings
     below - see library.automatic_duplicate_winner for that rule, which always applies.
 
     A genuine tie between two files at the same (best) rank is, by default, also left
-    alone - but library.management.duplicates.prefer_larger_on_tie (off by default,
-    only takes effect when auto_resolve is also on) opts into breaking that specific
-    kind of tie by keeping the larger file: at that point every tied file has already
-    independently passed the same verification the sole winner would have, so it's a
-    preference between equally-legitimate copies, not a guess about which is real. See
-    library.duplicate_winner_preferring_largest.
+    alone - but two independent, opt-in preferences (both off by default, and each
+    only takes effect when auto_resolve is also on) can break it instead:
+
+    - library.management.duplicates.compression_preference ('compressed' or
+      'uncompressed'): applied first. A compressed file is inherently smaller than the
+      same content uncompressed, so leaving this off and relying on size alone would
+      always penalize compression even for someone who has deliberately turned it on.
+    - library.management.duplicates.prefer_larger_on_tie: applied to whatever's left
+      after the above (or the full tied set, if compression didn't distinguish
+      anything) - the larger file wins.
+
+    At that point every tied file has already independently passed the same
+    verification the sole winner would have, so either preference is just a choice
+    between equally-legitimate copies, never a guess about which is real. See
+    library.duplicate_winner_with_preferences for the exact rule.
 
     Enqueued after every verify_library pass settles, and at startup.
     """
     duplicates_settings = get_settings().get('library', {}).get('management', {}).get('duplicates', {})
     if not duplicates_settings.get('auto_resolve', False):
         return
-    pick_winner = (duplicate_winner_preferring_largest
-                   if duplicates_settings.get('prefer_larger_on_tie', False)
-                   else automatic_duplicate_winner)
+    prefer_larger = duplicates_settings.get('prefer_larger_on_tie', False)
+    compression_preference = duplicates_settings.get('compression_preference', 'none')
+
+    if not prefer_larger and compression_preference not in ('compressed', 'uncompressed'):
+        pick_winner = automatic_duplicate_winner
+    else:
+        def pick_winner(group_files):
+            return duplicate_winner_with_preferences(
+                group_files, prefer_larger_on_tie=prefer_larger,
+                compression_preference=compression_preference)
+
     resolved = 0
     for app, files in duplicate_file_groups():
         winner = pick_winner(files)

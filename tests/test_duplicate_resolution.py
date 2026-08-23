@@ -13,7 +13,8 @@ from app import create_app
 from constants import APP_TYPE_BASE
 from db import Apps, Files, Libraries, Titles, db
 from library import (automatic_duplicate_winner, duplicate_file_groups,
-                     duplicate_winner_preferring_largest, resolve_duplicate_files)
+                     duplicate_winner_preferring_largest, duplicate_winner_with_preferences,
+                     resolve_duplicate_files)
 
 
 @pytest.fixture
@@ -196,6 +197,87 @@ def test_prefer_largest_picks_only_among_the_best_rank_not_across_all(env):
     winner = duplicate_winner_preferring_largest(env.app_row.files)
 
     assert winner.id == small_valid.id
+
+
+# --- duplicate_winner_with_preferences (compression-aware) --------------------------
+
+def test_compression_preference_picks_the_compressed_file_on_a_tie(env):
+    """The exact case that motivated this: a compressed copy is inherently smaller,
+    so a pure size comparison would always penalize it. With compression_preference
+    set, it wins the tie regardless of being the smaller file."""
+    uncompressed = env.seed("A.nsp", content=b"BIGGER-UNCOMPRESSED", compressed=False, **VALID)
+    compressed = env.seed("B.nsz", content=b"SMALL", compressed=True, **VALID)
+
+    winner = duplicate_winner_with_preferences(
+        env.app_row.files, compression_preference="compressed")
+
+    assert winner.id == compressed.id
+
+
+def test_compression_preference_can_prefer_uncompressed_instead(env):
+    uncompressed = env.seed("A.nsp", content=b"BIGGER-UNCOMPRESSED", compressed=False, **VALID)
+    compressed = env.seed("B.nsz", content=b"SMALL", compressed=True, **VALID)
+
+    winner = duplicate_winner_with_preferences(
+        env.app_row.files, compression_preference="uncompressed")
+
+    assert winner.id == uncompressed.id
+
+
+def test_compression_preference_is_applied_before_size(env):
+    """Even when prefer_larger_on_tie is also on, compression_preference wins first -
+    the smaller compressed file must still beat the larger uncompressed one."""
+    uncompressed = env.seed("A.nsp", content=b"MUCH BIGGER UNCOMPRESSED FILE HERE", compressed=False, **VALID)
+    compressed = env.seed("B.nsz", content=b"TINY", compressed=True, **VALID)
+
+    winner = duplicate_winner_with_preferences(
+        env.app_row.files, prefer_larger_on_tie=True, compression_preference="compressed")
+
+    assert winner.id == compressed.id
+
+
+def test_compression_preference_falls_back_to_size_when_it_does_not_distinguish(env):
+    """Two files with the SAME compression status - the preference can't settle
+    anything, so it falls through to the size tiebreak when that's also enabled."""
+    small = env.seed("A.nsz", content=b"SMALL", compressed=True, **VALID)
+    bigger = env.seed("B.nsz", content=b"A LOT BIGGER CONTENT HERE", compressed=True, **VALID)
+
+    winner = duplicate_winner_with_preferences(
+        env.app_row.files, prefer_larger_on_tie=True, compression_preference="compressed")
+
+    assert winner.id == bigger.id
+
+
+def test_compression_preference_alone_without_size_tiebreak_returns_none_when_it_does_not_distinguish(env):
+    """Same-compression tie, and prefer_larger_on_tie is off - correctly refuses,
+    exactly like the strict function would."""
+    env.seed("A.nsz", content=b"SMALL", compressed=True, **VALID)
+    env.seed("B.nsz", content=b"BIGGER", compressed=True, **VALID)
+
+    winner = duplicate_winner_with_preferences(
+        env.app_row.files, prefer_larger_on_tie=False, compression_preference="compressed")
+
+    assert winner is None
+
+
+def test_neither_preference_set_behaves_exactly_like_the_strict_function(env):
+    env.seed("A.nsp", **VALID)
+    env.seed("B.nsp", content=b"X", **VALID)
+
+    assert duplicate_winner_with_preferences(env.app_row.files) is None
+
+
+def test_compression_preference_still_refuses_an_unverified_group(env):
+    """The safety gate is unaffected - an unverified file in the group still blocks
+    resolution entirely, regardless of either preference."""
+    env.seed("A.nsp", content=b"X", compressed=False, **VALID)
+    env.seed("B.nsz", content=b"Y", compressed=True, **VALID)
+    env.seed("C.nsp", content=b"Z", **UNVERIFIED)
+
+    winner = duplicate_winner_with_preferences(
+        env.app_row.files, prefer_larger_on_tie=True, compression_preference="compressed")
+
+    assert winner is None
 
 
 # --- resolve_duplicate_files (real files on disk) -------------------------------------

@@ -183,6 +183,20 @@ def test_prefer_larger_on_tie_checkbox_is_present_and_translated(client):
     assert "En caso de empate, preferir el archivo más grande" in html
 
 
+def test_compression_preference_select_is_present_and_translated(client):
+    resp = client.get("/admin/settings")
+    html = resp.get_data(as_text=True)
+    assert 'id="compressionPreferenceSelect"' in html
+    assert "Prefer the compressed one (nsz/xcz)" in html
+    assert "Prefer the uncompressed one (nsp/xci)" in html
+
+    client.set_cookie("ownfoil_lang", "es")
+    resp = client.get("/admin/settings")
+    html = resp.get_data(as_text=True)
+    assert "Preferir la comprimida (nsz/xcz)" in html
+    assert "Preferir la sin comprimir (nsp/xci)" in html
+
+
 def test_workers_and_backup_sections_both_have_a_leading_divider(client):
     """Backup previously lacked the <hr class="hr-settings"> every other top-level
     section uses, making it look stuck onto Workers instead of its own section."""

@@ -406,14 +406,54 @@ def duplicate_winner_preferring_largest(files):
     shares the top rank, every one of those tied files has *already* independently
     passed the same verification the sole winner would have - this is a preference
     between equally-legitimate copies (a newer build, extra padding, a different
-    revision), not a guess about which one is real. Used for the opt-in
-    `duplicates.prefer_larger_on_tie` automatic setting and for the manual "resolve by
-    size" bulk action - never applied to a group that isn't otherwise fully verified.
+    revision), not a guess about which one is real. Used for the manual "resolve by
+    size" bulk action, which always resolves by size regardless of settings - a
+    person invoking it explicitly wants that. For the opt-in automatic setting, see
+    `duplicate_winner_with_preferences` below, which also accounts for compression.
+    """
+    return duplicate_winner_with_preferences(files, prefer_larger_on_tie=True)
+
+
+def duplicate_winner_with_preferences(files, *, prefer_larger_on_tie=False,
+                                      compression_preference='none'):
+    """Like `automatic_duplicate_winner`, but breaks a tie at the best rank using
+    whichever of these two independent, opt-in preferences apply - both default to
+    "don't guess," matching the strict function's behavior when neither is given:
+
+    - `compression_preference` ('compressed' or 'uncompressed'): applied *first*. A
+      compressed file is inherently smaller than the same content uncompressed, so a
+      byte-size comparison alone would always penalize compression even when someone
+      has explicitly chosen to compress their library - if the tied files aren't all
+      the same compression status, narrow down to whichever side is preferred before
+      even considering size.
+    - `prefer_larger_on_tie`: applied to whatever's left after the step above (or to
+      the full tied set, if compression didn't distinguish anything) - the file with
+      more bytes wins.
+
+    Every file must still have a complete Valid/Repack/Corrupt verdict, exactly like
+    `automatic_duplicate_winner` - an unverified, modified, or signature-only file
+    anywhere in the group still makes the whole group ineligible, regardless of either
+    preference below.
     """
     contenders = _ranked_contenders(files)
     if not contenders:
         return None
-    return max(contenders, key=lambda f: f.size)
+    if len(contenders) == 1:
+        return contenders[0]
+
+    if compression_preference in ('compressed', 'uncompressed'):
+        want_compressed = compression_preference == 'compressed'
+        narrowed = [f for f in contenders if bool(f.compressed) == want_compressed]
+        # Only narrow down when it actually distinguishes something - if every tied
+        # file (or none of them) already matches the preference, it settles nothing.
+        if narrowed and len(narrowed) < len(contenders):
+            contenders = narrowed
+            if len(contenders) == 1:
+                return contenders[0]
+
+    if prefer_larger_on_tie:
+        return max(contenders, key=lambda f: f.size)
+    return None
 
 
 def _ranked_contenders(files):

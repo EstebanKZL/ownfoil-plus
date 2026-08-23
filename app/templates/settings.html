@@ -226,6 +226,15 @@
                     <label class="form-check-label" for="preferLargerOnTieCheck">{{ t('lib.prefer_larger_on_tie_label') }}</label>
                     <div class="form-text">{{ t('lib.prefer_larger_on_tie_help') }}</div>
                 </div>
+                <div class="mb-3 ms-4">
+                    <label for="compressionPreferenceSelect" class="form-label">{{ t('lib.compression_preference_label') }}</label>
+                    <select class="form-select" id="compressionPreferenceSelect" style="max-width: 22rem;">
+                        <option value="none">{{ t('lib.compression_preference_none') }}</option>
+                        <option value="compressed">{{ t('lib.compression_preference_compressed') }}</option>
+                        <option value="uncompressed">{{ t('lib.compression_preference_uncompressed') }}</option>
+                    </select>
+                    <div class="form-text">{{ t('lib.compression_preference_help') }}</div>
+                </div>
 
                 <h4 class="py-2">{{ t('sections.compression') }}</h4>
                 <p>{{ t('compression.desc') }}</p>
@@ -1261,7 +1270,8 @@
             },
             duplicates: {
                 auto_resolve: getCheckboxStatus("autoResolveDuplicatesCheck"),
-                prefer_larger_on_tie: getCheckboxStatus("preferLargerOnTieCheck")
+                prefer_larger_on_tie: getCheckboxStatus("preferLargerOnTieCheck"),
+                compression_preference: getInputVal("compressionPreferenceSelect")
             },
             organizer: {
                 enabled: getCheckboxStatus("organizerEnabledCheck"),
@@ -1488,6 +1498,7 @@
             $("#webDownloadsEnabledCheck").prop("checked", (librarySettings['management']['web_downloads'] || {}).enabled || false);
             $("#autoResolveDuplicatesCheck").prop("checked", (librarySettings['management']['duplicates'] || {}).auto_resolve || false);
             $("#preferLargerOnTieCheck").prop("checked", (librarySettings['management']['duplicates'] || {}).prefer_larger_on_tie || false);
+            $("#compressionPreferenceSelect").val((librarySettings['management']['duplicates'] || {}).compression_preference || "none");
             $("#organizerEnabledCheck").prop("checked", librarySettings['management']['organizer']['enabled']);
             $("#removeEmptyFoldersCheck").prop("checked", librarySettings['management']['organizer']['remove_empty_folders']);
             $("#windowsCompatibleCheck").prop("checked", librarySettings['management']['organizer']['windows_compatible']);
