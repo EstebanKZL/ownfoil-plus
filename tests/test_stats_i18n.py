@@ -117,22 +117,27 @@ def test_verification_modal_table_css_overrides_the_dashboard_width_cap():
     assert "max-width: none" in css
 
 
-def test_duplicate_files_ui_is_present_and_hidden_by_default(client):
-    """The section only earns its place on the page while there's an actual duplicate
-    to resolve - hidden via a class the JS toggles once loadDuplicateGroups() has an
-    answer, not rendered server-side (the fixture has no seeded files here)."""
+def test_duplicate_files_ui_is_always_visible_not_only_when_a_duplicate_exists(client):
+    """The section header, hint, and controls are discoverable at all times - the
+    feature exists whether or not there happens to be a duplicate right now. Only the
+    content area (an empty-state message vs. the actual cards) toggles at runtime,
+    handled entirely in JS since the server doesn't know at render time whether any
+    duplicates exist."""
     resp = client.get("/admin/stats")
     html = resp.get_data(as_text=True)
 
     assert 'id="duplicatesSection"' in html
-    assert "d-none" in html.split('id="duplicatesSection"')[0][-200:] or \
-           "d-none" in html.split('id="duplicatesSection"')[1][:200]
+    section_tag = [line for line in html.splitlines() if 'id="duplicatesSection"' in line][0]
+    assert "d-none" not in section_tag
     assert "Duplicate files" in html
     assert "const DUPLICATE_GROUPS_QUERY" in html
     assert "const RESOLVE_DUPLICATE_MUTATION" in html
     assert "const RESOLVE_BY_SIZE_MUTATION" in html
     assert 'id="resolveBySizeBtn"' in html
     assert "Resolve all by size" in html
+    assert 'id="bulkCompressionPreferenceSelect"' in html
+    assert "Prefer compressed (nsz/xcz)" in html
+    assert "Prefer uncompressed (nsp/xci)" in html
 
 
 def test_duplicate_files_ui_is_translated_in_spanish(client):

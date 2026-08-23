@@ -321,6 +321,8 @@ def _cancel_atomic(task_id, removable=('pending', 'running', 'waiting_for_childr
     """Delete the task and any pending descendants under one transaction.
     Running descendants are orphaned (parent_id=NULL) so they finish naturally
     and self-delete on completion. Waiting descendants are recursed into.
+    Failed descendants are deleted outright, same as pending ones - a failed task
+    has nothing further running under it that could need orphaning.
 
     `removable` is which statuses may be taken out, so cancelling (live work) and
     dismissing (a failed row) share one transaction and one set of descendant rules.
@@ -349,7 +351,8 @@ def _cancel_atomic(task_id, removable=('pending', 'running', 'waiting_for_childr
         def _walk(pid):
             cursor.execute("SELECT id, status FROM tasks WHERE parent_id = ?", (pid,))
             for child_id, child_status in cursor.fetchall():
-                if child_status == 'pending':
+                if child_status in ('pending', 'failed'):
+                    _walk(child_id)  # a failed/pending row can itself have descendants left behind
                     cursor.execute("DELETE FROM tasks WHERE id = ?", (child_id,))
                 elif child_status == 'running':
                     cursor.execute("UPDATE tasks SET parent_id = NULL WHERE id = ?", (child_id,))
@@ -357,7 +360,14 @@ def _cancel_atomic(task_id, removable=('pending', 'running', 'waiting_for_childr
                     _walk(child_id)
                     cursor.execute("DELETE FROM tasks WHERE id = ?", (child_id,))
 
-        if status == 'waiting_for_children':
+        # Not just 'waiting_for_children': a task dismissed while 'failed' (the only
+        # other case reaching here, via dismiss_task/purge_failed_tasks) can equally
+        # have its own failed/pending descendants still sitting underneath it - e.g. a
+        # "Scan" task interrupted mid-run leaves both itself and its still-pending or
+        # already-failed "Process <file>" children marked failed by the same
+        # crash-recovery pass, and deleting the parent first would otherwise violate
+        # the parent_id foreign key those children still hold.
+        if status in ('waiting_for_children', 'failed'):
             _walk(task_id)
 
         cursor.execute("DELETE FROM tasks WHERE id = ?", (task_id,))

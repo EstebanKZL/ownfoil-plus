@@ -39,8 +39,12 @@ BETA = "0100000000BBBBB0"[:16]  # the reported scenario: base-only, no real upda
 TITLEDB_JSON = {
     ALPHA: {"id": ALPHA, "name": "Alpha Game", "intro": "A great game",
             "description": "Long description", "developer": "Dev Co", "publisher": "Pub Co",
-            "bannerUrl": "https://img/banner.jpg", "iconUrl": "https://img/icon.jpg"},
-    ALPHA_DLC_OWNED: {"id": ALPHA_DLC_OWNED, "name": "Owned DLC", "description": "DLC1 desc"},
+            "bannerUrl": "https://img/banner.jpg", "iconUrl": "https://img/icon.jpg",
+            "category": ["Action", "Adventure"], "numberOfPlayers": "1-4", "rating": "Teen",
+            "languages": ["en", "es"], "screenshots": ["https://img/s1.jpg", "https://img/s2.jpg"],
+            "size": "3.08 GB"},
+    ALPHA_DLC_OWNED: {"id": ALPHA_DLC_OWNED, "name": "Owned DLC", "description": "DLC1 desc",
+                      "category": ["Action"], "screenshots": ["https://img/dlc1.jpg"]},
     ALPHA_DLC_MISSING: {"id": ALPHA_DLC_MISSING, "name": "Missing DLC", "description": "DLC2 desc"},
     BETA: {"id": BETA, "name": "Darksiders-like Base-Only Game"},
 }
@@ -67,12 +71,12 @@ VERSIONS_JSON = {
 }
 
 LIST_QUERY = """
-    query TitlesList($page: Int!, $pageSize: Int!, $search: String) {
-        titles(owned: true, search: $search, orderBy: {field: NAME}, page: $page, pageSize: $pageSize) {
+    query TitlesList($page: Int!, $pageSize: Int!, $search: String, $libraryHealth: LibraryHealth) {
+        titles(owned: true, search: $search, libraryHealth: $libraryHealth, orderBy: {field: NAME}, page: $page, pageSize: $pageSize) {
             total
             items {
                 titleId name intro description developer publisher releaseDate
-                bannerUrl iconUrl size
+                bannerUrl iconUrl size category numberOfPlayers rating languages screenshots
                 ownership { haveBase upToDate complete }
                 apps(owned: true) {
                     appId appType appVersion releaseDate
@@ -84,7 +88,10 @@ LIST_QUERY = """
                 }
                 availableDlc {
                     appId version
-                    titledb { name description developer publisher releaseDate bannerUrl iconUrl }
+                    titledb {
+                        name description developer publisher releaseDate bannerUrl iconUrl
+                        size category numberOfPlayers rating languages screenshots
+                    }
                 }
             }
         }
@@ -230,6 +237,28 @@ def test_available_dlc_include_both_owned_and_missing_with_their_own_names(libra
     assert owned_dlc_app_ids == {ALPHA_DLC_OWNED}
 
 
+def test_the_enriched_metadata_modal_fields_are_available_for_the_base_title(library):
+    """The fields the metadata modal's detail rows (Players/Genre/Rating/Languages/
+    File size/Screenshots) need, confirmed reachable through the exact List view
+    query - not just defined on the GraphQL type."""
+    title = _title(library, "Alpha")
+
+    assert title["category"] == ["Action", "Adventure"]
+    assert title["numberOfPlayers"] == "1-4"
+    assert title["rating"] == "Teen"
+    assert title["languages"] == ["en", "es"]
+    assert title["screenshots"] == ["https://img/s1.jpg", "https://img/s2.jpg"]
+    assert title["size"] == "3.08 GB"
+
+
+def test_the_enriched_metadata_modal_fields_are_available_for_a_dlc(library):
+    title = _title(library, "Alpha")
+    owned_dlc = next(d for d in title["availableDlc"] if d["appId"] == ALPHA_DLC_OWNED)
+
+    assert owned_dlc["titledb"]["category"] == ["Action"]
+    assert owned_dlc["titledb"]["screenshots"] == ["https://img/dlc1.jpg"]
+
+
 def test_search_still_narrows_the_list_view(library):
     """Search is the one toolbar control the List view keeps - everything else
     (ownership/up-to-date/complete/type) is deliberately not sent for this query."""
@@ -286,3 +315,10 @@ def test_query_sources_updates_from_tracked_apps_not_the_raw_titledb_catalogue()
     which is what caused the reported contradiction in the first place)."""
     assert "updateApps: apps(appType: [UPDATE])" in LIST_QUERY
     assert "availableVersions" not in LIST_QUERY
+
+
+def test_query_accepts_the_library_health_filter():
+    """The List view's own filter - unlike Card/Icon's ownership/update/completion
+    toggles, this one is a single argument evaluating every owned app together."""
+    assert "$libraryHealth: LibraryHealth" in LIST_QUERY
+    assert "libraryHealth: $libraryHealth" in LIST_QUERY

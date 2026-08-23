@@ -41,10 +41,14 @@ Ownfoil-Plus is a fork of [Ownfoil](https://github.com/a1ex4/ownfoil), created b
 [@a1ex4](https://github.com/a1ex4), distributed under the same **GNU AGPLv3**
 license. On top of the original project, this fork adds:
 
-- 🇬🇧/🇪🇸 A full Spanish/English web interface
+- 🇬🇧/🇪🇸 A full Spanish/English web interface, switch anytime from the navbar
 - A List view showing every game with its updates and DLC in one place, including what's still missing from your library
+- A filter to quickly find titles that are complete, incomplete, or have a corrupt or repack file anywhere in them
+- A richer game info panel - genre, players, rating, languages, file size, and screenshots - opens from any view (List, Card, or Icon) by clicking the cover
+- Editable game info: fix or fill in a title's name, developer, description, and more by hand, and it stays that way even after the catalogue updates
 - Local caching of game artwork, so covers and banners keep working even if the remote image host is unreachable
-- Safe duplicate file resolution, automatic when verification gives a clear answer, manual otherwise
+- Duplicate file detection and resolution, both automatic (with your choice of preferring the larger file or the compressed one) and manual, one at a time or in bulk
+- A live view of what's actually happening in the background - task progress and what each worker is doing, in real time
 - A direct "Verify library now" action, and other library management improvements
 - Settings export/import from the web UI
 

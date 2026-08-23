@@ -277,22 +277,35 @@ class Mutation:
         return library.resolve_duplicate_files(file_obj.id, all_ids)
 
     @described_mutation
-    def resolve_duplicates_by_size(self, info: Info) -> int:
+    def resolve_duplicates_by_size(
+        self, info: Info,
+        compression_preference: Annotated[Optional[str], strawberry.argument(
+            description="Checked before size, for a group whose tied copies aren't "
+                        "all the same compression status: 'compressed' or "
+                        "'uncompressed' to prefer that side regardless of which one "
+                        "happens to be bigger, or omit/'none' for pure size (the "
+                        "original behavior - a compressed file is always the smaller "
+                        "one, so without this a mixed nsp/nsz batch would always keep "
+                        "the uncompressed copy).")] = None,
+    ) -> int:
         """Bulk-resolve every current duplicate group that can be decided safely
-        right now, preferring the larger file whenever two or more copies are tied at
-        the best (Valid/Repack/Corrupt) rank - the same rule
-        `duplicateWinnerPreferringLargest` applies for the opt-in automatic setting,
-        just triggered immediately for every eligible group in one call instead of
-        one at a time. A group containing any unverified, modified, or signature-only
-        file is still skipped entirely - the same safety gate applies regardless of
-        this being a manual, explicit action. Returns how many groups were resolved,
-        so the caller can tell "nothing left to do" from "actually cleaned something
-        up" without a second query."""
+        right now. Within each group's own tied copies: `compressionPreference`
+        (if given, and if the tied copies aren't all the same compression status)
+        decides first, then whichever copy is larger settles anything it doesn't -
+        the same two-step rule `duplicateWinnerWithPreferences` uses for the opt-in
+        automatic setting, just triggered immediately for every eligible group in one
+        call instead of one at a time. A group containing any unverified, modified, or
+        signature-only file is still skipped entirely - the same safety gate applies
+        regardless of this being a manual, explicit action. Returns how many groups
+        were resolved, so the caller can tell "nothing left to do" from "actually
+        cleaned something up" without a second query."""
         import library
         _require_admin(info.context)
+        pref = compression_preference if compression_preference in ('compressed', 'uncompressed') else 'none'
         resolved = 0
         for app, files in library.duplicate_file_groups():
-            winner = library.duplicate_winner_preferring_largest(files)
+            winner = library.duplicate_winner_with_preferences(
+                files, prefer_larger_on_tie=True, compression_preference=pref)
             if winner is None:
                 continue
             library.resolve_duplicate_files(winner.id, [f.id for f in files])

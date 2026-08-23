@@ -69,6 +69,32 @@ class BigIntFilter:
         name="in", default=None)
 
 
+@described(strawberry.enum)
+class LibraryHealth(Enum):
+    """A title's owned files boiled down to one of four buckets, checked in this exact
+    priority order - each title lands in exactly one, never more than one. Only
+    meaningful for owned titles; every app (base, update, DLC) currently owned for the
+    title is considered, not just the base."""
+    CORRUPT = strawberry.enum_value(
+        "corrupt",
+        description="At least one owned file (base, update, or DLC) failed hash "
+                    "verification. Checked first: a corrupt file makes the rest of "
+                    "the picture moot.")
+    REPACK = strawberry.enum_value(
+        "repack",
+        description="No corrupt file, but at least one owned file's signature isn't "
+                    "Nintendo's own, even though its hash checks out.")
+    COMPLETE = strawberry.enum_value(
+        "complete",
+        description="No corrupt or repack file anywhere, the latest known update is "
+                    "owned, and every known DLC is owned.")
+    INCOMPLETE = strawberry.enum_value(
+        "incomplete",
+        description="No corrupt or repack file, but missing an update, missing some "
+                    "DLC, or both - the catch-all for anything that isn't the other "
+                    "three.")
+
+
 @described(strawberry.input)
 class TitleFilter:
     """Predicates on a title. Every populated field ANDs with the others."""

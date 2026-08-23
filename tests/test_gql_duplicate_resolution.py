@@ -360,3 +360,133 @@ def test_bulk_resolve_by_size_requires_admin(library):
     with library.app.app_context():
         with pytest.raises(NotAuthorized):
             Mutation().resolve_duplicates_by_size(FakeInfo())
+
+
+# --- resolveDuplicatesBySize with compressionPreference: mixed nsp/nsp + nsp/nsz -----
+
+BETA = "0100000000BBBBB0"[:16]
+GAMMA = "0100000000CCCCC0"[:16]
+
+
+@pytest.fixture
+def mixed_library(tmp_path, monkeypatch):
+    """The exact scenario reported: one duplicate group is nsp-vs-nsp (where "keep
+    the bigger one" is genuinely wanted), and another is nsp-vs-nsz of a *different*
+    title (where a pure size comparison would wrongly keep the uncompressed copy).
+    Both need to be resolved correctly in the *same* bulk call."""
+    config = tmp_path / "config"
+    config.mkdir()
+    titledb_dir = tmp_path / "titledb"
+    titledb_dir.mkdir()
+    games_dir = tmp_path / "games"
+    games_dir.mkdir()
+    monkeypatch.setattr(db_mod, "DB_FILE", str(config / "ownfoil.db"))
+    monkeypatch.setattr(db_mod, "TITLES_DB_FILE", str(config / "titles.db"))
+    monkeypatch.setattr(titledb.store, "TITLES_DB_FILE", str(config / "titles.db"))
+    monkeypatch.setattr(titledb.store, "DB_FILE", str(config / "ownfoil.db"))
+
+    app = create_app(f"sqlite:///{config / 'ownfoil.db'}")
+    app.add_url_rule("/api/graphql", view_func=graphql_dispatch, methods=["GET", "POST"])
+    init_db(app)
+
+    region_file = titledb_dir / "titles.US.en.json"
+    region_file.write_text(json.dumps({
+        BETA: {"id": BETA, "name": "Beta Game"}, GAMMA: {"id": GAMMA, "name": "Gamma Game"},
+    }))
+    (titledb_dir / "cnmts.json").write_text("{}")
+    (titledb_dir / "versions.json").write_text("{}")
+
+    with app.app_context():
+        titledb.store.import_from_json(str(region_file), "US.en")
+        beta = Titles(title_id=BETA, have_base=True)
+        gamma = Titles(title_id=GAMMA, have_base=True)
+        library_row = Libraries(path=str(games_dir))
+        db.session.add_all([beta, gamma, library_row])
+        db.session.flush()
+
+        beta_app = Apps(title_id=beta.id, app_id=BETA, app_version="0",
+                        app_type=APP_TYPE_BASE, owned=True)
+        gamma_app = Apps(title_id=gamma.id, app_id=GAMMA, app_version="0",
+                         app_type=APP_TYPE_BASE, owned=True)
+        db.session.add_all([beta_app, gamma_app])
+        db.session.flush()
+
+        def seed(app_row, name, content, **columns):
+            path = games_dir / name
+            path.write_bytes(content)
+            f = Files(library_id=library_row.id, filepath=str(path), folder=str(games_dir),
+                     filename=name, extension=name.rsplit(".", 1)[-1], size=len(content),
+                     identified=True, **columns)
+            db.session.add(f)
+            db.session.flush()
+            app_row.files.append(f)
+            return f
+
+        # Beta: nsp vs nsp, both Valid, different sizes - "keep bigger" is genuinely
+        # wanted here, and there's no compression difference to consider.
+        beta_small = seed(beta_app, "Beta.nsp", b"SMALL", signature_valid=True,
+                          hash_valid=True, compressed=False)
+        beta_big = seed(beta_app, "Beta(2).nsp", b"A LOT BIGGER CONTENT",
+                        signature_valid=True, hash_valid=True, compressed=False)
+
+        # Gamma: nsp (bigger, uncompressed) vs nsz (smaller, compressed), both Valid -
+        # a pure size comparison would wrongly keep the uncompressed one.
+        gamma_nsp = seed(gamma_app, "Gamma.nsp", b"BIGGER-UNCOMPRESSED-CONTENT",
+                         signature_valid=True, hash_valid=True, compressed=False)
+        gamma_nsz = seed(gamma_app, "Gamma.nsz", b"SMALL", signature_valid=True,
+                         hash_valid=True, compressed=True)
+
+        db.session.commit()
+        ids = types.SimpleNamespace(
+            beta_small=beta_small.id, beta_big=beta_big.id,
+            gamma_nsp=gamma_nsp.id, gamma_nsz=gamma_nsz.id)
+
+    return types.SimpleNamespace(app=app, client=app.test_client(), games_dir=games_dir, ids=ids)
+
+
+RESOLVE_BY_SIZE_WITH_PREF = """
+    mutation ResolveBySize($pref: String) {
+        resolveDuplicatesBySize(compressionPreference: $pref)
+    }"""
+
+
+def test_compression_preference_keeps_the_right_file_in_each_group_of_a_mixed_batch(mixed_library):
+    """The exact case reported: one bulk call, with compressionPreference set to
+    "compressed" - the nsp-vs-nsp group still resolves by size (compression doesn't
+    distinguish anything there, both are nsp), while the nsp-vs-nsz group correctly
+    keeps the compressed copy instead of the bigger uncompressed one."""
+    data = mutate(mixed_library, RESOLVE_BY_SIZE_WITH_PREF, {"pref": "compressed"})
+
+    assert data["resolveDuplicatesBySize"] == 2
+
+    # Beta (nsp vs nsp): size still decides - the bigger one survives.
+    assert not (mixed_library.games_dir / "Beta.nsp").exists() or \
+        (mixed_library.games_dir / "Beta.nsp").read_bytes() == b"A LOT BIGGER CONTENT"
+
+    # Gamma (nsp vs nsz): compression preference decides - the compressed copy
+    # survives even though it was the smaller file.
+    gamma_survivor = mixed_library.games_dir / "Gamma.nsz"
+    assert gamma_survivor.exists()
+    assert gamma_survivor.read_bytes() == b"SMALL"
+    assert not (mixed_library.games_dir / "Gamma.nsp").exists()
+
+
+def test_without_compression_preference_the_bulk_action_behaves_exactly_as_before(mixed_library):
+    """Backward compatibility: omitting compressionPreference (or "none") keeps the
+    original pure-size behavior for every group, including the nsp-vs-nsz one - so
+    existing automations/scripts calling this mutation without the new argument are
+    unaffected."""
+    data = mutate(mixed_library, RESOLVE_BY_SIZE_MUTATION)  # no compressionPreference arg at all
+
+    assert data["resolveDuplicatesBySize"] == 2
+    # Gamma: without the preference, pure size wins - the bigger, uncompressed nsp survives.
+    assert (mixed_library.games_dir / "Gamma.nsp").exists()
+    assert not (mixed_library.games_dir / "Gamma.nsz").exists()
+
+
+def test_compression_preference_uncompressed_keeps_the_nsp_instead(mixed_library):
+    data = mutate(mixed_library, RESOLVE_BY_SIZE_WITH_PREF, {"pref": "uncompressed"})
+
+    assert data["resolveDuplicatesBySize"] == 2
+    assert (mixed_library.games_dir / "Gamma.nsp").exists()
+    assert not (mixed_library.games_dir / "Gamma.nsz").exists()

@@ -53,14 +53,21 @@
         </section>
     </div>
 
-    <div class="mt-4 d-none" id="duplicatesSection">
+    <div class="mt-4" id="duplicatesSection">
         <div class="d-flex justify-content-between align-items-start mb-1 flex-wrap gap-2">
             <h4 class="mb-0">{{ t('stats.duplicate_files') }}</h4>
-            <button type="button" id="resolveBySizeBtn" class="btn btn-sm btn-outline-success">
-                <i class="bi bi-arrow-down-up"></i> {{ t('stats.duplicate_resolve_by_size') }}
-            </button>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <select class="form-select form-select-sm" id="bulkCompressionPreferenceSelect" style="width: auto;">
+                    <option value="none">{{ t('stats.duplicate_bulk_pref_none') }}</option>
+                    <option value="compressed">{{ t('stats.duplicate_bulk_pref_compressed') }}</option>
+                    <option value="uncompressed">{{ t('stats.duplicate_bulk_pref_uncompressed') }}</option>
+                </select>
+                <button type="button" id="resolveBySizeBtn" class="btn btn-sm btn-outline-success">
+                    <i class="bi bi-arrow-down-up"></i> {{ t('stats.duplicate_resolve_by_size') }}
+                </button>
+            </div>
         </div>
-        <p class="text-secondary small mb-3">{{ t('stats.duplicate_files_hint') }}</p>
+        <p class="text-secondary small mb-3">{{ t('stats.duplicate_files_hint') }} {{ t('stats.duplicate_bulk_pref_hint') }}</p>
         <div id="duplicateGroups"></div>
     </div>
 
@@ -139,6 +146,7 @@
         duplicateBulkResolved: {{ t('stats.duplicate_bulk_resolved') | tojson }},
         duplicateBulkNone: {{ t('stats.duplicate_bulk_none') | tojson }},
         duplicateBulkFailed: {{ t('stats.duplicate_bulk_failed') | tojson }},
+        duplicateNone: {{ t('stats.duplicate_none') | tojson }},
     };
     const I18N_FILES_LABEL = {{ t('common.files') | tojson }};
 
@@ -379,17 +387,16 @@
     }
 
     function renderDuplicateGroups(groups) {
-        const section = document.getElementById('duplicatesSection');
         const container = document.getElementById('duplicateGroups');
         container.innerHTML = '';
 
-        // No card at all when there's nothing to resolve - this section only earns
-        // its place on the page while there's an actual decision to make.
+        // The section itself (heading, hint, buttons) always stays visible, so the
+        // feature is discoverable even with nothing to show right now - only the
+        // content area switches between an empty-state message and the actual cards.
         if (!groups.length) {
-            section.classList.add('d-none');
+            container.innerHTML = `<p class="text-secondary fst-italic mb-0">${I18N.duplicateNone}</p>`;
             return;
         }
-        section.classList.remove('d-none');
         groups.forEach(group => container.appendChild(buildDuplicateGroupCard(group)));
     }
 
@@ -425,13 +432,14 @@
     }
 
     const RESOLVE_BY_SIZE_MUTATION = `
-        mutation ResolveBySize {
-            resolveDuplicatesBySize
+        mutation ResolveBySize($pref: String) {
+            resolveDuplicatesBySize(compressionPreference: $pref)
         }`;
 
     document.getElementById('resolveBySizeBtn').addEventListener('click', async function () {
         const btn = this;
         const originalHtml = btn.innerHTML;
+        const pref = document.getElementById('bulkCompressionPreferenceSelect').value;
         btn.disabled = true;
         btn.innerHTML = '...';
         try {
@@ -439,7 +447,7 @@
                 method: 'POST',
                 headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
                 credentials: 'same-origin',
-                body: JSON.stringify({query: RESOLVE_BY_SIZE_MUTATION}),
+                body: JSON.stringify({query: RESOLVE_BY_SIZE_MUTATION, variables: {pref: pref}}),
             });
             if (!r.ok) throw new Error(`GraphQL HTTP ${r.status}`);
             const body = await r.json();

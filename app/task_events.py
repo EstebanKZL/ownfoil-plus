@@ -13,22 +13,49 @@ from tasks import task_display_name
 logger = logging.getLogger('main')
 
 # Most a client is sent, however long the queue is: a library scan queues one task per
-# file, and nobody reads the ten-thousandth row. Oldest first, which is both the order
-# tasks are claimed in and the order the page lists them, so the window holds what is
-# running and what is next. A parent always has a lower id than its children, so this can
-# never keep a child while dropping its parent.
+# file, and nobody reads the ten-thousandth row. Oldest first is both the order tasks
+# are claimed in and the order the page lists them, so the window holds what is running
+# and what is next.
+#
+# "Oldest first" alone is not enough, though: a driver task (verify_library, an organize
+# pass, ...) enqueues every one of its direct children up front, but a delegated
+# grandchild - the actual verify_file/compress_file doing the work, and the one whose
+# completion_pct is what a percentage or a worker card needs - is only created when its
+# parent is dequeued and runs. With a large backlog, that grandchild's id lands well
+# past the oldest-N cutoff even while it is the one thing actually executing right now:
+# every sibling still-pending process_file_verify created upfront has a lower id and
+# fills the window first, silently pushing the live task's own row - and hence its
+# progress - out of what the client ever sees. So the window is the union of the usual
+# oldest-N *and* every currently-running task together with its full ancestor chain,
+# guaranteeing a live task (and the parents whose rows the tree needs to nest it under)
+# is never excluded just for being "new" underneath an old backlog.
 MAX_TASKS = 200
 
 # The file tasks label themselves with a filename rather than a row id, so the path is
 # joined in here. Resolving it per task instead would mean a query per file task on every
 # tick, several times a second.
 _TASK_SQL = """
+WITH RECURSIVE active_chain(id) AS (
+    SELECT id FROM tasks WHERE status = 'running'
+    UNION
+    SELECT t.parent_id
+    FROM tasks t JOIN active_chain a ON t.id = a.id
+    WHERE t.parent_id IS NOT NULL
+),
+oldest(id) AS (
+    SELECT id FROM tasks ORDER BY id LIMIT ?
+),
+wanted(id) AS (
+    SELECT id FROM active_chain
+    UNION
+    SELECT id FROM oldest
+)
 SELECT t.id, t.parent_id, t.task_name, t.status, t.completion_pct, t.input_json,
        t.error_message, t.created_at, t.started_at, t.run_after, t.worker_id, f.filepath
 FROM tasks t
+JOIN wanted w ON w.id = t.id
 LEFT JOIN files f ON f.id = json_extract(t.input_json, '$.file_id')
 ORDER BY t.id
-LIMIT ?
 """
 
 # Diff baselines, owned by the poller. Snapshots deliberately do not touch these: a

@@ -7,7 +7,7 @@ from strawberry.types import Info
 from typing_extensions import Annotated
 
 from .docs import arg as _arg, described, described_field
-from .filters import AppFilter, AppType, FileFilter, OrderBy, TitleFilter
+from .filters import AppFilter, AppType, FileFilter, LibraryHealth, OrderBy, TitleFilter
 from .mutations import Mutation
 from .resolvers import (
     resolve_app, resolve_apps, resolve_file, resolve_files, resolve_libraries,
@@ -70,6 +70,12 @@ class Query:
         search: Annotated[Optional[str], _arg(
             "Free-text match across the title's name and its ids - the search box, "
             "as opposed to `filter`'s exact predicates.")] = None,
+        library_health: Annotated[Optional[LibraryHealth], _arg(
+            "Bucket every owned app (base, update, DLC) currently attached to a "
+            "title into one of four states and keep only titles in the given one - "
+            "see LibraryHealth for the exact priority order. Only meaningful with "
+            "`owned: true`; combined with `owned: false` or omitted, it matches "
+            "nothing rather than being silently ignored.")] = None,
         order_by: Order = None,
         page: Page = 1,
         page_size: TitlePageSize = 50,
@@ -78,6 +84,7 @@ class Query:
         shop access; returns an empty page otherwise."""
         return resolve_titles(
             owned=owned, filter=filter, search=search, order_by=order_by,
+            library_health=library_health,
             page=page, page_size=page_size, ctx=info.context, info=info,
         )
 

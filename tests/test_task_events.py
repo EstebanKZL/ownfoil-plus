@@ -4,6 +4,8 @@ The contract is the event stream a client sees: a snapshot to start from, then o
 add/update/remove per thing that actually changed. Assertions are on those events, not
 on how the diff is computed.
 """
+import datetime
+
 import pytest
 
 import db as db_mod
@@ -142,6 +144,81 @@ def test_work_completing_pulls_the_next_tasks_into_the_window(queue, monkeypatch
     assert by_type(task_events.tasks_poll()) == {"remove": [ids[0]], "add": [ids[3]]}
 
 
+def test_a_running_grandchild_is_included_even_far_past_the_window_cutoff(queue, monkeypatch):
+    """Regression: the exact scenario reported. A verify_library-style root enqueues
+    many siblings up front (low, consecutive ids); one of them is dequeued and, only
+    then, spawns its own child - which gets a much higher id than any of its still-
+    pending siblings, since it is created *after* all of them already exist. With a
+    small window that child would previously never appear at all, hiding both its own
+    progress in the task list and its worker's card ("Idle" despite being busy)."""
+    monkeypatch.setattr(task_events, "MAX_TASKS", 3)
+    root = add_task(task_name="verify_library", status="waiting_for_children", input_hash="root")
+    siblings = [add_task(task_name="process_file_verify", status="pending",
+                         input_hash="sib%d" % n, parent_id=root.id) for n in range(20)]
+    active_parent = siblings[5]
+    active_parent.status = "waiting_for_children"
+    db.session.commit()
+    grandchild = add_task(task_name="verify_file", status="running", worker_id=1,
+                          input_hash="grandchild", parent_id=active_parent.id,
+                          started_at=datetime.datetime(2026, 1, 1))
+
+    snapshot_ids = {t["id"] for t in task_events.tasks_snapshot()}
+
+    assert grandchild.id in snapshot_ids
+    assert active_parent.id in snapshot_ids  # its parent, needed to nest it under
+    assert root.id in snapshot_ids           # and the root, same reason
+
+
+def test_the_running_grandchilds_own_progress_is_present_in_the_snapshot(queue, monkeypatch):
+    """Not just present - its actual completion_pct must come through too, since that's
+    the whole point (the visible row's own percentage, not a stale/zero placeholder)."""
+    monkeypatch.setattr(task_events, "MAX_TASKS", 3)
+    root = add_task(task_name="verify_library", status="waiting_for_children", input_hash="root")
+    for n in range(20):
+        add_task(task_name="process_file_verify", status="pending",
+                input_hash="sib%d" % n, parent_id=root.id)
+    parent = add_task(task_name="process_file_verify", status="waiting_for_children",
+                      input_hash="active_parent", parent_id=root.id)
+    grandchild = add_task(task_name="verify_file", status="running", worker_id=1,
+                          completion_pct=45, input_hash="grandchild", parent_id=parent.id,
+                          started_at=datetime.datetime(2026, 1, 1))
+
+    snapshot = {t["id"]: t for t in task_events.tasks_snapshot()}
+
+    assert snapshot[grandchild.id]["completionPct"] == 45
+
+
+def test_a_running_tasks_worker_id_is_resolvable_from_the_window(queue, monkeypatch):
+    """The Workers card looks up tasks[worker.taskId] on the frontend - if the actively
+    running task itself isn't in the window sent down, that lookup silently fails and
+    the card shows "Idle" despite the worker being busy. This is the data-level half of
+    that same bug: the running task's row (with its own worker_id) must be present."""
+    monkeypatch.setattr(task_events, "MAX_TASKS", 2)
+    root = add_task(task_name="verify_library", status="waiting_for_children", input_hash="root")
+    for n in range(10):
+        add_task(task_name="process_file_verify", status="pending",
+                input_hash="sib%d" % n, parent_id=root.id)
+    parent = add_task(task_name="process_file_verify", status="waiting_for_children",
+                      input_hash="active_parent", parent_id=root.id)
+    grandchild = add_task(task_name="verify_file", status="running", worker_id=3,
+                          input_hash="grandchild", parent_id=parent.id,
+                          started_at=datetime.datetime(2026, 1, 1))
+
+    snapshot = {t["id"]: t for t in task_events.tasks_snapshot()}
+
+    assert grandchild.id in snapshot
+    assert snapshot[grandchild.id]["workerId"] == 3
+
+
+def test_a_deep_backlog_without_any_active_work_still_respects_the_plain_window(queue, monkeypatch):
+    """No running task anywhere - the active-chain machinery must not change anything
+    about the ordinary case, which just wants the oldest N."""
+    monkeypatch.setattr(task_events, "MAX_TASKS", 3)
+    ids = [add_task(input_hash="h%d" % n).id for n in range(8)]
+
+    assert [t["id"] for t in task_events.tasks_snapshot()] == ids[:3]
+
+
 def test_a_snapshot_does_not_swallow_events_owed_to_other_clients(queue):
     """A client joining mid-tick must not absorb changes the poller has yet to emit."""
     task = add_task()
@@ -273,6 +350,61 @@ def test_purging_nothing_is_not_an_error(queue):
     import tasks as tasks_mod
     add_task(status="pending")
     assert tasks_mod.purge_failed_tasks() == 0
+
+
+def test_dismissing_a_failed_parent_with_failed_children_does_not_violate_the_fk_constraint(queue):
+    """Regression: a "Scan /games" task interrupted mid-run gets marked failed by
+    crash-recovery, and so do its own "Process <file>" children underneath it (exactly
+    what an unclean container restart produces). Dismissing the parent used to try to
+    delete it while its still-failed children's rows still pointed at it via parent_id,
+    raising a FOREIGN KEY constraint error that aborted the whole operation - silently,
+    from the caller's point of view, since the UI only logs the exception to the
+    console. The parent and every one of its failed children must all be gone after
+    one dismiss call on the parent."""
+    import tasks as tasks_mod
+
+    parent = add_task(task_name="scan_library", status="failed", input_hash="parent")
+    children = [add_task(task_name="process_file", status="failed",
+                         input_hash=f"child{i}", parent_id=parent.id) for i in range(3)]
+
+    assert tasks_mod.dismiss_task(parent.id) is True  # must not raise
+    assert task_events.tasks_snapshot() == []
+
+
+def test_purging_a_failed_parent_with_failed_children_clears_everything(queue):
+    """The exact scenario from the reported screenshot: purge_failed_tasks() must
+    empty the Failed list completely, not abort partway through on the first
+    failed-parent-with-failed-children group it encounters."""
+    import tasks as tasks_mod
+
+    parent = add_task(task_name="scan_library", status="failed", input_hash="parent")
+    for i in range(3):
+        add_task(task_name="process_file", status="failed",
+                input_hash=f"child{i}", parent_id=parent.id)
+    # A second, unrelated failed group, to confirm the fix doesn't just special-case
+    # the very first row - everything failed must be gone, in any order.
+    other_parent = add_task(task_name="scan_library", status="failed", input_hash="other")
+    add_task(task_name="process_file", status="failed", input_hash="other-child",
+            parent_id=other_parent.id)
+
+    tasks_mod.purge_failed_tasks()  # must not raise
+
+    assert task_events.tasks_snapshot() == []
+
+
+def test_dismissing_a_failed_task_with_a_failed_grandchild_recurses_correctly(queue):
+    """A failed task whose own child is *also* a parent (itself failed, with its own
+    failed child underneath) - the walk must recurse through every level, not just one."""
+    import tasks as tasks_mod
+
+    grandparent = add_task(task_name="scan_library", status="failed", input_hash="gp")
+    parent = add_task(task_name="process_library", status="failed",
+                      input_hash="p", parent_id=grandparent.id)
+    add_task(task_name="process_file_organize", status="failed",
+            input_hash="c", parent_id=parent.id)
+
+    assert tasks_mod.dismiss_task(grandparent.id) is True
+    assert task_events.tasks_snapshot() == []
 
 
 # --- Workers ---

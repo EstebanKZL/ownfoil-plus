@@ -11,7 +11,7 @@ from db import db
 
 from .context import GraphQLContext
 from .filters import (
-    AppFilter, AppType, FileFilter, OrderBy, TitleFilter, VerificationStatus,
+    AppFilter, AppType, FileFilter, LibraryHealth, OrderBy, TitleFilter, VerificationStatus,
     APP_FIELDS, APP_FIELDS_EXCEPT_OWNED, APP_ORDER, APP_ORDER_GROUPED,
     FILE_FIELDS, FILE_ORDER, TITLE_FIELDS, TITLE_ORDER,
     build_clauses, order_sql,
@@ -596,8 +596,42 @@ def resolve_title(title_id: str, ctx: GraphQLContext, info) -> Optional[Title]:
     return title
 
 
+# Whether an owned title (aliased `ot` by resolve_titles) has, among every app -
+# base, update, DLC alike - currently attached to it, at least one file with the given
+# verification verdict. Reused for both the Corrupt and Repack buckets below, each
+# with its own column condition.
+_TITLE_HAS_FILE_WHERE = """
+EXISTS (
+    SELECT 1 FROM apps ap
+    JOIN app_files af ON af.app_id = ap.id
+    JOIN files fl ON fl.id = af.file_id
+    WHERE ap.title_id = ot.id AND {condition}
+)
+"""
+_CORRUPT_CONDITION = "fl.hash_valid = 0 AND (fl.hash_modified IS NULL OR fl.hash_modified = 0)"
+_REPACK_CONDITION = "fl.signature_valid = 0 AND fl.hash_valid = 1"
+
+
+def _library_health_clause(health: LibraryHealth) -> str:
+    """The WHERE fragment for one LibraryHealth bucket - see the enum's own
+    description for the exact priority order this encodes (Corrupt first, then
+    Repack, then Complete, Incomplete as the catch-all)."""
+    is_corrupt = _TITLE_HAS_FILE_WHERE.format(condition=_CORRUPT_CONDITION)
+    is_repack = _TITLE_HAS_FILE_WHERE.format(condition=_REPACK_CONDITION)
+    is_complete = "COALESCE(ot.up_to_date, 0) = 1 AND COALESCE(ot.complete, 0) = 1"
+
+    if health == LibraryHealth.CORRUPT:
+        return is_corrupt
+    if health == LibraryHealth.REPACK:
+        return f"NOT ({is_corrupt}) AND ({is_repack})"
+    if health == LibraryHealth.COMPLETE:
+        return f"NOT ({is_corrupt}) AND NOT ({is_repack}) AND {is_complete}"
+    return f"NOT ({is_corrupt}) AND NOT ({is_repack}) AND NOT ({is_complete})"  # INCOMPLETE
+
+
 def resolve_titles(*, owned: Optional[bool], filter: Optional[TitleFilter],
                     search: Optional[str] = None, order_by: Optional[OrderBy] = None,
+                    library_health: Optional[LibraryHealth] = None,
                     page: int, page_size: int, ctx: GraphQLContext, info) -> TitleConnection:
     if not ctx.can_shop:
         return TitleConnection(total=0, items=[])
@@ -650,6 +684,13 @@ def resolve_titles(*, owned: Optional[bool], filter: Optional[TitleFilter],
     if search:
         params["search"] = f"%{search}%"
         where.append(_TITLE_SEARCH)
+    if library_health is not None:
+        # Only meaningful for owned titles - a catalogue-only row has no apps/files to
+        # inspect at all, so it can never be Complete/Incomplete/Corrupt/Repack.
+        if owned is not True:
+            where.append("0")  # matches nothing, rather than silently ignoring the arg
+        else:
+            where.append(_library_health_clause(library_health))
     order_by_sql = order_sql(order_by, TITLE_ORDER, default_order)
 
     where_sql = (" WHERE " + " AND ".join(where)) if where else ""

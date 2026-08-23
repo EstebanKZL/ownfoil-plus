@@ -89,6 +89,37 @@
             </div>
         </div>
 
+        <div class="col-auto d-none" id="listHealthFilterCol">
+            <div class="btn-group dropdown-center" role="group">
+                <button id="listHealthDropdownBtn" type="button" class="btn btn-primary dropdown-toggle"
+                    data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-funnel-fill"></i>
+                </button>
+                <ul class="dropdown-menu">
+                    <li>
+                        <div class="dropdown-item">
+                            <div class="btn-group-vertical w-100" role="group" aria-label="Library health filter">
+                                <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthAll" autocomplete="off" checked>
+                                <label class="btn btn-outline-primary" for="healthAll">{{ t('library.filter_all') }}</label>
+
+                                <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthComplete" autocomplete="off">
+                                <label class="btn btn-outline-primary" for="healthComplete">{{ t('library.filter_health_complete') }}</label>
+
+                                <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthIncomplete" autocomplete="off">
+                                <label class="btn btn-outline-primary" for="healthIncomplete">{{ t('library.filter_health_incomplete') }}</label>
+
+                                <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthCorrupt" autocomplete="off">
+                                <label class="btn btn-outline-primary" for="healthCorrupt">{{ t('library.filter_health_corrupt') }}</label>
+
+                                <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthRepack" autocomplete="off">
+                                <label class="btn btn-outline-primary" for="healthRepack">{{ t('library.filter_health_repack') }}</label>
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
         <div class="col-auto">
             <input type="text" id="textFilter" class="form-control" placeholder="{{ t('library.search_placeholder') }}">
         </div>
@@ -141,13 +172,21 @@
 
     <!-- Metadata for a base game, update or DLC, opened from the List view. -->
     <div class="modal fade" id="metadataModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-dialog modal-dialog-scrollable modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="metadataModalLabel">{{ t('library.details') }}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" id="metadataEditBtn" class="btn btn-sm icon-btn p-0 d-none" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ t('library.metadata_edit') }}"><i class="bi bi-pencil"></i></button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
                 </div>
                 <div class="modal-body" id="metadataModalBody"></div>
+                <div class="modal-footer d-none" id="metadataEditFooter">
+                    <button type="button" class="btn btn-sm btn-outline-danger me-auto" id="metadataResetBtn">{{ t('library.metadata_reset') }}</button>
+                    <button type="button" class="btn btn-sm btn-secondary" id="metadataCancelEditBtn">{{ t('library.metadata_cancel') }}</button>
+                    <button type="button" class="btn btn-sm btn-primary" id="metadataSaveBtn">{{ t('library.metadata_save') }}</button>
+                </div>
             </div>
         </div>
     </div>
@@ -187,12 +226,30 @@
         developer: {{ t('library.developer') | tojson }},
         publisher: {{ t('library.publisher') | tojson }},
         releaseDate: {{ t('library.release_date') | tojson }},
+        numberOfPlayers: {{ t('library.number_of_players') | tojson }},
+        genre: {{ t('library.genre') | tojson }},
+        rating: {{ t('library.rating') | tojson }},
+        fileSize: {{ t('library.file_size') | tojson }},
+        languages: {{ t('library.languages') | tojson }},
+        titleIdLabel: {{ t('library.title_id_label') | tojson }},
+        typeLabel: {{ t('library.type_label') | tojson }},
         versionLabel: {{ t('library.version_label') | tojson }},
         noMoreMetadata: {{ t('library.no_more_metadata') | tojson }},
         dlcFallbackName: {{ t('library.dlc_fallback_name') | tojson }},
         detailsTooltip: {{ t('library.details_tooltip') | tojson }},
         downloadTooltip: {{ t('library.download_tooltip') | tojson }},
         downloadAria: {{ t('library.download_aria') | tojson }},
+        metadataEdit: {{ t('library.metadata_edit') | tojson }},
+        metadataNameLabel: {{ t('library.metadata_name_label') | tojson }},
+        metadataDeveloperLabel: {{ t('library.metadata_developer_label') | tojson }},
+        metadataPublisherLabel: {{ t('library.metadata_publisher_label') | tojson }},
+        metadataReleaseDateLabel: {{ t('library.metadata_release_date_label') | tojson }},
+        metadataDescriptionLabel: {{ t('library.metadata_description_label') | tojson }},
+        metadataEditHint: {{ t('library.metadata_edit_hint') | tojson }},
+        metadataSaved: {{ t('library.metadata_saved') | tojson }},
+        metadataSaveFailed: {{ t('library.metadata_save_failed') | tojson }},
+        metadataResetDone: {{ t('library.metadata_reset_done') | tojson }},
+        metadataResetFailed: {{ t('library.metadata_reset_failed') | tojson }},
     };
 
     let itemsPerPage = 12;
@@ -208,6 +265,7 @@
     let activeOwnershipFilter = "";
     let activeUpdateFilter = "";
     let activeCompletionFilter = "";
+    let activeHealthFilter = "";
 
     const PLACEHOLDER_BANNER = '//placehold.it/400x200';
 
@@ -244,7 +302,10 @@
                     appId
                     appType
                     owned
-                    titledb { name bannerUrl iconUrl }
+                    titledb {
+                        name bannerUrl iconUrl description developer publisher releaseDate
+                        category numberOfPlayers rating languages size screenshots
+                    }
                     title { titleId name ownership { haveBase upToDate complete } }
                     versions { version owned releaseDate }
                 }
@@ -258,7 +319,15 @@
                  appType: $appType, search: $search, owned: $owned,
                  upToDate: $upToDate, complete: $complete) {
                 total
-                items { appId titledb { iconUrl } }
+                items {
+                    appId
+                    appType
+                    titledb {
+                        name iconUrl description developer publisher releaseDate
+                        category numberOfPlayers rating languages size screenshots
+                    }
+                    title { titleId name }
+                }
             }
         }`;
 
@@ -270,11 +339,12 @@
     // One row per game (title), with its full catalogue picture nested underneath -
     // every update and DLC titledb knows about, cross-referenced against what's
     // actually owned in `apps`. Deliberately always `owned: true` at the title level
-    // (this lists games the library has *something* for) with no upToDate/complete
-    // filter and no search-independent variation: the List view stays the same shape
-    // regardless of the toolbar filters, which only apply to Card/Icon. `files.id` is
-    // what a download button targets; `files` itself is admin-only and reads null for
-    // a shop-only viewer.
+    // (this lists games the library has *something* for). The toolbar's
+    // type/ownership/update/completion filters don't apply here (those are Card/Icon-
+    // only) - the List view's own filter is `libraryHealth` instead, which buckets a
+    // title by the worst state among *every* app it owns (base, update, and DLC
+    // together), not just the base. `files.id` is what a download button targets;
+    // `files` itself is admin-only and reads null for a shop-only viewer.
     //
     // Updates come from `updateApps` (ownfoil's own tracked apps, owned or not) rather
     // than `availableVersions` (titledb's raw version catalogue): titledb sometimes
@@ -286,12 +356,12 @@
     // same version as Missing, because titledb's catalogue disagreed with what ownfoil
     // itself considers a real update.
     const LIST_QUERY = `
-        query TitlesList($page: Int!, $pageSize: Int!, $search: String) {
-            titles(owned: true, search: $search, orderBy: {field: NAME}, page: $page, pageSize: $pageSize) {
+        query TitlesList($page: Int!, $pageSize: Int!, $search: String, $libraryHealth: LibraryHealth) {
+            titles(owned: true, search: $search, libraryHealth: $libraryHealth, orderBy: {field: NAME}, page: $page, pageSize: $pageSize) {
                 total
                 items {
                     titleId name intro description developer publisher releaseDate
-                    bannerUrl iconUrl size
+                    bannerUrl iconUrl size category numberOfPlayers rating languages screenshots
                     ownership { haveBase upToDate complete }
                     apps(owned: true) {
                         appId appType appVersion releaseDate
@@ -303,7 +373,10 @@
                     }
                     availableDlc {
                         appId version
-                        titledb { name description developer publisher releaseDate bannerUrl iconUrl }
+                        titledb {
+                            name description developer publisher releaseDate bannerUrl iconUrl
+                            size category numberOfPlayers rating languages screenshots
+                        }
                     }
                 }
             }
@@ -330,14 +403,15 @@
         };
     }
 
-    /** The List view ignores the toolbar filters entirely (see LIST_QUERY's comment) -
-     *  only paging and the search box carry over. */
+    /** The List view ignores the toolbar's type/ownership/update/completion filters
+     *  entirely - only paging, the search box, and its own health filter carry over. */
     function listQueryVariables() {
         const search = ($('#textFilter').val() || '').trim();
         return {
             page: currentPage,
             pageSize: itemsPerPage,
             search: search || null,
+            libraryHealth: activeHealthFilter || null,
         };
     }
 
@@ -437,6 +511,23 @@
         loadPage();
     }
 
+    /** The metadata-modal object for one app - shared by cardModel (Card view) and
+     *  iconMeta (Icon view), so both open the same modal with the same data on a
+     *  cover click. `id` is the title's own id for a BASE app (its own metadata is
+     *  the title's), or the app's own id for an UPDATE/DLC. */
+    function metaFromApp(app, name) {
+        const meta = app.titledb || {};
+        const title = app.title || {};
+        return {
+            id: app.appType === 'BASE' ? title.titleId : app.appId,
+            name: name,
+            developer: meta.developer, publisher: meta.publisher, releaseDate: meta.releaseDate,
+            description: meta.description, category: meta.category,
+            numberOfPlayers: meta.numberOfPlayers, rating: meta.rating, languages: meta.languages,
+            size: meta.size, screenshots: meta.screenshots, appType: app.appType,
+        };
+    }
+
     /**
      * One card from one app. A BASE app speaks for its title: ownership and the update
      * history come from the title, since a Switch update ships under its own app id.
@@ -467,6 +558,7 @@
                 has_latest_version: ownership.haveBase && ownership.upToDate,
                 has_all_dlcs: ownership.complete,
                 version: versions,
+                meta: metaFromApp(app, title.name || I18N.unrecognized),
             };
         }
 
@@ -482,6 +574,7 @@
             owned: app.owned,
             has_latest_version: ownedVersions.length > 0 && Math.max(...ownedVersions) >= highest,
             version: versions,
+            meta: metaFromApp(app, meta.name || I18N.unrecognized),
         };
     }
 
@@ -495,6 +588,8 @@
             const card = $('<div class="card text-bg-dark game-card"></div>');
 
             const img = $('<img class="card-img"></img>').attr('src', game.bannerUrl);
+            img.css('cursor', 'pointer').attr('title', I18N.detailsTooltip);
+            img.on('click', () => openMetadata(game.meta));
             card.append(img);
 
             const cardOverlay = $('<div class="card-img-overlay game-info"></div>');
@@ -522,11 +617,19 @@
                     .addClass(`text-bg-${game.has_latest_version ? 'success' : 'warning'}`)
                     .html(`<i class="bi ${game.has_latest_version ? 'bi-check-circle-fill' : 'bi-arrow-down-circle'}"></i>`);
                 if (game.version !== undefined && game.version.length && Array.isArray(game.version)) {
-                    const popoverContent = game.version.map(version =>
-                        `${version.release_date}: v${version.version} ${version.owned ? I18N.owned : I18N.missing}`
-                    ).join('\n');
+                    // Built via .text() per line, not string-interpolated into HTML
+                    // directly - version.release_date and the version number are real
+                    // (untrusted) catalogue data, and this keeps them escaped even
+                    // though the final content is rendered as HTML for the line breaks.
+                    const list = $('<div class="version-popover-list"></div>');
+                    game.version.forEach(version => {
+                        list.append($('<div></div>').text(
+                            `${version.release_date}: v${version.version} — ${version.owned ? I18N.owned : I18N.missing}`
+                        ));
+                    });
                     versionBadge.popover({
-                        content: popoverContent,
+                        content: list.html(),
+                        html: true,
                         trigger: 'click',
                         placement: 'top',
                     });
@@ -552,13 +655,27 @@
         });
     }
 
+    /** Icon view's equivalent of cardModel - much less display data (just the icon
+     *  image itself), but the same metadata-modal object on click. */
+    function iconModel(app) {
+        const meta = app.titledb || {};
+        const title = app.title || {};
+        const name = app.appType === 'BASE' ? (title.name || I18N.unrecognized) : (meta.name || I18N.unrecognized);
+        return {
+            iconUrl: meta.iconUrl || '',
+            meta: metaFromApp(app, name),
+        };
+    }
+
     function renderIconView(apps) {
         const gameGrid = $('#gameGrid');
         gameGrid.empty(); // Clear existing games
 
-        apps.forEach(app => {
-            const icon = $('<img class="game-icon">').attr('src', (app.titledb || {}).iconUrl || '');
-            gameGrid.append(icon);
+        apps.map(iconModel).forEach(icon => {
+            const img = $('<img class="game-icon">').attr('src', icon.iconUrl);
+            img.css('cursor', 'pointer').attr('title', I18N.detailsTooltip);
+            img.on('click', () => openMetadata(icon.meta));
+            gameGrid.append(img);
         });
 
         // Adjust icon sizes based on the slider value
@@ -619,39 +736,226 @@
         return `/api/titledb-image/${encodeURIComponent(id)}/${kind}`;
     }
 
+    // The title/DLC currently shown in the metadata modal - set by openMetadata,
+    // read by the edit/save/reset handlers below so they don't need meta re-passed
+    // through every button's own click handler.
+    let currentMetadata = null;
+
     /** Opens the shared metadata modal with whatever fields a title/DLC record has.
      *  Every value goes through .text(), since it's real (untrusted) catalogue data. */
     function openMetadata(meta) {
+        currentMetadata = meta;
+        renderMetadataView(meta);
+        $('#metadataEditFooter').addClass('d-none');
+        $('#metadataEditBtn').toggleClass('d-none', !(IS_ADMIN && meta.id));
+        new bootstrap.Modal(document.getElementById('metadataModal')).show();
+    }
+
+    /** id/icon/label for every optional detail row - built once, filtered per meta. */
+    /** titledb's release_date column is the raw "YYYYMMDD" digit string, with no
+     *  formatting applied anywhere upstream - shown as-is it reads as a meaningless
+     *  number. Anything that doesn't match that exact shape is shown unchanged rather
+     *  than mangled, since the catalogue isn't perfectly consistent about it. */
+    function formatTitledbDate(raw) {
+        if (!raw) return null;
+        const match = /^(\d{4})(\d{2})(\d{2})$/.exec(String(raw).trim());
+        if (!match) return raw;
+        const [, year, month, day] = match;
+        return `${day}/${month}/${year}`;
+    }
+
+    /** titledb's own `size` field is a raw byte count as a string (per the schema's
+     *  own note, "not reliably numeric") - formatted through the same formatBytes()
+     *  every real file size in this app already goes through, for one consistent
+     *  unit style site-wide. Left as-is when it isn't a plain number, since some
+     *  catalogue entries already carry a pre-formatted string. */
+    function formatTitledbSize(raw) {
+        if (raw == null || raw === '') return null;
+        const n = Number(raw);
+        return Number.isFinite(n) && n > 0 ? formatBytes(n) : raw;
+    }
+
+    function metadataDetailRows(meta) {
+        const typeLabel = meta.appType === 'DLC' ? I18N.dlcSection : I18N.baseGame;
+        return [
+            ['bi-calendar-event', I18N.releaseDate, formatTitledbDate(meta.releaseDate)],
+            ['bi-people-fill', I18N.numberOfPlayers, meta.numberOfPlayers],
+            ['bi-tags-fill', I18N.genre, Array.isArray(meta.category) ? meta.category.join(', ') : meta.category],
+            ['bi-building', I18N.publisher, meta.publisher],
+            ['bi-code-slash', I18N.developer, meta.developer],
+            ['bi-shield-check', I18N.rating, meta.rating],
+            ['bi-hdd-fill', I18N.fileSize, formatTitledbSize(meta.size)],
+            ['bi-globe', I18N.languages, Array.isArray(meta.languages) ? meta.languages.join(', ') : meta.languages],
+            ['bi-upc-scan', I18N.titleIdLabel, meta.id],
+            ['bi-box-seam', I18N.typeLabel, meta.appType ? typeLabel : null],
+        ];
+    }
+
+    function renderMetadataView(meta) {
         $('#metadataModalLabel').text(meta.name || I18N.unrecognized);
         const body = $('#metadataModalBody').empty();
 
-        if (meta.id) {
-            body.append($('<img class="img-fluid rounded mb-3">').attr('src', titledbImageUrl(meta.id, 'banner')));
-        } else if (meta.bannerUrl) {
-            body.append($('<img class="img-fluid rounded mb-3">').attr('src', meta.bannerUrl));
+        const top = $('<div class="row g-3"></div>');
+
+        const bannerSrc = meta.id ? titledbImageUrl(meta.id, 'banner') : meta.bannerUrl;
+        if (bannerSrc) {
+            top.append($('<div class="col-12 col-sm-5"></div>').append(
+                $('<img class="img-fluid rounded w-100">').attr('src', bannerSrc).attr('alt', '')));
         }
 
-        const dl = $('<dl class="row mb-0"></dl>');
-        const addRow = (label, value) => {
-            if (!value) return;
-            dl.append($('<dt class="col-sm-4"></dt>').text(label));
-            dl.append($('<dd class="col-sm-8"></dd>').text(value));
-        };
-        addRow(I18N.developer, meta.developer);
-        addRow(I18N.publisher, meta.publisher);
-        addRow(I18N.releaseDate, meta.releaseDate);
-        addRow(I18N.versionLabel, meta.version != null ? `v${meta.version}` : null);
-        body.append(dl);
+        const rows = metadataDetailRows(meta).filter(([, , value]) => !!value);
+        const detailCol = $(`<div class="col-12 ${bannerSrc ? 'col-sm-7' : ''}"></div>`);
+        if (rows.length) {
+            const list = $('<div class="metadata-detail-list"></div>');
+            rows.forEach(([icon, label, value]) => {
+                const row = $('<div class="metadata-detail-row"></div>');
+                row.append($(`<i class="bi ${icon} metadata-detail-icon"></i>`));
+                const text = $('<div class="metadata-detail-text"></div>');
+                text.append($('<div class="metadata-detail-label text-secondary small"></div>').text(label));
+                text.append($('<div class="metadata-detail-value"></div>').text(value));
+                row.append(text);
+                list.append(row);
+            });
+            detailCol.append(list);
+        } else if (!bannerSrc) {
+            detailCol.append($('<p class="text-secondary mb-0"></p>').text(I18N.noMoreMetadata));
+        }
+        top.append(detailCol);
+        body.append(top);
 
         if (meta.description) {
             body.append($('<p class="mt-3 mb-0"></p>').text(meta.description));
         }
-        if (!meta.developer && !meta.publisher && !meta.releaseDate && meta.version == null && !meta.description) {
-            body.append($('<p class="text-secondary mb-0"></p>').text(I18N.noMoreMetadata));
+
+        const screenshots = Array.isArray(meta.screenshots) ? meta.screenshots : [];
+        if (screenshots.length) {
+            const carouselId = 'metadataScreenshotCarousel';
+            const carousel = $(`<div id="${carouselId}" class="carousel slide mt-3"></div>`);
+            const inner = $('<div class="carousel-inner rounded"></div>');
+            screenshots.forEach((url, i) => {
+                inner.append($(`<div class="carousel-item ${i === 0 ? 'active' : ''}"></div>`)
+                    .append($('<img class="d-block w-100">').attr('src', url).attr('alt', '')));
+            });
+            carousel.append(inner);
+            if (screenshots.length > 1) {
+                carousel.append($(`
+                    <button class="carousel-control-prev" type="button" data-bs-target="#${carouselId}" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon"></span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#${carouselId}" data-bs-slide="next">
+                        <span class="carousel-control-next-icon"></span>
+                    </button>
+                `));
+            }
+            body.append(carousel);
+            new bootstrap.Carousel(carousel.get(0), {ride: false});
         }
 
-        new bootstrap.Modal(document.getElementById('metadataModal')).show();
+        if (!rows.length && !bannerSrc && !meta.description && !screenshots.length) {
+            body.append($('<p class="text-secondary mb-0"></p>').text(I18N.noMoreMetadata));
+        }
     }
+
+    /** Swaps the modal into edit mode: a small form (name/developer/publisher/release
+     *  date/description) pre-filled with the currently-shown values, backed by the
+     *  existing setTitleOverride/deleteTitleOverride mutations - admin only, and only
+     *  for an entry that actually has an id to attach the override to. A blank field
+     *  is sent as omitted, not as an empty string, so it defers to whatever titledb
+     *  (or a lower-priority override) already has for it rather than blanking it out. */
+    function renderMetadataEditForm(meta) {
+        const body = $('#metadataModalBody').empty();
+        const field = (id, label, value, multiline) => {
+            const group = $('<div class="mb-3"></div>');
+            group.append($('<label class="form-label"></label>').attr('for', id).text(label));
+            const input = multiline
+                ? $('<textarea class="form-control" rows="3"></textarea>')
+                : $('<input type="text" class="form-control">');
+            input.attr('id', id).val(value || '');
+            group.append(input);
+            body.append(group);
+        };
+        field('metadataFieldName', I18N.metadataNameLabel, meta.name);
+        field('metadataFieldDeveloper', I18N.metadataDeveloperLabel, meta.developer);
+        field('metadataFieldPublisher', I18N.metadataPublisherLabel, meta.publisher);
+        field('metadataFieldReleaseDate', I18N.metadataReleaseDateLabel, meta.releaseDate);
+        field('metadataFieldDescription', I18N.metadataDescriptionLabel, meta.description, true);
+        body.append($('<p class="text-secondary small mb-0"></p>').text(I18N.metadataEditHint));
+        $('#metadataEditFooter').removeClass('d-none');
+    }
+
+    const SET_TITLE_OVERRIDE_MUTATION = `
+        mutation SetOverride($id: ID!, $record: String!) {
+            setTitleOverride(titleId: $id, record: $record) { titleId }
+        }`;
+    const DELETE_TITLE_OVERRIDE_MUTATION = `
+        mutation DeleteOverride($id: ID!) {
+            deleteTitleOverride(titleId: $id)
+        }`;
+
+    async function gqlMutate(query, variables) {
+        const r = await fetch('/api/graphql', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+            credentials: 'same-origin',
+            body: JSON.stringify({query, variables}),
+        });
+        if (!r.ok) throw new Error(`GraphQL HTTP ${r.status}`);
+        const body = await r.json();
+        if (body.errors && body.errors.length) {
+            throw new Error('GraphQL errors: ' + JSON.stringify(body.errors));
+        }
+        return body.data;
+    }
+
+    $('#metadataEditBtn').on('click', () => {
+        if (currentMetadata) renderMetadataEditForm(currentMetadata);
+    });
+
+    $('#metadataCancelEditBtn').on('click', () => {
+        if (currentMetadata) renderMetadataView(currentMetadata);
+        $('#metadataEditFooter').addClass('d-none');
+    });
+
+    $('#metadataSaveBtn').on('click', async function () {
+        if (!currentMetadata || !currentMetadata.id) return;
+        const btn = $(this).prop('disabled', true);
+        const record = {};
+        const maybeSet = (key, inputId) => {
+            const value = $(`#${inputId}`).val().trim();
+            if (value) record[key] = value;
+        };
+        maybeSet('name', 'metadataFieldName');
+        maybeSet('developer', 'metadataFieldDeveloper');
+        maybeSet('publisher', 'metadataFieldPublisher');
+        maybeSet('releaseDate', 'metadataFieldReleaseDate');
+        maybeSet('description', 'metadataFieldDescription');
+        try {
+            await gqlMutate(SET_TITLE_OVERRIDE_MUTATION,
+                {id: currentMetadata.id, record: JSON.stringify(record)});
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('metadataModal')).hide();
+            loadPage();
+        } catch (e) {
+            console.error(e);
+            alert(I18N.metadataSaveFailed);
+        } finally {
+            btn.prop('disabled', false);
+        }
+    });
+
+    $('#metadataResetBtn').on('click', async function () {
+        if (!currentMetadata || !currentMetadata.id) return;
+        const btn = $(this).prop('disabled', true);
+        try {
+            await gqlMutate(DELETE_TITLE_OVERRIDE_MUTATION, {id: currentMetadata.id});
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('metadataModal')).hide();
+            loadPage();
+        } catch (e) {
+            console.error(e);
+            alert(I18N.metadataResetFailed);
+        } finally {
+            btn.prop('disabled', false);
+        }
+    });
 
     /** A small info-circle icon-button that opens the metadata modal - distinct from
      *  the verification icon, which uses a question mark for a different meaning
@@ -811,7 +1115,9 @@
             titleLine.append($('<span></span>').text(t.name || I18N.unrecognized));
             const titleMetaBtn = metadataButton({
                 id: t.titleId, name: t.name, developer: t.developer, publisher: t.publisher,
-                releaseDate: t.releaseDate, description: t.description,
+                releaseDate: t.releaseDate, description: t.description, appType: 'BASE',
+                category: t.category, numberOfPlayers: t.numberOfPlayers, rating: t.rating,
+                languages: t.languages, size: t.size, screenshots: t.screenshots,
             });
             if (titleMetaBtn) titleLine.append(titleMetaBtn);
             headerText.append(titleLine);
@@ -848,7 +1154,9 @@
                 fileId: appFileId(baseApp),
                 meta: {
                     id: t.titleId, name: t.name, developer: t.developer, publisher: t.publisher,
-                    releaseDate: t.releaseDate, description: t.description,
+                    releaseDate: t.releaseDate, description: t.description, appType: 'BASE',
+                    category: t.category, numberOfPlayers: t.numberOfPlayers, rating: t.rating,
+                    languages: t.languages, size: t.size, screenshots: t.screenshots,
                 },
             }));
 
@@ -909,7 +1217,10 @@
                             meta: {
                                 id: d.appId, name: dlcMeta.name, developer: dlcMeta.developer,
                                 publisher: dlcMeta.publisher, releaseDate: dlcMeta.releaseDate,
-                                description: dlcMeta.description,
+                                description: dlcMeta.description, appType: 'DLC',
+                                category: dlcMeta.category, numberOfPlayers: dlcMeta.numberOfPlayers,
+                                rating: dlcMeta.rating, languages: dlcMeta.languages,
+                                size: dlcMeta.size, screenshots: dlcMeta.screenshots,
                                 version: d.version,
                             },
                         });
@@ -1027,6 +1338,7 @@
             ownership: activeOwnershipFilter,
             update: activeUpdateFilter,
             completion: activeCompletionFilter,
+            health: activeHealthFilter,
         }));
     }
 
@@ -1046,6 +1358,11 @@
 
             $('#completionComplete').prop('checked', filters.completion === 'Complete');
             $('#completionMissingDlc').prop('checked', filters.completion === 'Missing DLC');
+
+            $('#healthComplete').prop('checked', filters.health === 'COMPLETE');
+            $('#healthIncomplete').prop('checked', filters.health === 'INCOMPLETE');
+            $('#healthCorrupt').prop('checked', filters.health === 'CORRUPT');
+            $('#healthRepack').prop('checked', filters.health === 'REPACK');
 
             updateFilter();
         }
@@ -1086,6 +1403,17 @@
         } else {
             activeCompletionFilter = '';
         }
+        if ($('#healthComplete').is(":checked")) {
+            activeHealthFilter = 'COMPLETE';
+        } else if ($('#healthIncomplete').is(":checked")) {
+            activeHealthFilter = 'INCOMPLETE';
+        } else if ($('#healthCorrupt').is(":checked")) {
+            activeHealthFilter = 'CORRUPT';
+        } else if ($('#healthRepack').is(":checked")) {
+            activeHealthFilter = 'REPACK';
+        } else {
+            activeHealthFilter = '';
+        }
     }
 
     function onFilterChange() {
@@ -1107,6 +1435,7 @@
             $(`.view-toggle-btn[data-view="${currentView}"]`).addClass("active");
             $('#cardSizeRangeCol').toggleClass('d-none', currentView === 'list');
             $('#filterDropdownCol').toggleClass('d-none', currentView === 'list');
+            $('#listHealthFilterCol').toggleClass('d-none', currentView !== 'list');
         }
 
         const savedCardSize = localStorage.getItem('cardSize');
@@ -1153,12 +1482,13 @@
             localStorage.setItem('currentView', currentView);
             $('#cardSizeRangeCol').toggleClass('d-none', currentView === 'list');
             $('#filterDropdownCol').toggleClass('d-none', currentView === 'list');
+            $('#listHealthFilterCol').toggleClass('d-none', currentView !== 'list');
             // The views page different things (every card vs one icon per game), so the
             // page number from the previous view means nothing here.
             resetToFirstPage();
         });
 
-        $('.type-toggle, .ownership-toggle, .update-toggle, .completion-toggle').change(onFilterChange);
+        $('.type-toggle, .ownership-toggle, .update-toggle, .completion-toggle, .health-toggle').change(onFilterChange);
 
         // Listen to input changes in the text filter input
         $("#textFilter").on("input", function () {
