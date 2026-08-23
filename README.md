@@ -27,7 +27,7 @@ Ownfoil-Plus is a fork of [Ownfoil](https://github.com/a1ex4/ownfoil), created b
 [@a1ex4](https://github.com/a1ex4), distributed under the same **GNU AGPLv3**
 license. On top of the original project, this fork adds:
 
-- 🇬🇧🇪🇸 A full Spanish/English web interface
+- 🇬🇧/🇪🇸 A full Spanish/English web interface
 - A List view showing every game with its updates and DLC in one place, including what's still missing from your library
 - Local caching of game artwork, so covers and banners keep working even if the remote image host is unreachable
 - Safe duplicate file resolution, automatic when verification gives a clear answer, manual otherwise
