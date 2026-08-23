@@ -8,8 +8,20 @@
 [![Sphaira Version](https://img.shields.io/badge/Sphaira-v1.0.6-%233cd57a)](https://github.com/NaGaa95/sphaira)
 [![CyberFoil Version](https://img.shields.io/badge/CyberFoil-v1.4.5-firebrick)](https://github.com/luketanti/CyberFoil)
 ![Web UI language](https://img.shields.io/badge/Web%20UI-%F0%9F%87%AC%F0%9F%87%A7%20English%20%7C%20%F0%9F%87%AA%F0%9F%87%B8%20Espa%C3%B1ol-ffc107)
-
-
+<table>
+  <tr>
+    <td><img src="image/foto1.jpg" width="300"></td>
+    <td><img src="image/foto2.jpg" width="300"></td>
+  </tr>
+  <tr>
+    <td><img src="image/foto3.jpg" width="300"></td>
+    <td><img src="image/foto4.jpg" width="300"></td>
+  </tr>
+  <tr>
+    <td><img src="image/foto5.jpg" width="300"></td>
+    <td><img src="image/foto6.jpg" width="300"></td>
+  </tr>
+</table>
 Ownfoil-Plus is a Switch library manager, that will also turn your library into a fully customizable and self-hosted Shop, supporting multiple clients. The goal of this project is to manage your library, identify any missing content (DLCs or updates) and provide a user friendly way to browse and install your content. Some of the features include:
 - multi user authentication
 - 🇬🇧/🇪🇸 **full web interface in English and Spanish**, switch anytime from the navbar
