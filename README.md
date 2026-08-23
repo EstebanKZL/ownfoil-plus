@@ -1,18 +1,18 @@
 # <img src="https://github.com/user-attachments/assets/3cfdf010-50c3-41ae-aa86-e31b22466686" height="28"> Ownfoil-Plus
-[![Static Badge](https://img.shields.io/badge/github-repo-blue?logo=github)](https://github.com/EstebanKZL/ownfoil-plus)
-[![Latest Release](https://img.shields.io/docker/v/estebankzl/ownfoil-plus?sort=semver)](https://github.com/EstebanKZL/ownfoil-plus/releases/latest)
-[![Docker Image Size (latest semver)](https://img.shields.io/docker/image-size/estebankzl/ownfoil-plus?sort=date&arch=amd64)](https://hub.docker.com/r/estebankzl/ownfoil-plus/tags)  
-[![Docker Pulls](https://img.shields.io/docker/pulls/estebankzl/ownfoil-plus?)](https://hub.docker.com/r/estebankzl/ownfoil-plus)
+[![Static Badge](https://img.shields.io/badge/github-repo-24292e?logo=github)](https://github.com/EstebanKZL/ownfoil-plus)
+[![Latest Release](https://img.shields.io/docker/v/estebankzl/ownfoil-plus?sort=semver&color=0969da)](https://github.com/EstebanKZL/ownfoil-plus/releases/latest)
+[![Docker Image Size (latest semver)](https://img.shields.io/docker/image-size/estebankzl/ownfoil-plus?sort=date&arch=amd64&color=fb8500)](https://hub.docker.com/r/estebankzl/ownfoil-plus/tags)  
+[![Docker Pulls](https://img.shields.io/docker/pulls/estebankzl/ownfoil-plus?color=06b6d4)](https://hub.docker.com/r/estebankzl/ownfoil-plus)
 ![Image archs](https://img.shields.io/badge/platforms-amd64%20%7C%20%20arm64%2Fv8%20%7C%20arm%2Fv7%20%7C%20arm%2Fv6-8A2BE2)  
 [![Tinfoil Version](https://img.shields.io/badge/Tinfoil-v20.0-da1c5c)](https://tinfoil.io/Download)
 [![Sphaira Version](https://img.shields.io/badge/Sphaira-v1.0.6-%233cd57a)](https://github.com/NaGaa95/sphaira)
 [![CyberFoil Version](https://img.shields.io/badge/CyberFoil-v1.4.5-firebrick)](https://github.com/luketanti/CyberFoil)
-![Web UI language](https://img.shields.io/badge/Web%20UI-%F0%9F%87%AC%F0%9F%87%A7%20English%20%7C%20%F0%9F%87%AA%F0%9F%87%B8%20Espa%C3%B1ol-blueviolet)
+![Web UI language](https://img.shields.io/badge/Web%20UI-%F0%9F%87%AC%F0%9F%87%A7%20English%20%7C%20%F0%9F%87%AA%F0%9F%87%B8%20Espa%C3%B1ol-ffc107)
 
 
-Ownfoil-Plus is a Nintendo Switch library manager, that will also turn your library into a fully customizable and self-hosted Shop, supporting multiple clients. The goal of this project is to manage your library, identify any missing content (DLCs or updates) and provide a user friendly way to browse and install your content. Some of the features include:
+Ownfoil-Plus is a Switch library manager, that will also turn your library into a fully customizable and self-hosted Shop, supporting multiple clients. The goal of this project is to manage your library, identify any missing content (DLCs or updates) and provide a user friendly way to browse and install your content. Some of the features include:
 - multi user authentication
-- 🇬🇧🇪🇸 **full web interface in English and Spanish**, switch anytime from the navbar
+- 🇬🇧/🇪🇸 **full web interface in English and Spanish**, switch anytime from the navbar
 - content identification using content decryption or filename
 - automatic library organization, verification and compression
 - automatic and manual duplicate file resolution

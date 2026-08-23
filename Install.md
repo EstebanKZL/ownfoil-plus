@@ -145,5 +145,3 @@ The version is the image tag, `latest` when you don't set one:
 In the compose file it is the `image` line:
 
     image: estebankzl/ownfoil-plus:latest
-
-Every branch of this repository can be published under its own tag too, i.e. `estebankzl/ownfoil-plus:fix-something`, to test a fix before it is released.
