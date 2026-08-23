@@ -7,11 +7,12 @@
 [![Tinfoil Version](https://img.shields.io/badge/Tinfoil-v20.0-da1c5c)](https://tinfoil.io/Download)
 [![Sphaira Version](https://img.shields.io/badge/Sphaira-v1.0.6-%233cd57a)](https://github.com/NaGaa95/sphaira)
 [![CyberFoil Version](https://img.shields.io/badge/CyberFoil-v1.4.5-firebrick)](https://github.com/luketanti/CyberFoil)
+![Web UI language](https://img.shields.io/badge/Web%20UI-%F0%9F%87%AC%F0%9F%87%A7%20English%20%7C%20%F0%9F%87%AA%F0%9F%87%B8%20Espa%C3%B1ol-blueviolet)
 
 
 Ownfoil-Plus is a Nintendo Switch library manager, that will also turn your library into a fully customizable and self-hosted Shop, supporting multiple clients. The goal of this project is to manage your library, identify any missing content (DLCs or updates) and provide a user friendly way to browse and install your content. Some of the features include:
 - multi user authentication
-- web interface for configuration and browsing the library, available in English and Spanish
+- 🇬🇧🇪🇸 **full web interface in English and Spanish**, switch anytime from the navbar
 - content identification using content decryption or filename
 - automatic library organization, verification and compression
 - automatic and manual duplicate file resolution
@@ -26,7 +27,7 @@ Ownfoil-Plus is a fork of [Ownfoil](https://github.com/a1ex4/ownfoil), created b
 [@a1ex4](https://github.com/a1ex4), distributed under the same **GNU AGPLv3**
 license. On top of the original project, this fork adds:
 
-- A full Spanish/English web interface
+- 🇬🇧🇪🇸 A full Spanish/English web interface
 - A List view showing every game with its updates and DLC in one place, including what's still missing from your library
 - Local caching of game artwork, so covers and banners keep working even if the remote image host is unreachable
 - Safe duplicate file resolution, automatic when verification gives a clear answer, manual otherwise
@@ -40,9 +41,6 @@ The Docker image for this fork is published at [estebankzl/ownfoil-plus](https:/
 Head over to [Install.md](./Install.md) for the full instructions:
 
 - [Using Docker](./Install.md#using-docker)
-- [Using uv (Windows users do this)](./Install.md#using-uv)
-- [Using Unraid](./Install.md#using-unraid)
-- [Using Proxmox LXC](./Install.md#using-proxmox-lxc)
 - [Using the Helm chart](./Install.md#using-the-helm-chart)
 
 > [!CAUTION]

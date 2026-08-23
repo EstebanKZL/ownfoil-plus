@@ -3,9 +3,6 @@
 Ownfoil-Plus is a web server listening on port `8465`, so anything that can run a Docker container or a Python environment will do - a NAS, a Raspberry Pi, an old laptop or your own desktop.
 
 - [Using Docker](#using-docker)
-- [Using uv (Windows users do this)](#using-uv)
-- [Using Unraid](#using-unraid)
-- [Using Proxmox LXC](#using-proxmox-lxc)
 - [Using the Helm chart](#using-the-helm-chart)
 - [Available versions](#available-versions)
 
@@ -88,53 +85,12 @@ This is usefull if you don't want to remember the `docker run` command and have 
 > [!TIP]
 > You can control the `UID` and `GID` of the user running the app in the container with the `PUID` and `PGID` environment variables. By default the user is created with `1000:1000`. If you want to have the same ownership for mounted directories, you need to set those variables with the UID and GID returned by the `id` command.
 
-# Using uv
-Ownfoil-Plus can be run with [uv](https://docs.astral.sh/uv/getting-started/installation/) without cloning this repository or managing a Python environment yourself. This is the easiest way to run it on Windows.
-<details>
-
-After installing `uv`, open a terminal (Press `Win + R`, type `wt`, and press `Enter`), then either:
-* Run it once, without installing anything permanently:
-```
-uvx ownfoil
-```
-* Install it as a persistent uv tool, so the `ownfoil` command stays available:
-```
-uv tool install ownfoil
-ownfoil
-```
-By default, `config/` and `data/` are created in the current directory. Pass a directory to use instead (works the same way with `uvx`, just append it after `ownfoil`):
-```
-ownfoil /path/to/persist
-uvx ownfoil /path/to/persist
-```
-
-On Windows, the first run also creates an `ownfoil.bat` next to `config/` and `data/`, so you can start Ownfoil-Plus again by double-clicking it instead of reopening a terminal.  
-The Web UI opens in your default browser once the server is ready. Pass `--no-browser` (or set `OWNFOIL_NO_BROWSER=1`) to disable it:
-
-```
-ownfoil --no-browser
-```
-
-On Windows, Gunicorn cannot run, so it's best suited for local/personal use there rather than a production deployment.
-</details>
-
-# Using Unraid
-
-Ownfoil-Plus is available on the [Community Apps store](https://ca.unraid.net/apps/ownfoil-19wo90o0t5ul8s), install it from the template.
-
-# Using Proxmox LXC
-
-If you run Proxmox, the [community scripts](https://community-scripts.org/scripts/ownfoil) project maintains a script that builds an LXC container with Ownfoil-Plus already installed and running as a service - follow the instructions on that page.
-
-> [!TIP]
-> That script is maintained by the community scripts project, not by this repository. If something goes wrong with the container itself, report it to them rather than here.
-
 # Using the Helm chart
 
 The chart lives in [`chart/`](./chart) of this repository - there is no chart repository to add, so clone this repo first, then from the `chart` directory:
 
 ```
-helm upgrade --install ownfoil ./ -n namespace -f values.yaml
+helm upgrade --install ownfoil-plus ./ -n namespace -f values.yaml
 ```
 
 # Remote access and HTTPS
@@ -161,8 +117,6 @@ Updating is just replacing the version you run.
 
 * Docker: `docker pull estebankzl/ownfoil-plus` then recreate the container
 * Docker compose: `docker compose pull && docker compose up -d`
-* uv tool: `uv tool upgrade ownfoil`
-* uvx: nothing to do, it fetches the latest version every time
 * Helm: bump `image.tag` and run the `helm upgrade` command again
 
 # Available versions
@@ -172,7 +126,6 @@ Whichever way you install it, you run one of these:
 | Version | What you get |
 | --- | --- |
 | `latest` | The most recent release, default when you don't select a version in particular. |
-| `develop` | The development branch - the next release as it is being written, with new features first and you contribute to testing the next version. |
 | A version number | That exact release, and the way to stay on a known version. |
 
 Versions are `major.minor.patch`, and each part can be used on its own to pin a specific "release channel" when upgrading:
@@ -187,22 +140,10 @@ Releases and what changed in them are on the [releases page](https://github.com/
 
 The version is the image tag, `latest` when you don't set one:
 
-    docker run ... estebankzl/ownfoil-plus:2.3
+    docker run ... estebankzl/ownfoil-plus:6.2
 
 In the compose file it is the `image` line:
 
-    image: estebankzl/ownfoil-plus:develop
+    image: estebankzl/ownfoil-plus:latest
 
-Every branch of this repository is published under its own name too, i.e. `estebankzl/ownfoil-plus:fix-something`, to test a fix before it is released.
-
-## uv
-
-Ownfoil-Plus is published on PyPI from `2.4.0` onwards, so a version is pinned like for any Python package:
-
-    uvx ownfoil@2.4.0
-    uv tool install ownfoil==2.4.0
-
-`develop` is not published there, install it from git instead:
-
-    uvx --from git+https://github.com/a1ex4/ownfoil@develop ownfoil
-    uv tool install git+https://github.com/a1ex4/ownfoil@develop
+Every branch of this repository can be published under its own tag too, i.e. `estebankzl/ownfoil-plus:fix-something`, to test a fix before it is released.
