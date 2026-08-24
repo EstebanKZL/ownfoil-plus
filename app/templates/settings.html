@@ -587,6 +587,43 @@
                     </div>
                 </div>
 
+                <hr class="hr-settings">
+                <h2 class="pb-2">{{ t('danger.heading') }}</h2>
+                <div class="border border-danger rounded p-3">
+                    <h4 class="pb-1">{{ t('danger.reset_heading') }}</h4>
+                    <p class="text-secondary mb-2">{{ t('danger.reset_description') }}</p>
+                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#resetLibraryModal">
+                        <i class="bi bi-exclamation-triangle"></i> {{ t('danger.reset_button') }}
+                    </button>
+                </div>
+
+                <!-- Reset Library Tracking Modal -->
+                <div class="modal fade" id="resetLibraryModal" tabindex="-1" aria-labelledby="resetLibraryModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h1 class="modal-title fs-5" id="resetLibraryModalLabel">{{ t('danger.reset_button') }}</h1>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>{{ t('danger.reset_description') }}</p>
+                                <ul>
+                                    <li>{{ t('danger.reset_bullet_files') }}</li>
+                                    <li>{{ t('danger.reset_bullet_kept') }}</li>
+                                    <li>{{ t('danger.reset_bullet_next') }}</li>
+                                </ul>
+                                <p class="mb-2">{{ t('danger.reset_type_to_confirm') }}</p>
+                                <input type="text" class="form-control" id="resetLibraryConfirmInput" autocomplete="off" placeholder="RESET">
+                                <div id="resetLibraryFeedback" class="form-text"></div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t('lib.cancel') }}</button>
+                                <button type="button" class="btn btn-danger" id="resetLibraryConfirmBtn" disabled>{{ t('danger.reset_button') }}</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 {% endblock %}
 
@@ -598,6 +635,8 @@
         shop: {{ t('auth.shop') | tojson }},
         backup: {{ t('auth.backup') | tojson }},
         admin: {{ t('auth.admin') | tojson }},
+        resetSuccess: {{ t('danger.reset_success') | tojson }},
+        resetFailed: {{ t('danger.reset_failed') | tojson }},
     };
 
     settings_map = {
@@ -1418,6 +1457,60 @@
             .finally(() => btn.prop('disabled', false));
     }
     $('#importSettingsBtn').on('click', importSettings);
+
+    // --- Reset library tracking: type-to-confirm, since this is destructive and
+    // irreversible - a plain confirm() dialog is too easy to click through without
+    // reading. -----------------------------------------------------------------
+
+    const RESET_LIBRARY_MUTATION = `
+        mutation ResetLibraryTracking($confirm: String!) {
+            resetLibraryTracking(confirm: $confirm)
+        }`;
+
+    const resetLibraryModalEl = document.getElementById('resetLibraryModal');
+    const resetConfirmInput = $('#resetLibraryConfirmInput');
+    const resetConfirmBtn = $('#resetLibraryConfirmBtn');
+    const resetFeedback = $('#resetLibraryFeedback');
+
+    resetConfirmInput.on('input', function () {
+        resetConfirmBtn.prop('disabled', $(this).val() !== 'RESET');
+    });
+
+    resetLibraryModalEl.addEventListener('hidden.bs.modal', () => {
+        // Reset the form each time the modal closes, so a stray leftover "RESET"
+        // from a previous open can't leave the button armed next time.
+        resetConfirmInput.val('');
+        resetConfirmBtn.prop('disabled', true);
+        resetFeedback.removeClass('text-success text-danger').text('');
+    });
+
+    resetConfirmBtn.on('click', async function () {
+        const btn = $(this).prop('disabled', true);
+        resetFeedback.removeClass('text-success text-danger').text('');
+        try {
+            const r = await fetch('/api/graphql', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    query: RESET_LIBRARY_MUTATION,
+                    variables: {confirm: resetConfirmInput.val()},
+                }),
+            });
+            if (!r.ok) throw new Error(`GraphQL HTTP ${r.status}`);
+            const body = await r.json();
+            if (body.errors && body.errors.length) {
+                throw new Error('GraphQL errors: ' + JSON.stringify(body.errors));
+            }
+            const n = body.data.resetLibraryTracking;
+            resetFeedback.addClass('text-success').text(I18N.resetSuccess.replace('{n}', n));
+            setTimeout(() => bootstrap.Modal.getOrCreateInstance(resetLibraryModalEl).hide(), 2000);
+        } catch (e) {
+            console.error(e);
+            resetFeedback.addClass('text-danger').text(I18N.resetFailed);
+            btn.prop('disabled', false);
+        }
+    });
 
     $(document).ready(function () {
         fillUserTable();

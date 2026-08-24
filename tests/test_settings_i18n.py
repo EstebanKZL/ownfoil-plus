@@ -209,3 +209,30 @@ def test_workers_and_backup_sections_both_have_a_leading_divider(client):
     between = html[workers_idx:backup_idx]
     assert '<hr class="hr-settings">' in between, (
         "Expected a divider between Workers and Backup sections")
+
+
+def test_reset_library_tracking_section_is_present_and_translated(client):
+    resp = client.get("/admin/settings")
+    html = resp.get_data(as_text=True)
+    assert 'id="resetLibraryModal"' in html
+    assert 'id="resetLibraryConfirmInput"' in html
+    assert 'id="resetLibraryConfirmBtn"' in html
+    assert "Danger zone" in html
+    assert "Type RESET below to confirm." in html
+    assert "const RESET_LIBRARY_MUTATION" in html
+
+    client.set_cookie("ownfoil_lang", "es")
+    resp = client.get("/admin/settings")
+    html = resp.get_data(as_text=True)
+    assert "Zona de peligro" in html
+    assert "RESET" in html
+
+
+def test_reset_library_confirm_button_starts_disabled(client):
+    """The button must not be clickable until the exact phrase is typed - present in
+    the initial markup as disabled, enabled only by the input's own JS handler."""
+    resp = client.get("/admin/settings")
+    html = resp.get_data(as_text=True)
+    button_start = html.index('id="resetLibraryConfirmBtn"')
+    button_tag = html[max(0, button_start - 200):button_start + 50]
+    assert "disabled" in button_tag

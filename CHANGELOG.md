@@ -4,6 +4,29 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.4.3]
+
+- Card and Icon views now use the same local artwork cache the List view already
+  did, instead of fetching covers straight from the remote catalogue.
+- Clicking a game's cover in Card or Icon view now opens the same detailed info
+  panel the List view's info button does.
+- Release dates and file sizes in that info panel are now formatted properly
+  (`24/06/2022`, `12.9 GiB`) instead of showing the catalogue's raw values.
+- A short activity history on the Tasks page, showing the most recent completed
+  operations (a scan, a verify pass, a titledb update, ...) - previously nothing
+  was kept once a task finished.
+- A pagination bar at the top of the Library page too, not just the bottom.
+- The List view's per-game banner now shows behind the whole card, the way it did
+  originally, instead of a shorter strip up top.
+- "Verify library now" is now an explicit, confirmed action that re-checks every
+  file, including already-verified ones - the automatic pipeline already picks up
+  new or never-verified files on its own, so the button now does the one thing it
+  couldn't before.
+- Fixed a real data-loss risk: an unstable or not-yet-reconnected network share
+  (or a drive still mounting at startup) could get files' tracked verification
+  state wiped and treated as brand new once it came back, instead of being left
+  alone until the drive was reliably back.
+
 ## [6.2.4.2]
 
 - Users with shop access (not just admins) can now use the List view's download

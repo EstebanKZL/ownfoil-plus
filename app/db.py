@@ -755,6 +755,40 @@ def remove_missing_files_from_db():
     db.session.commit()
     logger.info(f"Removed {len(missing)} missing files from database.")
 
+
+def reset_library_tracking():
+    """Forget every tracked file and the ownership derived from it - the explicit,
+    deliberate escape hatch for exactly the case the safety guards above are
+    *supposed* to refuse: a real, intentional mass change (moving to a smaller drive
+    a batch at a time, rebuilding the library from scratch, ...) that legitimately
+    leaves most or all of a library's tracked files missing at once, which
+    remove_missing_files_from_db's own proportional guard would otherwise leave
+    untouched rather than risk mistaking for a disconnected drive.
+
+    Unlike that automatic cleanup, this is never triggered by a scan or by anything
+    else running on its own - only ever by an admin explicitly asking for it (see the
+    resetLibraryTracking mutation), after confirming they understand what it does.
+    Every Files row is deleted regardless of whether its path currently exists, and
+    every App's `owned` flag is recomputed from what's left (nothing, so all false).
+    Everything else - titles, apps, DLC/update catalogue links, settings, users,
+    library root configuration - is untouched; the next scan starts completely fresh
+    at rediscovering and re-verifying whatever is actually on disk.
+
+    Returns how many file rows were removed.
+    """
+    count = Files.query.count()
+    if not count:
+        return 0
+    affected_apps = list(Apps.query.filter(Apps.owned.is_(True)).all())
+    Files.query.delete(synchronize_session=False)
+    db.session.flush()
+    for app in affected_apps:
+        app.owned = False
+    db.session.commit()
+    logger.warning(f"Library tracking reset: removed {count} file row(s), admin-requested.")
+    return count
+
+
 def increment_download_count(filepath):
     """Increment the download count for a file by filepath"""
     try:

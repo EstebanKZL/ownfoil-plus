@@ -163,6 +163,28 @@ TRANSLATIONS = {
     'backup.import_no_file': {'en': 'Choose a file first.', 'es': 'Elegí un archivo primero.'},
     'backup.import_failed': {'en': 'Could not import: {error}', 'es': 'No se pudo importar: {error}'},
 
+    'danger.heading': {'en': 'Danger zone', 'es': 'Zona de peligro'},
+    'danger.reset_heading': {'en': 'Reset library tracking', 'es': 'Resetear el seguimiento de la biblioteca'},
+    'danger.reset_description': {
+        'en': 'Cleans and resets the library, clearing all tracked file data.',
+        'es': 'Limpia y restablece la biblioteca, borrando todos los datos de archivos rastreados.'},
+    'danger.reset_bullet_files': {
+        'en': "Every tracked file and its verification is erased - can't be undone.",
+        'es': 'Se borra cada archivo rastreado y su verificación — no se puede deshacer.'},
+    'danger.reset_bullet_kept': {
+        'en': 'Titles, apps, settings, and users stay untouched.',
+        'es': 'Los títulos, apps, configuración y usuarios quedan intactos.'},
+    'danger.reset_bullet_next': {
+        'en': "Then just scan again to rediscover everything.",
+        'es': 'Después, escaneá de nuevo para redescubrir todo.'},
+    'danger.reset_type_to_confirm': {
+        'en': 'Type RESET below to confirm.', 'es': 'Escribí RESET abajo para confirmar.'},
+    'danger.reset_button': {'en': 'Reset library tracking', 'es': 'Resetear el seguimiento de la biblioteca'},
+    'danger.reset_success': {
+        'en': 'Done - {n} file(s) forgotten. Run a scan to rediscover your library.',
+        'es': 'Listo — se olvidaron {n} archivo(s). Corré un escaneo para redescubrir tu biblioteca.'},
+    'danger.reset_failed': {'en': 'Could not reset.', 'es': 'No se pudo resetear.'},
+
     'settings.missing_admin_heading': {'en': 'Missing admin account!', 'es': '¡Falta la cuenta de administrador!'},
     'settings.missing_admin_body': {
         'en': 'Ownfoil-Plus requires an admin account to enable authentication. Until an account with admin rights is created, authentication is disabled, anyone can access and change the configuration of your shop!',

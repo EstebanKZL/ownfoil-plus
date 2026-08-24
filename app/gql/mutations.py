@@ -163,6 +163,37 @@ class Mutation:
         return _task_by_id(task.id, info)
 
     @described_mutation
+    def reset_library_tracking(
+        self, info: Info,
+        confirm: Annotated[str, strawberry.argument(
+            description='Must be exactly "RESET" (case-sensitive) or the call is '
+                        "rejected without doing anything - a plain boolean is too "
+                        "easy to send by accident (a retried request, a script "
+                        "default) for something this destructive.")],
+    ) -> int:
+        """Forget every tracked file and the ownership derived from it, in every
+        configured library - the deliberate escape hatch for a real, intentional mass
+        change (moving to a smaller drive a batch at a time, rebuilding a library from
+        scratch, ...) that legitimately leaves most or all of what's tracked missing
+        at once. That exact shape is what the automatic cleanup after a scan
+        (`remove_missing_files_from_db`) refuses to act on by itself, on purpose - it
+        can't tell a real mass deletion apart from a disconnected drive, so it leaves
+        everything alone rather than risk losing verification state to a false alarm.
+        This is the opposite: never triggered by anything running on its own, only by
+        an admin explicitly asking for exactly this.
+
+        Titles, apps, DLC/update catalogue links, settings, users, and library root
+        configuration are all untouched - only which files are currently tracked, and
+        each app's owned flag. A scan afterward rediscovers and re-verifies whatever
+        is actually on disk from scratch. Returns how many file rows were removed.
+        """
+        import db as db_mod
+        _require_admin(info.context)
+        if confirm != "RESET":
+            raise MutationFailed('confirm must be exactly "RESET"')
+        return db_mod.reset_library_tracking()
+
+    @described_mutation
     def compress_file(
         self, info: Info,
         file_id: Annotated[strawberry.ID, strawberry.argument(
