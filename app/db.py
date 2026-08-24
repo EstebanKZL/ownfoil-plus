@@ -275,6 +275,22 @@ class Task(db.Model):
     )
 
 
+class TaskHistory(db.Model):
+    """One row per completed top-level operation (a scan, a verify pass, a titledb
+    update, a manual action, ...) - not per individual file. A library scan or verify
+    pass can spawn thousands of per-file tasks, and both `_try_complete_parent` and
+    `execute_task` in worker.py already delete those the moment they're done, so
+    without this there would be no lasting record that anything ever ran at all. Kept
+    to a bounded, most-recent window - see prune_task_history() - since this is meant
+    to answer "what happened recently and when," not to be a full audit log."""
+    __tablename__ = 'task_history'
+
+    id = db.Column(db.Integer, primary_key=True)
+    task_name = db.Column(db.String, nullable=False)
+    summary = db.Column(db.String, nullable=False)
+    completed_at = db.Column(db.DateTime, nullable=False, index=True)
+
+
 class IgnoredEvent(db.Model):
     """File events the watcher should ignore (written by worker before move/delete)."""
     __tablename__ = 'ignored_events'
@@ -665,14 +681,34 @@ def _library_looks_offline(library_path):
     except OSError:
         return True
 
+
+# If more than this fraction of a library's *currently tracked* files come back
+# missing in a single pass, the result is treated as suspicious rather than acted on -
+# see remove_missing_files_from_db's own docstring for why.
+MISSING_FILES_SANITY_THRESHOLD = 0.5
+
+
 def remove_missing_files_from_db():
     """Bulk-delete Files rows whose path no longer exists on disk; recompute affected app ownership.
 
     Skipped per-library when that library's root looks offline (see
-    `_library_looks_offline`), so an unmounted or disconnected drive is never mistaken
-    for an emptied library and does not wipe out its files' tracked verification and
-    identification state. Reconnecting the drive and scanning again picks the files
-    back up unchanged, rather than re-processing them as new."""
+    `_library_looks_offline`) - but an unstable network mount (a flaky Samba share, in
+    particular) doesn't always fail that cleanly: the root directory can still list a
+    handful of entries (a stale cached listing, or one subfolder that happens to still
+    be reachable) even while most individual files underneath it are transiently
+    unreachable, so `os.path.exists()` on each of them comes back False the same way it
+    would for a genuinely deleted file - there is no way to tell "not there" from "could
+    not check right now" from that call alone. So this also refuses to act on a library
+    where an implausibly large share of its tracked files (see
+    MISSING_FILES_SANITY_THRESHOLD) come back missing all at once: a user deleting a
+    handful of games is a normal, expected shape for this list, but most of a whole
+    library vanishing in one pass looks far more like a mount hiccup than a real mass
+    deletion, and the safe move is to leave that library's tracked state untouched and
+    let a later, healthier scan sort out what is actually still there. In both cases,
+    reconnecting the drive and scanning again picks the files back up unchanged, rather
+    than re-processing them as new - nothing here ever needs a file re-verified just
+    because it was briefly unreachable.
+    """
     all_files = Files.query.all()
     if not all_files:
         return
@@ -693,7 +729,20 @@ def remove_missing_files_from_db():
                 "or remove the library explicitly if it is meant to be empty."
             )
             continue
-        missing.extend(f for f in files if not os.path.exists(f.filepath))
+
+        library_missing = [f for f in files if not os.path.exists(f.filepath)]
+        if library_missing and len(library_missing) / len(files) > MISSING_FILES_SANITY_THRESHOLD:
+            logger.warning(
+                f"Library '{library_path}' has {len(library_missing)} of its "
+                f"{len(files)} tracked file(s) come back missing in this pass - more "
+                f"than {int(MISSING_FILES_SANITY_THRESHOLD * 100)}% at once, which "
+                "looks like a flaky or partially-reconnected mount rather than genuine "
+                "deletions. Skipping removal for this library this pass to avoid losing "
+                "their verification/identification state; once the mount is stable "
+                "again, a normal scan will clean up anything that's actually gone."
+            )
+            continue
+        missing.extend(library_missing)
 
     if not missing:
         return

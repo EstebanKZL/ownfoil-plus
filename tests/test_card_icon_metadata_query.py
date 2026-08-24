@@ -48,7 +48,7 @@ CARDS_QUERY = """
                 appType
                 owned
                 titledb {
-                    name bannerUrl iconUrl description developer publisher releaseDate
+                    name description developer publisher releaseDate
                     category numberOfPlayers rating languages size screenshots
                 }
                 title { titleId name ownership { haveBase upToDate complete } }
@@ -68,7 +68,7 @@ ICONS_QUERY = """
                 appId
                 appType
                 titledb {
-                    name iconUrl description developer publisher releaseDate
+                    name description developer publisher releaseDate
                     category numberOfPlayers rating languages size screenshots
                 }
                 title { titleId name }
@@ -160,3 +160,49 @@ def test_icons_query_returns_the_enriched_fields_too(library):
     assert td["numberOfPlayers"] == "1-4"
     assert td["screenshots"] == ["https://img/s1.jpg"]
     assert base["title"]["titleId"] == ALPHA
+
+
+def test_neither_query_fetches_titledbs_own_image_urls_anymore(library):
+    """Card and Icon views build cover URLs from the local cache proxy (title/app id
+    + /api/titledb-image/.../banner|icon) client-side now, not titledb's own
+    bannerUrl/iconUrl - fetching those would just be unused payload."""
+    assert "bannerUrl" not in CARDS_QUERY
+    assert "iconUrl" not in CARDS_QUERY
+    assert "iconUrl" not in ICONS_QUERY
+
+
+# --- Regression guard: the query strings *actually shipped* in index.html, not just
+# this file's own hand-kept copy above ------------------------------------------------
+
+def _extract_query(js_source, const_name):
+    import re
+    m = re.search(rf"const {const_name} = `(.*?)`;", js_source, re.DOTALL)
+    assert m, f"{const_name} not found in index.html - the template's own definition may have moved"
+    return m.group(1)
+
+
+def test_the_real_template_file_has_syntactically_valid_cards_and_icons_queries(library):
+    """The hand-kept CARDS_QUERY/ICONS_QUERY constants above are useful for readable
+    assertions, but they're a separate copy - a mistake in the real template (like a
+    JS-style `//` comment accidentally left inside the GraphQL string, which template
+    literals don't strip and GraphQL has no syntax for) would still pass every test in
+    this file while breaking Card/Icon view outright in the browser. This extracts the
+    *actual* query strings from app/templates/index.html and sends them to the real
+    schema, so that specific class of bug can't slip through silently again."""
+    import os
+    template_path = os.path.join(os.path.dirname(__file__), "..", "app", "templates", "index.html")
+    with open(template_path) as f:
+        source = f.read()
+
+    real_cards_query = _extract_query(source, "CARDS_QUERY")
+    real_icons_query = _extract_query(source, "ICONS_QUERY")
+
+    for name, real_query in [("CARDS_QUERY", real_cards_query), ("ICONS_QUERY", real_icons_query)]:
+        resp = library.client.get("/api/graphql", query_string={
+            "query": real_query,
+            "variables": json.dumps({"page": 1, "pageSize": 5, "appType": [APP_TYPE_BASE, APP_TYPE_DLC]}),
+        })
+        assert resp.status_code == 200, f"{name}: {resp.get_data(as_text=True)}"
+        body = resp.get_json()
+        assert "errors" not in body, f"{name} has a real syntax/field error: {body.get('errors')}"
+        assert body["data"]["apps"]["items"], f"{name} returned no items against the seeded fixture"

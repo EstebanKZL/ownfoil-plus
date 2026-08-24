@@ -26,7 +26,7 @@
 
 Ownfoil-Plus is a Switch library manager, that will also turn your library into a fully customizable and self-hosted Shop, supporting multiple clients. The goal of this project is to manage your library, identify any missing content (DLCs or updates) and provide a user friendly way to browse and install your content. Some of the features include:
 - multi user authentication
-- 🇬🇧/🇪🇸 **full web interface in English and Spanish**, switch anytime from the navbar
+- 🇬🇧🇪🇸 **full web interface in English and Spanish**, switch anytime from the navbar
 - content identification using content decryption or filename
 - automatic library organization, verification and compression
 - automatic and manual duplicate file resolution
@@ -41,7 +41,7 @@ Ownfoil-Plus is a fork of [Ownfoil](https://github.com/a1ex4/ownfoil), created b
 [@a1ex4](https://github.com/a1ex4), distributed under the same **GNU AGPLv3**
 license. On top of the original project, this fork adds:
 
-- 🇬🇧/🇪🇸 A full Spanish/English web interface, switch anytime from the navbar
+- 🇬🇧🇪🇸 A full Spanish/English web interface, switch anytime from the navbar
 - A List view showing every game with its updates and DLC in one place, including what's still missing from your library
 - A filter to quickly find titles that are complete, incomplete, or have a corrupt or repack file anywhere in them
 - A richer game info panel - genre, players, rating, languages, file size, and screenshots - opens from any view (List, Card, or Icon) by clicking the cover
@@ -53,6 +53,8 @@ license. On top of the original project, this fork adds:
 - Settings export/import from the web UI
 
 The Docker image for this fork is published at [estebankzl/ownfoil-plus](https://hub.docker.com/r/estebankzl/ownfoil-plus).
+
+See [CHANGELOG.md](./CHANGELOG.md) for what changed in each version.
 
 # Installation
 

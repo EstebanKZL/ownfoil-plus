@@ -138,7 +138,20 @@ class Mutation:
         return _task_by_id(last.id, info) if last else None
 
     @described_mutation
-    def verify_library(self, info: Info) -> Task:
+    def verify_library(
+        self, info: Info,
+        force: Annotated[bool, strawberry.argument(
+            description="Re-verify every eligible file regardless of its current "
+                        "verdict, including ones already Valid - not just the ones "
+                        "still missing one. Off by default: a plain call only picks "
+                        "up files that were never checked (or were interrupted "
+                        "mid-check), the same thing the automatic pipeline already "
+                        "does on its own, so it never re-does work that already "
+                        "settled. Meant for an explicit, deliberate re-check the "
+                        "admin asked for - the UI should confirm before setting "
+                        "this, since on a large library it can mean re-reading "
+                        "everything from disk.")] = False,
+    ) -> Task:
         """Verify every file that needs it, without first running a full Scan (which
         also discovers new files and re-organizes). Use this to resume a verification
         pass that was previously paused/cancelled, or to check the library on demand
@@ -146,7 +159,7 @@ class Mutation:
         part of its own pipeline, so this is only needed to trigger it on its own."""
         import tasks as tasks_mod
         _require_admin(info.context)
-        task, _ = tasks_mod.enqueue_task('verify_library')
+        task, _ = tasks_mod.enqueue_task('verify_library', {'force': force} if force else {})
         return _task_by_id(task.id, info)
 
     @described_mutation

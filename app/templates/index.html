@@ -160,14 +160,21 @@
         </div>
     </div>
     <p id="libraryStats" class="library-stats mt-3 mb-0 d-none"></p>
+
+    <!-- Pagination controls (top) - mirrors the bottom one, same content, so paging
+         doesn't require scrolling all the way down first. -->
+    <nav aria-label="Page navigation" class="mt-3">
+        <ul class="pagination justify-content-center" id="paginationControlsTop"></ul>
+    </nav>
+
     <div class="grid-container" id="gridContainer">
         <div class="row g-3" id="gameGrid"></div>
         <!-- <div class="row row-cols-1 row-cols-md-3 g-4" id="gameGrid"></div> -->
     </div>
 
-    <!-- Pagination controls -->
+    <!-- Pagination controls (bottom) -->
     <nav aria-label="Page navigation" class="mt-3">
-        <ul class="pagination justify-content-center" id="paginationControls"></ul>
+        <ul class="pagination justify-content-center" id="paginationControlsBottom"></ul>
     </nav>
 
     <!-- Metadata for a base game, update or DLC, opened from the List view. -->
@@ -201,6 +208,7 @@
     // Settings-toggle gate the /api/library/download/<id> route itself enforces -
     // this only controls whether the button is drawn, not the actual authorization.
     const IS_ADMIN = {{ is_admin | tojson }};
+    const IS_SHOP = {{ is_shop | tojson }};
     const WEB_DOWNLOADS_ENABLED = {{ web_downloads_enabled | tojson }};
 
     // Strings the JS below needs but can't hardcode in English.
@@ -291,6 +299,10 @@
 
     // groupByAppId: one item per app id rather than per (app id, version), so a card
     // is an item and `pageSize` really is the number of cards on the page.
+    //
+    // No bannerUrl/iconUrl fetched here - the cover always goes through the local
+    // cache proxy (see imageIdFor/titledbImageUrl), keyed by the title/app id already
+    // fetched below, never titledb's own URL directly.
     const CARDS_QUERY = `
         query Cards($page: Int!, $pageSize: Int!, $appType: [AppType!], $search: String,
                     $owned: Boolean, $upToDate: Boolean, $complete: Boolean) {
@@ -303,7 +315,7 @@
                     appType
                     owned
                     titledb {
-                        name bannerUrl iconUrl description developer publisher releaseDate
+                        name description developer publisher releaseDate
                         category numberOfPlayers rating languages size screenshots
                     }
                     title { titleId name ownership { haveBase upToDate complete } }
@@ -323,7 +335,7 @@
                     appId
                     appType
                     titledb {
-                        name iconUrl description developer publisher releaseDate
+                        name description developer publisher releaseDate
                         category numberOfPlayers rating languages size screenshots
                     }
                     title { titleId name }
@@ -365,11 +377,11 @@
                     ownership { haveBase upToDate complete }
                     apps(owned: true) {
                         appId appType appVersion releaseDate
-                        files { id filename size verificationStatus }
+                        downloadableFile { id size verificationStatus }
                     }
                     updateApps: apps(appType: [UPDATE]) {
                         appId appVersion releaseDate owned
-                        files { id filename size verificationStatus }
+                        downloadableFile { id size verificationStatus }
                     }
                     availableDlc {
                         appId version
@@ -534,6 +546,13 @@
      * A DLC app speaks for itself, and is up to date when its highest known version is
      * the one owned.
      */
+    /** The id the local image cache proxy needs for one app: the title's own id for
+     *  a BASE app (its artwork is the title's), or the app's own id for an
+     *  UPDATE/DLC - matching metaFromApp's own id logic below. */
+    function imageIdFor(app) {
+        return app.appType === 'BASE' ? (app.title || {}).titleId : app.appId;
+    }
+
     function cardModel(app) {
         const meta = app.titledb || {};
         const title = app.title || {};
@@ -545,14 +564,21 @@
         }));
         const isBase = app.appType === 'BASE';
         const recognized = isBase ? !!title.name : !!meta.name;
+        const imageId = imageIdFor(app);
+        // Always through the local cache proxy - see titledb/images.py and
+        // /api/titledb-image - so a slow or unreachable remote host only affects the
+        // first load of a given title's artwork, not every page view after that.
+        // Falls back to the placeholder only when there's no id to even ask for.
+        const bannerUrl = imageId ? titledbImageUrl(imageId, 'banner') : PLACEHOLDER_BANNER;
+        const iconUrl = imageId ? titledbImageUrl(imageId, 'icon') : '';
 
         if (isBase) {
             return {
                 id: recognized ? title.titleId : title.titleId + ' ' + I18N.notFoundInTitledb,
                 title_id_name: title.name || I18N.unrecognized,
                 name: title.name || I18N.unrecognized,
-                bannerUrl: meta.bannerUrl || PLACEHOLDER_BANNER,
-                iconUrl: meta.iconUrl || '',
+                bannerUrl: bannerUrl,
+                iconUrl: iconUrl,
                 app_type: 'BASE',
                 owned: ownership.haveBase,
                 has_latest_version: ownership.haveBase && ownership.upToDate,
@@ -568,8 +594,8 @@
             id: recognized ? app.appId : app.appId + ' ' + I18N.notFoundInTitledb,
             title_id_name: title.name || I18N.unrecognized,
             name: meta.name || I18N.unrecognized,
-            bannerUrl: meta.bannerUrl || PLACEHOLDER_BANNER,
-            iconUrl: meta.iconUrl || '',
+            bannerUrl: bannerUrl,
+            iconUrl: iconUrl,
             app_type: app.appType,
             owned: app.owned,
             has_latest_version: ownedVersions.length > 0 && Math.max(...ownedVersions) >= highest,
@@ -661,8 +687,9 @@
         const meta = app.titledb || {};
         const title = app.title || {};
         const name = app.appType === 'BASE' ? (title.name || I18N.unrecognized) : (meta.name || I18N.unrecognized);
+        const imageId = imageIdFor(app);
         return {
-            iconUrl: meta.iconUrl || '',
+            iconUrl: imageId ? titledbImageUrl(imageId, 'icon') : '',
             meta: metaFromApp(app, name),
         };
     }
@@ -708,23 +735,24 @@
         return $(`<i class="bi ${icon} ${cls}" data-bs-toggle="tooltip" data-bs-placement="top" title="${label}"></i>`);
     }
 
-    /** Total size across an app's files, or null. `files` is admin-only and reads null
-     *  for a shop-only viewer, in which case the row just omits the size badge. */
+    /** An app's file size, verification status, and downloadable id - all sourced
+     *  from `downloadableFile`, which (unlike the full `files` connection) is visible
+     *  to any shop-access viewer, not just an admin. Null across the board when the
+     *  app isn't owned. */
     function appSize(app) {
-        const files = app && app.files;
-        if (!files || !files.length) return null;
-        return files.reduce((sum, f) => sum + (f.size || 0), 0);
+        const f = app && app.downloadableFile;
+        return f ? f.size : null;
     }
 
     function appVerification(app) {
-        const files = app && app.files;
-        return files && files.length ? files[0].verificationStatus : null;
+        const f = app && app.downloadableFile;
+        return f ? f.verificationStatus : null;
     }
 
-    /** The first owned file id for an app, or null - what a download button targets. */
+    /** The owned file id for an app, or null - what a download button targets. */
     function appFileId(app) {
-        const files = app && app.files;
-        return files && files.length ? files[0].id : null;
+        const f = app && app.downloadableFile;
+        return f ? f.id : null;
     }
 
     // --- Metadata modal: one shared modal, populated per click --------------------
@@ -969,7 +997,8 @@
 
     /** A download icon-button, only ever built when the caller has already confirmed
      *  the admin toggle is on and the row is actually owned - see WEB_DOWNLOADS_ENABLED
-     *  and IS_ADMIN below. The endpoint itself re-checks both regardless. */
+     *  and IS_SHOP below (any user with shop access, admin or not - see access_shop()
+     *  in app.py). The endpoint itself re-checks both regardless. */
     function downloadButton(fileId, label) {
         const btn = $(`<a class="btn btn-sm icon-btn p-0" data-bs-toggle="tooltip" data-bs-placement="top" title="${I18N.downloadTooltip}"><i class="bi bi-download"></i></a>`);
         btn.attr('href', `/api/library/download/${fileId}`);
@@ -981,7 +1010,7 @@
      *  Owned/Missing badge, size, verification, metadata and (when enabled) download
      *  controls on the right. All text goes through .text(), never raw HTML, since it
      *  can carry a game's real (untrusted) name. */
-    function buildContentRow({label, sub, owned, size, sizeText, verification, fileId, meta}) {
+    function buildContentRow({label, sub, owned, size, verification, fileId, meta}) {
         const li = $('<li class="list-group-item bg-transparent d-flex justify-content-between align-items-center flex-wrap gap-2"></li>');
         const left = $('<span class="text-break"></span>').text(label);
         if (sub) {
@@ -993,11 +1022,6 @@
             .text(owned ? I18N.owned : I18N.missing));
         if (size != null) {
             right.append($('<span class="badge text-bg-secondary"></span>').text(formatBytes(size)));
-        } else if (sizeText) {
-            // Fallback for a shop-only viewer: `files` (the real, per-file size) is
-            // admin-only and reads null for them, but titledb's own (coarser,
-            // title-level) size string is still visible.
-            right.append($('<span class="badge text-bg-secondary"></span>').text(sizeText));
         }
         if (owned) {
             const verBadge = verificationBadge(verification);
@@ -1005,7 +1029,7 @@
         }
         const metaBtn = metadataButton(meta);
         if (metaBtn) right.append(metaBtn);
-        if (owned && fileId != null && IS_ADMIN && WEB_DOWNLOADS_ENABLED) {
+        if (owned && fileId != null && IS_SHOP && WEB_DOWNLOADS_ENABLED) {
             right.append(downloadButton(fileId, label));
         }
         return li.append(left).append(right);
@@ -1092,12 +1116,12 @@
             const col = $('<div class="col-12"></div>');
             const card = $('<div class="card text-bg-dark list-game-card mb-3"></div>');
             if (t.titleId) {
-                // A fixed-height strip, not a background stretched across the whole
-                // (growing) card - see .list-banner-strip in style.css for why: the
-                // same gradient stretched over a tall expanded card diluted contrast
-                // exactly where it mattered most, deep in a long list of rows.
-                // Points at the local image proxy (titledbImageUrl), not titledb's
-                // own URL directly - see /api/titledb-image and titledb/images.py.
+                // Sits behind the whole card - see .list-card-body's own gradient in
+                // style.css for the fixed-pixel fade zone that keeps contrast readable
+                // even on a tall expanded card (the fade has to live there, in front,
+                // not on this element - see that class's comment for why). Points at
+                // the local image proxy (titledbImageUrl), not titledb's own URL
+                // directly - see /api/titledb-image and titledb/images.py.
                 card.append($('<div class="list-banner-strip"></div>')
                     .css('background-image', `url("${titledbImageUrl(t.titleId, "banner")}")`));
             }
@@ -1149,7 +1173,6 @@
                 label: I18N.baseGame,
                 owned: ownership.haveBase,
                 size: appSize(baseApp),
-                sizeText: appSize(baseApp) == null ? t.size : null,
                 verification: appVerification(baseApp),
                 fileId: appFileId(baseApp),
                 meta: {
@@ -1271,9 +1294,17 @@
         return out;
     }
 
+    /** Builds one set of pagination <li> elements (prev, page numbers, next) with
+     *  their click handlers attached, appending clones of it into every target <ul>
+     *  given - clones because a single DOM node can only live in one place, but the
+     *  top and bottom pagination bars show the exact same state. `.clone(true)`
+     *  copies the attached jQuery event handlers along with the markup, so every
+     *  clone stays clickable. */
     function updatePaginationControls(totalPages) {
-        const paginationControls = $('#paginationControls');
-        paginationControls.empty(); // Clear existing pagination
+        const targets = [$('#paginationControlsTop'), $('#paginationControlsBottom')];
+        targets.forEach(t => t.empty());
+
+        const items = [];
 
         // Previous button
         const prevButton = $('<li class="page-item"></li>').addClass(`page-item ${currentPage === 1 ? 'disabled' : ''}`).html(`
@@ -1286,12 +1317,12 @@
                 goToPage(currentPage - 1);
             }
         });
-        paginationControls.append(prevButton);
+        items.push(prevButton);
 
         // Page numbers
         for (const entry of pageWindow(totalPages)) {
             if (entry === '...') {
-                paginationControls.append($('<li class="page-item disabled"></li>').html('<span class="page-link">&hellip;</span>'));
+                items.push($('<li class="page-item disabled"></li>').html('<span class="page-link">&hellip;</span>'));
                 continue;
             }
             const pageButton = $('<li class="page-item"></li>').addClass(`page-item ${entry === currentPage ? 'active' : ''}`).html(`<a class="page-link" href="#">${entry}</a>`);
@@ -1299,7 +1330,7 @@
                 e.preventDefault();
                 goToPage(entry);
             });
-            paginationControls.append(pageButton);
+            items.push(pageButton);
         }
 
         // Next button
@@ -1313,7 +1344,11 @@
                 goToPage(currentPage + 1);
             }
         });
-        paginationControls.append(nextButton);
+        items.push(nextButton);
+
+        targets.forEach(target => {
+            items.forEach(item => target.append(item.clone(true)));
+        });
     }
 
     function adjustCardSizes() {

@@ -10,6 +10,7 @@ from enum import Enum
 
 import strawberry
 from strawberry import Private
+from strawberry.types import Info
 from typing import List, Optional
 from typing_extensions import Annotated
 
@@ -151,6 +152,21 @@ class Worker:
 
 
 @described(strawberry.type)
+class TaskHistoryEntry:
+    """One completed top-level operation - a scan, a verify pass, a titledb update,
+    a manual action, and so on. Not one row per file: the frequent per-file work a
+    scan or verify pass spawns underneath is deliberately left out, so this stays a
+    short "what happened recently" list rather than a full audit trail. Bounded to
+    the most recent entries - see `resolve_task_history`."""
+    id: strawberry.ID = desc("Unique per entry. Not a Task id - the task itself is "
+                             "long gone by the time this is written.")
+    task_name: str = desc("The underlying task name, e.g. 'verify_library'.")
+    summary: str = desc("The same human-readable label the Tasks page shows while "
+                        "the operation is still running, e.g. 'Verify library files'.")
+    completed_at: str = desc("ISO 8601, UTC, when the operation finished.")
+
+
+@described(strawberry.type)
 class AppTypeCount:
     """Apps of one type, split by whether the library holds them. Both figures rather
     than one: a bucket counting only owned apps cannot say what is missing, and one
@@ -222,6 +238,18 @@ class LibraryStats:
         "closed, and `CORRUPT: 0` says something a missing bucket does not. Note "
         "`SIGNATURE_OK` and `SIGNATURE_FAILED` can only be non-zero while verification "
         "runs at `signature` depth. Admin only; null for any other role.", default=None)
+
+
+@described(strawberry.type)
+class DownloadableFile:
+    """The minimal, shop-safe slice of `File` a download button needs - see
+    `App.downloadableFile`. Never carries filename, folder, or anything else `File`
+    itself exposes only to an admin."""
+    id: strawberry.ID = desc("Same id `files { id }` would give an admin for the "
+                             "same file - what the download route takes.")
+    size: Optional[BigInt] = desc("Bytes on disk, same figure `files { size }` would give an admin.", default=None)
+    verification_status: VerificationStatus = desc(
+        "Same computed verdict as `File.verificationStatus`.")
 
 
 @described(strawberry.type)
@@ -412,13 +440,34 @@ class App:
     titledb_loaded: Private[Optional["Title"]] = None
 
     @described_field
-    def files(self, filter: NestedFileFilter = None) -> Optional[List[File]]:
+    def files(self, filter: NestedFileFilter = None, *, info: Info = None) -> Optional[List[File]]:
         """The files that carry this app - more than one when the same content sits in
         the library twice. Admin only: null for any other role, and null for apps
-        reached as a file's back-link (the recursion stops there)."""
+        reached as a file's back-link (the recursion stops there).
+
+        Checks admin access itself rather than trusting files_loaded alone: that field
+        also gets populated for a shop-only viewer who requests `downloadableFile`
+        (see that field's own docstring) - if this resolver only checked "is there
+        data," asking for both fields in the same query would leak the full File
+        objects (filepath included) to a non-admin viewer.
+        """
         if self.files_loaded is None:
             return None
+        if info is not None and not info.context.can_admin:
+            return None
         return [f for f in self.files_loaded if match_file(f, filter)]
+
+    @described_field
+    def downloadable_file(self) -> Optional["DownloadableFile"]:
+        """The id, size, and verification status of this app's first owned file - the
+        minimum a download button needs, visible to any shop-access viewer (not just
+        an admin, unlike `files`). Deliberately narrow: never exposes filename, folder,
+        or any other detail `files` carries. Null when nothing is owned."""
+        if not self.files_loaded:
+            return None
+        f = self.files_loaded[0]
+        return DownloadableFile(id=f.id, size=f.size,
+                                verification_status=VerificationStatus(verification_status(f)))
 
     @described_field
     def titledb(self) -> Optional["Title"]:

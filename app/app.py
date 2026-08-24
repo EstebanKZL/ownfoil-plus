@@ -221,9 +221,16 @@ def access_shop():
     # button should behave the same way the route it calls does.
     is_admin = (not admin_account_created()) or (
         current_user.is_authenticated and current_user.has_access('admin'))
+    # Same leniency during the bootstrap phase, and an admin always qualifies too
+    # (an admin account always carries shop access - see signup_post) - but this is
+    # also true for a plain authenticated user who only has shop access, which
+    # is_admin alone would miss. The download route itself checks the exact same
+    # thing server-side, so this only controls whether the button is worth showing.
+    is_shop = is_admin or (
+        current_user.is_authenticated and current_user.has_access('shop'))
     return render_template(
         'index.html', title='Library', admin_account_created=admin_account_created(),
-        is_admin=is_admin,
+        is_admin=is_admin, is_shop=is_shop,
         web_downloads_enabled=settings['library']['management'].get('web_downloads', {}).get('enabled', False),
     )
 
@@ -559,16 +566,18 @@ def serve_game(id):
     return response
 
 @app.route('/api/library/download/<int:file_id>')
-@access_required('admin')
+@access_required('shop')
 def download_library_file(file_id):
     """Serve a file straight from the web library UI's List view.
 
     Distinct from `serve_game`: that one is for shop clients (Tinfoil/etc.) and gates
     on HTTP Basic Auth against shop access, appropriate for a device that isn't running
-    a browser session. This one is for a signed-in admin's own browser, gated on the
-    normal session-based admin login plus an explicit opt-in setting - downloading
-    straight off the server's storage through the web UI is off by default even for an
-    admin, until turned on in Settings.
+    a browser session. This one is for a signed-in user's own browser - any user with
+    shop access, admin or not (an admin account always has shop access too, so this
+    doesn't take anything away from an admin-only setup) - gated on the normal
+    session-based login plus an explicit opt-in setting: downloading straight off the
+    server's storage through the web UI is off by default even once someone has shop
+    access, until turned on in Settings.
     """
     if not get_settings()['library']['management'].get('web_downloads', {}).get('enabled', False):
         return jsonify({'error': 'Web downloads are disabled in Settings > Library.'}), 403

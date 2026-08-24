@@ -109,3 +109,61 @@ def test_removal_updates_app_ownership(env):
     db.session.refresh(app)
     assert app.owned is False
     assert Files.query.get(kept.id) is not None
+
+
+# --- A library that still looks "online" (its root isn't empty) but most of its
+# individually-tracked files fail their own existence check - the shape a flaky or
+# partially-reconnected network mount (a Samba share dropping mid-listing) produces,
+# distinct from the two "root itself is gone/empty" cases above. -------------------
+
+def test_a_library_where_most_tracked_files_come_back_missing_at_once_is_left_alone(env):
+    """752 files, and a network hiccup makes ~80% of their individual existence checks
+    fail while the root directory itself still lists something (so it doesn't trip the
+    offline guard above) - this must not be read as "the user deleted most of their
+    library." All ten rows must survive, verification state included."""
+    files = [env.seed(env.library_b, name=f"Game{i}.nsp") for i in range(10)]
+    # One file stays on disk so the root isn't empty (doesn't trip _library_looks_offline).
+    for f in files[1:]:
+        os.remove(f.filepath)
+
+    remove_missing_files_from_db()
+
+    for f in files:
+        row = Files.query.get(f.id)
+        assert row is not None, f"{f.filename} should have survived - most of the " \
+            "library looking missing at once should be treated as suspicious"
+        assert row.hash_valid is True
+
+
+def test_a_library_where_only_a_small_fraction_is_missing_still_cleans_up_normally(env):
+    """The threshold is a *proportion*, not a hard count - the same library, but only
+    a small minority of its files are gone, is exactly the ordinary "user deleted a
+    couple of games" case and must still clean up as normal."""
+    files = [env.seed(env.library_b, name=f"Game{i}.nsp") for i in range(10)]
+    os.remove(files[0].filepath)  # only 1 of 10 (10%) - well under the threshold
+
+    remove_missing_files_from_db()
+
+    assert Files.query.get(files[0].id) is None
+    for f in files[1:]:
+        assert Files.query.get(f.id) is not None
+
+
+def test_the_sanity_guard_is_per_library_not_global(env):
+    """Library A looks like a flaky mount (most of it missing at once); library B has
+    an ordinary handful of real deletions. B must still clean up correctly regardless
+    of what's happening in A - the two are evaluated independently."""
+    a_files = [env.seed(env.library_a, name=f"A{i}.nsp") for i in range(10)]
+    for f in a_files[1:]:
+        os.remove(f.filepath)  # 90% of A missing at once - suspicious
+
+    b_kept = env.seed(env.library_b, name="Kept.nsp")
+    b_deleted = env.seed(env.library_b, name="Deleted.nsp")
+    os.remove(b_deleted.filepath)  # an ordinary single deletion in B
+
+    remove_missing_files_from_db()
+
+    for f in a_files:
+        assert Files.query.get(f.id) is not None, "library A should be left untouched"
+    assert Files.query.get(b_kept.id) is not None
+    assert Files.query.get(b_deleted.id) is None, "library B should still clean up normally"

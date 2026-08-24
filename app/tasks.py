@@ -14,14 +14,14 @@ from containers import compression
 from containers import verification as verification_lib
 from constants import COMPRESS_EXT, DECOMPRESS_EXT
 from db import (
-    db, Task, Files, Apps, Libraries, get_library_id, get_library_path, get_library_file_paths,
+    db, Task, TaskHistory, Files, Apps, Libraries, get_library_id, get_library_path, get_library_file_paths,
     get_libraries, add_title_id_in_db, get_title_id_db_id, add_file_to_app,
     file_exists_in_db, update_file_path, delete_file_by_filepath,
     delete_files_under_dir, add_ignored_event, pop_ignored_event,
     add_temp_file, remove_temp_file, claim_temp_file, get_temp_file_paths, purge_temp_files,
     set_library_scan_time, remove_missing_files_from_db,
     remove_file_from_apps, reset_file_identification, reset_file_verification, create_file,
-    verification_status,
+    verification_status, _library_looks_offline,
 )
 from settings import get_settings
 from utils import interval_string_to_timedelta, delete_empty_folders, human_size
@@ -169,6 +169,45 @@ def task_display_name(task_name, input_data):
     return task_name.replace('_', ' ').capitalize()
 
 
+# How many completed operations to keep - a "what happened recently" log, not a full
+# audit trail, so this stays a small bounded window rather than growing forever.
+TASK_HISTORY_LIMIT = 100
+
+# Root operations worth a history entry once they finish - the frequent per-file leaves
+# (process_file, verify_file, ...) are deliberately left out, or every scan of a large
+# library would fill the whole window with entries nobody would scroll through.
+_TASK_HISTORY_WORTHY = {
+    'scan_library', 'process_library', 'verify_library', 'library_maintenance',
+    'update_titledb', 'resolve_duplicate_files', 'cache_titledb_images',
+}
+
+
+def _record_task_history(task_name, input_data, completed_at):
+    """Write one history entry for a just-finished root operation, then trim the
+    table back down to TASK_HISTORY_LIMIT rows. Called from both places a root task
+    can finish - see _try_complete_parent and worker.py's execute_task."""
+    if task_name not in _TASK_HISTORY_WORTHY:
+        return
+    try:
+        db.session.add(TaskHistory(
+            task_name=task_name,
+            summary=task_display_name(task_name, input_data),
+            completed_at=completed_at,
+        ))
+        db.session.commit()
+        excess = TaskHistory.query.count() - TASK_HISTORY_LIMIT
+        if excess > 0:
+            stale_ids = [row.id for row in TaskHistory.query
+                        .order_by(TaskHistory.completed_at.asc()).limit(excess)]
+            TaskHistory.query.filter(TaskHistory.id.in_(stale_ids)).delete(synchronize_session=False)
+            db.session.commit()
+    except Exception as e:
+        # A history entry is a nice-to-have, never worth failing the operation it's
+        # recording over.
+        logger.warning(f"Could not record task history for '{task_name}': {e}")
+        db.session.rollback()
+
+
 # --- Progress ---
 _current_task_id = None
 
@@ -299,6 +338,11 @@ def _try_complete_parent(parent_id):
         if continuation:
             input_data = json.loads(row[2])
             continuation(**input_data)
+
+        # No grandparent means this was the root of the whole operation - worth a
+        # history entry (see _record_task_history) before its row disappears below.
+        if grandparent_id is None:
+            _record_task_history(task_name, json.loads(row[2]), datetime.datetime.utcnow())
 
         # Delete parent and its children
         Task.query.filter_by(parent_id=parent_id).delete()
@@ -834,12 +878,23 @@ def _identify(file, mgmt):
         enqueue_task('add_missing_apps_for_title', {'title_id': title_id})
 
 
-def _needs_verify(file, mgmt):
+def _verify_eligible(file, mgmt):
+    """Whether a file could ever be verified at all, independent of its current
+    verdict: extension is one verification covers, verification is turned on, and
+    keys are loaded. Shared by _needs_verify (only the still-unverified subset of
+    this) and force mode in verify_library_task (every eligible file, verified or
+    not) - so a force re-verify still correctly skips a file type verification
+    doesn't cover, exactly as a normal pass would, rather than trying to verify
+    literally everything."""
     verification = mgmt['verification']
-    if not verification['enabled'] or file.extension not in verification_lib.VERIFY_EXT:
+    return (verification['enabled'] and file.extension in verification_lib.VERIFY_EXT
+            and titles_lib.Keys.keys_loaded)
+
+
+def _needs_verify(file, mgmt):
+    if not _verify_eligible(file, mgmt):
         return False
-    if not titles_lib.Keys.keys_loaded:
-        return False
+    verification = mgmt['verification']
     if verification['depth'] == verification_lib.DEPTH_HASH:
         return file.hash_valid is None or (file.hash_valid is False
                                            and file.hash_modified is None)
@@ -891,7 +946,7 @@ ORGANIZE_STAGES = STAGES[:2]
 VERIFY_STAGES = STAGES[2:]
 
 
-def _drive_file(file_id, stages):
+def _drive_file(file_id, stages, force_verify=False):
     """Shared driver: walk one file down `stages`, inline stages here, delegated
     stages by task.
 
@@ -902,6 +957,12 @@ def _drive_file(file_id, stages):
     cascade down to the delegated work still in flight: `_cancel_atomic` already
     recurses into a `waiting_for_children` child, but has nothing to walk into for a
     detached top-level task an unparked driver would otherwise have left behind.
+
+    `force_verify` (only ever true for an explicit forced re-verify pass) makes the
+    'verify' stage specifically use `_verify_eligible` instead of its normal
+    `_needs_verify` - so a file already carrying a verdict is still walked into
+    verify_file rather than skipped as "nothing to do here". No other stage is
+    affected: organize/identify/compress still only run when they normally would.
     """
     done = set()
     while True:
@@ -909,13 +970,36 @@ def _drive_file(file_id, stages):
         if file is None:
             return
         if not os.path.exists(file.filepath):
+            # Same guard as remove_missing_files_from_db's own offline check, and for
+            # the same reason: this is exactly the check that was deleting a whole
+            # library's worth of not-yet-verified rows at container startup whenever
+            # process_library ran before a network mount had finished reconnecting -
+            # every file still needing verify/organize got walked in here individually
+            # and wiped, while already-verified ones were never looked at again and so
+            # silently survived. A library that looks offline gets left alone here
+            # too; a scan picks the file back up unchanged once the mount is back,
+            # rather than reprocessing it as new.
+            library_path = get_library_path(file.library_id)
+            if library_path and _library_looks_offline(library_path):
+                logger.warning(
+                    f"Library for file {file.filename} looks offline (path missing "
+                    "or empty) - not deleting its tracked row; a scan will pick it "
+                    "back up once the mount is back."
+                )
+                return
             logger.warning(f'File {file.filename} no longer exists, deleting from database.')
             remove_file_from_apps(file_id)
             Files.query.filter_by(id=file_id).delete(synchronize_session=False)
             db.session.commit()
             return
         mgmt = get_settings()['library']['management']
-        stage = next((s for s in stages if s.name not in done and s.applies(file, mgmt)), None)
+
+        def _stage_applies(s):
+            if force_verify and s.name == 'verify':
+                return _verify_eligible(file, mgmt)
+            return s.applies(file, mgmt)
+
+        stage = next((s for s in stages if s.name not in done and _stage_applies(s)), None)
         if stage is None:
             return
         done.add(stage.name)
@@ -941,9 +1025,11 @@ def process_file_organize_task(file_id, **kwargs):
 
 
 @register_task('process_file_verify')
-def process_file_verify_task(file_id, **kwargs):
-    """Library-wide verify phase: verify/compress one file, nothing else."""
-    _drive_file(file_id, VERIFY_STAGES)
+def process_file_verify_task(file_id, force=False, **kwargs):
+    """Library-wide verify phase: verify/compress one file, nothing else. `force` (see
+    verify_library_task) makes the verify stage specifically re-run even on an already-
+    verified file, instead of only ones still missing a verdict."""
+    _drive_file(file_id, VERIFY_STAGES, force_verify=force)
 
 
 @register_task('process_library')
@@ -975,14 +1061,27 @@ def _process_library_organize_done(**kwargs):
 
 
 @register_task('verify_library')
-def verify_library_task(**kwargs):
+def verify_library_task(force=False, **kwargs):
     """Phase 2 of 2: verify/compress every file that needs it, now that this pass's
-    organizing has settled."""
+    organizing has settled.
+
+    `force` (only ever set by an explicit "Verify library now, force" admin action,
+    never by the automatic pipeline) re-verifies every eligible file regardless of
+    its current verdict, including ones already Valid - see _verify_eligible for what
+    "eligible" still means even in force mode. Ordinarily (force left off, which is
+    what every automatic trigger and a plain "Verify library now" both use), a file
+    that already has a verdict is left completely alone: re-running this is never by
+    itself a reason to redo work verification already settled.
+    """
     mgmt = get_settings()['library']['management']
-    files = [f for f in Files.query.all() if any(s.applies(f, mgmt) for s in VERIFY_STAGES)]
-    logger.info(f'Processing library (verify phase): {len(files)} file(s).')
+    if force:
+        files = [f for f in Files.query.all()
+                if _verify_eligible(f, mgmt) or _needs_compress(f, mgmt)]
+    else:
+        files = [f for f in Files.query.all() if any(s.applies(f, mgmt) for s in VERIFY_STAGES)]
+    logger.info(f'Processing library (verify phase{", forced" if force else ""}): {len(files)} file(s).')
     for f in files:
-        enqueue_or_child('process_file_verify', {'file_id': f.id})
+        enqueue_or_child('process_file_verify', {'file_id': f.id, 'force': force} if force else {'file_id': f.id})
     set_waiting_for_children()
 
 

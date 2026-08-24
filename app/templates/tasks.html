@@ -29,6 +29,18 @@
     </div>
     <p id="failedEmpty" class="text-secondary fst-italic">{{ t('tasks.no_failures') }}</p>
 
+    <div class="task-section-head mt-4 mb-3">
+        <h4 class="mb-0">{{ t('tasks.history') }}</h4>
+        <button type="button" id="refreshHistory" class="icon-btn ms-auto"
+                title="{{ t('tasks.refresh_history') }}">
+            <i class="bi bi-arrow-clockwise"></i>
+        </button>
+    </div>
+    <div class="task-scroll">
+        <ul id="historyList" class="task-list"></ul>
+    </div>
+    <p id="historyEmpty" class="text-secondary fst-italic d-none">{{ t('tasks.no_history') }}</p>
+
     <hr class="hr-settings">
     <h2 class="pb-2">{{ t('tasks.workers') }}</h2>
     <div id="workerCards" class="row g-3"></div>
@@ -479,6 +491,55 @@
     // Elapsed times and countdowns move on their own, without a server event — but only
     // while connected, since nothing on a frozen page changes between ticks.
     setInterval(() => { if (stoppedAt === null) scheduleRender(); }, 1000);
+
+    // --- History: completed top-level operations, fetched once (not part of the live
+    // task/worker stream - it's a plain log, not something that itself progresses). ---
+
+    const HISTORY_QUERY = `
+        query { taskHistory(limit: 50) { id summary completedAt } }`;
+
+    function buildHistoryRow(entry) {
+        const li = document.createElement('li');
+        li.className = 'task-row';
+        const head = document.createElement('div');
+        head.className = 'task-head';
+        head.innerHTML = '<i class="bi bi-check-circle-fill text-success task-icon"></i>';
+        head.appendChild(Object.assign(document.createElement('span'), {
+            className: 'task-name', textContent: entry.summary,
+        }));
+        head.appendChild(Object.assign(document.createElement('span'), {
+            className: 'task-meta text-secondary',
+            textContent: new Date(entry.completedAt).toLocaleString(),
+        }));
+        li.appendChild(head);
+        return li;
+    }
+
+    async function loadHistory() {
+        try {
+            const r = await fetch('/api/graphql', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+                credentials: 'same-origin',
+                body: JSON.stringify({query: HISTORY_QUERY}),
+            });
+            if (!r.ok) throw new Error(`GraphQL HTTP ${r.status}`);
+            const body = await r.json();
+            if (body.errors && body.errors.length) {
+                throw new Error('GraphQL errors: ' + JSON.stringify(body.errors));
+            }
+            const entries = body.data.taskHistory || [];
+            const list = document.getElementById('historyList');
+            list.innerHTML = '';
+            entries.forEach(entry => list.appendChild(buildHistoryRow(entry)));
+            document.getElementById('historyEmpty').classList.toggle('d-none', entries.length > 0);
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    document.getElementById('refreshHistory').addEventListener('click', loadHistory);
+    loadHistory();
 
 </script>
 {% endblock %}

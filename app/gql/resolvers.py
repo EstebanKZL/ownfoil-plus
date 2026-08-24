@@ -555,6 +555,13 @@ def resolve_title(title_id: str, ctx: GraphQLContext, info) -> Optional[Title]:
     apps_titledb_sel = apps_sel.child("titledb")
     want_apps = ctx.can_shop and sel.has("apps")
     want_apps_files = ctx.can_admin and want_apps and apps_sel.has("files")
+    # downloadableFile is shop-visible (not admin-only like files itself), but it
+    # projects out of the exact same underlying fetch - so requesting it alone still
+    # needs that fetch to run, just without exposing the full File objects it fills in.
+    # See File.files()'s own extra admin check for why that's still safe even when
+    # both fields are requested together in the same query.
+    want_apps_downloadable = want_apps and apps_sel.has("downloadableFile")
+    hydrate_apps_files = want_apps_files or want_apps_downloadable
     want_apps_titledb = want_apps and apps_sel.has("titledb")
     want_apps_versions = want_apps and apps_sel.has("versions")
     want_apps_files_apps = want_apps_files and files_sel.has("apps")
@@ -578,11 +585,11 @@ def resolve_title(title_id: str, ctx: GraphQLContext, info) -> Optional[Title]:
     row = db.session.execute(text(sql), {"tid": tid}).first()
     if not row:
         return None
-    title = _build_title(row, with_apps=want_apps, with_files=want_apps_files)
+    title = _build_title(row, with_apps=want_apps, with_files=hydrate_apps_files)
     if want_apps:
         apps_map = _load_apps_for_titles(
             [tid], None,
-            with_files=want_apps_files,
+            with_files=hydrate_apps_files,
             with_titledb=want_apps_titledb,
             with_versions=want_apps_versions,
             with_files_apps=want_apps_files_apps,
@@ -646,6 +653,8 @@ def resolve_titles(*, owned: Optional[bool], filter: Optional[TitleFilter],
     want_items = sel.has("items")
     want_apps = want_items and items_sel.has("apps")
     want_apps_files = ctx.can_admin and want_apps and apps_sel.has("files")
+    want_apps_downloadable = want_apps and apps_sel.has("downloadableFile")
+    hydrate_apps_files = want_apps_files or want_apps_downloadable
     want_apps_titledb = want_apps and apps_sel.has("titledb")
     want_apps_versions = want_apps and apps_sel.has("versions")
     want_apps_files_apps = want_apps_files and files_sel.has("apps")
@@ -713,14 +722,14 @@ def resolve_titles(*, owned: Optional[bool], filter: Optional[TitleFilter],
     page_params = dict(params, limit=page_size, offset=(page - 1) * page_size)
     rows = db.session.execute(text(page_sql), page_params).all()
 
-    titles = [_build_title(r, with_apps=want_apps, with_files=want_apps_files)
+    titles = [_build_title(r, with_apps=want_apps, with_files=hydrate_apps_files)
               for r in rows]
     title_ids_uc = [(r.title_id or "").upper() for r in rows]
 
     if want_apps and title_ids_uc:
         apps_map = _load_apps_for_titles(
             title_ids_uc, None,
-            with_files=want_apps_files,
+            with_files=hydrate_apps_files,
             with_titledb=want_apps_titledb,
             with_versions=want_apps_versions,
             with_files_apps=want_apps_files_apps,
@@ -972,6 +981,21 @@ def resolve_libraries(*, ctx: GraphQLContext, info) -> List[Library]:
         "SELECT id, path, last_scan FROM libraries ORDER BY id")).all()
     return [Library(id=strawberry.ID(str(r.id)), path=r.path,
                     last_scan=_iso(r.last_scan))
+            for r in rows]
+
+
+def resolve_task_history(*, limit: int, ctx: GraphQLContext, info) -> "List[TaskHistoryEntry]":
+    """The most recent completed top-level operations, newest first. Admin only,
+    like the live task queue itself."""
+    if not ctx.can_admin:
+        return []
+    from .types import TaskHistoryEntry
+    rows = db.session.execute(text(
+        "SELECT id, task_name, summary, completed_at FROM task_history "
+        "ORDER BY completed_at DESC LIMIT :limit"
+    ), {"limit": max(1, min(limit, 100))}).all()
+    return [TaskHistoryEntry(id=strawberry.ID(str(r.id)), task_name=r.task_name,
+                             summary=r.summary, completed_at=_iso(r.completed_at))
             for r in rows]
 
 

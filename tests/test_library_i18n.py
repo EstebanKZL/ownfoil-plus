@@ -155,6 +155,17 @@ def test_metadata_modal_html_helpers_are_present(client):
     assert "new bootstrap.Carousel" in html
 
 
+def test_pagination_controls_exist_at_both_top_and_bottom(client):
+    """Two identical pagination bars - top one right under the stats line, bottom one
+    below the grid - both driven by the same updatePaginationControls() function."""
+    resp = client.get("/")
+    html = resp.get_data(as_text=True)
+    assert 'id="paginationControlsTop"' in html
+    assert 'id="paginationControlsBottom"' in html
+    assert "function updatePaginationControls" in html
+    assert "paginationControlsTop" in html and "paginationControlsBottom" in html
+
+
 def test_library_page_script_is_not_split_by_a_stray_closing_tag(client):
     """Same regression class as the other pages' equivalent tests."""
     resp = client.get("/")

@@ -24,7 +24,7 @@ def test_stats_page_renders_in_english_by_default(client):
 
     assert resp.status_code == 200
     assert "Verification status" in html
-    assert "Verify library now" in html
+    assert "Re-verify everything now" in html
     assert "Extensions" in html
     assert "App types" in html
 
@@ -36,7 +36,7 @@ def test_stats_page_renders_in_spanish(client):
 
     assert resp.status_code == 200
     assert "Estado de verificación" in html
-    assert "Verificar biblioteca ahora" in html
+    assert "Volver a verificar todo ahora" in html
     assert "Extensiones" in html
     assert "Tipos de aplicación" in html
     # The verification-status labels are JS literals rendered through |tojson, so they

@@ -1,8 +1,9 @@
 """`/api/library/download/<file_id>` is the List view's download button target. It has
-two independent gates - the caller must be a logged-in admin, AND the Settings toggle
-must be on - unlike the shop's own `/api/get_game/<id>`, which is Basic-Auth/shop-access
-gated and has no such toggle. Both gates are enforced server-side regardless of what the
-frontend chooses to draw a button for.
+two independent gates - the caller must be logged in with at least shop access (admin
+or a plain shop user), AND the Settings toggle must be on - unlike the shop's own
+`/api/get_game/<id>`, which is Basic-Auth/shop-access gated and has no such toggle.
+Both gates are enforced server-side regardless of what the frontend chooses to draw a
+button for.
 """
 import copy
 import io
@@ -69,11 +70,33 @@ def test_disabled_by_default_even_for_admin(shop):
     assert resp.status_code == 403
 
 
-def test_non_admin_shop_user_is_forbidden_even_when_enabled(shop):
-    """shop-only access is not enough - this route requires the 'admin' role
-    specifically, matching how the rest of the web UI's own admin actions are gated."""
+def test_shop_only_user_can_also_download_when_enabled(shop):
+    """A user with shop access but no admin role - a "Tienda" account - can download
+    too, as long as the setting is on. Shop access is the bar, not the admin role."""
     _enable_web_downloads(True)
     _login(shop, "shopper", fixture.PASSWORDS["shopper"])
+    file_id = _first_owned_file_id(shop)
+
+    resp = shop.client.get(f"/api/library/download/{file_id}")
+
+    assert resp.status_code == 200
+    assert resp.headers.get("Content-Disposition", "").startswith("attachment")
+
+
+def test_shop_only_user_is_forbidden_when_disabled(shop):
+    _login(shop, "shopper", fixture.PASSWORDS["shopper"])
+    file_id = _first_owned_file_id(shop)
+
+    resp = shop.client.get(f"/api/library/download/{file_id}")
+
+    assert resp.status_code == 403
+
+
+def test_a_user_with_neither_admin_nor_shop_access_is_still_forbidden(shop):
+    """The bar is shop access, not "logged in at all" - a login-only account with
+    neither role must still be turned away, setting or no setting."""
+    _enable_web_downloads(True)
+    _login(shop, "noshop", fixture.PASSWORDS["noshop"])
     file_id = _first_owned_file_id(shop)
 
     resp = shop.client.get(f"/api/library/download/{file_id}")
@@ -126,3 +149,39 @@ def test_disabling_after_being_enabled_takes_effect_immediately(shop):
     _enable_web_downloads(False)
 
     assert shop.client.get(f"/api/library/download/{file_id}").status_code == 403
+
+
+# --- The IS_SHOP flag the page itself renders with, per user type -------------------
+
+def _is_shop_flag(html):
+    """Pull the boolean literal the template injected for IS_SHOP, without depending
+    on exact surrounding whitespace."""
+    import re
+    m = re.search(r"const IS_SHOP = (true|false);", html)
+    assert m, "IS_SHOP was not found in the rendered page"
+    return m.group(1) == "true"
+
+
+def test_admin_page_render_carries_is_shop_true(shop):
+    _login(shop, "admin", fixture.PASSWORDS["admin"])
+    html = shop.client.get("/").get_data(as_text=True)
+    assert _is_shop_flag(html) is True
+
+
+def test_shop_only_user_page_render_carries_is_shop_true(shop):
+    """The whole point of this change: a shop-only account also gets IS_SHOP=true,
+    not just an admin - it used to be IS_ADMIN gating the download button here."""
+    _login(shop, "shopper", fixture.PASSWORDS["shopper"])
+    html = shop.client.get("/").get_data(as_text=True)
+    assert _is_shop_flag(html) is True
+
+
+def test_no_access_user_page_render_carries_is_shop_false(shop):
+    """The shop is private by default, and a no-access user gets turned away before
+    ever reaching the page - so this makes the shop public first, specifically to
+    observe IS_SHOP=false in the rendered output rather than a redirect/403."""
+    import settings as settings_mod
+    settings_mod.set_shop_settings({"public": True})
+    _login(shop, "noshop", fixture.PASSWORDS["noshop"])
+    html = shop.client.get("/").get_data(as_text=True)
+    assert _is_shop_flag(html) is False

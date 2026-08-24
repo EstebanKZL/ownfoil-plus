@@ -55,3 +55,20 @@ def test_the_inline_script_is_not_split_by_a_stray_closing_tag(client):
     assert "const CANCEL_MUTATION" in body
     assert "function renderWorkers" in body
     assert "live.start()" in body
+    assert "function loadHistory" in body
+    assert "const HISTORY_QUERY" in body
+
+
+def test_history_section_is_present_and_translated(client):
+    resp = client.get("/admin/tasks")
+    html = resp.get_data(as_text=True)
+    assert 'id="historyList"' in html
+    assert 'id="refreshHistory"' in html
+    assert "History" in html
+    assert "Nothing has finished yet." in html
+
+    client.set_cookie("ownfoil_lang", "es")
+    resp = client.get("/admin/tasks")
+    html = resp.get_data(as_text=True)
+    assert "Historial" in html
+    assert "Todav" in html  # "Todavía no terminó nada." - accent may render escaped

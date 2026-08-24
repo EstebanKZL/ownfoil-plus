@@ -80,11 +80,11 @@ LIST_QUERY = """
                 ownership { haveBase upToDate complete }
                 apps(owned: true) {
                     appId appType appVersion releaseDate
-                    files { id filename size verificationStatus }
+                    downloadableFile { id size verificationStatus }
                 }
                 updateApps: apps(appType: [UPDATE]) {
                     appId appVersion releaseDate owned
-                    files { id filename size verificationStatus }
+                    downloadableFile { id size verificationStatus }
                 }
                 availableDlc {
                     appId version
@@ -190,14 +190,16 @@ def test_title_level_metadata_and_ownership(library):
     assert title["ownership"] == {"haveBase": True, "upToDate": False, "complete": False}
 
 
-def test_owned_apps_carry_file_size_and_id_for_the_download_button(library):
+def test_owned_apps_carry_downloadable_file_size_and_id(library):
+    """downloadableFile is what the download button now reads client-side - shop-safe
+    unlike `files`, but should still carry the same id/size for the same app."""
     title = _title(library, "Alpha")
 
     apps_by_type = {}
     for app in title["apps"]:
         apps_by_type.setdefault(app["appType"], []).append(app)
     assert set(apps_by_type) == {"BASE", "UPDATE", "DLC"}
-    base_file = apps_by_type["BASE"][0]["files"][0]
+    base_file = apps_by_type["BASE"][0]["downloadableFile"]
     assert base_file["size"] == 6500000
     assert base_file["id"]  # present and truthy - what a download link targets
 

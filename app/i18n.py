@@ -59,10 +59,21 @@ TRANSLATIONS = {
     'stats.libraries': {'en': 'Libraries', 'es': 'Bibliotecas'},
     'stats.verification_status': {'en': 'Verification status', 'es': 'Estado de verificación'},
     'stats.click_row_hint': {'en': 'Click a row to see which titles', 'es': 'Tocá una fila para ver qué títulos son'},
-    'stats.verify_now': {'en': 'Verify library now', 'es': 'Verificar biblioteca ahora'},
+    'stats.verify_now': {'en': 'Re-verify everything now', 'es': 'Volver a verificar todo ahora'},
     'stats.verifying': {'en': 'Verifying...', 'es': 'Verificando...'},
     'stats.verify_queued': {'en': 'Verification queued', 'es': 'Verificación en cola'},
     'stats.verify_failed': {'en': 'Could not start', 'es': 'No se pudo iniciar'},
+    'stats.verify_now_confirm': {
+        'en': "This re-checks EVERY file in your library, including ones already "
+              "verified - not just new or unverified ones (those are already picked "
+              "up automatically, on their own, without needing this button). On a "
+              "large library this can take a long time and read every byte off "
+              "disk again. Continue?",
+        'es': 'Esto vuelve a revisar TODOS los archivos de tu biblioteca, incluidos '
+              'los que ya están verificados — no solo los nuevos o sin verificar '
+              '(esos ya se detectan solos, automáticamente, sin necesitar este '
+              'botón). En una biblioteca grande esto puede tardar mucho tiempo y '
+              'volver a leer cada byte del disco. ¿Continuar?'},
     'stats.could_not_load_files': {'en': 'Could not load files.', 'es': 'No se pudieron cargar los archivos.'},
     'stats.files_page_count': {'en': '{count} file{s} · page {page} of {totalPages}',
                                 'es': '{count} archivo{s} · página {page} de {totalPages}'},
@@ -137,6 +148,9 @@ TRANSLATIONS = {
     'tasks.running_for': {'en': 'running for {d}', 'es': 'corriendo hace {d}'},
     'tasks.left': {'en': '{d} left', 'es': '{d} restante'},
     'tasks.pid': {'en': 'pid {pid}', 'es': 'pid {pid}'},
+    'tasks.history': {'en': 'History', 'es': 'Historial'},
+    'tasks.no_history': {'en': 'Nothing has finished yet.', 'es': 'Todavía no terminó nada.'},
+    'tasks.refresh_history': {'en': 'Refresh history', 'es': 'Actualizar historial'},
 
     'backup.heading': {'en': 'Backup', 'es': 'Copia de seguridad'},
     'backup.description': {'en': 'Export your current settings to a file, or restore them from a previously exported one.',
@@ -227,8 +241,8 @@ TRANSLATIONS = {
     'lib.delete_older_updates_help': {'en': 'Deletes older update files when a newer version is available in the library.',
                                        'es': 'Elimina los archivos de update viejos cuando hay una versión más nueva disponible en la biblioteca.'},
     'lib.web_downloads_label': {'en': "Enable downloads from the Library page", 'es': 'Habilitar descargas desde la página de Biblioteca'},
-    'lib.web_downloads_help': {'en': "Lets an admin download a file directly from the browser in the Library page's List view. Off by default - files are served straight from the server's storage, so leave this off unless you actually need it.",
-                                'es': 'Permite que un administrador descargue un archivo directo desde el navegador, en la vista Lista de la Biblioteca. Apagado por defecto — los archivos se sirven directo desde el almacenamiento del servidor, así que dejalo apagado salvo que realmente lo necesites.'},
+    'lib.web_downloads_help': {'en': "Lets anyone with shop access (admin or not) download a file directly from the browser in the Library page's List view. Off by default - files are served straight from the server's storage, so leave this off unless you actually need it.",
+                                'es': 'Permite que cualquier usuario con acceso a la Tienda (sea administrador o no) descargue un archivo directo desde el navegador, en la vista Lista de la Biblioteca. Apagado por defecto — los archivos se sirven directo desde el almacenamiento del servidor, así que dejalo apagado salvo que realmente lo necesites.'},
     'lib.auto_resolve_duplicates_label': {'en': 'Automatically resolve duplicate files',
                                            'es': 'Resolver duplicados automáticamente'},
     'lib.auto_resolve_duplicates_help': {'en': 'When the same content ends up as two or more physical files (e.g. re-downloading something already owned) and every copy has already been fully verified, keep only the healthiest one - Valid beats Repack beats Corrupt - and delete the rest, renaming the survivor to drop any "(n)" suffix. Off by default. Only ever acts when every copy has a complete verdict and there is a single clear best one; a still-unverified file, or a tie between equally-ranked copies, is always left for you to resolve yourself in Settings > Duplicate files.',

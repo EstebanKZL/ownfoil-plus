@@ -99,6 +99,10 @@ class TaskWorker:
             on_task_completed(task_id, parent_id)
             # Delete completed non-parent tasks (parent+children are cleaned up in _try_complete_parent)
             if not parent_id:
+                # A leaf that is also its own root (no parent, never had children) -
+                # the only completion path other than _try_complete_parent, so this is
+                # the other spot that needs a history entry before the row is gone.
+                tasks_mod._record_task_history(task.task_name, input_data, task.completed_at)
                 db.session.delete(task)
                 db.session.commit()
         except Exception as e:

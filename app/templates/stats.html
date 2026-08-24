@@ -137,6 +137,7 @@
         verifying: {{ t('stats.verifying') | tojson }},
         verifyQueued: {{ t('stats.verify_queued') | tojson }},
         verifyFailed: {{ t('stats.verify_failed') | tojson }},
+        verifyNowConfirm: {{ t('stats.verify_now_confirm') | tojson }},
         couldNotLoadFiles: {{ t('stats.could_not_load_files') | tojson }},
         filesPageCount: {{ t('stats.files_page_count') | tojson }},
         duplicateKeepThis: {{ t('stats.duplicate_keep_this') | tojson }},
@@ -586,14 +587,18 @@
         if (verificationPage < totalPages) { verificationPage++; loadVerificationFilesPage(); }
     });
 
-    // --- Verify library now: resume/trigger verification without a full Scan -----
+    // --- Re-verify everything now: force a full re-check, bypassing the "already
+    // has a verdict" skip a plain verify pass (and the automatic pipeline) both use.
+    // Confirmed first - unlike a plain verify pass, this can mean re-reading a whole
+    // large library from disk, not just picking up what's new. ---------------------
 
     const VERIFY_LIBRARY_MUTATION = `
-        mutation VerifyLibraryNow {
-            verifyLibrary { id status }
+        mutation VerifyLibraryNow($force: Boolean!) {
+            verifyLibrary(force: $force) { id status }
         }`;
 
     document.getElementById('verifyNowBtn').addEventListener('click', async function () {
+        if (!window.confirm(I18N.verifyNowConfirm)) return;
         const btn = this;
         const originalHtml = btn.innerHTML;
         btn.disabled = true;
@@ -603,7 +608,7 @@
                 method: 'POST',
                 headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
                 credentials: 'same-origin',
-                body: JSON.stringify({query: VERIFY_LIBRARY_MUTATION}),
+                body: JSON.stringify({query: VERIFY_LIBRARY_MUTATION, variables: {force: true}}),
             });
             if (!r.ok) throw new Error(`GraphQL HTTP ${r.status}`);
             const body = await r.json();

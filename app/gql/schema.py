@@ -12,11 +12,11 @@ from .mutations import Mutation
 from .resolvers import (
     resolve_app, resolve_apps, resolve_file, resolve_files, resolve_libraries,
     resolve_stats, resolve_task, resolve_tasks, resolve_title, resolve_titles,
-    resolve_workers, resolve_duplicate_file_groups,
+    resolve_workers, resolve_duplicate_file_groups, resolve_task_history,
 )
 from .types import (
     App, AppConnection, DuplicateFileGroup, File, FileConnection, Library,
-    LibraryStats, Task, TaskStatus, Title, TitleConnection, Worker,
+    LibraryStats, Task, TaskHistoryEntry, TaskStatus, Title, TitleConnection, Worker,
 )
 
 
@@ -173,6 +173,17 @@ class Query:
     def libraries(self, info: Info) -> List[Library]:
         """The configured library roots. Admin only; empty for any other role."""
         return resolve_libraries(ctx=info.context, info=info)
+
+    @described_field
+    def task_history(
+        self, info: Info,
+        limit: Annotated[int, _arg(
+            "How many entries to return, newest first. Capped at 100.")] = 20,
+    ) -> List[TaskHistoryEntry]:
+        """The most recently completed top-level operations - a scan, a verify pass,
+        a titledb update, and so on, not one entry per file. Admin only; empty for
+        any other role."""
+        return resolve_task_history(limit=limit, ctx=info.context, info=info)
 
     @described_field
     def duplicate_file_groups(self, info: Info) -> List[DuplicateFileGroup]:

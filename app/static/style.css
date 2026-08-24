@@ -464,13 +464,24 @@ p.game-description {
     to { transform: rotate(360deg); }
 }
 
-/* Library list view: one row per game, Base/Updates/DLC unified underneath. The
-   banner lives in a fixed-height strip behind only the header - not stretched across
-   however tall the whole card grows once Updates/DLC are expanded. A background image
-   sized to the full (growing) card previously diluted the same gradient over more and
-   more pixels as a list expanded, which is exactly where legibility mattered most: deep
-   in a long list of rows. Below the fixed strip, the body is fully solid - zero image
-   bleed-through, regardless of how many rows are showing. */
+/* Library list view: one row per game, Base/Updates/DLC unified underneath. See the
+   comment just below (.list-game-card) for how the banner and its fade zone work. */
+/* The banner stretches across the whole (growing) card, not just a strip up top - the
+   game's own logo/artwork showing through behind every row, the way a store page
+   would show it. The catch that made an earlier version of this get replaced with a
+   short fixed strip: a gradient *sized to the card* fades to solid later and later as
+   a list expands, diluting exactly where legibility matters most - deep in a long
+   list of rows. The fix here is a fade zone at a *fixed pixel depth* instead (see
+   .list-card-body's own gradient) - a short card and a tall expanded one get the same
+   transition distance, so content past that point is always on a fully solid
+   background regardless of how tall the card grows.
+
+   The fade has to live on .list-card-body, not on .list-banner-strip itself: the body
+   is a normal (non-absolutely-positioned) block that sits in front of the banner in
+   stacking order and spans the card's whole natural height on its own, so anything
+   translucent painted *behind* it (e.g. on the banner's own ::after) would just be
+   invisible - completely covered by the body's own background before it ever reaches
+   the screen. */
 .list-game-card {
     position: relative;
     overflow: hidden;
@@ -478,36 +489,36 @@ p.game-description {
 
 .list-banner-strip {
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 200px;
-    background-size: cover;
-    background-position: center;
-}
-
-.list-banner-strip::after {
-    content: "";
-    position: absolute;
     inset: 0;
-    background-image: linear-gradient(180deg, rgba(15, 15, 20, .4) 0%, rgba(33, 37, 41, .93) 60%, rgba(33, 37, 41, 1) 100%);
+    background-size: cover;
+    background-position: center top;
+    background-repeat: no-repeat;
 }
 
 .list-card-body {
     position: relative;
-    background-color: rgb(33, 37, 41);
+    /* No background-color here on purpose: an opaque fallback color on this same
+       element would blend with the gradient below it and mask the banner sitting on
+       the separate .list-banner-strip sibling behind it, right back to the original
+       bug - the gradient itself already reaches full opacity (alpha 1) by 420px, so
+       it's already its own safe fallback past that point. */
+    background-image: linear-gradient(180deg,
+        rgba(33, 37, 41, .35) 0px,
+        rgba(33, 37, 41, .9) 220px,
+        rgba(33, 37, 41, 1) 420px);
 }
 
-/* The header (title/description/version line) is the one area that still sits
-   partly over the fading banner image rather than the solid body below it - a
-   shadow keeps its text and icons readable regardless of what's busy behind them,
-   without changing their actual color. */
-.list-header-text,
-.list-header-text .icon-btn {
+/* Every row's text sits partly (early rows) or wholly (deep in a long list, past the
+   fixed fade above) over the banner image or its solid tail - a shadow keeps it
+   readable everywhere in the card regardless of what's behind it, without changing
+   its actual color. Harmless once the background is fully solid; it just stops
+   being visible against a flat color. */
+.list-card-body,
+.list-card-body .icon-btn {
     text-shadow: 0 1px 3px rgba(0, 0, 0, .85), 0 1px 8px rgba(0, 0, 0, .5);
 }
 
-.list-header-text .icon-btn {
+.list-card-body .icon-btn {
     filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .85));
 }
 

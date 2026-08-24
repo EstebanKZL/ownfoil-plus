@@ -793,9 +793,12 @@ def test_process_file_skips_a_stage_that_did_not_advance(env):
 
 
 def test_process_file_deletes_row_when_file_vanished(env):
-    """A file gone from disk is dropped from the DB, and its app ownership released with it."""
+    """A file gone from disk is dropped from the DB, and its app ownership released
+    with it - in a library that's otherwise still online (another file still present),
+    so this doesn't trip the offline guard an emptied-out library deliberately does."""
     released = []
     env.monkeypatch.setattr(tasks, "remove_file_from_apps", lambda fid: released.append(fid))
+    env.seed("StillHere.nsp")  # keeps the library non-empty after the removal below
     f = env.seed("Game.nsp")
     fid = f.id
     os.remove(f.filepath)
@@ -804,6 +807,23 @@ def test_process_file_deletes_row_when_file_vanished(env):
 
     assert db.session.get(Files, fid) is None
     assert released == [fid]
+
+
+def test_process_file_does_not_delete_the_row_when_the_library_looks_offline(env):
+    """The other half of the same fix: if removing the file left the library's whole
+    directory empty (or it isn't there at all), that's indistinguishable from a
+    disconnected mount - the row must survive so a later scan can pick it back up
+    unchanged, instead of losing its verification/identification state."""
+    released = []
+    env.monkeypatch.setattr(tasks, "remove_file_from_apps", lambda fid: released.append(fid))
+    f = env.seed("Game.nsp")  # the only file in this library
+    fid = f.id
+    os.remove(f.filepath)  # library directory is now empty
+
+    tasks.process_file_task(file_id=fid)
+
+    assert db.session.get(Files, fid) is not None
+    assert released == []
 
 
 def test_identify_stage_enqueues_title_expansion_top_level(env):
