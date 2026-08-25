@@ -4,6 +4,18 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.4.4]
+
+- Clicking a row in the Stats page's "App Types" table (Base/DLC/Update) now shows
+  exactly which titles account for the gap between "Registered" and "Owned" - e.g.
+  a title an update or DLC was scanned for, but the base game's own file never was.
+- "Verify library now" is "Verify pending files" again - a quick, light action that
+  only checks new or never-verified files, the same thing the automatic pipeline
+  already does on its own.
+- The "Danger zone" section is now "Clean Library", with a clearer explanation:
+  it resets tracked file data so the library can be rediscovered from scratch, and
+  never deletes anything from disk.
+
 ## [6.2.4.3]
 
 - Card and Icon views now use the same local artwork cache the List view already

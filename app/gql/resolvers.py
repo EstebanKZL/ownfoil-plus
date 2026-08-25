@@ -639,6 +639,7 @@ def _library_health_clause(health: LibraryHealth) -> str:
 def resolve_titles(*, owned: Optional[bool], filter: Optional[TitleFilter],
                     search: Optional[str] = None, order_by: Optional[OrderBy] = None,
                     library_health: Optional[LibraryHealth] = None,
+                    missing_app_type: Optional[AppType] = None,
                     page: int, page_size: int, ctx: GraphQLContext, info) -> TitleConnection:
     if not ctx.can_shop:
         return TitleConnection(total=0, items=[])
@@ -700,6 +701,19 @@ def resolve_titles(*, owned: Optional[bool], filter: Optional[TitleFilter],
             where.append("0")  # matches nothing, rather than silently ignoring the arg
         else:
             where.append(_library_health_clause(library_health))
+    if missing_app_type is not None:
+        # For the Stats page's "registered vs owned" app-type breakdown: which titles
+        # have an app of this type tracked at all (so it's counted in "registered")
+        # but don't actually own it - e.g. a title where an update or DLC was scanned
+        # but the base game's own file never was. Same "only meaningful when owned"
+        # reasoning as library_health above.
+        if owned is not True:
+            where.append("0")
+        else:
+            where.append(
+                "EXISTS (SELECT 1 FROM apps ap WHERE ap.title_id = ot.id "
+                "AND ap.app_type = :missing_app_type AND ap.owned = 0)")
+            params["missing_app_type"] = missing_app_type.value
     order_by_sql = order_sql(order_by, TITLE_ORDER, default_order)
 
     where_sql = (" WHERE " + " AND ".join(where)) if where else ""

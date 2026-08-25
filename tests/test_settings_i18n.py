@@ -217,14 +217,14 @@ def test_reset_library_tracking_section_is_present_and_translated(client):
     assert 'id="resetLibraryModal"' in html
     assert 'id="resetLibraryConfirmInput"' in html
     assert 'id="resetLibraryConfirmBtn"' in html
-    assert "Danger zone" in html
+    assert "Clean Library" in html
     assert "Type RESET below to confirm." in html
     assert "const RESET_LIBRARY_MUTATION" in html
 
     client.set_cookie("ownfoil_lang", "es")
     resp = client.get("/admin/settings")
     html = resp.get_data(as_text=True)
-    assert "Zona de peligro" in html
+    assert "Limpiar Biblioteca" in html
     assert "RESET" in html
 
 

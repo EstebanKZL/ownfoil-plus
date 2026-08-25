@@ -103,6 +103,37 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="missingAppTypeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="missingAppTypeModalLabel">{{ t('stats.missing_titles') }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-secondary small">{{ t('stats.missing_titles_hint') }}</p>
+                <table class="table table-sm stat-table">
+                    <thead><tr><th>{{ t('common.title') }}</th></tr></thead>
+                    <tbody id="missingAppTypeBody"></tbody>
+                </table>
+                <div id="missingAppTypeEmpty" class="text-secondary fst-italic d-none">
+                    {{ t('common.nothing_to_report') }}
+                </div>
+                <div id="missingAppTypeLoading" class="text-secondary fst-italic d-none">
+                    {{ t('common.loading') }}
+                </div>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <span id="missingAppTypeCount" class="text-secondary small"></span>
+                <div>
+                    <button type="button" id="missingAppTypePrev" class="btn btn-sm btn-outline-secondary">{{ t('common.previous') }}</button>
+                    <button type="button" id="missingAppTypeNext" class="btn btn-sm btn-outline-secondary">{{ t('common.next') }}</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block panel_scripts %}
@@ -137,8 +168,8 @@
         verifying: {{ t('stats.verifying') | tojson }},
         verifyQueued: {{ t('stats.verify_queued') | tojson }},
         verifyFailed: {{ t('stats.verify_failed') | tojson }},
-        verifyNowConfirm: {{ t('stats.verify_now_confirm') | tojson }},
         couldNotLoadFiles: {{ t('stats.could_not_load_files') | tojson }},
+        missingTitles: {{ t('stats.missing_titles') | tojson }},
         filesPageCount: {{ t('stats.files_page_count') | tojson }},
         duplicateKeepThis: {{ t('stats.duplicate_keep_this') | tojson }},
         duplicateResolved: {{ t('stats.duplicate_resolved') | tojson }},
@@ -270,6 +301,15 @@
         // turn the last one into "Dlc".
         renderTable('byAppType', (data.appsByType || []).map(
             b => [b.key, count(b.count), count(b.owned)]));
+        // Only clickable when there's actually a gap to explain (registered >
+        // owned) - clicking a row where every registered app is owned would just
+        // open an empty modal.
+        [...document.querySelectorAll('#byAppType tr')].forEach((tr, i) => {
+            const bucket = (data.appsByType || [])[i];
+            if (!bucket || bucket.count <= bucket.owned) return;
+            tr.style.cursor = 'pointer';
+            tr.addEventListener('click', () => openMissingAppType(bucket.key));
+        });
     }
 
     loadStats();
@@ -587,18 +627,112 @@
         if (verificationPage < totalPages) { verificationPage++; loadVerificationFilesPage(); }
     });
 
+    // --- App types table: click a row to see which titles have that type tracked
+    // ("registered") without actually owning it - the gap the table's own two
+    // columns can't explain by themselves. ------------------------------------
+
+    const MISSING_APP_TYPE_QUERY = `
+        query MissingAppType($type: AppType!, $page: Int!, $pageSize: Int!) {
+            titles(owned: true, missingAppType: $type, page: $page, pageSize: $pageSize,
+                   orderBy: {field: NAME}) {
+                total
+                items { name }
+            }
+        }`;
+
+    let missingAppTypeModal;
+    let missingAppTypeValue = null;
+    let missingAppTypePage = 1;
+    let missingAppTypeTotal = 0;
+    const MISSING_APP_TYPE_PAGE_SIZE = 50;
+
+    async function loadMissingAppTypePage() {
+        const tbody = document.getElementById('missingAppTypeBody');
+        const empty = document.getElementById('missingAppTypeEmpty');
+        const loading = document.getElementById('missingAppTypeLoading');
+        const prevBtn = document.getElementById('missingAppTypePrev');
+        const nextBtn = document.getElementById('missingAppTypeNext');
+
+        tbody.innerHTML = '';
+        empty.classList.add('d-none');
+        loading.classList.remove('d-none');
+        prevBtn.disabled = true;
+        nextBtn.disabled = true;
+
+        let data;
+        try {
+            data = await gqlFetchStats(MISSING_APP_TYPE_QUERY, {
+                type: missingAppTypeValue, page: missingAppTypePage, pageSize: MISSING_APP_TYPE_PAGE_SIZE,
+            });
+        } catch (e) {
+            console.error(e);
+            loading.classList.add('d-none');
+            empty.textContent = I18N.couldNotLoadFiles;
+            empty.classList.remove('d-none');
+            return;
+        }
+
+        loading.classList.add('d-none');
+        missingAppTypeTotal = data.titles.total;
+        const items = data.titles.items || [];
+
+        if (!items.length) {
+            empty.classList.remove('d-none');
+        } else {
+            items.forEach(t => {
+                const tr = document.createElement('tr');
+                const td = document.createElement('td');
+                td.textContent = t.name;
+                tr.appendChild(td);
+                tbody.appendChild(tr);
+            });
+        }
+
+        const totalPages = Math.max(1, Math.ceil(missingAppTypeTotal / MISSING_APP_TYPE_PAGE_SIZE));
+        document.getElementById('missingAppTypeCount').textContent = I18N.filesPageCount
+            .replace('{count}', count(missingAppTypeTotal))
+            .replace('{s}', missingAppTypeTotal === 1 ? '' : 's')
+            .replace('{page}', missingAppTypePage)
+            .replace('{totalPages}', totalPages);
+        prevBtn.disabled = missingAppTypePage <= 1;
+        nextBtn.disabled = missingAppTypePage >= totalPages;
+    }
+
+    function openMissingAppType(appType) {
+        missingAppTypeValue = appType;
+        missingAppTypePage = 1;
+        document.getElementById('missingAppTypeModalLabel').textContent = `${appType} - ${I18N.missingTitles}`;
+        if (!missingAppTypeModal) {
+            missingAppTypeModal = new bootstrap.Modal(document.getElementById('missingAppTypeModal'));
+        }
+        missingAppTypeModal.show();
+        loadMissingAppTypePage();
+    }
+
+    document.getElementById('missingAppTypePrev').addEventListener('click', () => {
+        if (missingAppTypePage > 1) { missingAppTypePage--; loadMissingAppTypePage(); }
+    });
+    document.getElementById('missingAppTypeNext').addEventListener('click', () => {
+        const totalPages = Math.max(1, Math.ceil(missingAppTypeTotal / MISSING_APP_TYPE_PAGE_SIZE));
+        if (missingAppTypePage < totalPages) { missingAppTypePage++; loadMissingAppTypePage(); }
+    });
+
     // --- Re-verify everything now: force a full re-check, bypassing the "already
     // has a verdict" skip a plain verify pass (and the automatic pipeline) both use.
     // Confirmed first - unlike a plain verify pass, this can mean re-reading a whole
     // large library from disk, not just picking up what's new. ---------------------
 
+    // --- Verify pending files: pick up anything still unverified, without a full
+    // Scan (which also discovers new files and re-organizes). The automatic pipeline
+    // already does this on its own at startup - this is for triggering it on demand
+    // in between, e.g. right after adding new content without wanting to restart. ---
+
     const VERIFY_LIBRARY_MUTATION = `
-        mutation VerifyLibraryNow($force: Boolean!) {
-            verifyLibrary(force: $force) { id status }
+        mutation VerifyLibraryNow {
+            verifyLibrary { id status }
         }`;
 
     document.getElementById('verifyNowBtn').addEventListener('click', async function () {
-        if (!window.confirm(I18N.verifyNowConfirm)) return;
         const btn = this;
         const originalHtml = btn.innerHTML;
         btn.disabled = true;
@@ -608,7 +742,7 @@
                 method: 'POST',
                 headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
                 credentials: 'same-origin',
-                body: JSON.stringify({query: VERIFY_LIBRARY_MUTATION, variables: {force: true}}),
+                body: JSON.stringify({query: VERIFY_LIBRARY_MUTATION}),
             });
             if (!r.ok) throw new Error(`GraphQL HTTP ${r.status}`);
             const body = await r.json();

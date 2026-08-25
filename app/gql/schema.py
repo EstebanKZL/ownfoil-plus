@@ -76,6 +76,11 @@ class Query:
             "see LibraryHealth for the exact priority order. Only meaningful with "
             "`owned: true`; combined with `owned: false` or omitted, it matches "
             "nothing rather than being silently ignored.")] = None,
+        missing_app_type: Annotated[Optional[AppType], _arg(
+            "Keep only titles that have an app of this type tracked (so it counts "
+            "toward Stats' \"registered\" figure for that type) but don't actually "
+            "own it - e.g. a title an update or DLC was scanned for, but never the "
+            "base game's own file. Same `owned: true`-only rule as libraryHealth.")] = None,
         order_by: Order = None,
         page: Page = 1,
         page_size: TitlePageSize = 50,
@@ -84,7 +89,7 @@ class Query:
         shop access; returns an empty page otherwise."""
         return resolve_titles(
             owned=owned, filter=filter, search=search, order_by=order_by,
-            library_health=library_health,
+            library_health=library_health, missing_app_type=missing_app_type,
             page=page, page_size=page_size, ctx=info.context, info=info,
         )
 

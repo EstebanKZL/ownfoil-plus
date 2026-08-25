@@ -59,21 +59,16 @@ TRANSLATIONS = {
     'stats.libraries': {'en': 'Libraries', 'es': 'Bibliotecas'},
     'stats.verification_status': {'en': 'Verification status', 'es': 'Estado de verificación'},
     'stats.click_row_hint': {'en': 'Click a row to see which titles', 'es': 'Tocá una fila para ver qué títulos son'},
-    'stats.verify_now': {'en': 'Re-verify everything now', 'es': 'Volver a verificar todo ahora'},
+    'stats.verify_now': {'en': 'Verify pending files', 'es': 'Verificar faltantes'},
     'stats.verifying': {'en': 'Verifying...', 'es': 'Verificando...'},
     'stats.verify_queued': {'en': 'Verification queued', 'es': 'Verificación en cola'},
     'stats.verify_failed': {'en': 'Could not start', 'es': 'No se pudo iniciar'},
-    'stats.verify_now_confirm': {
-        'en': "This re-checks EVERY file in your library, including ones already "
-              "verified - not just new or unverified ones (those are already picked "
-              "up automatically, on their own, without needing this button). On a "
-              "large library this can take a long time and read every byte off "
-              "disk again. Continue?",
-        'es': 'Esto vuelve a revisar TODOS los archivos de tu biblioteca, incluidos '
-              'los que ya están verificados — no solo los nuevos o sin verificar '
-              '(esos ya se detectan solos, automáticamente, sin necesitar este '
-              'botón). En una biblioteca grande esto puede tardar mucho tiempo y '
-              'volver a leer cada byte del disco. ¿Continuar?'},
+    'stats.missing_titles': {'en': 'Titles', 'es': 'Títulos'},
+    'stats.missing_titles_hint': {
+        'en': "These titles have this app type tracked (counted in \"Registered\") "
+              "but don't actually own it.",
+        'es': 'Estos títulos tienen este tipo de app rastreado (cuenta en '
+              '"Registrados") pero no lo poseen en realidad.'},
     'stats.could_not_load_files': {'en': 'Could not load files.', 'es': 'No se pudieron cargar los archivos.'},
     'stats.files_page_count': {'en': '{count} file{s} · page {page} of {totalPages}',
                                 'es': '{count} archivo{s} · página {page} de {totalPages}'},
@@ -163,11 +158,12 @@ TRANSLATIONS = {
     'backup.import_no_file': {'en': 'Choose a file first.', 'es': 'Elegí un archivo primero.'},
     'backup.import_failed': {'en': 'Could not import: {error}', 'es': 'No se pudo importar: {error}'},
 
-    'danger.heading': {'en': 'Danger zone', 'es': 'Zona de peligro'},
-    'danger.reset_heading': {'en': 'Reset library tracking', 'es': 'Resetear el seguimiento de la biblioteca'},
+    'danger.heading': {'en': 'Clean Library', 'es': 'Limpiar Biblioteca'},
     'danger.reset_description': {
-        'en': 'Cleans and resets the library, clearing all tracked file data.',
-        'es': 'Limpia y restablece la biblioteca, borrando todos los datos de archivos rastreados.'},
+        'en': "Cleans and resets the library, clearing all tracked file data. "
+              "Doesn't delete any files on disk.",
+        'es': 'Limpia y restablece la biblioteca, borrando todos los datos de '
+              'archivos rastreados. No elimina archivos en el disco.'},
     'danger.reset_bullet_files': {
         'en': "Every tracked file and its verification is erased - can't be undone.",
         'es': 'Se borra cada archivo rastreado y su verificación — no se puede deshacer.'},
@@ -179,7 +175,7 @@ TRANSLATIONS = {
         'es': 'Después, escaneá de nuevo para redescubrir todo.'},
     'danger.reset_type_to_confirm': {
         'en': 'Type RESET below to confirm.', 'es': 'Escribí RESET abajo para confirmar.'},
-    'danger.reset_button': {'en': 'Reset library tracking', 'es': 'Resetear el seguimiento de la biblioteca'},
+    'danger.reset_button': {'en': 'Clean Library', 'es': 'Limpiar Biblioteca'},
     'danger.reset_success': {
         'en': 'Done - {n} file(s) forgotten. Run a scan to rediscover your library.',
         'es': 'Listo — se olvidaron {n} archivo(s). Corré un escaneo para redescubrir tu biblioteca.'},

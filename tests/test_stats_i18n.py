@@ -24,7 +24,7 @@ def test_stats_page_renders_in_english_by_default(client):
 
     assert resp.status_code == 200
     assert "Verification status" in html
-    assert "Re-verify everything now" in html
+    assert "Verify pending files" in html
     assert "Extensions" in html
     assert "App types" in html
 
@@ -36,7 +36,7 @@ def test_stats_page_renders_in_spanish(client):
 
     assert resp.status_code == 200
     assert "Estado de verificación" in html
-    assert "Volver a verificar todo ahora" in html
+    assert "Verificar faltantes" in html
     assert "Extensiones" in html
     assert "Tipos de aplicación" in html
     # The verification-status labels are JS literals rendered through |tojson, so they
@@ -115,6 +115,62 @@ def test_verification_modal_table_css_overrides_the_dashboard_width_cap():
 
     assert "#verificationFilesModal .stat-table" in css
     assert "max-width: none" in css
+
+
+def test_missing_app_type_modal_is_present_and_translated(client):
+    resp = client.get("/admin/stats")
+    html = resp.get_data(as_text=True)
+    assert 'id="missingAppTypeModal"' in html
+    assert 'id="missingAppTypeBody"' in html
+    assert 'id="missingAppTypePrev"' in html
+    assert 'id="missingAppTypeNext"' in html
+    assert "function openMissingAppType" in html
+    assert "const MISSING_APP_TYPE_QUERY" in html
+    assert "missingAppType:" in html
+
+    client.set_cookie("ownfoil_lang", "es")
+    resp = client.get("/admin/stats")
+    html = resp.get_data(as_text=True)
+    assert "T\\u00edtulos" in html or "Títulos" in html
+
+
+def test_missing_app_type_modal_is_not_nested_inside_the_verification_files_modal(client):
+    """Regression: a previous edit spliced this modal's markup in before the first
+    modal's own closing </div>s, leaving it nested *inside* verificationFilesModal
+    instead of a sibling - Bootstrap doesn't handle a modal nested inside another
+    modal correctly (the reported symptom: the backdrop darkened but nothing showed,
+    and there was no way to dismiss it short of reloading the page)."""
+    resp = client.get("/admin/stats")
+    html = resp.get_data(as_text=True)
+
+    verif_start = html.index('id="verificationFilesModal"')
+    missing_start = html.index('id="missingAppTypeModal"')
+    assert missing_start > verif_start
+
+    # Walk the div balance from the start of the first modal's own opening tag: the
+    # first point where it returns to 0 is that modal's own closing </div> - the
+    # second modal's opening tag must appear at or after that point, never before it.
+    first_modal_open = html.rindex("<div", 0, verif_start)
+    depth = 0
+    i = first_modal_open
+    closed_at = None
+    while i < len(html):
+        if html.startswith("<div", i):
+            depth += 1
+            i += 4
+        elif html.startswith("</div>", i):
+            depth -= 1
+            i += 6
+            if depth == 0:
+                closed_at = i
+                break
+        else:
+            i += 1
+    assert closed_at is not None, "could not find verificationFilesModal's closing tag"
+    assert missing_start >= closed_at, (
+        "missingAppTypeModal starts before verificationFilesModal's own closing "
+        "</div> - it is nested inside it instead of being a sibling"
+    )
 
 
 def test_duplicate_files_ui_is_always_visible_not_only_when_a_duplicate_exists(client):
