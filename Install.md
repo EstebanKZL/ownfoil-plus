@@ -140,7 +140,7 @@ Releases and what changed in them are on the [releases page](https://github.com/
 
 The version is the image tag, `latest` when you don't set one:
 
-    docker run ... estebankzl/ownfoil-plus:6.2.4.4
+    docker run ... estebankzl/ownfoil-plus:6.2.4.5
 
 In the compose file it is the `image` line:
 

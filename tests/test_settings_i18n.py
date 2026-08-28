@@ -211,16 +211,13 @@ def test_workers_and_backup_sections_both_have_a_leading_divider(client):
         "Expected a divider between Workers and Backup sections")
 
 
-def test_web_clean_record_checkbox_is_present_and_translated(client):
+def test_web_clean_record_checkbox_no_longer_exists(client):
+    """Removed: the clean/delete-record actions on Stats' library detail view are
+    always available to an admin now, no separate toggle."""
     resp = client.get("/admin/settings")
     html = resp.get_data(as_text=True)
-    assert 'id="webCleanRecordEnabledCheck"' in html
-    assert "Enable cleaning records from Stats" in html
-
-    client.set_cookie("ownfoil_lang", "es")
-    resp = client.get("/admin/settings")
-    html = resp.get_data(as_text=True)
-    assert "Habilitar limpieza de registros desde Estad" in html
+    assert 'id="webCleanRecordEnabledCheck"' not in html
+    assert "Enable cleaning records from Stats" not in html
 
 
 def test_reset_library_tracking_section_is_present_and_translated(client):

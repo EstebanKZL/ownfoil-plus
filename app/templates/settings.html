@@ -217,11 +217,6 @@
                     <div class="form-text">{{ t('lib.web_downloads_help') }}</div>
                 </div>
                 <div class="mb-3 form-check">
-                    <input type="checkbox" class="form-check-input" id="webCleanRecordEnabledCheck">
-                    <label class="form-check-label" for="webCleanRecordEnabledCheck">{{ t('lib.web_clean_record_label') }}</label>
-                    <div class="form-text">{{ t('lib.web_clean_record_help') }}</div>
-                </div>
-                <div class="mb-3 form-check">
                     <input type="checkbox" class="form-check-input" id="autoResolveDuplicatesCheck">
                     <label class="form-check-label" for="autoResolveDuplicatesCheck">{{ t('lib.auto_resolve_duplicates_label') }}</label>
                     <div class="form-text">{{ t('lib.auto_resolve_duplicates_help') }}</div>
@@ -1311,9 +1306,6 @@
             web_downloads: {
                 enabled: getCheckboxStatus("webDownloadsEnabledCheck")
             },
-            web_clean_record: {
-                enabled: getCheckboxStatus("webCleanRecordEnabledCheck")
-            },
             duplicates: {
                 auto_resolve: getCheckboxStatus("autoResolveDuplicatesCheck"),
                 prefer_larger_on_tie: getCheckboxStatus("preferLargerOnTieCheck"),
@@ -1596,7 +1588,6 @@
             $("input[name='verificationDepth'][value='" + verification['depth'] + "']").prop("checked", true);
             $("#deleteOlderUpdatesCheck").prop("checked", librarySettings['management']['delete_older_updates']);
             $("#webDownloadsEnabledCheck").prop("checked", (librarySettings['management']['web_downloads'] || {}).enabled || false);
-            $("#webCleanRecordEnabledCheck").prop("checked", (librarySettings['management']['web_clean_record'] || {}).enabled || false);
             $("#autoResolveDuplicatesCheck").prop("checked", (librarySettings['management']['duplicates'] || {}).auto_resolve || false);
             $("#preferLargerOnTieCheck").prop("checked", (librarySettings['management']['duplicates'] || {}).prefer_larger_on_tie || false);
             $("#compressionPreferenceSelect").val((librarySettings['management']['duplicates'] || {}).compression_preference || "none");

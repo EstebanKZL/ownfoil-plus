@@ -4,6 +4,23 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.4.5]
+
+- Clicking a row in the Stats page's "Libraries" table now opens a detail view of
+  every title in that library - Base/Updates/DLC laid out the same way the Library
+  page's List view does, Updates and DLC grouped into collapsible sections.
+- A search box on all three of the Stats page's drill-down views (Libraries,
+  Verification Status, App Types), to find a specific title or file in a long list
+  without scrolling.
+- Two new admin actions on each title in that new library detail view: clean a
+  title's tracked database record without touching its file (for recovering a
+  stuck or inconsistent entry), or delete the file from disk and its record
+  together, for real. Both work on a single update/DLC on its own, or on a base
+  game with the choice to sweep every update and DLC under it at the same time.
+  Neither needs a settings toggle turned on first anymore - just admin access.
+- Fixed the "App Types" drill-down (added in 6.2.4.4) opening to a broken, stuck
+  modal that couldn't be closed without reloading the page.
+
 ## [6.2.4.4]
 
 - Clicking a row in the Stats page's "App Types" table (Base/DLC/Update) now shows

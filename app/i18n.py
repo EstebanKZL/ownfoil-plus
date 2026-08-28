@@ -71,7 +71,7 @@ TRANSLATIONS = {
               '"Registrados") pero no lo poseen en realidad.'},
     'stats.could_not_load_files': {'en': 'Could not load files.', 'es': 'No se pudieron cargar los archivos.'},
     'stats.search_files_placeholder': {'en': 'Search by filename...', 'es': 'Buscar por nombre de archivo...'},
-    'stats.clean_record_tooltip': {'en': 'Clean this record', 'es': 'Limpiar este registro'},
+    'stats.clean_record_tooltip': {'en': 'Clean database record only (keeps the file)', 'es': 'Limpiar solo el registro (mantiene el archivo)'},
     'stats.clean_record_base_step1': {
         'en': 'Clean the tracked database record for "{name}" (base game)? This '
               "doesn't delete any file on disk - the file just gets picked up as "
@@ -93,6 +93,25 @@ TRANSLATIONS = {
               'Esto no borra ningún archivo del disco — el archivo se vuelve a '
               'detectar como nuevo en el próximo escaneo.'},
     'stats.clean_record_failed': {'en': 'Could not clean the record.', 'es': 'No se pudo limpiar el registro.'},
+    'stats.delete_record_tooltip': {'en': 'Delete the file from disk and its record', 'es': 'Eliminar el archivo del disco y su registro'},
+    'stats.delete_record_base_step1': {
+        'en': 'DELETE the file for "{name}" (base game) from disk, permanently? '
+              "This cannot be undone.",
+        'es': 'ELIMINAR el archivo de "{name}" (juego base) del disco, para '
+              'siempre? Esto no se puede deshacer.'},
+    'stats.delete_record_base_step2': {
+        'en': 'Also delete every update and DLC file tracked for "{name}" from '
+              'disk? Choose Cancel to delete only the base game and leave its '
+              'updates/DLC as they are.',
+        'es': '¿Eliminar también del disco todos los archivos de updates y DLC '
+              'rastreados de "{name}"? Elegí Cancelar para eliminar solo el '
+              'juego base y dejar sus updates/DLC como están.'},
+    'stats.delete_record_item_confirm': {
+        'en': 'DELETE the file for "{name}" from disk, permanently? This cannot '
+              'be undone.',
+        'es': 'ELIMINAR el archivo de "{name}" del disco, para siempre? Esto no '
+              'se puede deshacer.'},
+    'stats.delete_record_failed': {'en': 'Could not delete the file.', 'es': 'No se pudo eliminar el archivo.'},
     'stats.files_page_count': {'en': '{count} file{s} · page {page} of {totalPages}',
                                 'es': '{count} archivo{s} · página {page} de {totalPages}'},
     'stats.duplicate_files': {'en': 'Duplicate files', 'es': 'Archivos duplicados'},
@@ -284,19 +303,6 @@ TRANSLATIONS = {
     'lib.web_downloads_label': {'en': "Enable downloads from the Library page", 'es': 'Habilitar descargas desde la página de Biblioteca'},
     'lib.web_downloads_help': {'en': "Lets anyone with shop access (admin or not) download a file directly from the browser in the Library page's List view. Off by default - files are served straight from the server's storage, so leave this off unless you actually need it.",
                                 'es': 'Permite que cualquier usuario con acceso a la Tienda (sea administrador o no) descargue un archivo directo desde el navegador, en la vista Lista de la Biblioteca. Apagado por defecto — los archivos se sirven directo desde el almacenamiento del servidor, así que dejalo apagado salvo que realmente lo necesites.'},
-    'lib.web_clean_record_label': {'en': 'Enable cleaning records from Stats', 'es': 'Habilitar limpieza de registros desde Estadísticas'},
-    'lib.web_clean_record_help': {
-        'en': "Lets an admin remove a title's or one specific update/DLC's tracked "
-              "database record from a library's detail view in Stats, so it's "
-              "picked up as brand new on the next scan - useful to recover from a "
-              "stuck or inconsistent entry. Never deletes anything on disk. Off by "
-              "default.",
-        'es': 'Permite que un administrador borre el registro rastreado en la base '
-              'de datos de un título o de un update/DLC puntual, desde el detalle '
-              'de una biblioteca en Estadísticas, para que se detecte como nuevo '
-              'en el próximo escaneo — útil para recuperarte de un registro '
-              'trabado o inconsistente. Nunca borra nada del disco. Apagado por '
-              'defecto.'},
     'lib.auto_resolve_duplicates_label': {'en': 'Automatically resolve duplicate files',
                                            'es': 'Resolver duplicados automáticamente'},
     'lib.auto_resolve_duplicates_help': {'en': 'When the same content ends up as two or more physical files (e.g. re-downloading something already owned) and every copy has already been fully verified, keep only the healthiest one - Valid beats Repack beats Corrupt - and delete the rest, renaming the survivor to drop any "(n)" suffix. Off by default. Only ever acts when every copy has a complete verdict and there is a single clear best one; a still-unverified file, or a tie between equally-ranked copies, is always left for you to resolve yourself in Settings > Duplicate files.',

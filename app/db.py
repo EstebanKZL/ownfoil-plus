@@ -848,6 +848,83 @@ def clean_title_apps(title_id):
     return count
 
 
+def _delete_file_from_disk(f):
+    """Best-effort real removal of one Files row's underlying file, for the
+    delete_* actions below - a genuine, irreversible deletion, unlike clean_app_record/
+    clean_title_apps which only ever touch tracking. Tells the watcher to ignore this
+    specific removal first (add_ignored_event), the same way every other deliberate,
+    admin/task-driven deletion in this codebase does, so it is never mistaken for an
+    externally-deleted file and does not trigger the missing-files safety machinery.
+    A file already gone from disk (deleted by hand outside ownfoil, for instance) is
+    not an error here - the row still needs to go regardless."""
+    if os.path.exists(f.filepath):
+        add_ignored_event(f.filepath, '')
+        try:
+            os.remove(f.filepath)
+        except OSError as e:
+            pop_ignored_event(src_path=f.filepath, dest_path='')
+            logger.warning(f"Could not delete {f.filepath} from disk: {e}")
+
+
+def delete_app_record(app_row_id):
+    """Delete one specific app row's file(s) from disk *and* forget its tracked
+    record - the real, irreversible counterpart to clean_app_record (which only
+    ever touches the database). The title itself, and any other app under it, are
+    untouched - only this one row and the file(s) it carries.
+
+    Takes the Apps table's own primary key, same reasoning as clean_app_record: an
+    app_id can have several rows (one per update version owned), so only the row's
+    own id pins down exactly which one to delete.
+
+    Returns True if the row was found and deleted, False if app_row_id doesn't exist.
+    """
+    app = db.session.get(Apps, app_row_id)
+    if app is None:
+        return False
+    app_id, app_version = app.app_id, app.app_version
+    files = list(app.files)
+    for f in files:
+        _delete_file_from_disk(f)
+        db.session.delete(f)
+    db.session.flush()
+    db.session.delete(app)
+    db.session.commit()
+    logger.warning(f"Deleted app {app_id} v{app_version} (row {app_row_id}) and "
+                   f"{len(files)} file(s) from disk, admin-requested.")
+    return True
+
+
+def delete_title_apps(title_id):
+    """Delete every app's file(s) (base, every update, every DLC) tracked under one
+    title, from disk, and forget each one's record - the real, irreversible
+    counterpart to clean_title_apps. The title row itself survives.
+
+    `title_id` is the 16-hex-digit title id string, same as clean_title_apps.
+
+    Returns how many app rows were removed. 0 if the title itself isn't tracked.
+    """
+    title = Titles.query.filter_by(title_id=title_id).first()
+    if title is None:
+        return 0
+    apps = Apps.query.filter_by(title_id=title.id).all()
+    if not apps:
+        return 0
+    count = len(apps)
+    total_files = 0
+    for app in apps:
+        for f in list(app.files):
+            _delete_file_from_disk(f)
+            db.session.delete(f)
+            total_files += 1
+    db.session.flush()
+    for app in apps:
+        db.session.delete(app)
+    db.session.commit()
+    logger.warning(f"Deleted {count} app record(s) and {total_files} file(s) from "
+                   f"disk for title {title_id}, admin-requested.")
+    return count
+
+
 def increment_download_count(filepath):
     """Increment the download count for a file by filepath"""
     try:

@@ -293,10 +293,8 @@ def tasks_page():
 @app.route('/admin/stats')
 @access_required('admin')
 def stats_page():
-    settings = get_settings()
     return render_template('stats.html', title='Stats',
-                           admin_account_created=admin_account_created(),
-                           web_clean_record_enabled=settings['library']['management'].get('web_clean_record', {}).get('enabled', False))
+                           admin_account_created=admin_account_created())
 
 @app.route('/setup')
 def setup_page():

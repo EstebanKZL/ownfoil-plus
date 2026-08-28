@@ -191,7 +191,7 @@ def test_library_detail_modal_is_present_and_translated(client):
     client.set_cookie("ownfoil_lang", "es")
     resp = client.get("/admin/stats")
     html = resp.get_data(as_text=True)
-    assert "Limpiar este registro" in html
+    assert "Limpiar solo el registro" in html
 
 
 def test_library_detail_modal_is_not_nested_inside_another_modal(client):
@@ -260,13 +260,24 @@ def test_all_three_drill_down_modals_have_a_debounced_search_box(client):
     assert "filename: {contains: $search}" in html
 
 
-def test_clean_record_button_only_rendered_when_setting_is_enabled(client):
-    """CLEAN_RECORD_ENABLED is what actually gates the trash-icon button in
-    buildLibraryDetailAppRow - confirm the flag reads false by default (matching
-    the settings default) and true once the admin turns it on."""
+def test_both_clean_and_delete_actions_are_always_available_no_settings_toggle(client):
+    """No settings toggle gates these anymore - admin access (implicit, since this
+    whole page requires it) is the only gate. Two distinct icons for two distinct
+    actions: bi-database-x for the database-only clean, bi-trash for the real,
+    irreversible delete-from-disk."""
     resp = client.get("/admin/stats")
     html = resp.get_data(as_text=True)
-    assert "const CLEAN_RECORD_ENABLED = false;" in html
+    assert "CLEAN_RECORD_ENABLED" not in html
+    assert "webCleanRecordEnabledCheck" not in html
+    assert "bi-database-x" in html
+    assert "bi-trash" in html
+    assert "function handleCleanClick" in html
+    assert "function handleDeleteClick" in html
+    assert "function handleRecordAction" in html
+    assert "const DELETE_APP_MUTATION" in html
+    assert "const DELETE_TITLE_MUTATION" in html
+    assert "deleteAppRecord" in html
+    assert "deleteTitleRecord" in html
 
 
 def test_duplicate_files_ui_is_always_visible_not_only_when_a_duplicate_exists(client):

@@ -171,8 +171,6 @@
 <script>
     // Strings the JS below needs but can't hardcode in English - injected once here
     // rather than threading t() through every render function.
-    const CLEAN_RECORD_ENABLED = {{ web_clean_record_enabled | tojson }};
-
     const I18N = {
         nothingToReport: {{ t('common.nothing_to_report') | tojson }},
         tileFilesNote: {{ t('stats.tile.files_note') | tojson }},
@@ -207,6 +205,11 @@
         cleanRecordBaseStep2: {{ t('stats.clean_record_base_step2') | tojson }},
         cleanRecordItemConfirm: {{ t('stats.clean_record_item_confirm') | tojson }},
         cleanRecordFailed: {{ t('stats.clean_record_failed') | tojson }},
+        deleteRecordTooltip: {{ t('stats.delete_record_tooltip') | tojson }},
+        deleteRecordBaseStep1: {{ t('stats.delete_record_base_step1') | tojson }},
+        deleteRecordBaseStep2: {{ t('stats.delete_record_base_step2') | tojson }},
+        deleteRecordItemConfirm: {{ t('stats.delete_record_item_confirm') | tojson }},
+        deleteRecordFailed: {{ t('stats.delete_record_failed') | tojson }},
         baseGame: {{ t('library.base_game') | tojson }},
         dlcSection: {{ t('library.dlc_section') | tojson }},
         updatesSection: {{ t('library.updates_section') | tojson }},
@@ -820,6 +823,10 @@
         mutation CleanApp($id: ID!) { cleanAppRecord(appRowId: $id) }`;
     const CLEAN_TITLE_MUTATION = `
         mutation CleanTitle($id: String!) { cleanTitleRecord(titleId: $id) }`;
+    const DELETE_APP_MUTATION = `
+        mutation DeleteApp($id: ID!) { deleteAppRecord(appRowId: $id) }`;
+    const DELETE_TITLE_MUTATION = `
+        mutation DeleteTitle($id: String!) { deleteTitleRecord(titleId: $id) }`;
 
     async function gqlMutateStats(query, variables) {
         const r = await fetch('/api/graphql', {
@@ -857,26 +864,53 @@
      *  sweep every update/DLC under the same title (Cancel here = base only). An
      *  update or DLC row is a single confirm, since there's nothing under it to
      *  cascade into. */
-    async function handleCleanClick(app, title) {
+    /** Shared by handleCleanClick and handleDeleteClick: the base game gets a
+     *  two-step confirm (native confirm() only ever gives a binary choice, so a
+     *  genuine three-way "just base / base+everything / do nothing" needs two of
+     *  them in sequence) - first, plain confirmation the action is wanted at all
+     *  (Cancel here = do nothing); then, whether to also sweep every update/DLC
+     *  under the same title (Cancel here = base only). An update or DLC row is a
+     *  single confirm, since there's nothing under it to cascade into. */
+    async function handleRecordAction(app, title, opts) {
         try {
             if (app.appType === 'BASE') {
-                if (!window.confirm(I18N.cleanRecordBaseStep1.replace('{name}', title.name))) return;
-                const cascade = window.confirm(I18N.cleanRecordBaseStep2.replace('{name}', title.name));
+                if (!window.confirm(opts.baseStep1.replace('{name}', title.name))) return;
+                const cascade = window.confirm(opts.baseStep2.replace('{name}', title.name));
                 if (cascade) {
-                    await gqlMutateStats(CLEAN_TITLE_MUTATION, {id: title.titleId});
+                    await gqlMutateStats(opts.titleMutation, {id: title.titleId});
                 } else {
-                    await gqlMutateStats(CLEAN_APP_MUTATION, {id: app.id});
+                    await gqlMutateStats(opts.itemMutation, {id: app.id});
                 }
             } else {
                 const label = libraryDetailAppLabel(app);
-                if (!window.confirm(I18N.cleanRecordItemConfirm.replace('{name}', `${title.name} - ${label}`))) return;
-                await gqlMutateStats(CLEAN_APP_MUTATION, {id: app.id});
+                if (!window.confirm(opts.itemConfirm.replace('{name}', `${title.name} - ${label}`))) return;
+                await gqlMutateStats(opts.itemMutation, {id: app.id});
             }
             loadLibraryDetailPage();
         } catch (e) {
             console.error(e);
-            alert(I18N.cleanRecordFailed);
+            alert(opts.failed);
         }
+    }
+
+    /** Database-only: forgets the tracked row(s), never touches the real file. */
+    function handleCleanClick(app, title) {
+        return handleRecordAction(app, title, {
+            itemMutation: CLEAN_APP_MUTATION, titleMutation: CLEAN_TITLE_MUTATION,
+            itemConfirm: I18N.cleanRecordItemConfirm, baseStep1: I18N.cleanRecordBaseStep1,
+            baseStep2: I18N.cleanRecordBaseStep2, failed: I18N.cleanRecordFailed,
+        });
+    }
+
+    /** Real, irreversible: deletes the file from disk *and* forgets the tracked
+     *  row together - never asked separately, the database half always goes with
+     *  the file. */
+    function handleDeleteClick(app, title) {
+        return handleRecordAction(app, title, {
+            itemMutation: DELETE_APP_MUTATION, titleMutation: DELETE_TITLE_MUTATION,
+            itemConfirm: I18N.deleteRecordItemConfirm, baseStep1: I18N.deleteRecordBaseStep1,
+            baseStep2: I18N.deleteRecordBaseStep2, failed: I18N.deleteRecordFailed,
+        });
     }
 
     function buildLibraryDetailAppRow(app, title, label) {
@@ -901,15 +935,27 @@
             statusBadge.textContent = I18N.statusLabels[df.verificationStatus] || df.verificationStatus;
             right.appendChild(statusBadge);
         }
-        if (CLEAN_RECORD_ENABLED) {
-            const cleanBtn = document.createElement('button');
-            cleanBtn.type = 'button';
-            cleanBtn.className = 'icon-btn text-danger';
-            cleanBtn.title = I18N.cleanRecordTooltip;
-            cleanBtn.innerHTML = '<i class="bi bi-trash"></i>';
-            cleanBtn.addEventListener('click', () => handleCleanClick(app, title));
-            right.appendChild(cleanBtn);
-        }
+        // Always available to the admin viewing this page - no settings toggle
+        // gates these anymore. Two distinct actions, two distinct icons: cleaning
+        // the tracked record (database-only, safe to undo with a rescan) is not
+        // the same thing as deleting the real file, and they must never be
+        // confusable at a glance.
+        const cleanBtn = document.createElement('button');
+        cleanBtn.type = 'button';
+        cleanBtn.className = 'icon-btn';
+        cleanBtn.title = I18N.cleanRecordTooltip;
+        cleanBtn.innerHTML = '<i class="bi bi-database-x"></i>';
+        cleanBtn.addEventListener('click', () => handleCleanClick(app, title));
+        right.appendChild(cleanBtn);
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'icon-btn text-danger';
+        deleteBtn.title = I18N.deleteRecordTooltip;
+        deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
+        deleteBtn.addEventListener('click', () => handleDeleteClick(app, title));
+        right.appendChild(deleteBtn);
+
         li.appendChild(right);
         return li;
     }
