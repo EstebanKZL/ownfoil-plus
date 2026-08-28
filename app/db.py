@@ -789,6 +789,65 @@ def reset_library_tracking():
     return count
 
 
+def clean_app_record(app_row_id):
+    """Forget one specific app row's tracked files (and the row itself) - the
+    surgical, single-item version of reset_library_tracking, for recovering one
+    stuck or inconsistent entry (e.g. a filename collision suffix like "(2)" that
+    outlived the original it was meant to distinguish from) without touching
+    anything else. The title itself, and any other app under it (an update or DLC
+    left alone), are untouched - only this one row and its files.
+
+    Takes the Apps table's own primary key, not the app_id string: the same
+    app_id can legitimately have several rows (one per update version owned), so
+    only the row's own id pins down exactly which one to clean. A later scan picks
+    the underlying file back up as if it were brand new.
+
+    Returns True if the row was found and cleaned, False if app_row_id doesn't exist.
+    """
+    app = db.session.get(Apps, app_row_id)
+    if app is None:
+        return False
+    app_id, app_version = app.app_id, app.app_version
+    for f in list(app.files):
+        db.session.delete(f)
+    db.session.flush()
+    db.session.delete(app)
+    db.session.commit()
+    logger.warning(f"Cleaned tracked record for app {app_id} v{app_version} "
+                   f"(row {app_row_id}), admin-requested.")
+    return True
+
+
+def clean_title_apps(title_id):
+    """Forget every app (base, every update, every DLC) tracked under one title,
+    and each one's files - the "yes, everything together" branch of the same
+    admin action clean_app_record offers per-item. The title row itself survives,
+    same reasoning as clean_app_record: only ownership/file tracking is in scope.
+
+    `title_id` is the 16-hex-digit title id string, uppercase - the same identifier
+    every other title-facing part of the API uses (Title.titleId, title(titleId:)),
+    not the Titles table's own internal primary key.
+
+    Returns how many app rows were removed. 0 if the title itself isn't tracked.
+    """
+    title = Titles.query.filter_by(title_id=title_id).first()
+    if title is None:
+        return 0
+    apps = Apps.query.filter_by(title_id=title.id).all()
+    if not apps:
+        return 0
+    count = len(apps)
+    for app in apps:
+        for f in list(app.files):
+            db.session.delete(f)
+    db.session.flush()
+    for app in apps:
+        db.session.delete(app)
+    db.session.commit()
+    logger.warning(f"Cleaned {count} tracked app record(s) for title {title_id}, admin-requested.")
+    return count
+
+
 def increment_download_count(filepath):
     """Increment the download count for a file by filepath"""
     try:

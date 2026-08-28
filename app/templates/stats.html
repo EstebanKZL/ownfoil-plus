@@ -82,6 +82,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <input type="text" id="verificationFilesSearch" class="form-control form-control-sm mb-2" placeholder="{{ t('stats.search_files_placeholder') }}">
                 <table class="table table-sm stat-table">
                     <thead><tr><th>{{ t('common.title') }}</th><th>{{ t('common.file') }}</th><th>{{ t('common.size') }}</th></tr></thead>
                     <tbody id="verificationFilesBody"></tbody>
@@ -113,6 +114,7 @@
             </div>
             <div class="modal-body">
                 <p class="text-secondary small">{{ t('stats.missing_titles_hint') }}</p>
+                <input type="text" id="missingAppTypeSearch" class="form-control form-control-sm mb-2" placeholder="{{ t('library.search_placeholder') }}">
                 <table class="table table-sm stat-table">
                     <thead><tr><th>{{ t('common.title') }}</th></tr></thead>
                     <tbody id="missingAppTypeBody"></tbody>
@@ -134,6 +136,34 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="libraryDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="libraryDetailModalLabel"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="libraryDetailSearch" class="form-control form-control-sm mb-2" placeholder="{{ t('library.search_placeholder') }}">
+                <div id="libraryDetailBody"></div>
+                <div id="libraryDetailEmpty" class="text-secondary fst-italic d-none">
+                    {{ t('common.nothing_to_report') }}
+                </div>
+                <div id="libraryDetailLoading" class="text-secondary fst-italic d-none">
+                    {{ t('common.loading') }}
+                </div>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <span id="libraryDetailCount" class="text-secondary small"></span>
+                <div>
+                    <button type="button" id="libraryDetailPrev" class="btn btn-sm btn-outline-secondary">{{ t('common.previous') }}</button>
+                    <button type="button" id="libraryDetailNext" class="btn btn-sm btn-outline-secondary">{{ t('common.next') }}</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block panel_scripts %}
@@ -141,6 +171,8 @@
 <script>
     // Strings the JS below needs but can't hardcode in English - injected once here
     // rather than threading t() through every render function.
+    const CLEAN_RECORD_ENABLED = {{ web_clean_record_enabled | tojson }};
+
     const I18N = {
         nothingToReport: {{ t('common.nothing_to_report') | tojson }},
         tileFilesNote: {{ t('stats.tile.files_note') | tojson }},
@@ -170,6 +202,15 @@
         verifyFailed: {{ t('stats.verify_failed') | tojson }},
         couldNotLoadFiles: {{ t('stats.could_not_load_files') | tojson }},
         missingTitles: {{ t('stats.missing_titles') | tojson }},
+        cleanRecordTooltip: {{ t('stats.clean_record_tooltip') | tojson }},
+        cleanRecordBaseStep1: {{ t('stats.clean_record_base_step1') | tojson }},
+        cleanRecordBaseStep2: {{ t('stats.clean_record_base_step2') | tojson }},
+        cleanRecordItemConfirm: {{ t('stats.clean_record_item_confirm') | tojson }},
+        cleanRecordFailed: {{ t('stats.clean_record_failed') | tojson }},
+        baseGame: {{ t('library.base_game') | tojson }},
+        dlcSection: {{ t('library.dlc_section') | tojson }},
+        updatesSection: {{ t('library.updates_section') | tojson }},
+        unrecognized: {{ t('library.unrecognized') | tojson }},
         filesPageCount: {{ t('stats.files_page_count') | tojson }},
         duplicateKeepThis: {{ t('stats.duplicate_keep_this') | tojson }},
         duplicateResolved: {{ t('stats.duplicate_resolved') | tojson }},
@@ -286,6 +327,14 @@
             b => [b.key || '(none)', count(b.count), formatBytes(b.size)]));
         renderTable('byLibrary', (data.filesByLibrary || []).map(
             b => [b.key, count(b.count), formatBytes(b.size)]));
+        // Every library row opens the same detail view - unlike byAppType/byVerification,
+        // there's no "only when there's something to explain" condition here.
+        [...document.querySelectorAll('#byLibrary tr')].forEach((tr, i) => {
+            const bucket = (data.filesByLibrary || [])[i];
+            if (!bucket) return;
+            tr.style.cursor = 'pointer';
+            tr.addEventListener('click', () => openLibraryDetail(bucket.key));
+        });
         renderTable('byVerification', (data.filesByVerificationStatus || []).map(
             b => [humanize(b.status), count(b.count), formatBytes(b.size)]));
         // Keep the raw enum value on each row so a click knows what to filter by,
@@ -515,8 +564,9 @@
 
     // --- Verification status drill-down: which titles are behind each row above ---
     const FILES_BY_STATUS_QUERY = `
-        query FilesByStatus($status: VerificationStatus!, $page: Int!, $pageSize: Int!) {
-            files(filter: {verificationStatus: $status}, page: $page, pageSize: $pageSize,
+        query FilesByStatus($status: VerificationStatus!, $page: Int!, $pageSize: Int!, $search: String) {
+            files(filter: {verificationStatus: $status, filename: {contains: $search}},
+                  page: $page, pageSize: $pageSize,
                   orderBy: {field: ADDED_AT, direction: DESC}) {
                 total
                 items {
@@ -531,6 +581,8 @@
     let verificationStatus = null;
     let verificationPage = 1;
     let verificationTotal = 0;
+    let verificationSearch = '';
+    let verificationSearchDebounce;
     const VERIFICATION_PAGE_SIZE = 50;
 
     /** The title behind a file: its base game's name, or the filename itself when
@@ -557,6 +609,7 @@
         try {
             data = await gqlFetchStats(FILES_BY_STATUS_QUERY, {
                 status: verificationStatus, page: verificationPage, pageSize: VERIFICATION_PAGE_SIZE,
+                search: verificationSearch || null,
             });
         } catch (e) {
             console.error(e);
@@ -611,6 +664,8 @@
     function openVerificationFiles(status, label) {
         verificationStatus = status;
         verificationPage = 1;
+        verificationSearch = '';
+        document.getElementById('verificationFilesSearch').value = '';
         document.getElementById('verificationFilesModalLabel').textContent = `${label} files`;
         if (!verificationModal) {
             verificationModal = new bootstrap.Modal(document.getElementById('verificationFilesModal'));
@@ -618,6 +673,15 @@
         verificationModal.show();
         loadVerificationFilesPage();
     }
+
+    document.getElementById('verificationFilesSearch').addEventListener('input', function () {
+        verificationSearch = this.value;
+        clearTimeout(verificationSearchDebounce);
+        verificationSearchDebounce = setTimeout(() => {
+            verificationPage = 1;
+            loadVerificationFilesPage();
+        }, 250);
+    });
 
     document.getElementById('verificationFilesPrev').addEventListener('click', () => {
         if (verificationPage > 1) { verificationPage--; loadVerificationFilesPage(); }
@@ -632,8 +696,8 @@
     // columns can't explain by themselves. ------------------------------------
 
     const MISSING_APP_TYPE_QUERY = `
-        query MissingAppType($type: AppType!, $page: Int!, $pageSize: Int!) {
-            titles(owned: true, missingAppType: $type, page: $page, pageSize: $pageSize,
+        query MissingAppType($type: AppType!, $page: Int!, $pageSize: Int!, $search: String) {
+            titles(owned: true, missingAppType: $type, search: $search, page: $page, pageSize: $pageSize,
                    orderBy: {field: NAME}) {
                 total
                 items { name }
@@ -644,6 +708,8 @@
     let missingAppTypeValue = null;
     let missingAppTypePage = 1;
     let missingAppTypeTotal = 0;
+    let missingAppTypeSearch = '';
+    let missingAppTypeSearchDebounce;
     const MISSING_APP_TYPE_PAGE_SIZE = 50;
 
     async function loadMissingAppTypePage() {
@@ -663,6 +729,7 @@
         try {
             data = await gqlFetchStats(MISSING_APP_TYPE_QUERY, {
                 type: missingAppTypeValue, page: missingAppTypePage, pageSize: MISSING_APP_TYPE_PAGE_SIZE,
+                search: missingAppTypeSearch || null,
             });
         } catch (e) {
             console.error(e);
@@ -701,6 +768,8 @@
     function openMissingAppType(appType) {
         missingAppTypeValue = appType;
         missingAppTypePage = 1;
+        missingAppTypeSearch = '';
+        document.getElementById('missingAppTypeSearch').value = '';
         document.getElementById('missingAppTypeModalLabel').textContent = `${appType} - ${I18N.missingTitles}`;
         if (!missingAppTypeModal) {
             missingAppTypeModal = new bootstrap.Modal(document.getElementById('missingAppTypeModal'));
@@ -709,12 +778,292 @@
         loadMissingAppTypePage();
     }
 
+    document.getElementById('missingAppTypeSearch').addEventListener('input', function () {
+        missingAppTypeSearch = this.value;
+        clearTimeout(missingAppTypeSearchDebounce);
+        missingAppTypeSearchDebounce = setTimeout(() => {
+            missingAppTypePage = 1;
+            loadMissingAppTypePage();
+        }, 250);
+    });
+
     document.getElementById('missingAppTypePrev').addEventListener('click', () => {
         if (missingAppTypePage > 1) { missingAppTypePage--; loadMissingAppTypePage(); }
     });
     document.getElementById('missingAppTypeNext').addEventListener('click', () => {
         const totalPages = Math.max(1, Math.ceil(missingAppTypeTotal / MISSING_APP_TYPE_PAGE_SIZE));
         if (missingAppTypePage < totalPages) { missingAppTypePage++; loadMissingAppTypePage(); }
+    });
+
+    // --- Library detail: clicking a Libraries row shows every title with a file
+    // physically under it, List-view-style but without a download button, plus (if
+    // enabled in Settings) a per-item clean-record action. -----------------------
+
+    const LIBRARY_DETAIL_QUERY = `
+        query LibraryDetail($path: String!, $page: Int!, $pageSize: Int!, $search: String) {
+            titles(owned: true, libraryPath: $path, search: $search, page: $page, pageSize: $pageSize,
+                   orderBy: {field: NAME}) {
+                total
+                items {
+                    titleId
+                    name
+                    apps(owned: true) {
+                        id appId appType appVersion releaseDate
+                        downloadableFile { size verificationStatus }
+                        titledb { name }
+                    }
+                }
+            }
+        }`;
+
+    const CLEAN_APP_MUTATION = `
+        mutation CleanApp($id: ID!) { cleanAppRecord(appRowId: $id) }`;
+    const CLEAN_TITLE_MUTATION = `
+        mutation CleanTitle($id: String!) { cleanTitleRecord(titleId: $id) }`;
+
+    async function gqlMutateStats(query, variables) {
+        const r = await fetch('/api/graphql', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+            credentials: 'same-origin',
+            body: JSON.stringify({query, variables}),
+        });
+        if (!r.ok) throw new Error(`GraphQL HTTP ${r.status}`);
+        const body = await r.json();
+        if (body.errors && body.errors.length) {
+            throw new Error('GraphQL errors: ' + JSON.stringify(body.errors));
+        }
+        return body.data;
+    }
+
+    let libraryDetailModal;
+    let libraryDetailPath = null;
+    let libraryDetailPage = 1;
+    let libraryDetailTotal = 0;
+    let libraryDetailSearch = '';
+    let libraryDetailSearchDebounce;
+    const LIBRARY_DETAIL_PAGE_SIZE = 20;
+
+    function libraryDetailAppLabel(app) {
+        if (app.appType === 'BASE') return I18N.baseGame;
+        if (app.appType === 'UPDATE') return `v${app.appVersion}`;
+        return (app.titledb && app.titledb.name) || I18N.unrecognized;
+    }
+
+    /** The base game gets a two-step confirm (native confirm() only ever gives a
+     *  binary choice, so a genuine three-way "clean base only / clean everything /
+     *  do nothing" needs two of them in sequence): first, plain confirmation that
+     *  cleaning is wanted at all (Cancel here = do nothing); then, whether to also
+     *  sweep every update/DLC under the same title (Cancel here = base only). An
+     *  update or DLC row is a single confirm, since there's nothing under it to
+     *  cascade into. */
+    async function handleCleanClick(app, title) {
+        try {
+            if (app.appType === 'BASE') {
+                if (!window.confirm(I18N.cleanRecordBaseStep1.replace('{name}', title.name))) return;
+                const cascade = window.confirm(I18N.cleanRecordBaseStep2.replace('{name}', title.name));
+                if (cascade) {
+                    await gqlMutateStats(CLEAN_TITLE_MUTATION, {id: title.titleId});
+                } else {
+                    await gqlMutateStats(CLEAN_APP_MUTATION, {id: app.id});
+                }
+            } else {
+                const label = libraryDetailAppLabel(app);
+                if (!window.confirm(I18N.cleanRecordItemConfirm.replace('{name}', `${title.name} - ${label}`))) return;
+                await gqlMutateStats(CLEAN_APP_MUTATION, {id: app.id});
+            }
+            loadLibraryDetailPage();
+        } catch (e) {
+            console.error(e);
+            alert(I18N.cleanRecordFailed);
+        }
+    }
+
+    function buildLibraryDetailAppRow(app, title, label) {
+        const li = document.createElement('li');
+        li.className = 'list-group-item bg-transparent d-flex justify-content-between align-items-center flex-wrap gap-2';
+        const left = document.createElement('span');
+        left.textContent = label != null ? label : libraryDetailAppLabel(app);
+        li.appendChild(left);
+
+        const right = document.createElement('span');
+        right.className = 'd-flex align-items-center gap-2 flex-shrink-0';
+        const df = app.downloadableFile;
+        if (df && df.size != null) {
+            const sizeBadge = document.createElement('span');
+            sizeBadge.className = 'badge text-bg-secondary';
+            sizeBadge.textContent = formatBytes(df.size);
+            right.appendChild(sizeBadge);
+        }
+        if (df && df.verificationStatus) {
+            const statusBadge = document.createElement('span');
+            statusBadge.className = 'badge text-bg-dark';
+            statusBadge.textContent = I18N.statusLabels[df.verificationStatus] || df.verificationStatus;
+            right.appendChild(statusBadge);
+        }
+        if (CLEAN_RECORD_ENABLED) {
+            const cleanBtn = document.createElement('button');
+            cleanBtn.type = 'button';
+            cleanBtn.className = 'icon-btn text-danger';
+            cleanBtn.title = I18N.cleanRecordTooltip;
+            cleanBtn.innerHTML = '<i class="bi bi-trash"></i>';
+            cleanBtn.addEventListener('click', () => handleCleanClick(app, title));
+            right.appendChild(cleanBtn);
+        }
+        li.appendChild(right);
+        return li;
+    }
+
+    let libraryDetailSectionSeq = 0;
+
+    /** A collapsible "Updates" or "DLC" group within the modal - same look as the
+     *  List view's own collapsible sections (count badge + chevron that flips on
+     *  expand), so a title with a dozen updates doesn't turn the modal into an
+     *  unreadable wall of rows. */
+    function buildLibraryDetailSection(sectionTitle, rows) {
+        const id = `libraryDetailSection${libraryDetailSectionSeq++}`;
+        const li = document.createElement('li');
+        li.className = 'list-group-item bg-transparent';
+
+        const trigger = document.createElement('p');
+        trigger.className = 'my-1 d-flex justify-content-between align-items-center list-section-trigger';
+        trigger.setAttribute('role', 'button');
+        trigger.setAttribute('aria-expanded', 'false');
+        trigger.setAttribute('data-bs-toggle', 'collapse');
+        trigger.setAttribute('data-bs-target', `#${id}`);
+        trigger.setAttribute('aria-controls', id);
+        const strong = document.createElement('strong');
+        strong.textContent = sectionTitle;
+        trigger.appendChild(strong);
+        const triggerRight = document.createElement('span');
+        triggerRight.className = 'd-flex align-items-center gap-2';
+        const countBadge = document.createElement('span');
+        countBadge.className = 'badge text-bg-secondary';
+        countBadge.textContent = rows.length;
+        triggerRight.appendChild(countBadge);
+        triggerRight.innerHTML += '<i class="bi bi-chevron-down list-chevron"></i>';
+        trigger.appendChild(triggerRight);
+        li.appendChild(trigger);
+
+        const collapseDiv = document.createElement('div');
+        collapseDiv.className = 'collapse';
+        collapseDiv.id = id;
+        const innerList = document.createElement('ul');
+        innerList.className = 'list-group list-group-flush mt-1';
+        rows.forEach(r => innerList.appendChild(r));
+        collapseDiv.appendChild(innerList);
+        li.appendChild(collapseDiv);
+        return li;
+    }
+
+    function buildLibraryDetailTitleCard(title) {
+        const card = document.createElement('div');
+        card.className = 'card text-bg-dark mb-3';
+        const body = document.createElement('div');
+        body.className = 'card-body';
+        const h = document.createElement('h6');
+        h.className = 'mb-2';
+        h.textContent = title.name;
+        body.appendChild(h);
+
+        const apps = title.apps || [];
+        const base = apps.filter(a => a.appType === 'BASE');
+        const updates = apps.filter(a => a.appType === 'UPDATE');
+        const dlc = apps.filter(a => a.appType === 'DLC');
+
+        const list = document.createElement('ul');
+        list.className = 'list-group list-group-flush';
+        // The base game stays directly visible, same as the List view - only
+        // Updates/DLC (which can run long) collapse behind a section.
+        base.forEach(app => list.appendChild(buildLibraryDetailAppRow(app, title, I18N.baseGame)));
+        if (updates.length) {
+            list.appendChild(buildLibraryDetailSection(
+                I18N.updatesSection, updates.map(app => buildLibraryDetailAppRow(app, title))));
+        }
+        if (dlc.length) {
+            list.appendChild(buildLibraryDetailSection(
+                I18N.dlcSection, dlc.map(app => buildLibraryDetailAppRow(app, title))));
+        }
+        body.appendChild(list);
+        card.appendChild(body);
+        return card;
+    }
+
+    async function loadLibraryDetailPage() {
+        const container = document.getElementById('libraryDetailBody');
+        const empty = document.getElementById('libraryDetailEmpty');
+        const loading = document.getElementById('libraryDetailLoading');
+        const prevBtn = document.getElementById('libraryDetailPrev');
+        const nextBtn = document.getElementById('libraryDetailNext');
+
+        container.innerHTML = '';
+        empty.classList.add('d-none');
+        loading.classList.remove('d-none');
+        prevBtn.disabled = true;
+        nextBtn.disabled = true;
+
+        let data;
+        try {
+            data = await gqlFetchStats(LIBRARY_DETAIL_QUERY, {
+                path: libraryDetailPath, page: libraryDetailPage, pageSize: LIBRARY_DETAIL_PAGE_SIZE,
+                search: libraryDetailSearch || null,
+            });
+        } catch (e) {
+            console.error(e);
+            loading.classList.add('d-none');
+            empty.textContent = I18N.couldNotLoadFiles;
+            empty.classList.remove('d-none');
+            return;
+        }
+
+        loading.classList.add('d-none');
+        libraryDetailTotal = data.titles.total;
+        const items = data.titles.items || [];
+
+        if (!items.length) {
+            empty.classList.remove('d-none');
+        } else {
+            items.forEach(t => container.appendChild(buildLibraryDetailTitleCard(t)));
+        }
+
+        const totalPages = Math.max(1, Math.ceil(libraryDetailTotal / LIBRARY_DETAIL_PAGE_SIZE));
+        document.getElementById('libraryDetailCount').textContent = I18N.filesPageCount
+            .replace('{count}', count(libraryDetailTotal))
+            .replace('{s}', libraryDetailTotal === 1 ? '' : 's')
+            .replace('{page}', libraryDetailPage)
+            .replace('{totalPages}', totalPages);
+        prevBtn.disabled = libraryDetailPage <= 1;
+        nextBtn.disabled = libraryDetailPage >= totalPages;
+    }
+
+    function openLibraryDetail(path) {
+        libraryDetailPath = path;
+        libraryDetailPage = 1;
+        libraryDetailSearch = '';
+        document.getElementById('libraryDetailSearch').value = '';
+        document.getElementById('libraryDetailModalLabel').textContent = path;
+        if (!libraryDetailModal) {
+            libraryDetailModal = new bootstrap.Modal(document.getElementById('libraryDetailModal'));
+        }
+        libraryDetailModal.show();
+        loadLibraryDetailPage();
+    }
+
+    document.getElementById('libraryDetailSearch').addEventListener('input', function () {
+        libraryDetailSearch = this.value;
+        clearTimeout(libraryDetailSearchDebounce);
+        libraryDetailSearchDebounce = setTimeout(() => {
+            libraryDetailPage = 1;
+            loadLibraryDetailPage();
+        }, 250);
+    });
+
+    document.getElementById('libraryDetailPrev').addEventListener('click', () => {
+        if (libraryDetailPage > 1) { libraryDetailPage--; loadLibraryDetailPage(); }
+    });
+    document.getElementById('libraryDetailNext').addEventListener('click', () => {
+        const totalPages = Math.max(1, Math.ceil(libraryDetailTotal / LIBRARY_DETAIL_PAGE_SIZE));
+        if (libraryDetailPage < totalPages) { libraryDetailPage++; loadLibraryDetailPage(); }
     });
 
     // --- Re-verify everything now: force a full re-check, bypassing the "already

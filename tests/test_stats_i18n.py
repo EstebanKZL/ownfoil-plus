@@ -173,6 +173,102 @@ def test_missing_app_type_modal_is_not_nested_inside_the_verification_files_moda
     )
 
 
+def test_library_detail_modal_is_present_and_translated(client):
+    resp = client.get("/admin/stats")
+    html = resp.get_data(as_text=True)
+    assert 'id="libraryDetailModal"' in html
+    assert 'id="libraryDetailBody"' in html
+    assert 'id="libraryDetailPrev"' in html
+    assert 'id="libraryDetailNext"' in html
+    assert "function openLibraryDetail" in html
+    assert "const LIBRARY_DETAIL_QUERY" in html
+    assert "libraryPath:" in html
+    assert "const CLEAN_APP_MUTATION" in html
+    assert "const CLEAN_TITLE_MUTATION" in html
+    assert "cleanAppRecord" in html
+    assert "cleanTitleRecord" in html
+
+    client.set_cookie("ownfoil_lang", "es")
+    resp = client.get("/admin/stats")
+    html = resp.get_data(as_text=True)
+    assert "Limpiar este registro" in html
+
+
+def test_library_detail_modal_is_not_nested_inside_another_modal(client):
+    """Same regression class as missingAppTypeModal's own guard above - confirmed
+    fresh this time, up front, rather than after the fact."""
+    resp = client.get("/admin/stats")
+    html = resp.get_data(as_text=True)
+
+    missing_start = html.index('id="missingAppTypeModal"')
+    detail_start = html.index('id="libraryDetailModal"')
+    assert detail_start > missing_start
+
+    first_modal_open = html.rindex("<div", 0, missing_start)
+    depth = 0
+    i = first_modal_open
+    closed_at = None
+    while i < len(html):
+        if html.startswith("<div", i):
+            depth += 1
+            i += 4
+        elif html.startswith("</div>", i):
+            depth -= 1
+            i += 6
+            if depth == 0:
+                closed_at = i
+                break
+        else:
+            i += 1
+    assert closed_at is not None
+    assert detail_start >= closed_at, (
+        "libraryDetailModal starts before missingAppTypeModal's own closing </div>"
+    )
+
+
+def test_library_detail_modal_groups_updates_and_dlc_into_collapsible_sections(client):
+    """The base game stays directly visible, but Updates/DLC group behind the same
+    collapsible section style the List view uses, rather than a flat list of every
+    app - requested after the first version rendered everything flat."""
+    resp = client.get("/admin/stats")
+    html = resp.get_data(as_text=True)
+    assert "function buildLibraryDetailSection" in html
+    assert "list-section-trigger" in html
+    assert "list-chevron" in html
+    assert "updatesSection:" in html
+
+
+def test_all_three_drill_down_modals_have_a_debounced_search_box(client):
+    """Requested after the first version of these modals had no way to narrow a long
+    list down - each gets its own search input, wired into the query's existing
+    search/filter capability (titles already had `search`; files got `filename:
+    {contains:}`), debounced the same 250ms the List view's own search box uses."""
+    resp = client.get("/admin/stats")
+    html = resp.get_data(as_text=True)
+
+    assert 'id="libraryDetailSearch"' in html
+    assert 'id="missingAppTypeSearch"' in html
+    assert 'id="verificationFilesSearch"' in html
+
+    assert "libraryDetailSearchDebounce" in html
+    assert "missingAppTypeSearchDebounce" in html
+    assert "verificationSearchDebounce" in html
+
+    # Each query actually threads the term through, not just an unused input sitting there.
+    assert "libraryPath: $path, search: $search" in html
+    assert "missingAppType: $type, search: $search" in html
+    assert "filename: {contains: $search}" in html
+
+
+def test_clean_record_button_only_rendered_when_setting_is_enabled(client):
+    """CLEAN_RECORD_ENABLED is what actually gates the trash-icon button in
+    buildLibraryDetailAppRow - confirm the flag reads false by default (matching
+    the settings default) and true once the admin turns it on."""
+    resp = client.get("/admin/stats")
+    html = resp.get_data(as_text=True)
+    assert "const CLEAN_RECORD_ENABLED = false;" in html
+
+
 def test_duplicate_files_ui_is_always_visible_not_only_when_a_duplicate_exists(client):
     """The section header, hint, and controls are discoverable at all times - the
     feature exists whether or not there happens to be a duplicate right now. Only the

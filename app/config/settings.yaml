@@ -1,0 +1,62 @@
+library:
+  management:
+    compression:
+      block_size_exponent: 20
+      enabled: false
+      level: 18
+      long_distance: false
+      mode: auto
+      threads: 0
+    delete_older_updates: false
+    duplicates:
+      auto_resolve: false
+      compression_preference: none
+      prefer_larger_on_tie: false
+    organizer:
+      clean_names: false
+      enabled: false
+      name_language: ''
+      name_region: ''
+      remove_empty_folders: false
+      templates:
+        base: '{titleName}/{titleName} [{appId}][v{appVersion}]'
+        dlc: '{titleName}/{appName} [{appId}][v{appVersion}]'
+        multi: '{titleName}/{titleName} [{titleId}]'
+        update: '{titleName}/{titleName} [{appId}][v{appVersion}]'
+      windows_compatible: false
+    verification:
+      depth: hash
+      enabled: true
+    web_downloads:
+      enabled: false
+  paths:
+  - /games
+  watcher:
+    enabled: true
+    polling_interval: 60
+scheduler:
+  titledb_update_interval: 12h
+shop:
+  clients:
+    cyberfoil:
+      enabled: true
+      hauth: {}
+    sphaira:
+      enabled: true
+    tinfoil:
+      clientCertKey: '-----BEGIN PRIVATE KEY-----'
+      clientCertPub: '-----BEGIN PUBLIC KEY-----'
+      enabled: true
+      encrypt: true
+      hauth: {}
+  host: ''
+  motd: Welcome to your own shop!
+  public: false
+titles:
+  cache_images: true
+  language: en
+  region: US
+worker:
+  count: 2
+  group_limits:
+    io: 1

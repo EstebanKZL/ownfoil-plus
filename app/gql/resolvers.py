@@ -640,6 +640,7 @@ def resolve_titles(*, owned: Optional[bool], filter: Optional[TitleFilter],
                     search: Optional[str] = None, order_by: Optional[OrderBy] = None,
                     library_health: Optional[LibraryHealth] = None,
                     missing_app_type: Optional[AppType] = None,
+                    library_path: Optional[str] = None,
                     page: int, page_size: int, ctx: GraphQLContext, info) -> TitleConnection:
     if not ctx.can_shop:
         return TitleConnection(total=0, items=[])
@@ -714,6 +715,20 @@ def resolve_titles(*, owned: Optional[bool], filter: Optional[TitleFilter],
                 "EXISTS (SELECT 1 FROM apps ap WHERE ap.title_id = ot.id "
                 "AND ap.app_type = :missing_app_type AND ap.owned = 0)")
             params["missing_app_type"] = missing_app_type.value
+    if library_path is not None:
+        # For Stats' per-library detail view: which titles have at least one owned
+        # file physically under this specific library root. Same "only meaningful
+        # when owned" reasoning as the other two title-scoping args above.
+        if owned is not True:
+            where.append("0")
+        else:
+            where.append(
+                "EXISTS (SELECT 1 FROM apps ap "
+                "JOIN app_files af ON af.app_id = ap.id "
+                "JOIN files fl ON fl.id = af.file_id "
+                "JOIN libraries lib ON lib.id = fl.library_id "
+                "WHERE ap.title_id = ot.id AND lib.path = :library_path)")
+            params["library_path"] = library_path
     order_by_sql = order_sql(order_by, TITLE_ORDER, default_order)
 
     where_sql = (" WHERE " + " AND ".join(where)) if where else ""

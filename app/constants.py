@@ -56,6 +56,9 @@ DEFAULT_SETTINGS = {
             "web_downloads": {
                 "enabled": False,
             },
+            "web_clean_record": {
+                "enabled": False,
+            },
             "duplicates": {
                 "auto_resolve": False,
                 "prefer_larger_on_tie": False,

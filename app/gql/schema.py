@@ -81,6 +81,10 @@ class Query:
             "toward Stats' \"registered\" figure for that type) but don't actually "
             "own it - e.g. a title an update or DLC was scanned for, but never the "
             "base game's own file. Same `owned: true`-only rule as libraryHealth.")] = None,
+        library_path: Annotated[Optional[str], _arg(
+            "Keep only titles with at least one owned file physically under this "
+            "library root - for Stats' per-library detail view. Same "
+            "`owned: true`-only rule as libraryHealth.")] = None,
         order_by: Order = None,
         page: Page = 1,
         page_size: TitlePageSize = 50,
@@ -90,6 +94,7 @@ class Query:
         return resolve_titles(
             owned=owned, filter=filter, search=search, order_by=order_by,
             library_health=library_health, missing_app_type=missing_app_type,
+            library_path=library_path,
             page=page, page_size=page_size, ctx=info.context, info=info,
         )
 

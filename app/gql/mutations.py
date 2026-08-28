@@ -26,6 +26,7 @@ from constants import COMPRESS_EXT
 from .docs import described, described_mutation
 from .resolvers import resolve_task, resolve_title
 from .types import Task, Title
+from settings import get_settings
 
 
 class NotAuthorized(Exception):
@@ -192,6 +193,49 @@ class Mutation:
         if confirm != "RESET":
             raise MutationFailed('confirm must be exactly "RESET"')
         return db_mod.reset_library_tracking()
+
+    @described_mutation
+    def clean_app_record(
+        self, info: Info,
+        app_row_id: Annotated[strawberry.ID, strawberry.argument(
+            description="Primary key of the app row to clean - App.id, not the "
+                        "app_id string (the same app_id can have several rows, one "
+                        "per update version owned).")],
+    ) -> bool:
+        """Forget one specific app's tracked files and the row itself - the surgical,
+        single-item version of resetLibraryTracking, for recovering one stuck or
+        inconsistent entry without touching anything else (the title, and every other
+        app under it, are left alone). A later scan picks the underlying file back up
+        as if it were brand new.
+
+        Gated the same way the download button is: admin access, and only when an
+        admin has separately turned this on in Settings. Returns whether a row was
+        found and cleaned.
+        """
+        import db as db_mod
+        _require_admin(info.context)
+        if not get_settings()['library']['management'].get('web_clean_record', {}).get('enabled', False):
+            raise MutationFailed('Cleaning records from Stats is disabled in Settings > Library.')
+        return db_mod.clean_app_record(int(app_row_id))
+
+    @described_mutation
+    def clean_title_record(
+        self, info: Info,
+        title_id: Annotated[str, strawberry.argument(
+            description="The 16-hex-digit title id - Title.titleId, the same "
+                        "identifier title(titleId:) takes.")],
+    ) -> int:
+        """The "yes, everything together" counterpart to cleanAppRecord: forgets
+        every app (base, every update, every DLC) tracked under one title, and each
+        one's files. The title row itself survives, same reasoning as
+        cleanAppRecord. Same gating as cleanAppRecord. Returns how many app rows
+        were removed.
+        """
+        import db as db_mod
+        _require_admin(info.context)
+        if not get_settings()['library']['management'].get('web_clean_record', {}).get('enabled', False):
+            raise MutationFailed('Cleaning records from Stats is disabled in Settings > Library.')
+        return db_mod.clean_title_apps(title_id)
 
     @described_mutation
     def compress_file(
