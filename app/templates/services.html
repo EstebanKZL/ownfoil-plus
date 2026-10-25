@@ -1,0 +1,76 @@
+{% extends "settings_layout.html" %}
+{% block panel %}
+            <div class="settings-container container mt-3">
+
+                {% if admin_account_created == false %}
+                <div class="alert alert-danger" role="alert">
+                    <h4 class="alert-heading">{{ t('settings.missing_admin_heading') }}</h4>
+                    <p>{{ t('settings.missing_admin_body') }}
+                        <br>
+                        <a href="/admin/settings#Authentication" class="alert-link">{{ t('settings.missing_admin_link') }}</a>
+                    </p>
+                </div>
+                {% endif %}
+
+                <h1 class="pb-2">{{ t('services.title') }}</h1>
+                <p>{{ t('services.desc') }}</p>
+
+                <hr class="hr-settings">
+
+                <h2 class="pb-2">{{ t('sections.discovery') }}</h2>
+                <p>{{ t('services.discovery_desc') }}</p>
+                <div class="alert alert-warning" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    {{ t('services.discovery_docker_note') | safe }}
+                </div>
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="discoveryEnabledCheck"
+                        aria-describedby="discoveryEnabledCheckHelp">
+                    <label class="form-check-label" for="discoveryEnabledCheck">{{ t('services.discovery_enabled_label') }}</label>
+                    <div id="discoveryEnabledCheckHelp" class="form-text">{{ t('services.discovery_enabled_help', port=discovery_port) }}</div>
+                </div>
+
+                <div class="mb-3">
+                    <button type="button" id="submitServicesSettingsBtn" class="btn btn-primary"
+                        onClick='submitServicesSettings()'>{{ t('services.submit') }}</button>
+                </div>
+
+            </div>
+{% endblock %}
+
+{% block panel_scripts %}
+<script>
+    function getCheckboxStatus(checkboxId) {
+        return $('#' + checkboxId).is(':checked');
+    }
+
+    function loadServicesSettings() {
+        $.get('/api/settings', function (result) {
+            const discovery = (result['services'] || {})['discovery'] || {};
+            $('#discoveryEnabledCheck').prop('checked', !!discovery['enabled']);
+        });
+    }
+
+    function submitServicesSettings() {
+        $('#submitServicesSettingsBtn').prop('disabled', true);
+        const data = {
+            discovery: {
+                enabled: getCheckboxStatus('discoveryEnabledCheck'),
+            }
+        };
+        $.ajax({
+            url: '/api/settings/services',
+            type: 'POST',
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            complete: function () {
+                $('#submitServicesSettingsBtn').prop('disabled', false);
+            }
+        });
+    }
+
+    $(document).ready(function () {
+        loadServicesSettings();
+    });
+</script>
+{% endblock %}

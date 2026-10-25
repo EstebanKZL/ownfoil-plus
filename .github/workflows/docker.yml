@@ -1,0 +1,64 @@
+name: Docker
+
+# Builds and publishes the estebankzl/ownfoil-plus multi-arch image to Docker Hub.
+#
+# This didn't exist before - the published image had no automated rebuild at all, so
+# nothing ever picked up newer Alpine/Python security patches once an image was
+# pushed, which is the single biggest contributor to a registry vulnerability scan
+# climbing over time even with no code changes. Two triggers cover that:
+#   - a version tag push (release-day build, tagged with that version and "latest")
+#   - a weekly schedule (rebuilds "latest" from the exact same source, picking up
+#     whatever OS/package patches landed upstream since the last build - the Dockerfile
+#     itself also runs `apk upgrade` at build time, so this is the other half: forcing
+#     a fresh build often enough that there's never a long gap to accumulate in)
+#
+# Requires two repository secrets to actually push: DOCKERHUB_USERNAME and
+# DOCKERHUB_TOKEN (a Docker Hub access token, not the account password - created under
+# Docker Hub > Account Settings > Security).
+
+on:
+  push:
+    tags:
+      - '*.*.*.*'
+  schedule:
+    - cron: '0 6 * * 1'  # Mondays 06:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU (for the arm/v6, arm/v7, arm64 targets)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: estebankzl/ownfoil-plus
+          tags: |
+            type=ref,event=tag
+            type=raw,value=latest
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6
+          push: true
+          pull: true
+          no-cache: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

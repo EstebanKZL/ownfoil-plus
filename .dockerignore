@@ -1,0 +1,23 @@
+# Keeps the build context (and therefore the image) to what the app actually needs at
+# runtime - smaller image, smaller attack surface, and no risk of a local dev file
+# (real config, a database, caches) ending up baked into a published layer.
+.git/
+.github/
+.gitignore
+.dockerignore
+.pytest_cache/
+__pycache__/
+*.py[cod]
+tests/
+image/
+*.md
+LICENSE.md
+chart/
+docker-compose.yml
+
+# Runtime config - never meant to be baked into the image; the real install writes it
+# into the mounted volume at /app/config. (Not app/data/: that one ships a real file,
+# app/data/titledb/languages.json, a placeholder the app reads before its first
+# titledb download ever completes - excluding the whole directory would silently
+# break that.)
+app/config/

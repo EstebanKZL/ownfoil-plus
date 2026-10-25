@@ -1,0 +1,651 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% set username = current_user.user if current_user.is_authenticated else 'Username' %}
+{% include 'nav.html' %}
+<div class="container mt-4">
+    <h1 class="mb-4">{{ t('setup.title') }}</h1>
+
+    {# Sphaira: the "Ownfoil" menu (Sphaira's own fixed client-side label - see this
+       card's own legitimate mentions of it below), the recommended client. #}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2 class="h4 mb-0"><i class="bi bi-nintendo-switch"></i> {{ t('setup.sphaira.heading') }}</h2>
+        </div>
+        <div class="card-body">
+            <p>
+                <a href="https://github.com/NaGaa95/sphaira" target="_blank" rel="noopener">Sphaira</a>
+                {{ t('setup.sphaira.intro_before_code') }} <code>Ownfoil</code> {{ t('setup.sphaira.intro_after_code', shop_name=shop_name) }}
+            </p>
+
+            {# Discovery is a LAN broadcast capability of the server itself, not a property
+               of the URL the admin's own browser happens to be using to view /setup - an
+               admin who always reaches the panel through their public/remote domain (even
+               from the same WiFi the Switch is on) still needs these instructions, so this
+               no longer depends on show_local_tab (which exists only to hide the *local
+               address/port* fields below, which really are meaningless when fully remote). #}
+            {% if discovery_enabled or is_admin %}
+            <h4 class="mb-3">{{ t('setup.discovery.heading') }}</h4>
+            {% if discovery_enabled %}
+            <div class="alert alert-success">
+                <i class="bi bi-broadcast"></i>
+                <strong>{{ t('setup.discovery.enabled_strong') }}</strong>{{ t('setup.discovery.enabled_rest') }}
+            </div>
+            <ol>
+                <li class="mb-2">{{ t('setup.discovery.step_connect') }}</li>
+                <li class="mb-2">{{ t('setup.manual.open_menu_pre') }} <strong>Sphaira</strong>{{ t('setup.manual.open_menu_mid') }} <strong>(Y) Menu</strong> → <strong>Menus</strong> → <strong>Ownfoil</strong></li>
+                <li class="mb-2">{{ t('setup.discovery.step_select_pre') }} <strong>Discover local servers</strong>{{ t('setup.discovery.step_select_mid') }} <code class="setup-highlight">{{ shop_name }}</code> {{ t('setup.discovery.step_select_post') }}</li>
+                {% if current_user.is_authenticated %}
+                <li class="mb-2">{{ t('setup.discovery.step_login_authed', user=current_user.user) }} <strong>Save</strong></li>
+                {% elif admin_account_created %}
+                <li class="mb-2">{{ t('setup.discovery.step_login_unauthed', shop_name=shop_name) }} <strong>Save</strong></li>
+                {% endif %}
+            </ol>
+            <p class="text-muted">
+                {{ t('setup.discovery.saved_with_local') }}{% if remote_host %} {{ t('setup.discovery.saved_with_remote', remote_host='<code class="setup-highlight">' + remote_host + '</code>') | safe }}{% endif %}.
+            </p>
+            {% else %}
+            <div class="alert alert-warning">
+                <i class="bi bi-broadcast"></i>
+                <strong>{{ t('setup.discovery.disabled_strong') }}</strong> {{ t('setup.discovery.disabled_rest_pre') }} <a href="/admin/services" class="alert-link">{{ t('setup.discovery.services_link') }}</a>
+                {{ t('setup.discovery.disabled_rest_post') }}
+            </div>
+            {% endif %}
+            {% endif %}
+
+            <h4 class="mb-3">{{ t('setup.manual.heading') }}</h4>
+                <ol>
+                    <li class="mb-2">{{ t('setup.manual.open_menu_pre') }} <strong>Sphaira</strong>{{ t('setup.manual.open_menu_mid') }} <strong>(Y) Menu</strong> → <strong>Menus</strong> → <strong>Ownfoil</strong></li>
+                <li class="mb-2">{{ t('setup.manual.add_server_pre') }} <strong>(X) Options</strong> → <strong>Add server</strong> {{ t('setup.manual.add_server_post') }}
+                    <div class="card bg-dark mt-2 mb-2">
+                        <div class="card-body">
+                            <table class="table table-sm table-dark mb-0">
+                                <tr>
+                                    <td class="fw-bold" style="width: 160px;">{{ t('setup.manual.name_label') }}</td>
+                                    <td><code class="setup-highlight">{{ shop_name }}</code></td>
+                                </tr>
+                                {% if local_address %}
+                                <tr>
+                                    <td class="fw-bold">{{ t('setup.manual.local_address_label') }}</td>
+                                    <td><code class="setup-highlight">{{ local_address }}:{{ local_port }}</code></td>
+                                </tr>
+                                {% endif %}
+                                {% if remote_host %}
+                                <tr>
+                                    <td class="fw-bold">{{ t('setup.manual.remote_address_label') }}</td>
+                                    <td><code class="setup-highlight">{{ remote_host }}</code></td>
+                                </tr>
+                                {% endif %}
+                                {% if not shop_public %}
+                                <tr>
+                                    <td class="fw-bold">{{ t('setup.manual.user_label') }}</td>
+                                    <td><code class="setup-highlight">{{ username }}</code></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">{{ t('setup.manual.pass_label') }}</td>
+                                    <td><code class="setup-highlight">Password</code></td>
+                                </tr>
+                                {% endif %}
+                            </table>
+                        </div>
+                    </div>
+                </li>
+                <li class="mb-2">{{ t('setup.manual.press_save') | safe }}</li>
+            </ol>
+            <p class="text-muted">
+                {{ t('setup.manual.hint') }}
+            </p>
+            {% if local_address and remote_host %}
+            <p class="text-muted mb-0">
+                {{ t('setup.manual.local_remote_hint') }}
+            </p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Legacy clients: Tinfoil, Sphaira's file browser and CyberFoil -->
+    {% if tinfoil_enabled or sphaira_enabled or cyberfoil_enabled %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <button class="btn btn-link text-reset text-decoration-none p-0 h4 mb-0" type="button" data-bs-toggle="collapse" data-bs-target="#legacyClients" aria-expanded="false" aria-controls="legacyClients">
+                <i class="bi bi-chevron-down"></i> {{ t('setup.legacy.toggle') }}
+            </button>
+        </div>
+        <div class="collapse" id="legacyClients">
+            <div class="card-body">
+                <!-- Supported Clients Section -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h2 class="h4 mb-0">{{ t('setup.legacy.supported_heading') }}</h2>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">{{ t('setup.legacy.supported_intro', shop_name=shop_name) }}</p>
+
+                        {% if tinfoil_enabled %}
+                        <!-- Tinfoil Client -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-secondary">
+                                <h3 class="h5 mb-0">
+                                    <i class="bi bi-box-seam"></i> Tinfoil
+                                </h3>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-unstyled mb-0">
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> <code>HTTP</code> / <code>HTTPS</code> protocol support</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> User authentication</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> Shop browsing with icons and banners</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> Content filtering (games, updates, DLC, XCI) based on URL</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> New games, DLC, Updates, Recommended and XCI sections</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> Compressed content (NSZ and XCZ) support</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> Encrypted shop support</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> Client side Host verification for secure connections</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> Custom welcome message (MOTD)</li>
+                                </ul>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if sphaira_enabled %}
+                        <!-- Sphaira Client -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-secondary">
+                                <h3 class="h5 mb-0">
+                                    <i class="bi bi-globe"></i> Sphaira (file browser)
+                                </h3>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-unstyled mb-0">
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> <code>HTTP</code> / <code>HTTPS</code> protocol support</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> User authentication</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> Directory-based file browsing</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> Content filtering (games, updates, DLC, XCI) based on URL</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> Compressed content (NSZ and XCZ) support</li>
+                                </ul>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if cyberfoil_enabled %}
+                        <!-- CyberFoil Client -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-secondary">
+                                <h3 class="h5 mb-0">
+                                    <i class="bi bi-download"></i> CyberFoil
+                                </h3>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-unstyled mb-0">
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> <code>HTTP</code> / <code>HTTPS</code> protocol support</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> User authentication</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> Shop browsing with icons and Sections (Updates, DLC)</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> Compressed content (NSZ and XCZ) support</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> Client side Host verification for secure connections</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> Custom welcome message (MOTD)</li>
+                                </ul>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Setup Instructions Section -->
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="h4 mb-0">{{ t('setup.legacy.instructions_heading') }}</h2>
+                    </div>
+                    <div class="card-body">
+                        <!-- Nav tabs -->
+                        <!-- Both tabs always show, same as upstream: which one a browser happens to be
+                             viewing /setup through says nothing about which access method actually
+                             works for the Switch - that's entirely a matter of the Switch's own
+                             network. The "Local" pane already has its own "no local address
+                             detected" fallback below for when there's genuinely nothing to show. -->
+                        <ul class="nav nav-tabs mb-3" id="setupTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link {{ 'active' if show_local_tab else '' }}" id="local-tab" data-bs-toggle="tab" data-bs-target="#local-setup" type="button" role="tab" aria-controls="local-setup" aria-selected="{{ 'true' if show_local_tab else 'false' }}">
+                                    <i class="bi bi-house-fill"></i> {{ t('setup.legacy.local_tab') }}
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link {{ 'active' if not show_local_tab else '' }}" id="remote-tab" data-bs-toggle="tab" data-bs-target="#remote-setup" type="button" role="tab" aria-controls="remote-setup" aria-selected="{{ 'true' if not show_local_tab else 'false' }}">
+                                    <i class="bi bi-cloud-fill"></i> {{ t('setup.legacy.remote_tab') }}
+                                </button>
+                            </li>
+                        </ul>
+
+                        <!-- Tab contents -->
+                        <div class="tab-content" id="setupTabsContent">
+                            <!-- Local Access Tab -->
+                            {% if show_local_tab %}
+                            <div class="tab-pane show active" id="local-setup" role="tabpanel" aria-labelledby="local-tab">
+                            {% else %}
+                            <div class="tab-pane" id="local-setup" role="tabpanel" aria-labelledby="local-tab">
+                            {% endif %}
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle-fill"></i>
+                                    <strong>{{ t('setup.legacy.local_tab') }}</strong> {{ t('setup.legacy.local_alert', shop_name=shop_name) }}
+                                </div>
+
+                                {% if not local_address %}
+                                <div class="alert alert-warning">
+                                    <i class="bi bi-exclamation-triangle-fill"></i>
+                                    {{ t('setup.legacy.no_local_address') }}
+                                </div>
+                                {% else %}
+
+                                <div class="accordion" id="accordionSetup">
+                                    {% if tinfoil_enabled %}
+                                    <div class="accordion-item">
+                                        <h5 class="accordion-header" id="headingTinfoil">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTinfoil" aria-expanded="false" aria-controls="collapseTinfoil" style="font-size: 1.25rem;">
+                                            <i class="bi bi-box-seam"></i>&nbsp; {{ t('setup.legacy.tinfoil_heading') }}
+                                        </button>
+                                        </h5>
+                                        <div id="collapseTinfoil" class="accordion-collapse collapse" aria-labelledby="headingTinfoil" data-bs-parent="#accordionSetup">
+                                            <div class="accordion-body">
+                                                <!-- Tinfoil Local Setup -->
+                                                <ol>
+                                                    <li class="mb-2">{{ t('setup.legacy.on_switch_open') }} <strong>Tinfoil</strong></li>
+                                                    <li class="mb-2">{{ t('setup.legacy.tinfoil_file_browser') }} <strong>{{ t('setup.legacy.file_browser_new') }}</strong> → <strong>{{ t('setup.legacy.new') }}</strong></li>
+                                                    <li class="mb-2">{{ t('setup.legacy.enter_details') }}
+                                                        <div class="card bg-dark mt-2 mb-2">
+                                                            <div class="card-body">
+                                                                <table class="table table-sm table-dark mb-0">
+                                                                    <tr>
+                                                                        <td class="fw-bold" style="width: 120px;">{{ t('setup.legacy.protocol_label') }}</td>
+                                                                        <td><code>http</code></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.legacy.host_label') }}</td>
+                                                                        <td><code class="setup-highlight">{{ local_address }}</code></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.legacy.port_label') }}</td>
+                                                                        <td><code class="setup-highlight">{{ local_port }}</code></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.legacy.path_label') }}</td>
+                                                                        <td><code>/</code><span class="text-muted"> {{ t('setup.legacy.path_all_hint') }} <strong>{{ t('setup.legacy.path_all_hint_all') }}</strong> {{ t('setup.legacy.path_all_hint_post') }} </span><code>/base</code>, <code>/update</code>, <code>/dlc</code>, <code>/multi</code> <span class="text-muted"> {{ t('setup.legacy.path_all_hint_tail') }}</span></td>
+                                                                    </tr>
+                                                                    {% if not shop_public %}
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.legacy.username_label') }}</td>
+                                                                        <td><code class="setup-highlight">{{ username }}</code></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.legacy.password_label') }}</td>
+                                                                        <td><code class="setup-highlight">Password</code></td>
+                                                                    </tr>
+                                                                    {% endif %}
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.legacy.title_label') }}</td>
+                                                                        <td><code>{{ shop_name }} - Local</code></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.legacy.enabled_label') }}</td>
+                                                                        <td><code>YES</code></td>
+                                                                    </tr>
+                                                                </table>
+                                                            </div>
+                                                        </div>
+                                                    </li>
+                                                    <li class="mb-2">{{ t('setup.legacy.press_save_reload') | safe }}</li>
+                                                </ol>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+
+                                    {% if sphaira_enabled %}
+                                    <div class="accordion-item">
+                                        <h2 class="accordion-header" id="headingSphaira">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSphaira" aria-expanded="false" aria-controls="collapseSphaira" style="font-size: 1.25rem;">
+                                            <i class="bi bi-globe"></i>&nbsp; {{ t('setup.legacy.sphaira_heading') }}
+                                        </button>
+                                        </h2>
+                                        <div id="collapseSphaira" class="accordion-collapse collapse" aria-labelledby="headingSphaira" data-bs-parent="#accordionSetup">
+                                            <div class="accordion-body">
+                                                <!-- Sphaira Local Setup -->
+                                                <ol>
+                                                    <li class="mb-2">{{ t('setup.legacy.on_switch_open') }} <strong>Sphaira</strong></li>
+                                                    <li class="mb-2">{{ t('setup.legacy.emummc_pre') }} <strong>Menu</strong> → <strong>Advanced Options</strong> → <strong>{{ t('setup.legacy.emummc_mid') }}</strong> {{ t('setup.legacy.emummc_post') }} <code>Enable emummc</code></li>
+                                                    <li class="mb-2">{{ t('setup.legacy.add_mount_pre') }} <strong>Menu</strong> → <strong>Advanced Options</strong> → <strong>Add / modify mounts</strong> → <strong>Create New Entry</strong></li>
+                                                    <li class="mb-2">{{ t('setup.legacy.add_mount_post') }}
+                                                        <div class="card bg-dark mt-2 mb-2">
+                                                            <div class="card-body">
+                                                                <table class="table table-sm table-dark mb-0">
+                                                                    <tr>
+                                                                        <td class="fw-bold" style="width: 120px;">{{ t('setup.legacy.type_label') }}</td>
+                                                                        <td><code>HTTP</code></td>
+                                                                        <td></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.manual.name_label') }}</td>
+                                                                        <td><code class="setup-highlight">{{ shop_name }} - Local</code></td>
+                                                                        <td></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.legacy.url_label') }}</td>
+                                                                        <td><code class="setup-highlight">http://{{ local_address }}</code></td>
+                                                                        <td><span class="text-muted">{{ t('setup.legacy.url_append_hint') }} <code>/base</code>, <code>/update</code>, <code>/dlc</code>, <code>/multi</code> {{ t('setup.legacy.url_append_hint_tail') }}</span></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.legacy.port_label') }}</td>
+                                                                        <td><code class="setup-highlight">{{ local_port }}</code></td>
+                                                                        <td></td>
+                                                                    </tr>
+                                                                    {% if not shop_public %}
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.manual.user_label') }}</td>
+                                                                        <td><code class="setup-highlight">{{ username }}</code></td>
+                                                                        <td></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.manual.pass_label') }}</td>
+                                                                        <td><code class="setup-highlight">Password</code></td>
+                                                                        <td></td>
+                                                                    </tr>
+                                                                    {% endif %}
+                                                                </table>
+                                                            </div>
+                                                        </div>
+                                                    </li>
+                                                    <li class="mb-2">{{ t('setup.legacy.press_save_restart') | safe }}</li>
+                                                    <li class="mb-2">{{ t('setup.legacy.navigate_filebrowser') | safe }} <code>[HTTP] {{ shop_name }} - Local</code></li>
+                                                </ol>
+                                                <div class="alert alert-success">
+                                                    <i class="bi bi-check-circle-fill"></i>
+                                                    {{ t('setup.legacy.preview_hint') | safe }}
+                                                </div>
+                                                <div class="alert alert-info">
+                                                    <i class="bi bi-info-circle-fill"></i>
+                                                    {{ t('setup.legacy.refresh_hint', shop_name=shop_name) | safe }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+
+                                    {% if cyberfoil_enabled %}
+                                    <div class="accordion-item">
+                                        <h2 class="accordion-header" id="headingCyberFoil">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCyberFoil" aria-expanded="false" aria-controls="collapseCyberFoil" style="font-size: 1.25rem;">
+                                            <i class="bi bi-download"></i>&nbsp; {{ t('setup.legacy.cyberfoil_heading') }}
+                                        </button>
+                                        </h2>
+                                        <div id="collapseCyberFoil" class="accordion-collapse collapse" aria-labelledby="headingCyberFoil" data-bs-parent="#accordionSetup">
+                                            <div class="accordion-body">
+                                                <!-- CyberFoil Local Setup -->
+                                                <ol>
+                                                    <li class="mb-2">{{ t('setup.legacy.on_switch_open') }} <strong>CyberFoil</strong></li>
+                                                    <li class="mb-2">{{ t('setup.legacy.settings_shop_add') | safe }}</li>
+                                                    <li class="mb-2">{{ t('setup.legacy.enter_details') }}
+                                                        <div class="card bg-dark mt-2 mb-2">
+                                                            <div class="card-body">
+                                                                <table class="table table-sm table-dark mb-0">
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.legacy.shop_title_label') }}</td>
+                                                                        <td><code class="setup-highlight">{{ shop_name }} - Local</code></td>
+                                                                        <td></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="fw-bold" style="width: 120px;">{{ t('setup.legacy.shop_protocol_label') }}</td>
+                                                                        <td><code>HTTP</code></td>
+                                                                        <td></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.legacy.host_label') }}</td>
+                                                                        <td><code class="setup-highlight">{{ local_address }}</code></td>
+                                                                        <td></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.legacy.port_label') }}</td>
+                                                                        <td><code class="setup-highlight">{{ local_port }}</code></td>
+                                                                        <td></td>
+                                                                    </tr>
+                                                                    {% if not shop_public %}
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.legacy.username_label') }}</td>
+                                                                        <td><code class="setup-highlight">{{ username }}</code></td>
+                                                                        <td></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.legacy.password_label') }}</td>
+                                                                        <td><code class="setup-highlight">Password</code></td>
+                                                                        <td></td>
+                                                                    </tr>
+                                                                    {% endif %}
+                                                                </table>
+                                                            </div>
+                                                        </div>
+                                                    </li>
+                                                    <li class="mb-2">{{ t('setup.legacy.active_shop_hint') | safe }}</li>
+                                                    <li class="mb-2">{{ t('setup.legacy.back_to_eshop') | safe }}</li>
+                                                </ol>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Remote Access Tab -->
+                            {% if show_local_tab %}
+                            <div class="tab-pane" id="remote-setup" role="tabpanel" aria-labelledby="remote-tab">
+                            {% else %}
+                            <div class="tab-pane show active" id="remote-setup" role="tabpanel" aria-labelledby="remote-tab">
+                            {% endif %}
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle-fill"></i>
+                                    <strong>{{ t('setup.legacy.remote_tab') }}</strong> {{ t('setup.legacy.remote_alert', shop_name=shop_name) }}
+                                </div>
+
+                                {% if not remote_host %}
+                                <div class="alert alert-warning">
+                                    <i class="bi bi-exclamation-triangle-fill"></i>
+                                    <strong>{{ t('setup.legacy.no_remote_host') }}</strong> <a href="/admin/settings#shopHostInput" class="alert-link">{{ t('settings_nav.settings') }}</a> {{ t('setup.legacy.no_remote_host_post') }}
+                                </div>
+                                {% else %}
+
+                                <div class="accordion" id="accordionSetup">
+                                    {% if tinfoil_enabled %}
+                                    <div class="accordion-item">
+                                        <h5 class="accordion-header" id="headingTinfoil">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTinfoil" aria-expanded="false" aria-controls="collapseTinfoil" style="font-size: 1.25rem;">
+                                            <i class="bi bi-box-seam"></i>&nbsp; {{ t('setup.legacy.tinfoil_heading') }}
+                                        </button>
+                                        </h5>
+                                        <div id="collapseTinfoil" class="accordion-collapse collapse" aria-labelledby="headingTinfoil" data-bs-parent="#accordionSetup">
+                                            <div class="accordion-body">
+                                                <!-- Tinfoil Remote Setup -->
+                                                <ol>
+                                                    <li class="mb-2">{{ t('setup.legacy.on_switch_open') }} <strong>Tinfoil</strong></li>
+                                                    <li class="mb-2">{{ t('setup.legacy.tinfoil_file_browser') }} <strong>{{ t('setup.legacy.file_browser_new') }}</strong> → <strong>{{ t('setup.legacy.new') }}</strong></li>
+                                                    <li class="mb-2">{{ t('setup.legacy.enter_details') }}
+                                                        <div class="card bg-dark mt-2 mb-2">
+                                                            <div class="card-body">
+                                                                <table class="table table-sm table-dark mb-0">
+                                                                    <tr>
+                                                                        <td class="fw-bold" style="width: 120px;">{{ t('setup.legacy.protocol_label') }}</td>
+                                                                        <td><code>https</code></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.legacy.host_label') }}</td>
+                                                                        <td><code class="setup-highlight">{{ remote_host }}</code></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.legacy.path_label') }}</td>
+                                                                        <td><code>/</code><span class="text-muted"> {{ t('setup.legacy.path_all_hint') }} <strong>{{ t('setup.legacy.path_all_hint_all') }}</strong> {{ t('setup.legacy.path_all_hint_post') }} </span><code>/base</code>, <code>/update</code>, <code>/dlc</code>, <code>/multi</code> <span class="text-muted"> {{ t('setup.legacy.path_all_hint_tail') }}</span></td>
+                                                                    </tr>
+                                                                    {% if not shop_public %}
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.legacy.username_label') }}</td>
+                                                                        <td><code class="setup-highlight">{{ username }}</code></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.legacy.password_label') }}</td>
+                                                                        <td><code class="setup-highlight">Password</code></td>
+                                                                    </tr>
+                                                                    {% endif %}
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.legacy.title_label') }}</td>
+                                                                        <td><code>{{ shop_name }} - Remote</code></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.legacy.enabled_label') }}</td>
+                                                                        <td><code>YES</code></td>
+                                                                    </tr>
+                                                                </table>
+                                                            </div>
+                                                        </div>
+                                                    </li>
+                                                    <li class="mb-2">{{ t('setup.legacy.press_save_reload') | safe }}</li>
+                                                </ol>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+
+                                    {% if sphaira_enabled %}
+                                    <div class="accordion-item">
+                                        <h2 class="accordion-header" id="headingSphaira">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSphaira" aria-expanded="false" aria-controls="collapseSphaira" style="font-size: 1.25rem;">
+                                            <i class="bi bi-globe"></i>&nbsp; {{ t('setup.legacy.sphaira_heading') }}
+                                        </button>
+                                        </h2>
+                                        <div id="collapseSphaira" class="accordion-collapse collapse" aria-labelledby="headingSphaira" data-bs-parent="#accordionSetup">
+                                            <div class="accordion-body">
+                                                <!-- Sphaira Remote Setup -->
+                                                <ol>
+                                                    <li class="mb-2">{{ t('setup.legacy.on_switch_open') }} <strong>Sphaira</strong></li>
+                                                    <li class="mb-2">{{ t('setup.legacy.emummc_pre') }} <strong>Menu</strong> → <strong>Advanced Options</strong> → <strong>{{ t('setup.legacy.emummc_mid') }}</strong> {{ t('setup.legacy.emummc_post') }} <code>Enable emummc</code></li>
+                                                    <li class="mb-2">{{ t('setup.legacy.add_mount_pre') }} <strong>Menu</strong> → <strong>Advanced Options</strong> → <strong>Add / modify mounts</strong> → <strong>Create New Entry</strong></li>
+                                                    <li class="mb-2">{{ t('setup.legacy.add_mount_post') }}
+                                                        <div class="card bg-dark mt-2 mb-2">
+                                                            <div class="card-body">
+                                                                <table class="table table-sm table-dark mb-0">
+                                                                    <tr>
+                                                                        <td class="fw-bold" style="width: 120px;">{{ t('setup.legacy.type_label') }}</td>
+                                                                        <td><code>HTTP</code></td>
+                                                                        <td></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.manual.name_label') }}</td>
+                                                                        <td><code class="setup-highlight">{{ shop_name }} - Remote</code></td>
+                                                                        <td></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.legacy.url_label') }}</td>
+                                                                        <td><code class="setup-highlight">https://{{ remote_host }}</code></td>
+                                                                        <td><span class="text-muted">{{ t('setup.legacy.url_append_hint_remote') }} <code>/base</code>, <code>/update</code>, <code>/dlc</code>, <code>/multi</code> {{ t('setup.legacy.url_append_hint_tail') }}</span></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.legacy.port_label') }}</td>
+                                                                        <td><code class="setup-highlight">443</code></td>
+                                                                        <td></td>
+                                                                    </tr>
+                                                                    {% if not shop_public %}
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.manual.user_label') }}</td>
+                                                                        <td><code class="setup-highlight">{{ username }}</code></td>
+                                                                        <td></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.manual.pass_label') }}</td>
+                                                                        <td><code class="setup-highlight">Password</code></td>
+                                                                        <td></td>
+                                                                    </tr>
+                                                                    {% endif %}
+                                                                </table>
+                                                            </div>
+                                                        </div>
+                                                    </li>
+                                                    <li class="mb-2">{{ t('setup.legacy.press_save_restart') | safe }}</li>
+                                                    <li class="mb-2">{{ t('setup.legacy.navigate_filebrowser') | safe }} <code>[HTTP] {{ shop_name }} - Remote</code></li>
+                                                </ol>
+                                                <div class="alert alert-success">
+                                                    <i class="bi bi-check-circle-fill"></i>
+                                                    {{ t('setup.legacy.preview_hint') | safe }}
+                                                </div>
+                                                <div class="alert alert-info">
+                                                    <i class="bi bi-info-circle-fill"></i>
+                                                    {{ t('setup.legacy.refresh_hint', shop_name=shop_name) | safe }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+
+                                    {% if cyberfoil_enabled %}
+                                    <div class="accordion-item">
+                                        <h2 class="accordion-header" id="headingCyberFoil">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCyberFoil" aria-expanded="false" aria-controls="collapseCyberFoil" style="font-size: 1.25rem;">
+                                            <i class="bi bi-download"></i>&nbsp; {{ t('setup.legacy.cyberfoil_heading') }}
+                                        </button>
+                                        </h2>
+                                        <div id="collapseCyberFoil" class="accordion-collapse collapse" aria-labelledby="headingCyberFoil" data-bs-parent="#accordionSetup">
+                                            <div class="accordion-body">
+                                                <!-- CyberFoil Local Setup -->
+                                                <ol>
+                                                    <li class="mb-2">{{ t('setup.legacy.on_switch_open') }} <strong>CyberFoil</strong></li>
+                                                    <li class="mb-2">{{ t('setup.legacy.settings_shop_add') | safe }}</li>
+                                                    <li class="mb-2">{{ t('setup.legacy.enter_details') }}
+                                                        <div class="card bg-dark mt-2 mb-2">
+                                                            <div class="card-body">
+                                                                <table class="table table-sm table-dark mb-0">
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.legacy.shop_title_label') }}</td>
+                                                                        <td><code class="setup-highlight">{{ shop_name }} - Remote</code></td>
+                                                                        <td></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="fw-bold" style="width: 120px;">{{ t('setup.legacy.shop_protocol_label') }}</td>
+                                                                        <td><code>HTTPS</code></td>
+                                                                        <td></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.legacy.host_label') }}</td>
+                                                                        <td><code class="setup-highlight">{{ remote_host }}</code></td>
+                                                                        <td></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.legacy.port_label') }}</td>
+                                                                        <td><code class="setup-highlight">443</code></td>
+                                                                        <td></td>
+                                                                    </tr>
+                                                                    {% if not shop_public %}
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.legacy.username_label') }}</td>
+                                                                        <td><code class="setup-highlight">{{ username }}</code></td>
+                                                                        <td></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="fw-bold">{{ t('setup.legacy.password_label') }}</td>
+                                                                        <td><code class="setup-highlight">Password</code></td>
+                                                                        <td></td>
+                                                                    </tr>
+                                                                    {% endif %}
+                                                                </table>
+                                                            </div>
+                                                        </div>
+                                                    </li>
+                                                    <li class="mb-2">{{ t('setup.legacy.active_shop_hint') | safe }}</li>
+                                                    <li class="mb-2">{{ t('setup.legacy.back_to_eshop') | safe }}</li>
+                                                </ol>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

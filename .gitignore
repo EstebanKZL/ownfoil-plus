@@ -1,0 +1,37 @@
+# Python bytecode / tool caches - never meant to be committed, and regenerated locally
+# by every test run or import.
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Runtime config and data: real console keys (keys.txt), settings.yaml (admin
+# credentials, shop settings), the SQLite databases, downloaded titledb, and local
+# media cache. Never meant to be committed - this is exactly the "compromising data"
+# a public repo must not carry, and it's what a local (non-Docker) run writes
+# straight into these two folders by default (see constants.py's CONFIG_DIR/DATA_DIR).
+# The one file already tracked on purpose under app/data/ - titledb/languages.json, a
+# placeholder bootstrapped on first run - stays tracked: .gitignore only affects
+# untracked files, never ones already committed.
+/app/config/
+/app/data/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Build artifacts
+dist/
+build/
