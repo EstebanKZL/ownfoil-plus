@@ -24,14 +24,14 @@
   </tr>
 </table>
 
-Ownfoil-Plus is a Switch library manager, that will also turn your library into a fully customizable and self-hosted Shop, supporting multiple clients. The goal of this project is to manage your library, identify any missing content (DLCs or updates) and provide a user friendly way to browse and install your content. Some of the features include:
+Ownfoil-Plus turns a folder of game files into a fully organized, self-verified, self-hosted Nintendo Switch shop: it figures out what you have, flags what's missing or broken, keeps your files tidy, and serves everything to your console - all from one web interface, no manual bookkeeping required. Some of the features include:
 - multi user authentication
 - 🇬🇧🇪🇸 **full web interface in English and Spanish**, switch anytime from the navbar
 - content identification using content decryption or filename
 - automatic library organization, verification and compression
 - automatic and manual duplicate file resolution
 - console keys management
-- multiple clients support
+- multiple clients support, with LAN discovery - no IP address to type in on the console
 - shop customization
 - settings backup and restore from the web UI
 
@@ -39,7 +39,17 @@ Ownfoil-Plus is a Switch library manager, that will also turn your library into 
 
 Ownfoil-Plus is a fork of [Ownfoil](https://github.com/a1ex4/ownfoil), created by
 [@a1ex4](https://github.com/a1ex4), distributed under the same **GNU AGPLv3**
-license. On top of the original project, this fork adds:
+license, built for people who want the convenience of a managed shop without
+babysitting it: a bilingual interface instead of an English-only one, an admin
+toolkit deep enough to actually fix problems when they come up instead of just
+reporting them, and a published Docker image that keeps itself patched instead of
+quietly accumulating known vulnerabilities between releases. Every fix here is
+checked against the real upstream source and real client behavior (actual Sphaira
+queries, actual shop access logs) before it ships, with an automated test suite
+guarding every change - see [CHANGELOG.md](./CHANGELOG.md) for the specifics of
+every version.
+
+On top of the original project, this fork adds:
 
 - 🇬🇧🇪🇸 A full Spanish/English web interface, switch anytime from the navbar
 - A List view showing every game with its updates and DLC in one place, including what's still missing from your library
@@ -47,12 +57,13 @@ license. On top of the original project, this fork adds:
 - A richer game info panel - genre, players, rating, languages, file size, and screenshots - opens from any view (List, Card, or Icon) by clicking the cover
 - Editable game info: fix or fill in a title's name, developer, description, and more by hand, and it stays that way even after the catalogue updates
 - Local caching of game artwork, so covers and banners keep working even if the remote image host is unreachable
-- Duplicate file detection and resolution, both automatic (with your choice of preferring the larger file or the compressed one) and manual, one at a time or in bulk
+- A dedicated Files admin page: search, filter, and per-file retry/verify/compress/decompress/delete actions, plus one-click cleanup for duplicates and outdated updates
+- Duplicate file detection and resolution, automatic (your choice of preferring the larger file, the compressed one, or a multi-content bundle) and manual, one at a time or in bulk
 - A live view of what's actually happening in the background - task progress and what each worker is doing, in real time
 - A direct "Verify library now" action, and other library management improvements
 - Settings export/import from the web UI
 
-The Docker image for this fork is published at [estebankzl/ownfoil-plus](https://hub.docker.com/r/estebankzl/ownfoil-plus).
+The Docker image for this fork is published at [estebankzl/ownfoil-plus](https://hub.docker.com/r/estebankzl/ownfoil-plus) - rebuilt weekly (not just on release) so it keeps picking up OS and Python security patches, and built for `amd64`, `arm64/v8`, `arm/v7` and `arm/v6`.
 
 See [CHANGELOG.md](./CHANGELOG.md) for what changed in each version.
 

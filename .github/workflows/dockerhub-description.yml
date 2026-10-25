@@ -1,0 +1,36 @@
+name: Docker Hub description
+
+# Keeps the estebankzl/ownfoil-plus overview page on Docker Hub in sync with
+# DOCKERHUB.md, so updating that one file here is all it takes - no manual
+# copy/paste into Docker Hub's own editor ever again. A separate workflow from
+# docker.yml on purpose: editing the description shouldn't trigger a full multi-arch
+# image rebuild, and a broken image build shouldn't block a description update either.
+#
+# Requires the same two repository secrets as docker.yml: DOCKERHUB_USERNAME and
+# DOCKERHUB_TOKEN. The token needs "Read & Write" access for this step specifically -
+# a token scoped only for pushing images can still fail here with a permissions error
+# even though docker.yml works fine with it.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'DOCKERHUB.md'
+  workflow_dispatch: {}
+
+jobs:
+  update-description:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Push overview to Docker Hub
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: estebankzl/ownfoil-plus
+          short-description: "Self-hosted, bilingual Switch library manager & shop - organizes, verifies, serves your games."
+          readme-filepath: ./DOCKERHUB.md

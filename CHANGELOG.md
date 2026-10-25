@@ -4,6 +4,39 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.32]
+
+- **Gave `README.md` the same "more convincing" rewrite as `DOCKERHUB.md`**,
+  requested directly right after it. The intro and "About this fork" section now
+  lead with why to actually use this fork (verified fixes, a weekly-rebuilt and
+  security-patched Docker image) instead of starting straight into a feature list,
+  and mention the same newer features the old text left out - the Files admin page
+  and LAN discovery. No change to the legal fork notice, the image gallery, or the
+  Installation/Usage/Credits sections.
+
+## [6.2.5.31]
+
+- **Rewrote the Docker Hub overview page**, requested directly ("algo mejor mas
+  convincente"): leads with why to actually pull this image (weekly-rebuilt,
+  security-patched, multi-arch, verified-against-real-clients fixes) instead of
+  starting straight into a feature list, and folds in newer fork features the old
+  text never mentioned (the Files admin page, native Sphaira/Tinfoil/CyberFoil shop
+  support with LAN discovery, the tie-break options for duplicate resolution).
+- **New `DOCKERHUB.md`** is now the single source of truth for that text, and a new
+  `.github/workflows/dockerhub-description.yml` pushes it to Docker Hub automatically
+  whenever it changes on `main` (via `peter-evans/dockerhub-description`, reusing the
+  same `DOCKERHUB_USERNAME`/`DOCKERHUB_TOKEN` secrets `docker.yml` already needs) -
+  this fork has no Docker Hub push access from here to update the page directly, so
+  this makes the next edit to one file the only step, instead of a manual copy/paste
+  into Docker Hub's own editor every time. Kept as its own workflow, deliberately
+  separate from the image build: editing the description shouldn't trigger a full
+  multi-arch rebuild, and a broken build shouldn't block a description update.
+  **Note:** the Docker Hub access token needs "Read & Write" permission for this step
+  specifically - a token scoped only for pushing images can still fail here even
+  though `docker.yml` works fine with it.
+- Lightly reworded `README.md`'s own opening line to match, for consistency between
+  the two.
+
 ## [6.2.5.30]
 
 - **Filter dropdown (Biblioteca and Administración) no longer highlights the whole
