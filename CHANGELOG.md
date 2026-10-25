@@ -4,6 +4,32 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.30]
+
+- **Filter dropdown (Biblioteca and Administración) no longer highlights the whole
+  row on hover.** Bootstrap's default `.dropdown-item:hover` paints a grey background
+  behind the entire row hosting a filter's radio buttons, not just the one under the
+  cursor - the per-button highlight was already correct, so the row-level background
+  is now turned off for these specific rows (`.filter-group-item`), leaving only the
+  hovered/checked button lit up, as requested directly from a screenshot.
+- **List view: the divider line above the base-game row now always shows**, even for
+  a title with no Updates/DLC. It used to only appear because Bootstrap's
+  `list-group-flush` draws a border *between* rows - with a title's only row being
+  the base game (nothing else under it), there was no second row to draw that border
+  against, so the line silently vanished for exactly the titles that have the least
+  going on underneath them. Scoped to the outer list only (`.list-top-group`), so the
+  nested Updates/DLC collapsible sections keep their normal behavior.
+- **Card view: the type/version/DLC badges no longer overlap the title on a narrow
+  card.** There was already a fix for this, but it only keyed off the browser
+  *window's* width (`@media (max-width: 767.98px)`), so it only ever helped on a
+  phone - a card can go just as narrow on a wide desktop window once the card-size
+  slider packs 6-8 cards into a row, which is what the reported screenshot showed.
+  Switched to a `@container` query keyed off the card's own rendered width
+  (`.game-card` now establishes an inline-size container), so the same "badges move
+  below the title instead of floating over it" behavior kicks in whenever the card
+  itself is too narrow, regardless of window size. No change to the badges/overlay
+  themselves otherwise - same look, same position, whenever there's room for it.
+
 ## [6.2.5.29]
 
 - **Moved the "Show game background image" switch above "Enable organizer"** in

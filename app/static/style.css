@@ -8,6 +8,14 @@
     padding: 20px;
 }
 
+/* Lets the @container rule below react to this card's own rendered width, not the
+   viewport's - the card-size slider can put 6 or 8 of these in a row, so a card can
+   be phone-narrow on a wide desktop window just as easily as on a phone. */
+.game-card {
+    container-type: inline-size;
+    container-name: game-card;
+}
+
 .game-info {
     bottom: 0;
     left: 0;
@@ -63,12 +71,17 @@ p.game-description {
     overflow-wrap: break-word;
 }
 
-/* The metadata can only be an overlay while the banner is wide enough to hold it. On
-   a phone the text wraps to several lines, the overlay outgrows the image it is
+/* The metadata can only be an overlay while the card is wide enough to hold it. Below
+   that width the title wraps to several lines, the overlay outgrows the image it is
    anchored to, and the badges - placed from the card's own corner - land on top of
-   that text. Below md it stops being an overlay and becomes a block under the banner,
-   where growing costs nothing. */
-@media (max-width: 767.98px) {
+   that text. Below the threshold it stops being an overlay and becomes a block under
+   the banner, where growing costs nothing.
+
+   This keys off the card's own rendered width (via the @container on .game-card
+   above), not the viewport's: the card-size slider can pack 6-8 cards per row, so an
+   individual card goes just as narrow on a wide desktop window as it does on a phone
+   - a plain viewport media query only ever caught the phone case. */
+@container game-card (max-width: 340px) {
     .game-info {
         position: static;
     }
@@ -543,6 +556,20 @@ p.game-description {
     object-fit: cover;
 }
 
+/* Bootstrap's list-group-flush only draws a border *between* items - its own
+   :first-child rule zeroes out the top border on the first row, since normally that
+   row already sits right under something else that provides its own separation.
+   Here the base-game row is always that first row, so a title with updates or DLC
+   (2+ rows) shows a line above the base-game row (it's really the border *above*
+   the second row, sitting right below the first), while a title with neither (just
+   the lone base-game row) shows no line at all - an inconsistency purely driven by
+   row count, not by anything the title itself differs in. Restoring the top border
+   on the first row makes every card get the same divider between its header and
+   its content, regardless of whether it has updates/DLC underneath. */
+.list-top-group.list-group-flush > .list-group-item:first-child {
+    border-top-width: var(--bs-list-group-border-width);
+}
+
 .min-w-0 {
     min-width: 0;
 }
@@ -595,6 +622,18 @@ p.game-description {
 .dropdown-item:focus {
     background: none;
     box-shadow: none;
+}
+
+/* Filter dropdown rows (Tipo/Posesión/Actualización/Completitud, and the library
+   health filter) are a .dropdown-item used only to host a row of radio buttons, not
+   a clickable item in its own right. Bootstrap's default .dropdown-item:hover/:focus
+   paints a grey background across the *entire* row, which reads as "the whole row
+   lights up" instead of "the one button under the cursor" - the per-button highlight
+   above (.btn-outline-primary's own hover/checked state) already does that job on its
+   own, so the row-level background is turned off here, scoped to just these rows. */
+.filter-group-item:hover,
+.filter-group-item:focus {
+    background-color: transparent;
 }
 
 /* ============== Files admin page (ported from upstream Ownfoil 2.5.0) ============== */

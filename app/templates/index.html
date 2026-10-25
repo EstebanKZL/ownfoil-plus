@@ -16,7 +16,7 @@
                     </button>
                     <ul class="dropdown-menu">
                         <li>
-                            <div class="dropdown-item">
+                            <div class="dropdown-item filter-group-item">
                                 <div class="btn-group w-100" role="group" aria-label="Type filter">
                                     <input type="radio" class="btn-check type-toggle" name="typeFilter" id="typeAll" autocomplete="off" checked>
                                     <label class="btn btn-outline-primary" for="typeAll">{{ t('library.filter_all') }}</label>
@@ -33,7 +33,7 @@
                             <hr class="dropdown-divider">
                         </li>
                         <li>
-                            <div class="dropdown-item">
+                            <div class="dropdown-item filter-group-item">
                                 <div class="btn-group w-100" role="group" aria-label="Ownership filter">
                                     <input type="radio" class="btn-check ownership-toggle" name="ownershipFilter" id="ownershipAll" autocomplete="off" checked>
                                     <label class="btn btn-outline-primary" for="ownershipAll">{{ t('library.filter_all') }}</label>
@@ -50,7 +50,7 @@
                             <hr class="dropdown-divider">
                         </li>
                         <li>
-                            <div class="dropdown-item">
+                            <div class="dropdown-item filter-group-item">
                                 <div class="btn-group w-100" role="group" aria-label="Update filter">
                                     <input type="radio" class="btn-check update-toggle" name="updateFilter" id="updateAll" autocomplete="off" checked>
                                     <label class="btn btn-outline-primary" for="updateAll">{{ t('library.filter_all') }}</label>
@@ -67,7 +67,7 @@
                             <hr class="dropdown-divider">
                         </li>
                         <li>
-                            <div class="dropdown-item">
+                            <div class="dropdown-item filter-group-item">
                                 <div class="btn-group w-100" role="group" aria-label="Completion filter">
                                     <input type="radio" class="btn-check completion-toggle" name="completionFilter" id="completionAll" autocomplete="off" checked>
                                     <label class="btn btn-outline-primary" for="completionAll">{{ t('library.filter_all') }}</label>
@@ -97,7 +97,7 @@
                 </button>
                 <ul class="dropdown-menu">
                     <li>
-                        <div class="dropdown-item">
+                        <div class="dropdown-item filter-group-item">
                             <div class="btn-group-vertical w-100" role="group" aria-label="Library health filter">
                                 <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthAll" autocomplete="off" checked>
                                 <label class="btn btn-outline-primary" for="healthAll">{{ t('library.filter_all') }}</label>
@@ -1169,7 +1169,11 @@
             headerRow.append(headerText);
             body.append(headerRow);
 
-            const listGroup = $('<ul class="list-group list-group-flush mt-3"></ul>');
+            // .list-top-group (not just .list-group-flush) scopes the "always show a
+            // divider above the base-game row" CSS rule to this outer list only - the
+            // nested Updates/DLC collapsible sections build their own
+            // .list-group-flush below and must keep Bootstrap's normal behavior.
+            const listGroup = $('<ul class="list-group list-group-flush list-top-group mt-3"></ul>');
 
             listGroup.append(buildContentRow({
                 label: I18N.baseGame,
