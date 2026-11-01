@@ -393,6 +393,18 @@ p.game-description {
 
 /* Two columns rather than auto-fit: four sections in a row would put each table's
    figures a screen away from the next, and the tables are all the same shape anyway. */
+/* Dashboard tiles are links: a hint of the hover state, nothing louder. */
+.dash-tile {
+    display: block;
+    padding: .25rem .5rem;
+    margin: -.25rem -.5rem;
+    border-radius: .375rem;
+}
+
+.dash-tile:hover {
+    background: var(--bs-tertiary-bg);
+}
+
 /* Files page upload drop zone. */
 .upload-drop {
     display: flex;

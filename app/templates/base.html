@@ -22,12 +22,16 @@
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon/favicon.svg') }}" />
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}" />
     <meta name="apple-mobile-web-app-title" content="{{ shop_name }}" />
-    <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#212529" />
+    <link rel="manifest" href="/manifest.webmanifest" />
 </head>
 
 <body>
     {% block content %}
     {% endblock %}
+    <script src="{{ url_for('static', filename='js/pwa.js') }}"></script>
 </body>
 
 </html>

@@ -29,7 +29,17 @@ Three features need valid keys and are unavailable without them:
 
 # The Web UI
 
-There are three main pages: the library view, the setup guide, and under `Admin` the settings, the task list and the stats.
+There are three main pages: the library view, the setup guide, and under `Admin` the dashboard, the settings, the files, the task list and the stats.
+
+## Installing as an app
+
+The web UI can be installed as an app on a phone, tablet or computer (its own icon and window, no browser bar), using the shop's name. When the browser offers it, an `Install app` button appears in the navbar; otherwise use the browser's own menu (`Install app` / `Add to Home Screen`). Static files are cached so pages open faster, and a "can't reach the server" page is shown instead of a browser error when the server is down. Library data, downloads and uploads always come live from the server.
+
+Browsers only allow this over **HTTPS** (see [Remote access and HTTPS](./Install.md#remote-access-and-https)) or on `localhost`: on a plain `http://192.168.x.x` address the button doesn't appear and the site works exactly as a normal web page.
+
+## Dashboard
+
+The landing page of `Admin`. At the top, what needs attention, each linking to where to fix it: missing console keys, an unreachable library, low disk space, corrupt or unidentified files, duplicates, failed tasks, no backups yet. Then the figures that matter (games and how many are complete and up to date, files and total size, downloads this week, running and queued tasks), free space per library, the latest added files and downloads, and the state of maintenance, backups, notifications and shop access.
 
 ## Library view
 

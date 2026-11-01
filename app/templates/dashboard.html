@@ -1,0 +1,232 @@
+{% extends "settings_layout.html" %}
+{% block panel %}
+<div class="settings-container container mt-3">
+
+    <div class="task-section-head">
+        <h2 class="mb-0">{{ t('dash.title') }}</h2>
+        <button type="button" id="refreshDashboard" class="icon-btn ms-auto" title="{{ t('stats.refresh') }}">
+            <i class="bi bi-arrow-clockwise"></i>
+        </button>
+    </div>
+    <p class="text-secondary">{{ t('dash.subtitle') }}</p>
+
+    <div class="list-group mb-4" id="dashAlerts"></div>
+
+    <div class="stat-grid mb-4" id="dashTiles"></div>
+
+    <section class="mb-4">
+        <h4 class="mb-3">{{ t('dash.storage') }}</h4>
+        <div id="dashStorage"></div>
+    </section>
+
+    <div class="stat-sections">
+        <section class="mb-4">
+            <div class="d-flex justify-content-between align-items-baseline mb-2">
+                <h4 class="mb-0">{{ t('dash.recent_files') }}</h4>
+                <a class="small" href="/admin/files">{{ t('dash.see_all') }}</a>
+            </div>
+            <ul class="list-group list-group-flush" id="dashRecentFiles"></ul>
+        </section>
+        <section class="mb-4">
+            <div class="d-flex justify-content-between align-items-baseline mb-2">
+                <h4 class="mb-0">{{ t('dash.recent_downloads') }}</h4>
+                <a class="small" href="/admin/stats#downloadsSection">{{ t('dash.see_all') }}</a>
+            </div>
+            <ul class="list-group list-group-flush" id="dashRecentDownloads"></ul>
+        </section>
+    </div>
+
+    <section class="mb-4">
+        <h4 class="mb-3">{{ t('dash.status') }}</h4>
+        <div class="d-flex flex-wrap gap-2" id="dashStatus"></div>
+    </section>
+</div>
+{% endblock %}
+
+{% block panel_scripts %}
+<script src="{{ url_for('static', filename='js/format.js') }}"></script>
+<script>
+    const D = {
+        allGood: {{ t('dash.all_good') | tojson }},
+        alertKeys: {{ t('dash.alert.keys') | tojson }},
+        alertUnidentified: {{ t('dash.alert.unidentified') | tojson }},
+        alertCorrupt: {{ t('dash.alert.corrupt') | tojson }},
+        alertDuplicates: {{ t('dash.alert.duplicates') | tojson }},
+        alertFailed: {{ t('dash.alert.failed') | tojson }},
+        alertOffline: {{ t('dash.alert.offline') | tojson }},
+        alertLowSpace: {{ t('dash.alert.low_space') | tojson }},
+        alertNoBackup: {{ t('dash.alert.no_backup') | tojson }},
+        tileTitles: {{ t('dash.tile.titles') | tojson }},
+        tileTitlesNote: {{ t('dash.tile.titles_note') | tojson }},
+        tileFiles: {{ t('dash.tile.files') | tojson }},
+        tileFilesNote: {{ t('dash.tile.files_note') | tojson }},
+        tileDownloads: {{ t('dash.tile.downloads') | tojson }},
+        tileDownloadsNote: {{ t('dash.tile.downloads_note') | tojson }},
+        tileTasks: {{ t('dash.tile.tasks') | tojson }},
+        tileTasksNote: {{ t('dash.tile.tasks_note') | tojson }},
+        storageLine: {{ t('dash.storage_line') | tojson }},
+        offline: {{ t('dash.offline') | tojson }},
+        nothingYet: {{ t('dash.nothing_yet') | tojson }},
+        anonymous: {{ t('dl.anonymous') | tojson }},
+        maintOn: {{ t('dash.badge.maint_on') | tojson }},
+        maintOff: {{ t('dash.badge.maint_off') | tojson }},
+        lastBackup: {{ t('dash.badge.last_backup') | tojson }},
+        noBackup: {{ t('dash.badge.no_backup') | tojson }},
+        notifOn: {{ t('dash.badge.notif_on') | tojson }},
+        notifOff: {{ t('dash.badge.notif_off') | tojson }},
+        shopPublic: {{ t('dash.badge.shop_public') | tojson }},
+        shopPrivate: {{ t('dash.badge.shop_private') | tojson }},
+        types: {BASE: 'Base', UPDATE: 'Update', DLC: 'DLC', MULTI: 'Multi'},
+        clients: {web: 'Web', tinfoil: 'Tinfoil', sphaira: 'Sphaira', cyberfoil: 'CyberFoil'},
+    };
+    const LOW_SPACE = 0.05;   // warn below 5% free
+    const fmtNum = n => Number(n).toLocaleString();
+    const fill = (template, values) => Object.entries(values)
+        .reduce((text, [key, value]) => text.split('{' + key + '}').join(value), template);
+    const when = iso => iso ? new Date(iso).toLocaleString([], {dateStyle: 'medium', timeStyle: 'short'}) : '';
+
+    function el(tag, className, text) {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined) node.textContent = text;
+        return node;
+    }
+
+    function renderAlerts(d) {
+        const alerts = [];
+        const lib = d.library;
+        if (!d.keys_valid) alerts.push(['danger', 'bi-key', D.alertKeys, '/admin/settings']);
+        d.storage.filter(s => !s.online).forEach(s =>
+            alerts.push(['danger', 'bi-hdd-network', fill(D.alertOffline, {path: s.path}), '/admin/settings']));
+        d.storage.filter(s => s.online && s.free / s.total < LOW_SPACE).forEach(s =>
+            alerts.push(['warning', 'bi-hdd', fill(D.alertLowSpace, {path: s.path, free: formatBytes(s.free)}), '/admin/stats']));
+        if (lib.corrupt) alerts.push(['danger', 'bi-shield-exclamation', fill(D.alertCorrupt, {n: fmtNum(lib.corrupt)}), '/admin/files#verification']);
+        if (d.tasks.failed) alerts.push(['warning', 'bi-exclamation-triangle', fill(D.alertFailed, {n: fmtNum(d.tasks.failed)}), '/admin/tasks']);
+        if (lib.unidentified) alerts.push(['warning', 'bi-question-circle', fill(D.alertUnidentified, {n: fmtNum(lib.unidentified)}), '/admin/files#unidentified']);
+        if (lib.duplicates) alerts.push(['info', 'bi-files', fill(D.alertDuplicates, {n: fmtNum(lib.duplicates)}), '/admin/files#duplicates']);
+        if (!d.maintenance.last_backup) alerts.push(['info', 'bi-archive', D.alertNoBackup, '/admin/settings#Maintenance']);
+
+        const box = document.getElementById('dashAlerts');
+        box.innerHTML = '';
+        if (!alerts.length) {
+            const ok = el('div', 'list-group-item list-group-item-success d-flex align-items-center gap-2');
+            ok.append(el('i', 'bi bi-check-circle'), el('span', '', D.allGood));
+            box.append(ok);
+            return;
+        }
+        alerts.forEach(([tone, icon, text, href]) => {
+            const a = el('a', `list-group-item list-group-item-action list-group-item-${tone} d-flex align-items-center gap-2`);
+            a.href = href;
+            a.append(el('i', `bi ${icon}`), el('span', 'me-auto', text), el('i', 'bi bi-chevron-right'));
+            box.append(a);
+        });
+    }
+
+    function renderTiles(d) {
+        const lib = d.library;
+        const pct = (n, of) => of ? Math.round(100 * n / of) + '%' : '-';
+        const tiles = [
+            [fmtNum(lib.owned_titles), D.tileTitles,
+             fill(D.tileTitlesNote, {complete: pct(lib.complete_titles, lib.owned_titles), uptodate: pct(lib.up_to_date_titles, lib.owned_titles)}), '/'],
+            [fmtNum(lib.files), D.tileFiles, fill(D.tileFilesNote, {size: formatBytes(lib.size)}), '/admin/files'],
+            [fmtNum(d.downloads_week), D.tileDownloads, D.tileDownloadsNote, '/admin/stats#downloadsSection'],
+            [fmtNum(d.tasks.running + d.tasks.pending), D.tileTasks,
+             fill(D.tileTasksNote, {running: fmtNum(d.tasks.running), pending: fmtNum(d.tasks.pending)}), '/admin/tasks'],
+        ];
+        const box = document.getElementById('dashTiles');
+        box.innerHTML = '';
+        tiles.forEach(([value, label, note, href]) => {
+            const a = el('a', 'dash-tile text-reset text-decoration-none');
+            a.href = href;
+            a.append(el('div', 'stat-value', value), el('div', 'stat-label', label), el('div', 'stat-note', note));
+            box.append(a);
+        });
+    }
+
+    function renderStorage(d) {
+        const box = document.getElementById('dashStorage');
+        box.innerHTML = '';
+        d.storage.forEach(s => {
+            const row = el('div', 'mb-3');
+            const head = el('div', 'd-flex justify-content-between small mb-1 gap-2');
+            head.append(el('span', 'text-truncate', s.path));
+            if (!s.online) {
+                head.append(el('span', 'text-danger', D.offline));
+                row.append(head);
+                box.append(row);
+                return;
+            }
+            const used = s.used / s.total;
+            head.append(el('span', 'text-secondary text-nowrap',
+                fill(D.storageLine, {free: formatBytes(s.free), total: formatBytes(s.total)})));
+            const bar = el('div', 'progress');
+            bar.style.height = '.6rem';
+            const fillBar = el('div', 'progress-bar ' + (1 - used < LOW_SPACE ? 'bg-danger' : used > 0.85 ? 'bg-warning' : 'bg-info'));
+            fillBar.style.width = Math.round(100 * used) + '%';
+            bar.append(fillBar);
+            row.append(head, bar);
+            box.append(row);
+        });
+    }
+
+    function renderList(id, items, render) {
+        const list = document.getElementById(id);
+        list.innerHTML = '';
+        if (!items.length) {
+            list.append(el('li', 'list-group-item text-secondary fst-italic px-0', D.nothingYet));
+            return;
+        }
+        items.forEach(item => {
+            const li = el('li', 'list-group-item px-0 d-flex justify-content-between gap-2');
+            const [main, sub, side] = render(item);
+            const left = el('div', 'text-truncate');
+            left.append(el('div', 'text-truncate', main), el('div', 'small text-secondary text-truncate', sub));
+            left.title = sub;
+            li.append(left, el('div', 'small text-secondary text-nowrap', side));
+            list.append(li);
+        });
+    }
+
+    function renderStatus(d) {
+        const badges = [
+            [d.maintenance.enabled ? 'success' : 'secondary',
+             d.maintenance.enabled && d.maintenance.next_run ? fill(D.maintOn, {when: when(d.maintenance.next_run)}) : D.maintOff,
+             '/admin/settings#Maintenance'],
+            ['secondary', d.maintenance.last_backup ? fill(D.lastBackup, {when: when(d.maintenance.last_backup)}) : D.noBackup,
+             '/admin/settings#Maintenance'],
+            [d.notifications_enabled ? 'success' : 'secondary', d.notifications_enabled ? D.notifOn : D.notifOff,
+             '/admin/settings#Notifications'],
+            [d.shop_public ? 'warning' : 'success', d.shop_public ? D.shopPublic : D.shopPrivate, '/admin/settings'],
+        ];
+        const box = document.getElementById('dashStatus');
+        box.innerHTML = '';
+        badges.forEach(([tone, text, href]) => {
+            const a = el('a', `badge rounded-pill text-bg-${tone} text-decoration-none fw-normal fs-6 text-wrap text-start`, text);
+            a.href = href;
+            box.append(a);
+        });
+    }
+
+    function loadDashboard() {
+        fetch('/api/dashboard', {credentials: 'same-origin'})
+            .then(r => r.json())
+            .then(d => {
+                renderAlerts(d);
+                renderTiles(d);
+                renderStorage(d);
+                renderList('dashRecentFiles', d.recent_files, f => [
+                    f.name || f.filename,
+                    [D.types[f.app_type] || f.app_type, f.version && f.version !== '0' ? 'v' + f.version : '', formatBytes(f.size)]
+                        .filter(Boolean).join(' · '),
+                    when(f.added_at)]);
+                renderList('dashRecentDownloads', d.recent_downloads, e => [
+                    e.name, [e.user || D.anonymous, D.clients[e.client] || e.client].join(' · '), when(e.downloaded_at)]);
+                renderStatus(d);
+            })
+            .catch(err => console.error('Could not load the dashboard', err));
+    }
+
+    document.getElementById('refreshDashboard').addEventListener('click', loadDashboard);
+    loadDashboard();
+</script>
+{% endblock %}
