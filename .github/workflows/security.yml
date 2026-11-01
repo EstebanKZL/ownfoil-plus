@@ -1,0 +1,62 @@
+name: Security
+
+# Known-vulnerability checks, on every pull request and weekly (a new CVE can appear
+# with no code change at all):
+#  - pip-audit on requirements.txt: fails on any known vulnerability in a pinned
+#    Python dependency;
+#  - the Docker image (amd64) built and scanned with Trivy: fails on a CRITICAL or HIGH
+#    vulnerability that has a fix available. It also prints which urllib3 copies the
+#    image holds and checks pip is gone, so the image's contents are verified, not
+#    assumed.
+# Fixes then come in through Dependabot's PRs (.github/dependabot.yml).
+
+on:
+  pull_request:
+  schedule:
+    - cron: '0 5 * * 1'  # Mondays 05:00 UTC, ahead of the weekly image rebuild
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  python-dependencies:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Audit requirements.txt
+        run: |
+          python -m pip install --upgrade pip pip-audit
+          pip-audit --requirement requirements.txt --progress-spinner off
+
+  docker-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the image (amd64)
+        run: docker build --pull --tag ownfoil-plus:scan .
+
+      - name: Inspect the image
+        run: |
+          echo "urllib3 copies in the image:"
+          docker run --rm --entrypoint sh ownfoil-plus:scan -c \
+            'find / -path /proc -prune -o -type d -name "urllib3*" -print 2>/dev/null; python -c "import urllib3; print(\"app urllib3:\", urllib3.__version__)"'
+          if docker run --rm --entrypoint python ownfoil-plus:scan -c "import pip" 2>/dev/null; then
+            echo "::error::pip is still installed in the image"; exit 1
+          fi
+          docker run --rm --entrypoint python ownfoil-plus:scan -c "import PIL.Image, requests; print('Pillow', PIL.__version__)"
+
+      - name: Scan with Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ownfoil-plus:scan
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+          format: table

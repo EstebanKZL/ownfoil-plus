@@ -11,16 +11,32 @@ ARG TARGETPLATFORM
 # privilege-drop in run.sh, which is exactly what su-exec is built for - a few KB
 # versus the full sudo package, with none of sudo's own (repeated, sometimes
 # critical) CVE history.
-RUN apk update && apk upgrade --no-cache && apk add --no-cache bash su-exec \
-    && if [ "$TARGETPLATFORM" = "linux/arm/v6" ] || [ "$TARGETPLATFORM" = "linux/arm/v7" ]; then \
-        apk add --no-cache build-base gcc musl-dev jpeg-dev zlib-dev libffi-dev cairo-dev pango-dev gdk-pixbuf-dev; \
-    fi
+RUN apk update && apk upgrade --no-cache && apk add --no-cache bash su-exec
 
+# One layer for build tools, install and cleanup: removed in a later RUN, the build
+# tools would still sit in this layer of the image. On arm/v6 and arm/v7 there are no
+# prebuilt wheels for some packages (Pillow, zstandard), so they compile here; the
+# runtime libraries they link against (libjpeg-turbo, zlib, libffi) are installed on
+# their own, because deleting the -dev packages would otherwise take them along and
+# leave e.g. Pillow unable to open JPEG artwork.
+#
+# pip itself is uninstalled at the end: the app never uses it at runtime, and it ships
+# its own vendored copies of libraries (urllib3, requests, ...) that registry scanners
+# report as vulnerabilities whenever they lag behind upstream. The app's own urllib3
+# (pinned in requirements.txt, used by requests) stays.
 COPY requirements.txt /tmp/
-RUN pip install --no-cache-dir --requirement /tmp/requirements.txt && rm /tmp/requirements.txt
-RUN if [ "$TARGETPLATFORM" = "linux/arm/v6" ] || [ "$TARGETPLATFORM" = "linux/arm/v7" ]; then \
-        apk del build-base gcc musl-dev jpeg-dev zlib-dev libffi-dev cairo-dev pango-dev gdk-pixbuf-dev; \
-    fi
+RUN set -e; \
+    if [ "$TARGETPLATFORM" = "linux/arm/v6" ] || [ "$TARGETPLATFORM" = "linux/arm/v7" ]; then \
+        apk add --no-cache libjpeg-turbo zlib libffi; \
+        apk add --no-cache --virtual .build-deps build-base musl-dev jpeg-dev zlib-dev libffi-dev; \
+    fi; \
+    pip install --no-cache-dir --requirement /tmp/requirements.txt; \
+    rm /tmp/requirements.txt; \
+    if [ "$TARGETPLATFORM" = "linux/arm/v6" ] || [ "$TARGETPLATFORM" = "linux/arm/v7" ]; then \
+        apk del --no-network .build-deps; \
+    fi; \
+    pip uninstall --yes pip; \
+    python -c "import PIL.Image, urllib3, requests"
 
 RUN mkdir /app
 COPY ./app /app
