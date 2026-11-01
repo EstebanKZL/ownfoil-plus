@@ -1,0 +1,30 @@
+# Weekly pull requests for outdated dependencies, so security fixes (like the Pillow
+# release that closed 39 CVEs in 6.2.5.45) arrive as a reviewable PR, with the test
+# suite run on it, instead of being noticed in a registry scan weeks later.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    groups:
+      # Patch and minor updates of everything in one PR; majors stay separate, since
+      # they're the ones that can need code changes.
+      python-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ['*']

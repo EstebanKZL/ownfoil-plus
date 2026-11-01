@@ -1,6 +1,6 @@
 [project]
 name = "ownfoil"
-version = "6.2.5.44"
+version = "6.2.5.45"
 description = "Self-hosted Nintendo Switch library manager, with automated management tasks, multi user authentication, serving your library to multiple supported clients on your Switch."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -25,16 +25,17 @@ dependencies = [
     "flask-migrate==4.1.0",
     "flask-sock==0.7.0",
     "flask-sqlalchemy==3.1.1",
-    "gunicorn==26.0.0 ; sys_platform != 'win32'",
+    "gunicorn==26.2.0 ; sys_platform != 'win32'",
     "nstools==2.0.0b7",
     "nsz==5.0.0",
-    "pillow==12.3.0",
+    "pillow==13.0.0",
     "pyyaml==6.0.3",
     "requests==2.34.2",
-    "setproctitle==1.3.7",
-    "strawberry-graphql[flask]==0.324.0",
+    "setproctitle==1.3.8",
+    "strawberry-graphql[flask]==0.339.1",
     "watchdog==6.0.0",
-    "werkzeug==3.1.8",
+    "urllib3==2.8.0",
+    "werkzeug==3.1.9",
     "zstandard==0.25.0",
 ]
 

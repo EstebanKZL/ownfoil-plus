@@ -4,6 +4,38 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.45]
+
+Image vulnerabilities, from a Docker Scout report of 5 critical / 30 high.
+
+- **Python dependencies: from 42 known vulnerabilities to none** (checked with
+  `pip-audit`). They were all in three pinned packages, each with a fixed release:
+  - **Pillow 12.3.0 -> 13.0.0** (39 of them, including the critical ones);
+  - **strawberry-graphql 0.324.0 -> 0.339.1** (2);
+  - **Werkzeug 3.1.8 -> 3.1.9** (1).
+  Also gunicorn 26.0.0 -> 26.2.0 and setproctitle 1.3.7 -> 1.3.8. urllib3 - which the
+  app needs, under `requests`, for TitleDB, artwork and notifications - is now pinned
+  explicitly (2.8.0) instead of left to whatever `requests` resolved.
+- **pip is removed from the final image.** The app never uses it at runtime, and it
+  carries its own vendored copies of libraries (urllib3 among them) that scanners flag
+  whenever they lag behind; the app's own urllib3 stays.
+- **The 32-bit ARM builds (arm/v6, arm/v7) clean up for real.** Their build tools were
+  installed in one `RUN` and removed in another, so they stayed in the image's earlier
+  layer; install and cleanup are now a single step (`apk --virtual .build-deps`). And
+  the runtime libraries Pillow and zstandard link against (libjpeg-turbo, zlib,
+  libffi) are now installed explicitly - removing `jpeg-dev` used to remove
+  libjpeg-turbo with it, which could leave Pillow unable to open JPEG artwork there.
+  Unused cairo/pango/gdk-pixbuf build packages dropped.
+- **New `.github/dependabot.yml`**: weekly PRs for outdated Python packages (minor and
+  patch grouped in one PR, majors on their own), the base image, and monthly for
+  GitHub Actions - with the test suite run on each.
+- **New `Security` workflow** on every PR and weekly: `pip-audit` on
+  `requirements.txt`, plus the image built and scanned with Trivy (fails on a fixable
+  CRITICAL or HIGH vulnerability). It also lists the urllib3 copies inside the image
+  and checks pip is gone.
+- `requirements.txt` and `pyproject.toml` are checked to pin identical versions.
+- New `tests/test_dependency_security.py` (5 tests).
+
 ## [6.2.5.44]
 
 UI polish, from screenshots of a real 266-game library.
