@@ -5,9 +5,13 @@ from functools import wraps
 from db import *
 from flask_login import LoginManager
 from settings import get_settings
+from i18n import t
+from urllib.parse import urlsplit
 
 import logging
 import re
+import threading
+import time
 
 # Retrieve main logger
 logger = logging.getLogger('main')
@@ -251,33 +255,84 @@ def init_users(app):
         if os.environ.get('USER_GUEST_NAME') is not None:
             init_user_from_environment(environment_name="USER_GUEST", admin=False)
 
+def safe_next_url(next_url):
+    """`next` only ever points back into this site: a relative path, never
+    `//host`, `/\\host` or `scheme:` - otherwise the login page doubles as an open
+    redirect to a look-alike phishing page."""
+    if not next_url or not next_url.startswith('/') or next_url.startswith(('//', '/\\')):
+        return '/'
+    if urlsplit(next_url).scheme or urlsplit(next_url).netloc:
+        return '/'
+    return next_url
+
+# Web login brute-force guard. In-process and in-memory: one Gunicorn worker serves
+# the app, and a restart clearing it is fine. Keyed by (address, username) so one
+# person mistyping can't lock everyone out behind the same reverse proxy.
+LOGIN_MAX_FAILURES = 5
+LOGIN_WINDOW_SECONDS = 15 * 60
+_login_failures = {}
+_login_failures_lock = threading.Lock()
+
+def _login_key(username):
+    return (request.remote_addr or '', (username or '').lower())
+
+def _recent_failures(key, now):
+    return [t for t in _login_failures.get(key, []) if now - t < LOGIN_WINDOW_SECONDS]
+
+def login_locked_for(username):
+    """Seconds until this (address, username) may try again, 0 if not locked."""
+    now = time.monotonic()
+    with _login_failures_lock:
+        recent = _recent_failures(_login_key(username), now)
+        if len(recent) < LOGIN_MAX_FAILURES:
+            return 0
+        return int(LOGIN_WINDOW_SECONDS - (now - recent[0])) + 1
+
+def record_login_failure(username):
+    now = time.monotonic()
+    key = _login_key(username)
+    with _login_failures_lock:
+        _login_failures[key] = _recent_failures(key, now) + [now]
+
+def clear_login_failures(username):
+    with _login_failures_lock:
+        _login_failures.pop(_login_key(username), None)
+
 @auth_blueprint.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "GET":
-        next_url = request.args.get('next', '')
+        next_url = safe_next_url(request.args.get('next', ''))
         if current_user.is_authenticated:
-            return redirect(next_url if len(next_url) else '/')
-        return render_template('login.html', title='Login')
-        
-    # login code goes here
-    username = request.form.get('user')
-    password = request.form.get('password')
+            return redirect(next_url)
+        return render_template('login.html', title='Login', next_url=next_url)
+
+    username = request.form.get('user', '')
+    password = request.form.get('password', '')
     remember = bool(request.form.get('remember'))
-    next_url = request.form.get('next', '')
+    next_url = safe_next_url(request.form.get('next', ''))
+
+    locked_for = login_locked_for(username)
+    if locked_for:
+        logger.warning(f'Login for user {username} from {request.remote_addr} blocked: too many failed attempts')
+        return render_template('login.html', title='Login', next_url=next_url, username=username,
+                               error=t('login.too_many_attempts', minutes=max(1, -(-locked_for // 60)))), 429
 
     user = User.query.filter_by(user=username).first()
 
     # check if the user actually exists
     # take the user-supplied password, hash it, and compare it to the hashed password in the database
     if not user or not check_password_hash(user.password, password):
-        logger.warning(f'Incorrect login for user {username}')
-        return redirect(url_for('auth.login')) # if the user doesn't exist or password is wrong, reload the page
+        logger.warning(f'Incorrect login for user {username} from {request.remote_addr}')
+        record_login_failure(username)
+        return render_template('login.html', title='Login', next_url=next_url, username=username,
+                               error=t('login.invalid_credentials')), 401
 
     # if the above check passes, then we know the user has the right credentials
     logger.info(f'Sucessfull login for user {username}')
+    clear_login_failures(username)
     login_user(user, remember=remember)
 
-    return redirect(next_url if len(next_url) else '/')
+    return redirect(next_url)
 
 @auth_blueprint.route('/profile')
 @login_required
@@ -301,6 +356,11 @@ def delete_user():
     success = True
     data = request.json
     user_id = data['user_id']
+    target = db.session.get(User, user_id)
+    if target is not None and target.admin_access and admin_account_created() <= 1:
+        # With no admin left, auth switches off entirely (see access_required) and the
+        # whole server is open to anyone on the network.
+        return jsonify({'success': False, 'error': t('auth.last_admin_delete_error')})
     try:
         User.query.filter_by(id=user_id).delete()
         db.session.commit()
@@ -313,6 +373,42 @@ def delete_user():
         'success': success
     } 
     return jsonify(resp)
+
+@auth_blueprint.route('/api/user', methods=['PATCH'])
+@login_required
+@access_required('admin')
+def update_user():
+    """Edit an existing user's permissions, and optionally their password (left
+    out or empty keeps the current one). The username itself is not editable: it is
+    what consoles have saved as their shop login."""
+    data = request.json or {}
+    user = db.session.get(User, data.get('user_id'))
+    if user is None:
+        return jsonify({'success': False, 'error': 'User not found'}), 404
+
+    admin_access = bool(data.get('admin_access'))
+    if admin_access:
+        shop_access = backup_access = True
+    else:
+        shop_access = bool(data.get('shop_access'))
+        backup_access = bool(data.get('backup_access'))
+
+    if user.admin_access and not admin_access and admin_account_created() <= 1:
+        return jsonify({'success': False, 'error': t('auth.last_admin_demote_error')})
+
+    password = data.get('password') or ''
+    if password:
+        is_valid, error_message = validate_password(password)
+        if not is_valid:
+            return jsonify({'success': False, 'error': f"Password validation failed: {error_message}"})
+        user.password = generate_password_hash(password, method='scrypt')
+
+    user.admin_access = admin_access
+    user.shop_access = shop_access
+    user.backup_access = backup_access
+    db.session.commit()
+    logger.info(f'Updated user {user.user}' + (' (password changed)' if password else ''))
+    return jsonify({'success': True})
 
 @auth_blueprint.route('/api/user/signup', methods=['POST'])
 @access_required('admin')

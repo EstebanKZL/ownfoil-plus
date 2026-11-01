@@ -21,7 +21,7 @@ from db import (
     add_temp_file, remove_temp_file, claim_temp_file, get_temp_file_paths, purge_temp_files,
     set_library_scan_time, remove_missing_files_from_db,
     remove_file_from_apps, reset_file_identification, reset_file_verification, create_file,
-    verification_status, _library_looks_offline,
+    verification_status, _library_looks_offline, deletion_event_is_trustworthy,
     Titles, upsert_media, get_title_media, delete_media_slots,
 )
 from settings import get_settings, local_media_enabled
@@ -1513,6 +1513,10 @@ def handle_file_moved_task(library_path, src_path, dest_path, **kwargs):
 
 @register_task('handle_file_deleted')
 def handle_file_deleted_task(filepath, **kwargs):
+    # A disconnected disk/mount looks like a mass deletion to the watcher; only act on
+    # a delete the library root being online and the path really gone confirms.
+    if not deletion_event_is_trustworthy(filepath):
+        return
     delete_file_by_filepath(filepath)
     enqueue_task('update_titles')
 
@@ -1520,5 +1524,7 @@ def handle_file_deleted_task(filepath, **kwargs):
 @register_task('handle_dir_deleted')
 def handle_dir_deleted_task(dirpath, **kwargs):
     """A folder was moved out/removed: delete all its files from the library."""
+    if not deletion_event_is_trustworthy(dirpath, is_dir=True):
+        return
     if delete_files_under_dir(dirpath):
         enqueue_task('update_titles')

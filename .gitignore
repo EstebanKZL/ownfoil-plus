@@ -20,10 +20,14 @@ env/
 # a public repo must not carry, and it's what a local (non-Docker) run writes
 # straight into these two folders by default (see constants.py's CONFIG_DIR/DATA_DIR).
 # The one file already tracked on purpose under app/data/ - titledb/languages.json, a
-# placeholder bootstrapped on first run - stays tracked: .gitignore only affects
-# untracked files, never ones already committed.
+# placeholder bootstrapped on first run - stays tracked, and is un-ignored explicitly:
+# with a plain `/app/data/` it silently fell out of the repo once (history rewrite),
+# and CI and the Docker image then lacked it (Settings 500s until titledb downloads).
 /app/config/
-/app/data/
+/app/data/*
+!/app/data/titledb/
+/app/data/titledb/*
+!/app/data/titledb/languages.json
 
 # OS / editor cruft
 .DS_Store

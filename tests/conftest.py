@@ -57,6 +57,9 @@ def shop_app(tmp_path, monkeypatch):
 
     # Process-global and keyed by (file, client), so download counts leak between tests.
     utils._throttle_registry.clear()
+    # Same for the web login brute-force guard.
+    import auth
+    auth._login_failures.clear()
 
     init_db(app)
     library_root = fixture.build_library(str(tmp_path / "library"))

@@ -81,6 +81,7 @@ This is usefull if you don't want to remember the `docker run` command and have 
 | `PUID` / `PGID` | UID and GID of the user running the app in the container, `1000:1000` by default. |
 | `USER_ADMIN_NAME` / `USER_ADMIN_PASSWORD` | Creates (or updates) an admin user at every startup. |
 | `USER_GUEST_NAME` / `USER_GUEST_PASSWORD` | Creates (or updates) a regular user with shop access at every startup. |
+| `OWNFOIL_SECRET_KEY` | Optional. The key that signs login cookies. When unset, a random one is generated on first start and kept in `config/.secret_key` - keep that file private. |
 
 > [!TIP]
 > You can control the `UID` and `GID` of the user running the app in the container with the `PUID` and `PGID` environment variables. By default the user is created with `1000:1000`. If you want to have the same ownership for mounted directories, you need to set those variables with the UID and GID returned by the `id` command.
