@@ -51,9 +51,8 @@ def test_setup_page_uses_the_new_name(client):
     assert "Ownfoil-Plus" in html
 
 
-def test_pwa_manifest_uses_the_new_name():
-    with open("app/static/favicon/site.webmanifest") as f:
-        manifest = json.load(f)
+def test_pwa_manifest_uses_the_new_name(client):
+    manifest = json.loads(client.get("/manifest.webmanifest").get_data(as_text=True))
     assert manifest["name"] == "Ownfoil-Plus"
     assert manifest["short_name"] == "Ownfoil-Plus"
 

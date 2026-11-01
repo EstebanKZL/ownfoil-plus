@@ -4,6 +4,33 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.40]
+
+- **New: dashboard**, now the landing page of `Admin` (and the first entry of its
+  sidebar). At the top, only what needs attention, each linking to the page that
+  fixes it: missing/invalid console keys, an unreachable library, under 5% free disk
+  space, corrupt files, failed tasks, unidentified files, games with duplicate files,
+  no backups yet - or "All good". Then four tiles (games with % complete / up to date,
+  files and total size, downloads in the last 7 days, running and queued tasks), a
+  free-space bar per library, the 8 latest added files and 6 latest downloads, and
+  status badges for maintenance (next run), last backup, notifications and shop
+  access. One `/api/dashboard` request of plain aggregate SQL, so it stays fast on big
+  libraries.
+- **New: installable app (PWA)**. The web UI can be installed on a phone, tablet or
+  computer with its own icon and window, under the shop's name; an `Install app`
+  button shows up in the navbar when the browser offers it. A service worker caches
+  the static files (pages open faster) and shows a "can't reach the server" page with
+  a retry button instead of a browser error when the server is down. Pages always come
+  from the network, and the API, downloads, artwork and uploads are never intercepted.
+  Browsers only allow this on HTTPS or `localhost`; on a plain-http LAN address
+  nothing changes.
+- **Fixed the web app manifest**: the old static `site.webmanifest` pointed its icons
+  at `/web-app-manifest-*.png`, which don't exist at that path (the shop's catch-all
+  route redirected them), so the app was never actually installable. It's now served
+  at `/manifest.webmanifest` with the shop's name, correct icon paths (`any` and
+  `maskable`), a dark theme color and shortcuts to the library and the dashboard.
+- New `tests/test_dashboard_pwa.py` (12 tests).
+
 ## [6.2.5.39]
 
 - **New: upload games from the web UI** (Files page > "Upload files", admin only).

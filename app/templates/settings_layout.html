@@ -7,6 +7,11 @@
         <nav class="settings-sidebar bg-body-tertiary border-end">
             <ul class="nav flex-column">
                 <li class="nav-item">
+                    <a class="nav-link{% if request.path == '/admin' %} active{% endif %}" href="/admin">
+                        {{ t('settings_nav.dashboard') }}
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link{% if request.path == '/admin/settings' %} active{% endif %}" href="/admin/settings">
                         {{ t('settings_nav.settings') }}
                     </a>

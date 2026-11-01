@@ -29,9 +29,10 @@ import uploads
 import media
 import notifications
 import re
+import shutil
 import os
 import secrets
-from i18n import SUPPORTED_LANGUAGES
+from i18n import SUPPORTED_LANGUAGES, t
 from clients import CyberFoilClient, TinfoilClient, SphairaClient
 
 def init():
@@ -378,6 +379,54 @@ def inject_shop_name():
     """Templates show the configured shop name, not the product name."""
     return {'shop_name': get_settings()['shop'].get('name') or 'Ownfoil-Plus'}
 
+# --- Installable app (PWA) ---
+# Both live at the site root: a service worker only controls pages under its own path,
+# and the manifest carries the shop's own name. No login needed - like the favicon,
+# they hold nothing private, and the browser fetches them without credentials.
+
+@app.route('/manifest.webmanifest')
+def web_manifest():
+    name = get_settings()['shop'].get('name') or 'Ownfoil-Plus'
+    icons = []
+    for size, path in ((192, 'favicon/web-app-manifest-192x192.png'),
+                       (512, 'favicon/web-app-manifest-512x512.png')):
+        url = url_for('static', filename=path)
+        icons.append({'src': url, 'sizes': f'{size}x{size}', 'type': 'image/png', 'purpose': 'any'})
+        icons.append({'src': url, 'sizes': f'{size}x{size}', 'type': 'image/png', 'purpose': 'maskable'})
+    manifest = {
+        'id': '/', 'name': name, 'short_name': name[:12], 'start_url': '/', 'scope': '/',
+        'display': 'standalone', 'theme_color': '#212529', 'background_color': '#212529',
+        'description': 'Nintendo Switch library and shop', 'icons': icons,
+        'shortcuts': [
+            {'name': t('nav.library'), 'url': '/'},
+            {'name': t('dash.title'), 'url': '/admin'},
+        ],
+    }
+    response = Response(json.dumps(manifest), mimetype='application/manifest+json')
+    response.cache_control.no_cache = True
+    return response
+
+@app.route('/sw.js')
+def service_worker():
+    js = render_template('sw.js', version=discovery._app_version(),
+                         precache=[url_for('static', filename=f) for f in (
+                             'vendor/bootstrap/bootstrap.min.css',
+                             'vendor/bootstrap/bootstrap.bundle.min.js',
+                             'vendor/jquery/jquery-3.6.0.min.js',
+                             'vendor/bootstrap-icons/bootstrap-icons.min.css',
+                             'vendor/bootstrap-icons/fonts/bootstrap-icons.woff2',
+                             'style.css', 'js/pwa.js', 'logo/logo.svg', 'favicon/favicon.ico',
+                         )] + ['/offline'])
+    response = Response(js, mimetype='application/javascript')
+    # Browsers check for a new worker on every navigation; never let a cache answer.
+    response.cache_control.no_cache = True
+    response.headers['Service-Worker-Allowed'] = '/'
+    return response
+
+@app.route('/offline')
+def offline_page():
+    return render_template('offline.html', title='Offline')
+
 @app.route('/api/health')
 def health():
     """Liveness/readiness probe for Docker's HEALTHCHECK, Kubernetes or an uptime
@@ -393,7 +442,8 @@ def health():
 @app.route('/admin')
 @access_required('admin')
 def admin_page():
-    return redirect('/admin/settings')
+    return render_template('dashboard.html', title='Dashboard',
+                           admin_account_created=admin_account_created())
 
 @app.route('/admin/settings')
 @access_required('admin')
@@ -441,6 +491,89 @@ def tasks_page():
 def stats_page():
     return render_template('stats.html', title='Stats',
                            admin_account_created=admin_account_created())
+
+# --- Dashboard (/admin) ---
+
+@app.get('/api/dashboard')
+@access_required('admin')
+def dashboard_api():
+    """Everything the dashboard shows, in one round trip. Plain aggregate SQL: this
+    is the admin landing page, so it must stay fast on a library of thousands."""
+    from sqlalchemy import text
+    from containers.verification import status_of, STATUS_CORRUPT
+    offset = tasks_mod.utc_offset()
+
+    files_count, files_size, identified = db.session.execute(text(
+        "SELECT COUNT(*), COALESCE(SUM(size), 0), COALESCE(SUM(identified), 0) FROM files")).first()
+    owned, complete, up_to_date = db.session.execute(text(
+        "SELECT COUNT(*), COALESCE(SUM(complete), 0), COALESCE(SUM(up_to_date), 0) "
+        "FROM main.titles WHERE have_base = 1")).first()
+    corrupt = sum(int(count) for sig, hashed, modified, count in db.session.execute(text(
+        "SELECT signature_valid, hash_valid, hash_modified, COUNT(*) FROM files GROUP BY 1, 2, 3"))
+        if status_of(sig, hashed, modified) == STATUS_CORRUPT)
+    duplicates = db.session.execute(text(
+        "SELECT COUNT(*) FROM (SELECT app_id FROM app_files GROUP BY app_id HAVING COUNT(*) > 1)")).scalar()
+    tasks_by_status = dict(db.session.execute(text(
+        "SELECT status, COUNT(*) FROM tasks WHERE run_after IS NULL OR status != 'pending' "
+        "GROUP BY status")).all())
+
+    storage = []
+    for path in get_library_paths():
+        try:
+            usage = shutil.disk_usage(path)
+            storage.append({'path': path, 'online': True, 'total': usage.total,
+                            'used': usage.used, 'free': usage.free})
+        except OSError:
+            storage.append({'path': path, 'online': False})
+
+    since = datetime.datetime.utcnow() - datetime.timedelta(days=7)
+    downloads_week = DownloadEvent.query.filter(DownloadEvent.downloaded_at >= since).count()
+
+    def name_of(title_id):
+        name = (titles_lib.get_game_info(title_id) or {}).get('name') if title_id else None
+        return name if name and name != 'Unrecognized' else title_id
+
+    recent_files = []
+    for f in Files.query.filter(Files.identified.is_(True)).order_by(Files.added_at.desc()).limit(8):
+        app_row = f.apps[0] if f.apps else None
+        title_id = app_row.title.title_id if app_row else None
+        recent_files.append({
+            'id': f.id, 'filename': f.filename, 'size': f.size, 'title_id': title_id,
+            'name': name_of(app_row.app_id if app_row and app_row.app_type == APP_TYPE_DLC else title_id),
+            'app_type': 'MULTI' if f.multicontent else (app_row.app_type if app_row else None),
+            'version': app_row.app_version if app_row else None,
+            'added_at': (f.added_at + offset).isoformat(timespec='minutes') if f.added_at else None,
+        })
+
+    recent_downloads = [{
+        'name': name_of(e.title_id) or e.filename, 'filename': e.filename, 'user': e.user,
+        'client': e.client, 'downloaded_at': (e.downloaded_at + offset).isoformat(timespec='minutes'),
+    } for e in DownloadEvent.query.order_by(DownloadEvent.downloaded_at.desc()).limit(6)]
+
+    settings = get_settings()
+    backup_list = backups.list_backups()
+    valid_keys = load_keys()[0]
+    return jsonify({
+        'library': {'files': int(files_count), 'size': int(files_size),
+                    'unidentified': int(files_count) - int(identified),
+                    'owned_titles': int(owned), 'complete_titles': int(complete),
+                    'up_to_date_titles': int(up_to_date), 'corrupt': corrupt,
+                    'duplicates': int(duplicates or 0)},
+        'storage': storage,
+        'tasks': {'running': int(tasks_by_status.get('running', 0)),
+                  'pending': int(tasks_by_status.get('pending', 0))
+                             + int(tasks_by_status.get('waiting_for_children', 0)),
+                  'failed': int(tasks_by_status.get('failed', 0))},
+        'downloads_week': downloads_week,
+        'recent_files': recent_files,
+        'recent_downloads': recent_downloads,
+        'maintenance': {'enabled': settings['maintenance']['enabled'],
+                        'next_run': _next_maintenance_run_local(),
+                        'last_backup': backup_list[0]['created'] if backup_list else None},
+        'keys_valid': bool(valid_keys),
+        'notifications_enabled': bool(settings['notifications']['enabled']),
+        'shop_public': bool(settings['shop']['public']),
+    })
 
 # --- Resumable uploads (Files page) ---
 UPLOAD_CHUNK_SIZE = 8 * 1024 * 1024

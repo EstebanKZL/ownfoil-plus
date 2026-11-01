@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="row min-vh-100 justify-content-center align-items-center">
+        <div class="col-sm-6 text-center">
+            <img src="{{ url_for('static', filename='logo/logo.svg') }}" style="width: 96px;" alt="logo" class="mb-4">
+            <h1 class="h4">{{ t('offline.title') }}</h1>
+            <p class="text-secondary">{{ t('offline.body') }}</p>
+            <button type="button" class="btn btn-primary" onclick="location.reload()">
+                <i class="bi bi-arrow-clockwise"></i> {{ t('offline.retry') }}
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
