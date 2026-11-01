@@ -1,0 +1,51 @@
+{# Upload dialog (static/js/upload.js). Include once per page, with format.js loaded. #}
+<script type="application/json" id="uploadStrings">{
+    "queued": {{ t('upload.state_queued') | tojson }},
+    "uploading": {{ t('upload.state_uploading') | tojson }},
+    "paused": {{ t('upload.state_paused') | tojson }},
+    "done": {{ t('upload.state_done') | tojson }},
+    "failed": {{ t('upload.state_failed') | tojson }},
+    "pause": {{ t('upload.pause') | tojson }},
+    "resume": {{ t('upload.resume') | tojson }},
+    "cancel": {{ t('upload.cancel') | tojson }},
+    "discard": {{ t('upload.discard') | tojson }},
+    "leaveWarning": {{ t('upload.leave_warning') | tojson }},
+    "errors": {
+        "exists": {{ t('upload.err_exists') | tojson }},
+        "bad_extension": {{ t('upload.err_extension') | tojson }},
+        "no_space": {{ t('upload.err_space') | tojson }},
+        "library_offline": {{ t('upload.err_offline') | tojson }}
+    }
+}</script>
+<div class="modal fade" id="uploadModal" tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="uploadModalLabel">{{ t('upload.title') }}</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="uploadLibrarySelect" class="form-label">{{ t('upload.library') }}</label>
+                    <select class="form-select" id="uploadLibrarySelect"></select>
+                </div>
+                <label class="upload-drop" id="uploadDrop" for="uploadFileInput">
+                    <i class="bi bi-cloud-arrow-up fs-2"></i>
+                    <span>{{ t('upload.drop') }}</span>
+                    <small class="text-secondary">{{ t('upload.drop_hint') }}</small>
+                    <input type="file" id="uploadFileInput" multiple accept=".nsp,.nsz,.xci,.xcz" hidden>
+                </label>
+                <ul class="list-group mt-3" id="uploadQueue"></ul>
+                <div id="uploadPendingBlock" class="mt-4" hidden>
+                    <h2 class="h6">{{ t('upload.pending_heading') }}</h2>
+                    <p class="small text-secondary mb-2">{{ t('upload.pending_hint') }}</p>
+                    <ul class="list-group" id="uploadPending"></ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <span class="small text-secondary me-auto">{{ t('upload.footer_hint') }}</span>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t('upload.close') }}</button>
+            </div>
+        </div>
+    </div>
+</div>

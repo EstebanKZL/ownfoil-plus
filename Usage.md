@@ -47,6 +47,8 @@ Browsers only allow this over **HTTPS** (see [Remote access and HTTPS](./Install
 
 The landing page of `Admin`. At the top, what needs attention, each linking to where to fix it: missing console keys, an unreachable library, low disk space, corrupt or unidentified files, duplicates, failed tasks, no backups yet. Then the figures that matter (games and how many are complete and up to date, files and total size, downloads this week, running and queued tasks), free space per library, the latest added files and downloads, and the state of maintenance, backups, notifications and shop access.
 
+`Upload files`, on the dashboard next to `Storage`, adds games from the browser: pick the destination library, then drop `nsp`, `nsz`, `xci` or `xcz` files (or click to choose them). They go up in chunks, one file at a time, with progress and speed, and can be paused, resumed or cancelled. If the connection drops, the tab is closed or the server restarts, choosing the same file again continues from where it stopped; unfinished uploads are listed in the same window and removed after 7 days without activity. While uploading, the file is a hidden `.part` file in the library folder that scans ignore; once complete it's renamed into place and identified like any other new file. A file whose name is already in the library is refused.
+
 ## Library view
 
 The landing page, a grid view of your whole library, with labels and filtering to highlight owned and missing content.
@@ -63,7 +65,6 @@ It has two tabs. `Local Access` is for when your Switch and your Ownfoil-Plus se
 
 Admin only. Search and filter every file in the library and act on it (retry identification, verify, compress, decompress, delete), with one-click cleanups for duplicates and outdated updates.
 
-`Upload files` adds games from the browser: pick the destination library, then drop `nsp`, `nsz`, `xci` or `xcz` files (or click to choose them). They go up in chunks, one file at a time, with progress and speed, and can be paused, resumed or cancelled. If the connection drops, the tab is closed or the server restarts, choosing the same file again continues from where it stopped; unfinished uploads are listed in the same window and removed after 7 days without activity. While uploading, the file is a hidden `.part` file in the library folder that scans ignore; once complete it's renamed into place and identified like any other new file. A file whose name is already in the library is refused.
 
 ## Tasks page
 

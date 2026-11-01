@@ -28,6 +28,11 @@ UI polish, from screenshots of a real 266-game library.
 - **Stats > Downloads: "Most downloaded", "By user", "By client" and "Latest
   downloads" show 10 rows each, the rest by scrolling, with the header row kept in
   view.** "Most downloaded" now lists up to 50 titles (was 10).
+- **"Upload files" moved from the Files page to the dashboard**, next to the `Storage`
+  heading (above the free-space figures). Finishing an upload refreshes the dashboard,
+  so the new game shows in "Recently added". The dialog and its script are now a
+  reusable partial (`_upload_modal.html`) and `static/js/upload.js`; the global search
+  finds it under the dashboard ("upload", "subir").
 - The row capping is one small helper (`static/js/scroll-limit.js`) that sizes each
   list from its rendered rows, so it's exact on a phone too, where rows wrap to two
   lines.
