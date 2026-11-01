@@ -218,8 +218,11 @@ def test_workers_and_backup_sections_both_have_a_leading_divider(client):
     resp = client.get("/admin/settings")
     html = resp.get_data(as_text=True)
 
-    workers_idx = html.index("Procesos")
-    backup_idx = html.index("Copia de seguridad")
+    # By the headings' ids: the section names also appear earlier on the page, in the
+    # navbar's search palette list.
+    workers_idx = html.index('id="Workers"')
+    backup_idx = html.index('id="Backup"')
+    assert workers_idx < backup_idx
     between = html[workers_idx:backup_idx]
     assert '<hr class="hr-settings">' in between, (
         "Expected a divider between Workers and Backup sections")

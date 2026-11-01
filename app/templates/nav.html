@@ -30,6 +30,25 @@
                         <i class="bi bi-download"></i> {{ t('nav.install_app') }}
                     </button>
                 </li>
+                <li class="nav-item me-lg-1">
+                    <button type="button" class="nav-link" onclick="openSearch()" title="{{ t('search.open_title') }}">
+                        <i class="bi bi-search"></i>
+                        <span class="d-lg-none ms-1">{{ t('search.placeholder') }}</span>
+                        <kbd class="d-none d-lg-inline ms-1 small">Ctrl K</kbd>
+                    </button>
+                </li>
+                <li class="nav-item dropdown me-lg-1">
+                    <a class="nav-link dropdown-toggle" href="#" id="themeDropdown" role="button" data-bs-toggle="dropdown"
+                       aria-expanded="false" title="{{ t('theme.title') }}">
+                        <i class="bi bi-moon-stars" data-theme-icon></i>
+                        <span class="d-lg-none ms-1">{{ t('theme.title') }}</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="themeDropdown">
+                        <li><button type="button" class="dropdown-item" data-theme-choice="light" onclick="setTheme('light')"><i class="bi bi-sun me-2"></i>{{ t('theme.light') }}</button></li>
+                        <li><button type="button" class="dropdown-item" data-theme-choice="dark" onclick="setTheme('dark')"><i class="bi bi-moon-stars me-2"></i>{{ t('theme.dark') }}</button></li>
+                        <li><button type="button" class="dropdown-item" data-theme-choice="auto" onclick="setTheme('auto')"><i class="bi bi-circle-half me-2"></i>{{ t('theme.auto') }}</button></li>
+                    </ul>
+                </li>
                 <li class="nav-item dropdown me-lg-2">
                     <a class="nav-link dropdown-toggle" href="#" id="languageDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         {{ t('language.' ~ current_language()) }}
@@ -53,3 +72,50 @@
         </div>
     </div>
 </nav>
+{# Global search (Ctrl+K): the pages this user can open, matched in the browser by
+   static/js/search.js; games and files come from /api/search. #}
+{% set search_is_admin = current_user.is_admin or admin_account_created == false %}
+{% set search_is_shop = search_is_admin or (current_user.is_authenticated and current_user.has_shop_access()) %}
+{% set search_pages = [{'title': t('nav.library'), 'url': '/', 'icon': 'bi-grid', 'keywords': 'library games biblioteca juegos'}] %}
+{% if search_is_shop %}
+{% set _ = search_pages.append({'title': t('nav.setup'), 'url': '/setup', 'icon': 'bi-joystick', 'keywords': 'setup tinfoil sphaira cyberfoil console configuracion consola'}) %}
+{% endif %}
+{% if search_is_admin %}
+{% for page in [
+    (t('settings_nav.dashboard'), '/admin', 'bi-speedometer2', 'dashboard panel inicio home'),
+    (t('settings_nav.settings'), '/admin/settings', 'bi-gear', 'settings ajustes'),
+    (t('settings_nav.settings') ~ ' › ' ~ t('auth.heading'), '/admin/settings#Authentication', 'bi-people', 'users usuarios password contrasena'),
+    (t('settings_nav.settings') ~ ' › ' ~ t('sections.library'), '/admin/settings#Library', 'bi-folder', 'paths rutas carpetas organizer compression verification'),
+    (t('settings_nav.settings') ~ ' › ' ~ t('sections.titles'), '/admin/settings#Titles', 'bi-translate', 'keys claves region language idioma'),
+    (t('settings_nav.settings') ~ ' › ' ~ t('sections.shop'), '/admin/settings#Shop', 'bi-shop', 'shop tienda clients public privada host'),
+    (t('settings_nav.settings') ~ ' › ' ~ t('sections.maintenance'), '/admin/settings#Maintenance', 'bi-archive', 'maintenance mantenimiento backup schedule'),
+    (t('settings_nav.settings') ~ ' › ' ~ t('sections.notifications'), '/admin/settings#Notifications', 'bi-bell', 'notifications discord telegram ntfy webhook'),
+    (t('settings_nav.settings') ~ ' › ' ~ t('sections.workers'), '/admin/settings#Workers', 'bi-cpu', 'workers procesos'),
+    (t('settings_nav.settings') ~ ' › ' ~ t('backup.heading'), '/admin/settings#Backup', 'bi-box-arrow-down', 'export import exportar importar'),
+    (t('settings_nav.services'), '/admin/services', 'bi-broadcast', 'services servicios discovery descubrimiento'),
+    (t('settings_nav.files'), '/admin/files', 'bi-file-earmark', 'files archivos upload subir'),
+    (t('settings_nav.tasks'), '/admin/tasks', 'bi-list-task', 'tasks tareas workers'),
+    (t('settings_nav.stats'), '/admin/stats', 'bi-bar-chart', 'stats estadisticas'),
+    (t('settings_nav.stats') ~ ' › ' ~ t('dl.heading'), '/admin/stats#downloadsSection', 'bi-download', 'downloads descargas history historial'),
+] %}
+{% set _ = search_pages.append({'title': page[0], 'url': page[1], 'icon': page[2], 'keywords': page[3]}) %}
+{% endfor %}
+{% endif %}
+<script type="application/json" id="searchPages">{{ {'pages': search_pages, 'admin': search_is_admin,
+    'games': t('search.games'), 'files': t('search.files'), 'pagesLabel': t('search.pages'),
+    'empty': t('search.empty'), 'hint': t('search.hint')} | tojson }}</script>
+<div class="modal fade" id="searchModal" tabindex="-1" aria-label="{{ t('search.open_title') }}" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable search-dialog">
+        <div class="modal-content">
+            <div class="modal-header p-2">
+                <i class="bi bi-search mx-2 text-secondary"></i>
+                <input type="search" class="form-control border-0 shadow-none" id="searchInput" autocomplete="off"
+                       placeholder="{{ t('search.placeholder') }}" aria-label="{{ t('search.placeholder') }}">
+                <kbd class="small ms-2 me-1">Esc</kbd>
+            </div>
+            <div class="modal-body p-0">
+                <div class="list-group list-group-flush" id="searchResults" role="listbox"></div>
+            </div>
+        </div>
+    </div>
+</div>

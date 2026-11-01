@@ -31,6 +31,12 @@ Three features need valid keys and are unavailable without them:
 
 There are three main pages: the library view, the setup guide, and under `Admin` the dashboard, the settings, the files, the task list and the stats.
 
+## Theme and search
+
+The sun/moon icon in the navbar switches between a **light**, **dark** (the default) or **automatic** theme that follows the device's own setting. The choice is remembered per browser. Game cards keep their dark style over the artwork in both themes.
+
+**Search** from any page with `Ctrl+K` (`Cmd+K` on a Mac), `/`, or the magnifier in the navbar: type a game's name or title ID, a file name (admins), or a page or setting ("notifications", "backup", "users"...). Arrow keys move through the results and `Enter` opens one: a game opens the library filtered to it, a file opens the Files page filtered to it. Results only include what your account can access.
+
 ## Installing as an app
 
 The web UI can be installed as an app on a phone, tablet or computer (its own icon and window, no browser bar), using the shop's name. When the browser offers it, an `Install app` button appears in the navbar; otherwise use the browser's own menu (`Install app` / `Add to Home Screen`). Static files are cached so pages open faster, and a "can't reach the server" page is shown instead of a browser error when the server is down. Library data, downloads and uploads always come live from the server.

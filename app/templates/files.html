@@ -1253,6 +1253,9 @@
     window.addEventListener('hashchange', showTab);
 
     loadStats();
+    // ?q= from the global search (Ctrl+K): open the All tab already filtered by it.
+    const urlSearch = new URLSearchParams(location.search).get('q');
+    if (urlSearch) TABS.all.search = urlSearch;
     loadOptions().catch(e => notice(e.message)).finally(showTab);
 
     // --- Resumable uploads (see uploads.py) -----------------------------------------------

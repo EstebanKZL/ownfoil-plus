@@ -1414,6 +1414,11 @@
         if (savedSearch) {
             $('#textFilter').val(savedSearch);
         }
+        // ?q= from the global search (Ctrl+K) wins over the remembered search.
+        const urlSearch = new URLSearchParams(location.search).get('q');
+        if (urlSearch) {
+            $('#textFilter').val(urlSearch);
+        }
     }
 
     /** Read the filter controls into the active* variables the query is built from. */

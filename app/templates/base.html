@@ -11,6 +11,7 @@
     {%endif%}
     {# Served locally (static/vendor/), not from a CDN: a shop on a LAN with no internet
        access, or a console network behind a filtering DNS, still gets a working UI. #}
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}">
     <script src="{{ url_for('static', filename='vendor/jquery/jquery-3.6.0.min.js') }}"></script>
     <script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
@@ -32,6 +33,7 @@
     {% block content %}
     {% endblock %}
     <script src="{{ url_for('static', filename='js/pwa.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/search.js') }}"></script>
 </body>
 
 </html>

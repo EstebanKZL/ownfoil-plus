@@ -492,6 +492,32 @@ def stats_page():
     return render_template('stats.html', title='Stats',
                            admin_account_created=admin_account_created())
 
+# --- Global search (Ctrl+K, see static/js/search.js) ---
+
+@app.get('/api/search')
+@access_required('shop')
+def search_api():
+    """Games in the library by name or title ID, and - for an admin - files by name.
+    Pages and settings sections are matched in the browser (nav.html lists them)."""
+    from sqlalchemy import text
+    query = (request.args.get('q') or '').strip()
+    if len(query) < 2:
+        return jsonify({'titles': [], 'files': []})
+    pattern = f'%{query}%'
+    titles = [{'title_id': title_id, 'name': name or title_id}
+              for title_id, name in db.session.execute(text(
+                  "SELECT t.title_id, td.name FROM main.titles t "
+                  "LEFT JOIN titledb.titles td ON td.id = t.title_id "
+                  "WHERE t.have_base = 1 AND (td.name LIKE :p COLLATE NOCASE OR t.title_id LIKE :p COLLATE NOCASE) "
+                  "ORDER BY td.name COLLATE NOCASE LIMIT 8"), {'p': pattern})]
+    files = []
+    is_admin = (not admin_account_created()) or current_user.has_access('admin')
+    if is_admin:
+        files = [{'id': f.id, 'filename': f.filename, 'size': f.size}
+                 for f in Files.query.filter(Files.filename.ilike(pattern))
+                 .order_by(Files.filename).limit(6)]
+    return jsonify({'titles': titles, 'files': files})
+
 # --- Dashboard (/admin) ---
 
 @app.get('/api/dashboard')
