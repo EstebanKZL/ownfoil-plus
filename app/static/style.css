@@ -393,6 +393,25 @@ p.game-description {
 
 /* Two columns rather than auto-fit: four sections in a row would put each table's
    figures a screen away from the next, and the tables are all the same shape anyway. */
+/* Files page upload drop zone. */
+.upload-drop {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .25rem;
+    padding: 1.5rem 1rem;
+    border: 2px dashed var(--bs-border-color);
+    border-radius: .5rem;
+    text-align: center;
+    cursor: pointer;
+}
+
+.upload-drop:hover,
+.upload-drop.dragging {
+    border-color: var(--bs-info);
+    background: var(--bs-tertiary-bg);
+}
+
 /* Downloads per day: plain flex bars, no chart library (the UI must work offline). */
 .download-chart {
     display: flex;

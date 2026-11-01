@@ -43,6 +43,12 @@ This is the page to use when configuring a client on your Nintendo Switch. It pr
 
 It has two tabs. `Local Access` is for when your Switch and your Ownfoil-Plus server are on the same network, and uses your server's LAN IP. `Remote Access` is for reaching your shop over the internet, and uses the `Shop URL` you configured in the [Shop](#shop) settings.
 
+## Files page
+
+Admin only. Search and filter every file in the library and act on it (retry identification, verify, compress, decompress, delete), with one-click cleanups for duplicates and outdated updates.
+
+`Upload files` adds games from the browser: pick the destination library, then drop `nsp`, `nsz`, `xci` or `xcz` files (or click to choose them). They go up in chunks, one file at a time, with progress and speed, and can be paused, resumed or cancelled. If the connection drops, the tab is closed or the server restarts, choosing the same file again continues from where it stopped; unfinished uploads are listed in the same window and removed after 7 days without activity. While uploading, the file is a hidden `.part` file in the library folder that scans ignore; once complete it's renamed into place and identified like any other new file. A file whose name is already in the library is refused.
+
 ## Tasks page
 
 Everything Ownfoil-Plus does in the background is a task, and this page shows them live: what is queued, what is running with its progress, what is scheduled to run later, and what failed. Failed tasks stay until you dismiss them, so you can see what went wrong earlier.
