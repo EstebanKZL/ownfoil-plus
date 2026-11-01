@@ -11,18 +11,21 @@
                         <img src="{{ url_for('static', filename='logo/logo.svg') }}" style="width: 128px;" alt="logo">
                     </div>
                     <form method="POST" action="/login"><p>{{ t('login.please_login') }}</p>
+                        {% if error %}
+                        <div class="alert alert-danger py-2" role="alert">{{ error }}</div>
+                        {% endif %}
                         <div class="mb-4">
-                            <input class="form-control" name="user" id="exampleInputEmail1" placeholder="{{ t('login.username') }}">
+                            <input class="form-control" name="user" id="exampleInputEmail1" placeholder="{{ t('login.username') }}" value="{{ username or '' }}" autocomplete="username">
                         </div>
                         <div class="mb-4">
-                            <input type="password" class="form-control" id="exampleInputPassword1" name="password" placeholder="{{ t('login.password') }}">
+                            <input type="password" class="form-control" id="exampleInputPassword1" name="password" placeholder="{{ t('login.password') }}" autocomplete="current-password" {% if username %}autofocus{% endif %}>
                         </div>
                         <div class="mb-3 form-check">
                             <input type="checkbox" name="remember" class="form-check-input" id="exampleCheck1">
                             <label class="form-check-label" for="exampleCheck1">{{ t('login.remember_me') }}</label>
                         </div>
                         <div class="d-grid text-center pt-1 mb-5 pb-1">
-                            <input type="hidden" name="next" value="">
+                            <input type="hidden" name="next" value="{{ next_url or '' }}">
                             <button type="submit" class="btn btn-primary btn-block">{{ t('login.submit') }}</button>
                         </div>
                     </form>

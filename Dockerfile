@@ -24,12 +24,19 @@ RUN if [ "$TARGETPLATFORM" = "linux/arm/v6" ] || [ "$TARGETPLATFORM" = "linux/ar
 
 RUN mkdir /app
 COPY ./app /app
+# Only read for the version the shop reports (discovery._app_version).
+COPY ./pyproject.toml /app/pyproject.toml
 COPY ./docker/run.sh /app/run.sh
 RUN chmod +x /app/run.sh
 
 RUN mkdir -p /app/data
 
 WORKDIR /app
+
+# Python rather than curl/wget: nothing extra to install. start-period covers the
+# first start's migrations and TitleDB bootstrap on slow ARM boards.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8465/api/health', timeout=8)" || exit 1
 
 ENTRYPOINT [ "/app/run.sh" ]
 

@@ -28,10 +28,19 @@ spec:
           readinessProbe:
             httpGet:
               scheme: HTTP
-              path: /
+              path: /api/health
               port: {{ .Values.service.ports.port }}
             initialDelaySeconds: 10
             periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              scheme: HTTP
+              path: /api/health
+              port: {{ .Values.service.ports.port }}
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
           volumeMounts:
   {{ if .Values.persistence.enabled }}
   {{- range $k, $v := .Values.persistence.volumes }}

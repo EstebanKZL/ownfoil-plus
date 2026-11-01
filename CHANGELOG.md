@@ -4,6 +4,96 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.35]
+
+Quality and infrastructure ("Etapa 1").
+
+- **The test suite now runs in CI.** New `.github/workflows/tests.yml` runs pytest on
+  Python 3.14 (the Docker image's version) on every push and pull request. Until now
+  the ~2,000 tests only ever ran by hand.
+- **The Docker image is only published from code that passes the tests**:
+  `docker.yml` calls `tests.yml` first (`needs: tests`), for tag builds and the weekly
+  rebuild alike.
+- **New `/api/health` endpoint** (no login needed, reveals nothing beyond "up" and
+  whether the database answers; 503 if it doesn't). The image has a `HEALTHCHECK` on it,
+  so `docker ps` shows `healthy`/`unhealthy` and orchestrators can restart a stuck
+  container. The Helm chart's readiness probe uses it too (it used to probe `/`,
+  which is a login redirect on a private shop) and gains a liveness probe.
+- **The web UI no longer depends on any CDN.** Bootstrap 5.3.1, Bootstrap Icons
+  1.11.1 and jQuery 3.6.0 are served from `app/static/vendor/` (unmodified upstream
+  files, hashes checked against the CDN's own SRI values - see
+  `app/static/vendor/README.md`), so a shop on a LAN without internet access, or
+  behind a filtering DNS, still gets a working interface. Font Awesome was dropped
+  entirely: it was loaded on every page but not a single icon used it.
+- **Fixed the 96x96 favicon link**, whose `sizes` attribute had ended up inside the
+  file name (`favicon-96x96.png" sizes="96x96`), so browsers never found it.
+- **The shop now reports its real version** to clients (OPTIONS handshake, LAN
+  discovery) instead of `unknown`: the Docker image doesn't install the package, so
+  the version is now read from `pyproject.toml`, which the image now ships.
+- **Fixed `Files.last_attempt` defaulting to the server's start time**:
+  `default=datetime.datetime.now()` was evaluated once, at import, so every new file
+  got the same timestamp until the next restart. Now `default=datetime.datetime.now`.
+- **`pyproject.toml` points at this fork** (homepage, repository, issues, changelog;
+  upstream kept as its own link, original author credited, fork maintainer added).
+- **Tests: fixed the capture fixture building mixed-separator paths on Windows**
+  (`C:\...\library\Test Game/file.nsp`), which made 11 Sphaira download tests fail
+  when the suite ran on Windows. A real scan never stores such paths; only the fixture
+  did.
+- New `tests/test_ops_hardening.py` (14 tests).
+
+## [6.2.5.34]
+
+Security hardening ("Etapa 0"). **Upgrading signs everyone out once** - the old
+cookie-signing key is gone, so every existing browser session has to log in again.
+Console clients (Tinfoil, Sphaira, CyberFoil) use Basic Auth and are unaffected.
+
+- **Login cookies are now signed with a per-install random key.** The Flask
+  `SECRET_KEY` used to be a constant in `app.py`, public on GitHub: anyone could forge
+  a session cookie for user id 1 and get admin access on any install. It is now read
+  from `OWNFOIL_SECRET_KEY`, or generated once with `secrets.token_hex` and stored in
+  `config/.secret_key` (created `0600`, race-safe with `O_EXCL`).
+- **Session and remember-me cookies are `SameSite=Lax`**, so a page on another site
+  can't make a signed-in admin's browser submit a settings import or a keys upload.
+- **The login no longer works as an open redirect**: `next` must be a local path
+  (`https://…`, `//host`, `/\host` and `scheme:` all fall back to `/`). It is now also
+  carried through the login form, so being sent to `/login` from an admin page brings
+  you back to that page afterwards (before, it always landed on `/`).
+- **Web login brute-force guard**: 5 failed attempts for the same username from the
+  same address within 15 minutes lock that pair until the window passes (HTTP 429).
+  Keyed per address *and* username, so one mistyped password behind a reverse proxy
+  doesn't lock everyone else out.
+- **The login page now says when the credentials are wrong** (it used to just reload
+  silently) and keeps the typed username.
+- **Users can be edited**: the pencil button in Settings > Authentication (which was
+  always disabled) opens a dialog to change permissions and, optionally, the password.
+  New `PATCH /api/user` endpoint, admin only.
+- **The last admin account can no longer be deleted or demoted** - with no admin left,
+  authentication switches off entirely and the server is open to anyone on the network.
+- **Usernames in the users table are escaped** - they were inserted as raw HTML.
+- **"Without sensitive data" settings export**: leaves out the Tinfoil key pair and
+  the saved `hauth` values, for sharing the file. Importing it keeps the current ones.
+- New `tests/test_auth_hardening.py` (26 tests).
+
+## [6.2.5.33]
+
+- **Fixed the file watcher wiping the whole library registry when a disk disconnects**
+  (reported directly: with "Vigilancia de archivos" on, unplugging/losing the drive
+  cleared everything, forcing a full re-scan and re-verify). The scan paths already
+  had an offline guard (`_library_looks_offline` plus a >50%-missing sanity check),
+  but the watcher's own `handle_file_deleted` / `handle_dir_deleted` tasks did not:
+  an unmounted USB drive or dropped share reaches the watcher as a flood of delete
+  events, and each one deleted its row unconditionally. Both tasks now go through
+  `deletion_event_is_trustworthy`: a delete is only acted on when the library root is
+  online and non-empty **and** the path is really gone. Real deletions - from the web
+  UI or straight off the disk - still clean the registry exactly as before; a
+  disconnected disk leaves every row (and its identification/verification state)
+  untouched, and reconnecting needs no re-verify.
+  - Known tradeoff, same as the scan guard: deleting *every* file in a library by hand
+    leaves its rows until the library itself is removed in Settings, since an empty
+    root is indistinguishable from an unplugged drive.
+  - New `tests/test_watcher_delete_safety.py` (6 tests; the 4 disconnect cases fail on
+    the old code).
+
 ## [6.2.5.32]
 
 - **Gave `README.md` the same "more convincing" rewrite as `DOCKERHUB.md`**,

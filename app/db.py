@@ -141,7 +141,7 @@ class Files(db.Model):
     identification_type = db.Column(db.String)
     identification_error = db.Column(db.String)
     identification_attempts = db.Column(db.Integer, default=0)
-    last_attempt = db.Column(db.DateTime, default=datetime.datetime.now())
+    last_attempt = db.Column(db.DateTime, default=datetime.datetime.now)
     organized = db.Column(db.Boolean, default=False)
     signature_valid = db.Column(db.Boolean)
     hash_valid = db.Column(db.Boolean)
@@ -716,6 +716,37 @@ def _dir_prefix_like(dirpath):
     backslash-separated on Windows and a '/' pattern would match nothing there."""
     escaped = dirpath.rstrip('/' + os.sep).replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
     return escaped + os.sep.replace('\\', '\\\\') + '%'
+
+def library_path_for(path):
+    """The configured library root that contains `path` (longest match wins), or None."""
+    norm = os.path.normpath(path)
+    best = None
+    for lib in Libraries.query.all():
+        root = os.path.normpath(lib.path)
+        if norm == root or norm.startswith(root.rstrip('/' + os.sep) + os.sep):
+            if best is None or len(root) > len(os.path.normpath(best)):
+                best = lib.path
+    return best
+
+
+def deletion_event_is_trustworthy(path, is_dir=False):
+    """Whether a file watcher 'deleted' event for `path` reflects a real deletion rather
+    than a disconnected disk / unreachable mount. The watcher reports an unplugged USB
+    drive or a dropped network share exactly like a mass deletion - every file (or the
+    library root itself) "disappears" - and acting on that wiped a whole library's
+    identification/verification state. A genuine delete leaves the library root online
+    and non-empty with the path itself really gone; anything else is left untouched so
+    reconnecting and rescanning picks the files back up unchanged."""
+    library_path = library_path_for(path)
+    if library_path and _library_looks_offline(library_path):
+        logger.warning(f"Ignoring delete event for '{path}': library '{library_path}' "
+                       "looks offline (disk/mount disconnected?) - keeping tracked state.")
+        return False
+    if os.path.lexists(path):
+        # Re-created or still reachable: not a deletion (is_dir kept for clarity at call sites).
+        return False
+    return True
+
 
 def delete_files_under_dir(dirpath):
     """Delete all library files under a directory (folder moved out/removed). Returns count."""

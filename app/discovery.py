@@ -3,11 +3,13 @@ local network, so the console doesn't need the server's address typed in by hand
 """
 import json
 import logging
+import os
 import socket
 import threading
+import tomllib
 from importlib.metadata import PackageNotFoundError, version as _pkg_version
 
-from constants import DISCOVERY_MAGIC, DISCOVERY_PORT, DISCOVERY_REQUEST, HTTP_PORT
+from constants import APP_DIR, DISCOVERY_MAGIC, DISCOVERY_PORT, DISCOVERY_REQUEST, HTTP_PORT
 from settings import get_server_uid, get_settings
 
 logger = logging.getLogger('main')
@@ -20,7 +22,17 @@ def _app_version():
     try:
         return _pkg_version('ownfoil')
     except PackageNotFoundError:
-        return 'unknown'
+        pass
+    # The Docker image and a source checkout don't install the package: read the
+    # version from pyproject.toml instead (copied next to the app in the image).
+    for path in (os.path.join(APP_DIR, 'pyproject.toml'),
+                 os.path.join(os.path.dirname(APP_DIR), 'pyproject.toml')):
+        try:
+            with open(path, 'rb') as f:
+                return tomllib.load(f)['project']['version']
+        except (OSError, KeyError, tomllib.TOMLDecodeError):
+            continue
+    return 'unknown'
 
 
 def discovery_payload():

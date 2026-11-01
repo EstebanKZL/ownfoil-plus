@@ -27,6 +27,11 @@ TRANSLATIONS = {
     'login.password': {'en': 'Password', 'es': 'Contraseña'},
     'login.remember_me': {'en': 'Remember me', 'es': 'Recordarme'},
     'login.submit': {'en': 'Login', 'es': 'Iniciar sesión'},
+    'login.invalid_credentials': {'en': 'Incorrect username or password.',
+                                  'es': 'Usuario o contraseña incorrectos.'},
+    'login.too_many_attempts': {
+        'en': 'Too many failed attempts. Try again in {minutes} min.',
+        'es': 'Demasiados intentos fallidos. Probá de nuevo en {minutes} min.'},
 
     'settings_nav.settings': {'en': 'Settings', 'es': 'Ajustes'},
     'settings_nav.services': {'en': 'Services', 'es': 'Servicios'},
@@ -196,6 +201,10 @@ TRANSLATIONS = {
     'backup.description': {'en': 'Export your current settings to a file, or restore them from a previously exported one.',
                             'es': 'Exportá tu configuración actual a un archivo, o restaurala desde uno exportado antes.'},
     'backup.export': {'en': 'Export settings', 'es': 'Exportar configuración'},
+    'backup.export_without_secrets': {'en': 'Without sensitive data', 'es': 'Sin datos sensibles'},
+    'backup.export_without_secrets_hint': {
+        'en': 'Leaves out the Tinfoil keys and saved client hauth values - for sharing the file. Importing it keeps your current ones.',
+        'es': 'Excluye las claves de Tinfoil y los hauth guardados de los clientes, para compartir el archivo. Al importarlo se conservan los actuales.'},
     'backup.import': {'en': 'Import settings', 'es': 'Importar configuración'},
     'backup.import_button': {'en': 'Upload', 'es': 'Subir'},
     'backup.import_success': {'en': 'Settings imported. Reload the page to see them applied.',
@@ -267,6 +276,19 @@ TRANSLATIONS = {
     'auth.shop': {'en': 'Shop', 'es': 'Tienda'},
     'auth.backup': {'en': 'Backup', 'es': 'Copia de seguridad'},
     'auth.admin': {'en': 'Admin', 'es': 'Administrador'},
+    'auth.edit_user': {'en': 'Edit user', 'es': 'Editar usuario'},
+    'auth.edit_tooltip': {'en': 'Edit permissions or password', 'es': 'Editar permisos o contraseña'},
+    'auth.new_password': {'en': 'New password', 'es': 'Contraseña nueva'},
+    'auth.new_password_hint': {'en': 'Leave empty to keep the current password.',
+                               'es': 'Dejala vacía para conservar la contraseña actual.'},
+    'auth.save': {'en': 'Save', 'es': 'Guardar'},
+    'auth.delete_user_confirm': {'en': 'Delete user {user}?', 'es': '¿Eliminar al usuario {user}?'},
+    'auth.last_admin_delete_error': {
+        'en': 'This is the only admin account. Create another admin before deleting it, or the server would be left without authentication.',
+        'es': 'Es la única cuenta de administrador. Creá otro administrador antes de eliminarla, o el servidor quedaría sin autenticación.'},
+    'auth.last_admin_demote_error': {
+        'en': 'This is the only admin account: it cannot lose admin access.',
+        'es': 'Es la única cuenta de administrador: no puede perder el acceso de administrador.'},
 
     'sections.library': {'en': 'Library', 'es': 'Biblioteca'},
     'sections.compression': {'en': 'File compression', 'es': 'Compresión de archivos'},

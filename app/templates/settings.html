@@ -109,6 +109,49 @@
                         </div>
                     </div>
                 </div>
+                <div class="alert alert-danger d-none mt-2" id="usersAlert" role="alert"></div>
+
+                <!-- Edit User Modal -->
+                <div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel"
+                    aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h1 class="modal-title fs-5" id="editUserModalLabel">{{ t('auth.edit_user') }}</h1>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                    aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label for="inputEditUser" class="form-label">{{ t('auth.username') }}</label>
+                                    <input type="text" class="form-control" id="inputEditUser" disabled>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="inputEditUserPassword" class="form-label">{{ t('auth.new_password') }}</label>
+                                    <input type="password" class="form-control" id="inputEditUserPassword" autocomplete="new-password">
+                                    <div class="form-text">{{ t('auth.new_password_hint') }}</div>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="checkboxEditUserShopAccess">
+                                    <label class="form-check-label" for="checkboxEditUserShopAccess">{{ t('auth.shop_access') }}</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="checkboxEditUserBackupAccess">
+                                    <label class="form-check-label" for="checkboxEditUserBackupAccess">{{ t('auth.backup_access') }}</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="checkboxEditUserAdminAccess">
+                                    <label class="form-check-label" for="checkboxEditUserAdminAccess">{{ t('auth.admin_access') }}</label>
+                                </div>
+                                <div class="alert alert-danger d-none mt-3 mb-0" id="editUserAlert" role="alert"></div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t('auth.cancel') }}</button>
+                                <button type="button" class="btn btn-primary" id="editUserSaveBtn">{{ t('auth.save') }}</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <hr class="hr-settings">
 
@@ -632,9 +675,15 @@
                 <p class="text-secondary">{{ t('backup.description') }}</p>
                 <div class="row g-3 align-items-end">
                     <div class="col-auto">
-                        <a href="/api/settings/export" class="btn btn-outline-secondary" download>
+                        <a href="/api/settings/export" id="exportSettingsBtn" class="btn btn-outline-secondary" download>
                             <i class="bi bi-download"></i> {{ t('backup.export') }}
                         </a>
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" id="exportWithoutSecretsCheck"
+                                onchange="$('#exportSettingsBtn').attr('href', this.checked ? '/api/settings/export?include_secrets=0' : '/api/settings/export')">
+                            <label class="form-check-label" for="exportWithoutSecretsCheck">{{ t('backup.export_without_secrets') }}</label>
+                            <div class="form-text">{{ t('backup.export_without_secrets_hint') }}</div>
+                        </div>
                     </div>
                     <div class="col-auto">
                         <label for="importSettingsFile" class="form-label d-block mb-1">{{ t('backup.import') }}</label>
@@ -696,6 +745,8 @@
         shop: {{ t('auth.shop') | tojson }},
         backup: {{ t('auth.backup') | tojson }},
         admin: {{ t('auth.admin') | tojson }},
+        editTooltip: {{ t('auth.edit_tooltip') | tojson }},
+        deleteUserConfirm: {{ t('auth.delete_user_confirm', user='__USER__') | tojson }},
         resetSuccess: {{ t('danger.reset_success') | tojson }},
         resetFailed: {{ t('danger.reset_failed') | tojson }},
         mediaFilesStored: {{ t('media.files_stored') | tojson }},
@@ -838,38 +889,21 @@
             }
             result.forEach(user => {
                 allUsernames.push(user['user']);
-                base_input = '<input class="form-check-input" type="checkbox" onclick="return false" checked>';
-                shop_input = base_input;
-                backup_input = base_input;
-                admin_input = base_input;
-                if (!user['shop_access']) {
-                    shop_input = shop_input.replace(' checked', '');
-                }
-                if (!user['backup_access']) {
-                    backup_input = backup_input.replace(' checked', '');
-                }
-                if (!user['admin_access']) {
-                    admin_input = shop_input.replace(' checked', '');
-                }
-                $('#userTable tbody').append(
-                    '<tr><td>' + user['user'] + '</td><td>'
-                    + `
-                        <div class="form-check form-check-inline">`
-                    + shop_input + `
-                            <label class="form-check-label">` + I18N.shop + `</label>
-                        </div>
-                        <div class="form-check form-check-inline">`
-                    + backup_input + `
-                            <label class="form-check-label">` + I18N.backup + `</label>
-                        </div>
-                        <div class="form-check form-check-inline">`
-                    + admin_input + `
-                            <label class="form-check-label">` + I18N.admin + `</label>
-                        </div>`
-                    + '</td><td>' +
-                    '<button type="button" class="btn btn-outline-info btn-sm" disabled=""><i class="bi bi-pencil-square"></i></button> ' +
-                    '<button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteUserModal" data-bs-id="' + user['id'] + '" data-bs-user="' + user['user'] + '"\'><i class="bi bi-x-circle"></i></button>' +
-                    '</td></tr>');
+                // Built as nodes, not concatenated markup: a username is free text.
+                const perms = $('<td>');
+                [['shop_access', I18N.shop], ['backup_access', I18N.backup], ['admin_access', I18N.admin]]
+                    .forEach(([key, label]) => {
+                        perms.append($('<div class="form-check form-check-inline">').append(
+                            $('<input class="form-check-input" type="checkbox" onclick="return false">')
+                                .prop('checked', Boolean(user[key])),
+                            $('<label class="form-check-label">').text(label)));
+                    });
+                const actions = $('<td>').append(
+                    $('<button type="button" class="btn btn-outline-info btn-sm me-1" data-bs-toggle="modal" data-bs-target="#editUserModal"><i class="bi bi-pencil-square"></i></button>')
+                        .attr({'data-bs-id': user['id'], 'title': I18N.editTooltip}),
+                    $('<button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteUserModal"><i class="bi bi-x-circle"></i></button>')
+                        .attr({'data-bs-id': user['id'], 'data-bs-user': user['user']}));
+                $('#userTable tbody').append($('<tr>').append($('<td>').text(user['user']), perms, actions));
             });
         })
 
@@ -959,11 +993,14 @@
             const deleteBtn = deleteUserModal.find('.btn-danger')
 
 
-            deleteBtn.attr('onClick', 'deleteUser(' + id + ');');
+            deleteBtn.off('click').on('click', () => deleteUser(Number(id)));
 
-            // modalTitle.textContent = `New message to ${recipient}`
-            modalBody.text("Delete user " + user + " ?")
+            modalBody.text(I18N.deleteUserConfirm.replace('__USER__', user))
         })
+    }
+
+    function showUsersError(message) {
+        $('#usersAlert').text(message || '').toggleClass('d-none', !message);
     }
 
     function deleteUser(userId) {
@@ -976,12 +1013,70 @@
             data: JSON.stringify(data),
             contentType: "application/json",
             success: function (result) {
+                showUsersError(result['success'] ? null : result['error']);
                 if (result['success']) {
                     fillUserTable();
                 }
             }
         });
     }
+
+    const editUserModal = $('#editUserModal');
+    function syncEditUserAdminCheckbox() {
+        const isAdmin = $('#checkboxEditUserAdminAccess').prop('checked');
+        if (isAdmin) {
+            $('#checkboxEditUserShopAccess, #checkboxEditUserBackupAccess').prop('checked', true);
+        }
+        $('#checkboxEditUserShopAccess, #checkboxEditUserBackupAccess').prop('disabled', isAdmin);
+    }
+    $('#checkboxEditUserAdminAccess').on('change', syncEditUserAdminCheckbox);
+    editUserModal.on('show.bs.modal', event => {
+        const id = Number(event.relatedTarget.getAttribute('data-bs-id'));
+        const user = (allUsers || []).find(u => u['id'] === id);
+        if (!user) return;
+        editUserModal.data('userId', id);
+        $('#inputEditUser').val(user['user']);
+        $('#inputEditUserPassword').val('').removeClass('is-invalid');
+        $('#checkboxEditUserShopAccess').prop('checked', Boolean(user['shop_access']));
+        $('#checkboxEditUserBackupAccess').prop('checked', Boolean(user['backup_access']));
+        $('#checkboxEditUserAdminAccess').prop('checked', Boolean(user['admin_access']));
+        syncEditUserAdminCheckbox();
+        $('#editUserAlert').addClass('d-none').text('');
+    });
+    $('#editUserSaveBtn').on('click', () => {
+        const password = $('#inputEditUserPassword').val();
+        if (password) {
+            const validation = validatePassword(password);
+            if (!validation.isValid) {
+                $('#editUserAlert').text(validation.message).removeClass('d-none');
+                return;
+            }
+        }
+        $.ajax({
+            url: "/api/user",
+            type: 'PATCH',
+            data: JSON.stringify({
+                user_id: editUserModal.data('userId'),
+                password: password,
+                shop_access: $('#checkboxEditUserShopAccess').prop('checked'),
+                backup_access: $('#checkboxEditUserBackupAccess').prop('checked'),
+                admin_access: $('#checkboxEditUserAdminAccess').prop('checked'),
+            }),
+            contentType: "application/json",
+            success: function (result) {
+                if (result['success']) {
+                    bootstrap.Modal.getInstance(editUserModal[0]).hide();
+                    fillUserTable();
+                } else {
+                    $('#editUserAlert').text(result['error']).removeClass('d-none');
+                }
+            },
+            error: function (xhr) {
+                const message = (xhr.responseJSON && xhr.responseJSON.error) || ('HTTP ' + xhr.status);
+                $('#editUserAlert').text(message).removeClass('d-none');
+            }
+        });
+    });
 
     function deleteLibraryPath(path) {
         data = {

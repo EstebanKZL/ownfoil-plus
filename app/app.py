@@ -25,6 +25,7 @@ import titledb
 import discovery
 import media
 import os
+import secrets
 from clients import CyberFoilClient, TinfoilClient, SphairaClient
 
 def init():
@@ -143,12 +144,45 @@ def on_library_change(events):
                 # A folder was moved out/removed; its files are gone, delete them by path prefix.
                 tasks_mod.enqueue_task('handle_dir_deleted', {'dirpath': event.src_path})
 
+def load_or_create_secret_key():
+    """The key that signs session and remember-me cookies. It used to be a constant
+    in this file - public on GitHub, so anyone could forge a session cookie for any
+    user id on any install. Now: OWNFOIL_SECRET_KEY if set, else a random key
+    generated once and kept in CONFIG_DIR, so sessions survive restarts."""
+    env_key = os.environ.get('OWNFOIL_SECRET_KEY')
+    if env_key:
+        return env_key
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+    try:
+        with open(SECRET_KEY_FILE, 'r') as f:
+            key = f.read().strip()
+        if key:
+            return key
+    except FileNotFoundError:
+        pass
+    key = secrets.token_hex(32)
+    try:
+        # O_EXCL: if another process won the race, use its key instead of ours.
+        fd = os.open(SECRET_KEY_FILE, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        with open(SECRET_KEY_FILE, 'r') as f:
+            return f.read().strip()
+    with os.fdopen(fd, 'w') as f:
+        f.write(key)
+    logger.info('Generated a new secret key for session cookies.')
+    return key
+
 def create_app(db_uri=None):
     app = Flask(__name__)
     app.url_map.strict_slashes = False  # Disable automatic trailing slash redirects globally, needed for Sphaira
     app.config["SQLALCHEMY_DATABASE_URI"] = db_uri or OWNFOIL_DB
-    # TODO: generate random secret_key
-    app.config['SECRET_KEY'] = '8accb915665f11dfa15c2db1a4e8026905f57716'
+    app.config['SECRET_KEY'] = load_or_create_secret_key()
+    # Lax keeps the session/remember cookies off cross-site POSTs (CSRF) while still
+    # sending them on normal top-level navigation. Not Secure: most installs are plain
+    # HTTP on a LAN.
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['REMEMBER_COOKIE_SAMESITE'] = 'Lax'
+    app.config['REMEMBER_COOKIE_HTTPONLY'] = True
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
     db.init_app(app)
@@ -323,6 +357,18 @@ def index(path=None):
 def inject_shop_name():
     """Templates show the configured shop name, not the product name."""
     return {'shop_name': get_settings()['shop'].get('name') or 'Ownfoil-Plus'}
+
+@app.route('/api/health')
+def health():
+    """Liveness/readiness probe for Docker's HEALTHCHECK, Kubernetes or an uptime
+    monitor. Unauthenticated on purpose, so it says nothing beyond "up" and whether
+    the database answers."""
+    try:
+        db.session.execute(db.text('SELECT 1'))
+    except Exception as e:
+        logger.error(f'Health check: database unreachable: {e}')
+        return jsonify({'status': 'error', 'database': 'unreachable'}), 503
+    return jsonify({'status': 'ok', 'database': 'ok'})
 
 @app.route('/admin')
 @access_required('admin')
@@ -745,10 +791,20 @@ def export_settings():
     """Download the current settings as a YAML file - a backup, or something to move
     to another install. Serves the effective, already-migrated settings from
     get_settings() rather than the file as it happens to be on disk, so what comes out
-    always matches what the app is actually running with."""
-    settings = get_settings()
+    always matches what the app is actually running with.
+
+    `?include_secrets=0` leaves out the Tinfoil key pair and the clients' saved hauth
+    values - for a file meant to be shared (a bug report, a forum post). The keys are
+    removed rather than blanked, so importing that file back keeps the current ones."""
+    settings = copy.deepcopy(get_settings())
+    include_secrets = request.args.get('include_secrets', '1') != '0'
+    if not include_secrets:
+        for client_settings in settings.get('shop', {}).get('clients', {}).values():
+            for key in ('hauth', 'clientCertKey', 'clientCertPub'):
+                client_settings.pop(key, None)
     yaml_text = yaml.safe_dump(settings, sort_keys=False, allow_unicode=True)
-    filename = f"ownfoil-settings-{datetime.date.today().isoformat()}.yaml"
+    suffix = '' if include_secrets else '-shareable'
+    filename = f"ownfoil-settings-{datetime.date.today().isoformat()}{suffix}.yaml"
     return Response(yaml_text, mimetype='application/x-yaml',
                     headers={'Content-Disposition': f'attachment; filename="{filename}"'})
 
