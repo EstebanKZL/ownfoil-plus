@@ -23,8 +23,10 @@ from i18n import register_i18n
 import realtime
 import titledb
 import discovery
+import backups
 import media
 import notifications
+import re
 import os
 import secrets
 from i18n import SUPPORTED_LANGUAGES
@@ -663,6 +665,80 @@ def set_scheduler_settings_api():
         tasks_mod.update_scheduled_task('update_titledb', run_after)
 
     return jsonify({'success': True, 'errors': []})
+
+@app.post('/api/settings/maintenance')
+@access_required('admin')
+def set_maintenance_settings_api():
+    data = request.json or {}
+    clean, errors = {}, []
+    for key in ('enabled', 'scan', 'remove_outdated_updates', 'backup'):
+        if key in data:
+            clean[key] = bool(data[key])
+    if 'time' in data:
+        match = re.fullmatch(r'([01]?\d|2[0-3]):([0-5]\d)', str(data['time']).strip())
+        if match:
+            clean['time'] = f'{int(match.group(1)):02d}:{match.group(2)}'
+        else:
+            errors.append({'path': 'maintenance/time', 'error': 'Use HH:MM (00:00-23:59)'})
+    if 'verify_all' in data:
+        if data['verify_all'] in tasks_mod.VERIFY_ALL_CHOICES:
+            clean['verify_all'] = data['verify_all']
+        else:
+            errors.append({'path': 'maintenance/verify_all', 'error': 'Must be off, daily or weekly'})
+    if 'backup_keep' in data:
+        try:
+            keep = int(data['backup_keep'])
+            if not 1 <= keep <= 365:
+                raise ValueError
+            clean['backup_keep'] = keep
+        except (TypeError, ValueError):
+            errors.append({'path': 'maintenance/backup_keep', 'error': 'Must be a whole number from 1 to 365'})
+    if errors:
+        return jsonify({'success': False, 'errors': errors})
+    set_maintenance_settings(clean)
+    tasks_mod.reschedule_maintenance()
+    return jsonify({'success': True, 'errors': [], 'next_run': _next_maintenance_run_local()})
+
+def _next_maintenance_run_local():
+    """The pending maintenance run in the server's local time, for the UI - or None."""
+    run_after = db.session.query(Task.run_after).filter_by(
+        task_name='scheduled_maintenance', status='pending').scalar()
+    if run_after is None:
+        return None
+    return (run_after + tasks_mod.utc_offset()).isoformat(timespec='minutes')
+
+@app.get('/api/backups')
+@access_required('admin')
+def list_backups_api():
+    return jsonify({'backups': backups.list_backups(), 'next_run': _next_maintenance_run_local()})
+
+@app.post('/api/backups')
+@access_required('admin')
+def create_backup_api():
+    try:
+        entry = backups.create_backup()
+    except Exception as e:
+        logger.exception('Manual backup failed')
+        return jsonify({'success': False, 'error': str(e)}), 500
+    backups.prune_backups(get_settings()['maintenance']['backup_keep'])
+    return jsonify({'success': True, 'backup': entry, 'backups': backups.list_backups()})
+
+@app.get('/api/backups/<name>')
+@access_required('admin')
+def download_backup_api(name):
+    path = backups.backup_path(name)
+    if path is None:
+        return jsonify({'error': 'No such backup'}), 404
+    return send_from_directory(backups.BACKUP_DIR, name, as_attachment=True)
+
+@app.delete('/api/backups/<name>')
+@access_required('admin')
+def delete_backup_api(name):
+    path = backups.backup_path(name)
+    if path is None:
+        return jsonify({'success': False, 'error': 'No such backup'}), 404
+    os.remove(path)
+    return jsonify({'success': True, 'backups': backups.list_backups()})
 
 @app.post('/api/settings/worker')
 @access_required('admin')

@@ -629,6 +629,76 @@
                 </div>
 
                 <hr class="hr-settings">
+                <h2 class="pb-2" id="Maintenance">{{ t('sections.maintenance') }}</h2>
+                <p>{{ t('maint.desc') }}</p>
+                <div class="row g-3 mb-3 align-items-center">
+                    <div class="col-auto">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="maintEnabledCheck">
+                            <label class="form-check-label" for="maintEnabledCheck">{{ t('maint.enabled') }}</label>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <label for="maintTimeInput" class="col-form-label">{{ t('maint.time') }}</label>
+                    </div>
+                    <div class="col-auto">
+                        <input type="time" class="form-control form-control-sm" id="maintTimeInput" step="60">
+                    </div>
+                    <div class="col-auto small text-secondary" id="maintNextRun"></div>
+                </div>
+
+                <h3 class="h5 pt-2">{{ t('maint.actions_heading') }}</h3>
+                <div class="mb-2 d-flex flex-wrap align-items-center gap-2">
+                    <div class="form-check mb-0">
+                        <input class="form-check-input" type="checkbox" id="maintBackupCheck">
+                        <label class="form-check-label" for="maintBackupCheck">{{ t('maint.backup') }}</label>
+                    </div>
+                    <label for="maintBackupKeepInput" class="small text-secondary ms-2">{{ t('maint.backup_keep') }}</label>
+                    <input type="number" class="form-control form-control-sm" id="maintBackupKeepInput" min="1" max="365" step="1" style="width: 5rem;">
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="maintScanCheck">
+                    <label class="form-check-label" for="maintScanCheck">{{ t('maint.scan') }}</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="maintRemoveOutdatedCheck">
+                    <label class="form-check-label" for="maintRemoveOutdatedCheck">{{ t('maint.remove_outdated') }}</label>
+                </div>
+                <div class="mt-2 mb-3">
+                    <label for="maintVerifyAllSelect" class="form-label mb-1">{{ t('maint.verify_all') }}</label>
+                    <select class="form-select form-select-sm" id="maintVerifyAllSelect" style="max-width: 16rem;">
+                        <option value="off">{{ t('maint.verify_off') }}</option>
+                        <option value="weekly">{{ t('maint.verify_weekly') }}</option>
+                        <option value="daily">{{ t('maint.verify_daily') }}</option>
+                    </select>
+                    <div class="form-text">{{ t('maint.verify_hint') }}</div>
+                </div>
+
+                <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+                    <button type="button" id="submitMaintSettingsBtn" class="btn btn-primary">{{ t('maint.save') }}</button>
+                    <span id="maintFeedback" class="small"></span>
+                </div>
+
+                <h3 class="h5 pt-2">{{ t('maint.backups_heading') }}</h3>
+                <div class="mb-2">
+                    <button type="button" id="backupNowBtn" class="btn btn-outline-secondary btn-sm"><i class="bi bi-archive"></i> {{ t('maint.backup_now') }}</button>
+                    <span id="backupFeedback" class="small ms-2"></span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover" id="backupsTable">
+                        <thead>
+                            <tr>
+                                <th scope="col">{{ t('maint.col_date') }}</th>
+                                <th scope="col">{{ t('maint.col_size') }}</th>
+                                <th scope="col">{{ t('maint.col_actions') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <p class="form-text">{{ t('maint.restore_hint') | safe }}</p>
+
+                <hr class="hr-settings">
                 <h2 class="pb-2" id="Notifications">{{ t('sections.notifications') }}</h2>
                 <p>{{ t('notif.desc') }}</p>
                 <div class="row g-3 mb-3 align-items-center">
@@ -855,6 +925,11 @@
         backup: {{ t('auth.backup') | tojson }},
         admin: {{ t('auth.admin') | tojson }},
         editTooltip: {{ t('auth.edit_tooltip') | tojson }},
+        maintSaved: {{ t('maint.saved') | tojson }},
+        maintNextRun: {{ t('maint.next_run', when='__WHEN__') | tojson }},
+        maintNotScheduled: {{ t('maint.not_scheduled') | tojson }},
+        maintNoBackups: {{ t('maint.no_backups') | tojson }},
+        maintDeleteConfirm: {{ t('maint.delete_confirm', name='__NAME__') | tojson }},
         notifSaved: {{ t('notif.saved') | tojson }},
         notifTestOk: {{ t('notif.test_ok', providers='__PROVIDERS__') | tojson }},
         notifTestFailed: {{ t('notif.test_failed') | tojson }},
@@ -1669,6 +1744,92 @@
         });
     }
 
+    function fillMaintenanceSettings(m) {
+        if (!m) return;
+        $('#maintEnabledCheck').prop('checked', Boolean(m.enabled));
+        $('#maintTimeInput').val(m.time);
+        $('#maintBackupCheck').prop('checked', Boolean(m.backup));
+        $('#maintBackupKeepInput').val(m.backup_keep);
+        $('#maintScanCheck').prop('checked', Boolean(m.scan));
+        $('#maintRemoveOutdatedCheck').prop('checked', Boolean(m.remove_outdated_updates));
+        $('#maintVerifyAllSelect').val(m.verify_all);
+        loadBackups();
+    }
+
+    function showMaintNextRun(nextRun) {
+        $('#maintNextRun').text(nextRun
+            ? I18N.maintNextRun.replace('__WHEN__', new Date(nextRun).toLocaleString([], {dateStyle: 'medium', timeStyle: 'short'}))
+            : I18N.maintNotScheduled);
+    }
+
+    function renderBackups(list) {
+        const tbody = $('#backupsTable tbody').empty();
+        if (!list.length) {
+            tbody.append($('<tr>').append($('<td colspan="3" class="text-secondary">').text(I18N.maintNoBackups)));
+            return;
+        }
+        list.forEach(b => {
+            const actions = $('<td>').append(
+                $('<a class="btn btn-outline-info btn-sm me-1"><i class="bi bi-download"></i></a>')
+                    .attr({href: '/api/backups/' + encodeURIComponent(b.name), title: b.name}),
+                $('<button type="button" class="btn btn-outline-danger btn-sm"><i class="bi bi-x-circle"></i></button>')
+                    .on('click', () => deleteBackup(b.name)));
+            tbody.append($('<tr>').append(
+                $('<td>').text(new Date(b.created).toLocaleString([], {dateStyle: 'medium', timeStyle: 'short'})),
+                $('<td>').text(formatBytes(b.size)),
+                actions));
+        });
+    }
+
+    function loadBackups() {
+        $.getJSON('/api/backups', result => {
+            renderBackups(result.backups || []);
+            showMaintNextRun(result.next_run);
+        });
+    }
+
+    function deleteBackup(name) {
+        if (!confirm(I18N.maintDeleteConfirm.replace('__NAME__', name))) return;
+        $.ajax({url: '/api/backups/' + encodeURIComponent(name), type: 'DELETE',
+                success: result => renderBackups(result.backups || [])});
+    }
+
+    $('#submitMaintSettingsBtn').on('click', function () {
+        const btn = $(this).prop('disabled', true);
+        $.ajax({
+            url: '/api/settings/maintenance', type: 'POST', contentType: 'application/json',
+            data: JSON.stringify({
+                enabled: $('#maintEnabledCheck').prop('checked'),
+                time: $('#maintTimeInput').val(),
+                backup: $('#maintBackupCheck').prop('checked'),
+                backup_keep: parseInt($('#maintBackupKeepInput').val()),
+                scan: $('#maintScanCheck').prop('checked'),
+                remove_outdated_updates: $('#maintRemoveOutdatedCheck').prop('checked'),
+                verify_all: $('#maintVerifyAllSelect').val(),
+            }),
+            success: result => {
+                $('#maintFeedback').removeClass('text-success text-danger')
+                    .addClass(result.success ? 'text-success' : 'text-danger')
+                    .text(result.success ? I18N.maintSaved : (result.errors || []).map(e => e.error).join(', '));
+                if (result.success) showMaintNextRun(result.next_run);
+            },
+            error: xhr => $('#maintFeedback').addClass('text-danger').text('HTTP ' + xhr.status),
+            complete: () => btn.prop('disabled', false),
+        });
+    });
+
+    $('#backupNowBtn').on('click', function () {
+        const btn = $(this).prop('disabled', true);
+        $('#backupFeedback').removeClass('text-danger').text('');
+        $.ajax({
+            url: '/api/backups', type: 'POST',
+            success: result => renderBackups(result.backups || []),
+            error: xhr => $('#backupFeedback').addClass('text-danger')
+                .text((xhr.responseJSON && xhr.responseJSON.error) || ('HTTP ' + xhr.status)),
+            complete: () => btn.prop('disabled', false),
+        });
+    });
+
     function fillNotificationSettings(n) {
         if (!n) return;
         $('#notifEnabledCheck').prop('checked', Boolean(n.enabled));
@@ -2054,6 +2215,7 @@
                 setInputVal("titledbUpdateIntervalInput", schedulerSettings['titledb_update_interval']);
             }
 
+            fillMaintenanceSettings(result['maintenance']);
             fillNotificationSettings(result['notifications']);
 
             // Worker settings

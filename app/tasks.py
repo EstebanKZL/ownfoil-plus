@@ -126,6 +126,7 @@ def _file_label(file_id=None, **kwargs):
 TASK_DISPLAY = {
     'startup': lambda **kw: 'Startup',
     'update_titledb': lambda **kw: 'Update TitleDB',
+    'scheduled_maintenance': lambda **kw: 'Daily maintenance',
     'download_media': lambda **kw: 'Download title artwork',
     'download_title_media': lambda title_id=None, **kw: (
         f'Download artwork for {title_id}' if title_id else 'Download title artwork'),
@@ -182,7 +183,7 @@ TASK_HISTORY_LIMIT = 100
 # library would fill the whole window with entries nobody would scroll through.
 _TASK_HISTORY_WORTHY = {
     'scan_library', 'process_library', 'verify_library', 'library_maintenance',
-    'update_titledb', 'resolve_duplicate_files',
+    'update_titledb', 'resolve_duplicate_files', 'scheduled_maintenance',
 }
 
 
@@ -653,6 +654,9 @@ def startup_task(**kwargs):
     # recovery of an interrupted pipeline must not wait for the next scheduled titledb run.
     enqueue_task('process_library')
     enqueue_task('download_media')
+    # Recomputed on every start: the server's clock or timezone may have changed, and a
+    # window turned off while the server was down must not leave a stale run behind.
+    reschedule_maintenance()
     try:
         update_titledb_task()
     except Exception:
@@ -682,6 +686,58 @@ def update_titledb_task(**kwargs):
     delta = interval_string_to_timedelta(interval_str)
     if delta:
         update_scheduled_task('update_titledb', datetime.datetime.utcnow() + delta)
+
+
+# --- Daily maintenance (Settings > Maintenance) ---
+VERIFY_ALL_CHOICES = ('off', 'daily', 'weekly')
+VERIFY_ALL_WEEKDAY = 6  # weekly = Sundays
+
+
+def utc_offset():
+    """Local time minus UTC, rounded to the minute (the two clock reads are a few
+    microseconds apart, which would otherwise turn 03:30 into 03:29:59)."""
+    seconds = (datetime.datetime.now() - datetime.datetime.utcnow()).total_seconds()
+    return datetime.timedelta(minutes=round(seconds / 60))
+
+
+def next_maintenance_run(time_str, now=None):
+    """The next local occurrence of HH:MM, returned in UTC (run_after is UTC)."""
+    now = now or datetime.datetime.now()
+    hour, minute = (int(part) for part in time_str.split(':'))
+    run_local = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    if run_local <= now:
+        run_local += datetime.timedelta(days=1)
+    return run_local - utc_offset()
+
+
+def reschedule_maintenance():
+    maintenance = get_settings()['maintenance']
+    run_after = next_maintenance_run(maintenance['time']) if maintenance['enabled'] else None
+    update_scheduled_task('scheduled_maintenance', run_after)
+
+
+@register_task('scheduled_maintenance')
+def scheduled_maintenance_task(**kwargs):
+    """The daily window: back up, then queue the chosen library jobs. Each job runs as
+    its own task, so the Tasks page shows them and one failing doesn't stop the rest.
+    Always books the next run, even if the backup fails."""
+    import backups
+    maintenance = get_settings()['maintenance']
+    try:
+        if maintenance['backup']:
+            backups.create_backup()
+            backups.prune_backups(maintenance['backup_keep'])
+        if maintenance['scan']:
+            # A scan also processes (organizes/verifies/compresses) what's pending.
+            enqueue_task('scan_libraries')
+        verify_all = maintenance['verify_all']
+        if verify_all == 'daily' or (verify_all == 'weekly'
+                                     and datetime.datetime.now().weekday() == VERIFY_ALL_WEEKDAY):
+            enqueue_task('verify_library', {'force': True})
+        if maintenance['remove_outdated_updates']:
+            enqueue_task('remove_outdated_updates')
+    finally:
+        reschedule_maintenance()
 
 
 # --- Local artworks (Settings > Local artworks) ---

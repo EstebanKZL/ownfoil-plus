@@ -295,6 +295,23 @@ The interval is a number followed by a unit: `s`, `m`, `h` or `d`, so `30m`, `2h
 
 TitleDB is updated upstream once per day, this scheduled task will sync your local reference and add the new titles, updates and DLCs. Libraries will be re-processed after the update, for example to identify files to titles that were not available before.
 
+## Maintenance & backups
+
+A daily window, off by default, that runs at the chosen time (the server's local time):
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| `Time` | `04:00` | When the window runs each day. |
+| `Back up ...` | on | Saves the database, settings and console keys as a zip in `config/backups/`. |
+| `Backups to keep` | `7` | Older backups beyond this count are deleted. |
+| `Scan the libraries` | on | Finds new or missing files and processes what's pending. |
+| `Delete superseded updates` | off | Removes update files older than one you also have. |
+| `Re-verify every file` | `Never` | `Sundays only` or `Every day`: re-checks every file in full, to catch damage after it was added. Slow on big libraries. |
+
+`Back up now` makes a backup on demand, and the list below it downloads or deletes any of them.
+
+To restore a backup: stop Ownfoil-Plus, extract the zip into your `config/` folder (it replaces `ownfoil.db`, `settings.yaml` and `keys.txt`), then start it again. TitleDB and artwork aren't in the backup; they're downloaded again automatically.
+
 ## Notifications
 
 Get a message when something happens in the library. Off by default: turn on `Enable notifications`, at least one channel, and use `Send test` to check it.
