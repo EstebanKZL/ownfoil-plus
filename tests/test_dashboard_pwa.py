@@ -115,7 +115,7 @@ def test_dashboard_reports_library_health(admin_client):
     assert d["downloads_week"] == 1
     assert d["recent_downloads"][0]["user"] == "admin"
     assert d["keys_valid"] is False
-    assert len(d["recent_files"]) <= 8 and all(f["filename"] for f in d["recent_files"])
+    assert len(d["recent_files"]) <= 30 and all(f["filename"] for f in d["recent_files"])
 
 
 def test_dashboard_storage_marks_an_unreachable_library(admin_client, tmp_path):

@@ -82,8 +82,15 @@ p.game-description {
    individual card goes just as narrow on a wide desktop window as it does on a phone
    - a plain viewport media query only ever caught the phone case. */
 @container game-card (max-width: 340px) {
+    /* Cards in a row stretch to the tallest one (.col-* > .card { flex: 1 }); without
+       growing too, the info block stopped where its own text did and left a bare strip
+       of card under it - the "cut off" look. It now fills the card, badges at the
+       bottom. */
     .game-info {
         position: static;
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
     }
 
     .card-img {
@@ -98,7 +105,8 @@ p.game-description {
         position: static;
         display: flex;
         justify-content: flex-end;
-        margin-top: .5rem;
+        margin-top: auto;
+        padding-top: .5rem;
     }
 
     .game-tag:last-child {
@@ -1441,4 +1449,113 @@ p.game-description {
         white-space: normal;
         font-size: .8rem;
     }
+}
+
+/* ============== Game cards: follow the theme ============== */
+
+/* Card and List views used Bootstrap's text-bg-dark, which forced them dark even in the
+   light theme - and left text that takes the light theme's dark grey ("Base game",
+   versions) unreadable on them. They follow the theme now; dark looks exactly as
+   before. */
+.game-surface {
+    background-color: #212529;
+    color: #fff;
+}
+
+/* ============== Light theme: soft, not stark white ============== */
+
+/* Bootstrap's light theme is pure white with near-black text, tiring to read for long.
+   Warm off-white "paper" tones instead, with the page a step darker than the cards and
+   panels on it, and charcoal rather than black text. */
+[data-bs-theme=light] {
+    --bs-body-bg: #eceae4;
+    --bs-body-bg-rgb: 236, 234, 228;
+    --bs-body-color: #30353a;
+    --bs-body-color-rgb: 48, 53, 58;
+    --bs-emphasis-color: #1f2327;
+    --bs-emphasis-color-rgb: 31, 35, 39;
+    --bs-secondary-color: rgba(48, 53, 58, .72);
+    --bs-secondary-bg: #e2dfd7;
+    --bs-secondary-bg-rgb: 226, 223, 215;
+    --bs-tertiary-bg: #f4f2ec;
+    --bs-tertiary-bg-rgb: 244, 242, 236;
+    --bs-border-color: #d5d1c7;
+    --bs-border-color-translucent: rgba(60, 50, 30, .14);
+    --bs-heading-color: #262a2e;
+}
+
+[data-bs-theme=light] .card,
+[data-bs-theme=light] .modal,
+[data-bs-theme=light] .dropdown-menu,
+[data-bs-theme=light] .popover,
+[data-bs-theme=light] .list-group {
+    --bs-card-bg: #f7f5f0;
+    --bs-modal-bg: #f7f5f0;
+    --bs-dropdown-bg: #f7f5f0;
+    --bs-popover-bg: #f7f5f0;
+    --bs-list-group-bg: transparent;
+}
+
+[data-bs-theme=light] .form-control,
+[data-bs-theme=light] .form-select,
+[data-bs-theme=light] .input-group-text {
+    background-color: #f9f8f4;
+}
+
+[data-bs-theme=light] .table {
+    --bs-table-bg: transparent;
+}
+
+/* Game cards in the light theme. */
+[data-bs-theme=light] .game-surface {
+    background-color: #f7f5f0;
+    color: #30353a;
+    border-color: #d5d1c7;
+}
+
+[data-bs-theme=light] .game-info {
+    background-image: linear-gradient(to top, rgba(247, 245, 240, .98), rgba(247, 245, 240, .9));
+    border-top-color: #d5d1c7;
+}
+
+[data-bs-theme=light] .game-title {
+    color: #262a2e;
+}
+
+[data-bs-theme=light] .list-card-body {
+    background-image: linear-gradient(180deg,
+        rgba(247, 245, 240, .55) 0px,
+        rgba(247, 245, 240, .93) 220px,
+        rgba(247, 245, 240, 1) 420px);
+}
+
+[data-bs-theme=light] .list-card-body,
+[data-bs-theme=light] .list-card-body .icon-btn {
+    text-shadow: 0 1px 2px rgba(255, 255, 255, .9), 0 0 8px rgba(255, 255, 255, .6);
+}
+
+[data-bs-theme=light] .list-card-body .icon-btn {
+    filter: none;
+}
+
+/* Lists capped to N visible rows by static/js/scroll-limit.js. */
+.rows-limited {
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+}
+
+.rows-limited thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: var(--bs-body-bg);
+}
+
+.dl-scroll {
+    max-width: 30rem;
+    margin-bottom: 1rem;
+}
+
+.dl-scroll > .table {
+    margin-bottom: 0;
 }

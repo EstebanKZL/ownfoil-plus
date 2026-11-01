@@ -222,6 +222,8 @@
                 renderList('dashRecentDownloads', d.recent_downloads, e => [
                     e.name, [e.user || D.anonymous, D.clients[e.client] || e.client].join(' · '), when(e.downloaded_at)]);
                 renderStatus(d);
+                limitVisibleRows(document.getElementById('dashRecentFiles'), 'li', 10);
+                limitVisibleRows(document.getElementById('dashRecentDownloads'), 'li', 10);
             })
             .catch(err => console.error('Could not load the dashboard', err));
     }

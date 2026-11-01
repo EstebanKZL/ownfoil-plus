@@ -75,27 +75,27 @@
         <div class="stat-sections">
             <section>
                 <h5 class="mb-2">{{ t('dl.top_titles') }}</h5>
-                <table class="table table-sm stat-table">
+                <div class="dl-scroll" id="downloadTopTitlesScroll"><table class="table table-sm stat-table">
                     <thead><tr><th>{{ t('common.title') }}</th><th>{{ t('dl.downloads') }}</th></tr></thead>
                     <tbody id="downloadTopTitles"></tbody>
-                </table>
+                </table></div>
             </section>
             <section>
                 <h5 class="mb-2">{{ t('dl.by_user') }}</h5>
-                <table class="table table-sm stat-table">
+                <div class="dl-scroll" id="downloadByUserScroll"><table class="table table-sm stat-table">
                     <thead><tr><th>{{ t('dl.user') }}</th><th>{{ t('dl.downloads') }}</th></tr></thead>
                     <tbody id="downloadByUser"></tbody>
-                </table>
+                </table></div>
                 <h5 class="mb-2 mt-3">{{ t('dl.by_client') }}</h5>
-                <table class="table table-sm stat-table">
+                <div class="dl-scroll" id="downloadByClientScroll"><table class="table table-sm stat-table">
                     <thead><tr><th>{{ t('dl.client') }}</th><th>{{ t('dl.downloads') }}</th></tr></thead>
                     <tbody id="downloadByClient"></tbody>
-                </table>
+                </table></div>
             </section>
         </div>
 
         <h5 class="mb-2 mt-2">{{ t('dl.recent') }}</h5>
-        <div class="table-responsive">
+        <div class="table-responsive" id="downloadRecentScroll">
             <table class="table table-sm table-hover">
                 <thead><tr>
                     <th>{{ t('dl.when') }}</th><th>{{ t('common.title') }}</th><th>{{ t('common.file') }}</th>
@@ -1286,6 +1286,9 @@
             new Date(r.downloaded_at).toLocaleString([], {dateStyle: 'short', timeStyle: 'short'}),
             r.name || r.title_id || '', r.filename, r.user || DL.anonymous,
             DL.clients[r.client] || r.client, r.address]));
+        // Ten rows in view each, the rest by scrolling (header stays put).
+        ['downloadTopTitles', 'downloadByUser', 'downloadByClient', 'downloadRecent'].forEach(id =>
+            limitVisibleRows(document.getElementById(id + 'Scroll'), 'tbody tr', 10));
     }
 
     function loadDownloads() {
