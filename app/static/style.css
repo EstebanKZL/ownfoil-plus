@@ -1372,3 +1372,73 @@ p.game-description {
 [data-bs-theme=light] .setup-highlight {
     color: #d6006e;
 }
+
+/* ============== Phones ============== */
+
+/* Admin tabs (the sidebar turned into a row below md): one scrollable row instead of
+   wrapping onto a second line - six sections don't fit across a phone. */
+@media (max-width: 767.98px) {
+    .settings-sidebar .nav {
+        flex-wrap: nowrap !important;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .settings-sidebar .nav::-webkit-scrollbar {
+        display: none;
+    }
+
+    .settings-sidebar .nav-link {
+        white-space: nowrap;
+    }
+}
+
+@media (max-width: 575.98px) {
+    /* Files: the six summary tiles were one per row, more than a screen of scrolling
+       before the list itself. Two compact columns instead. */
+    .files-tiles {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: .5rem;
+    }
+
+    .files-tile {
+        min-height: 0;
+        padding: .6rem .75rem;
+        border-radius: .6rem;
+    }
+
+    .files-tile-count {
+        font-size: 1.5rem;
+    }
+
+    .files-tile-ok {
+        font-size: 1.75rem;
+        right: .6rem;
+    }
+
+    .files-tile-dot {
+        top: .55rem;
+        right: .55rem;
+    }
+
+    /* Tasks: the name shares its line with the date and was cut to a few letters. The
+       details go to a second line under the name, which gets the whole width. */
+    .task-head {
+        flex-wrap: wrap;
+        row-gap: .1rem;
+    }
+
+    .task-head > .task-name {
+        flex: 1 1 0;
+        min-width: 0;
+        white-space: normal;
+    }
+
+    .task-head > .task-meta {
+        order: 3;
+        flex-basis: 100%;
+        margin-left: 1.5rem;
+        white-space: normal;
+        font-size: .8rem;
+    }
+}
