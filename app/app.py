@@ -25,6 +25,7 @@ import titledb
 import discovery
 import backups
 import titles as titles_lib
+import uploads
 import media
 import notifications
 import re
@@ -440,6 +441,63 @@ def tasks_page():
 def stats_page():
     return render_template('stats.html', title='Stats',
                            admin_account_created=admin_account_created())
+
+# --- Resumable uploads (Files page) ---
+UPLOAD_CHUNK_SIZE = 8 * 1024 * 1024
+
+def _upload_error(e):
+    return jsonify({'success': False, 'error': e.code, 'message': str(e), **e.extra}), e.status
+
+@app.get('/api/uploads')
+@access_required('admin')
+def list_uploads_api():
+    return jsonify({'uploads': uploads.list_sessions(), 'libraries': get_library_paths(),
+                    'chunk_size': UPLOAD_CHUNK_SIZE})
+
+@app.post('/api/uploads')
+@access_required('admin')
+def start_upload_api():
+    data = request.json or {}
+    try:
+        state = uploads.start(data.get('library'), data.get('filename'), data.get('size'),
+                              get_library_paths())
+    except uploads.UploadError as e:
+        return _upload_error(e)
+    return jsonify({'success': True, **state})
+
+@app.get('/api/uploads/<upload_id>')
+@access_required('admin')
+def upload_status_api(upload_id):
+    try:
+        return jsonify({'success': True, **uploads.status(upload_id)})
+    except uploads.UploadError as e:
+        return _upload_error(e)
+
+@app.patch('/api/uploads/<upload_id>')
+@access_required('admin')
+def upload_chunk_api(upload_id):
+    """One chunk: the raw body, appended at the `Upload-Offset` header's position."""
+    try:
+        offset = int(request.headers.get('Upload-Offset', ''))
+    except ValueError:
+        return jsonify({'success': False, 'error': 'bad_offset', 'message': 'Upload-Offset header required'}), 400
+    try:
+        state, finished = uploads.append(upload_id, offset, request.stream, request.content_length)
+    except uploads.UploadError as e:
+        return _upload_error(e)
+    if finished:
+        # The watcher sees the rename too; this covers it being off (duplicates dedup).
+        tasks_mod.enqueue_task('add_file', {'library_path': state['library'], 'filepath': finished})
+    return jsonify({'success': True, **state})
+
+@app.delete('/api/uploads/<upload_id>')
+@access_required('admin')
+def cancel_upload_api(upload_id):
+    try:
+        uploads.cancel(upload_id)
+    except uploads.UploadError as e:
+        return _upload_error(e)
+    return jsonify({'success': True})
 
 @app.get('/api/stats/downloads')
 @access_required('admin')

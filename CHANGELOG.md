@@ -4,6 +4,36 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.39]
+
+- **New: upload games from the web UI** (Files page > "Upload files", admin only).
+  Pick the destination library, drop `nsp`/`nsz`/`xci`/`xcz` files or click to choose
+  them, and they upload one after another with a progress bar, speed, and pause /
+  resume / cancel per file.
+- **Resumable**: files go up in 8 MiB chunks, each appended at the offset the server
+  confirms. An upload is identified by library + file name + size, so if the
+  connection drops, the tab is closed or the server restarts, choosing the same file
+  again carries on from where it stopped instead of starting over. Unfinished uploads
+  are listed in the same window (with a discard button) and removed automatically
+  after 7 days without activity (at startup and in the daily maintenance window).
+- **Works behind a reverse proxy with a small body limit**: if a chunk is refused with
+  413 (nginx's default is 1 MB), the chunk size halves automatically down to 512 KiB.
+  Network errors are retried with backoff, and an offset mismatch (a lost response, a
+  second tab) is corrected from what the server actually has.
+- **No multi-GB copy at the end**: the partial file is a hidden `.part` file in the
+  target library itself (not a game extension, so scans and the file watcher ignore
+  it), and finishing is a rename. The new file is then identified and processed like
+  any other: `add_file` is queued explicitly so it works with the file watcher off.
+- **Refused up front**: unknown library, wrong extension, a name already in the
+  library, an unreachable library folder, or not enough free space for the rest of
+  the file. File names keep brackets and accents (a `[titleId]` in the name is how a
+  file is identified without keys); only path separators and characters no
+  filesystem accepts are removed.
+- Upload session metadata is a small JSON file per upload under `data/uploads/`, so
+  it needs no database migration.
+- `Install.md`: reverse proxy note on body size limits for uploads.
+- New `tests/test_uploads.py` (24 tests).
+
 ## [6.2.5.38]
 
 - **New: download history** (Stats > Downloads). Until now each file only had a

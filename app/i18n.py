@@ -747,6 +747,42 @@ TRANSLATIONS = {
     # server already knows at render time.
 
     'files.heading': {'en': 'Files', 'es': 'Archivos'},
+
+    # Files > Upload
+    'upload.button': {'en': 'Upload files', 'es': 'Subir archivos'},
+    'upload.title': {'en': 'Upload files to the library', 'es': 'Subir archivos a la biblioteca'},
+    'upload.library': {'en': 'Destination library', 'es': 'Biblioteca de destino'},
+    'upload.drop': {'en': 'Drop NSP, NSZ, XCI or XCZ files here, or click to choose',
+                    'es': 'Arrastrá archivos NSP, NSZ, XCI o XCZ acá, o hacé clic para elegirlos'},
+    'upload.drop_hint': {
+        'en': 'They are identified and processed like any other new file once uploaded.',
+        'es': 'Al terminar se identifican y procesan como cualquier archivo nuevo.'},
+    'upload.pending_heading': {'en': 'Unfinished uploads', 'es': 'Subidas sin terminar'},
+    'upload.pending_hint': {
+        'en': 'Choose the same file again to continue where it stopped. Abandoned uploads are removed after 7 days.',
+        'es': 'Elegí el mismo archivo otra vez para continuar donde quedó. Las subidas abandonadas se borran a los 7 días.'},
+    'upload.footer_hint': {
+        'en': 'You can close this window; keep the page open while uploading.',
+        'es': 'Podés cerrar esta ventana; mantené la página abierta mientras sube.'},
+    'upload.close': {'en': 'Close', 'es': 'Cerrar'},
+    'upload.state_queued': {'en': 'Queued', 'es': 'En cola'},
+    'upload.state_uploading': {'en': 'Uploading', 'es': 'Subiendo'},
+    'upload.state_paused': {'en': 'Paused', 'es': 'En pausa'},
+    'upload.state_done': {'en': 'Done', 'es': 'Listo'},
+    'upload.state_failed': {'en': 'Failed', 'es': 'Falló'},
+    'upload.pause': {'en': 'Pause', 'es': 'Pausar'},
+    'upload.resume': {'en': 'Resume', 'es': 'Reanudar'},
+    'upload.cancel': {'en': 'Cancel', 'es': 'Cancelar'},
+    'upload.discard': {'en': 'Discard', 'es': 'Descartar'},
+    'upload.leave_warning': {'en': 'Uploads in progress will pause.', 'es': 'Las subidas en curso se van a pausar.'},
+    'upload.err_exists': {'en': 'A file with that name is already in the library',
+                          'es': 'Ya hay un archivo con ese nombre en la biblioteca'},
+    'upload.err_extension': {'en': 'Only NSP, NSZ, XCI and XCZ files can be uploaded',
+                             'es': 'Solo se pueden subir archivos NSP, NSZ, XCI y XCZ'},
+    'upload.err_space': {'en': 'Not enough free space in the library',
+                         'es': 'No hay espacio libre suficiente en la biblioteca'},
+    'upload.err_offline': {'en': 'The library folder is not reachable',
+                           'es': 'No se puede acceder a la carpeta de la biblioteca'},
     'files.refresh_title': {'en': 'Refresh', 'es': 'Actualizar'},
     'files.manage_desc': {'en': 'Manage library files, actions run as <a href="/admin/tasks">tasks</a>.',
                           'es': 'Gestioná los archivos de la biblioteca; las acciones se ejecutan como <a href="/admin/tasks">tareas</a>.'},

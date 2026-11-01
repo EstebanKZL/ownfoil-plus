@@ -657,6 +657,7 @@ def startup_task(**kwargs):
     # Recomputed on every start: the server's clock or timezone may have changed, and a
     # window turned off while the server was down must not leave a stale run behind.
     reschedule_maintenance()
+    _cleanup_stale_uploads()
     try:
         update_titledb_task()
     except Exception:
@@ -710,6 +711,15 @@ def next_maintenance_run(time_str, now=None):
     return run_local - utc_offset()
 
 
+def _cleanup_stale_uploads():
+    """Abandoned web uploads (see uploads.py) - never allowed to fail the caller."""
+    try:
+        import uploads
+        uploads.cleanup_stale()
+    except Exception:
+        logger.exception('Could not clean up abandoned uploads')
+
+
 def reschedule_maintenance():
     maintenance = get_settings()['maintenance']
     run_after = next_maintenance_run(maintenance['time']) if maintenance['enabled'] else None
@@ -736,6 +746,7 @@ def scheduled_maintenance_task(**kwargs):
             enqueue_task('verify_library', {'force': True})
         if maintenance['remove_outdated_updates']:
             enqueue_task('remove_outdated_updates')
+        _cleanup_stale_uploads()
     finally:
         reschedule_maintenance()
 
