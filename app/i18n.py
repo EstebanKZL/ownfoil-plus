@@ -288,6 +288,10 @@ TRANSLATIONS = {
     'tasks.left': {'en': '{d} left', 'es': '{d} restante'},
     'tasks.pid': {'en': 'pid {pid}', 'es': 'pid {pid}'},
     'tasks.history': {'en': 'History', 'es': 'Historial'},
+    'tasks.clear_history': {'en': 'Clear history', 'es': 'Limpiar historial'},
+    'tasks.clear_history_confirm': {
+        'en': 'Clear the task history? Queued, running and failed tasks are not affected.',
+        'es': '¿Limpiar el historial de tareas? Las tareas en cola, en curso y fallidas no se tocan.'},
     'tasks.no_history': {'en': 'Nothing has finished yet.', 'es': 'Todavía no terminó nada.'},
     'tasks.refresh_history': {'en': 'Refresh history', 'es': 'Actualizar historial'},
 

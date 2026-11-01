@@ -82,7 +82,7 @@
 {% endif %}
 {% if search_is_admin %}
 {% for page in [
-    (t('settings_nav.dashboard'), '/admin', 'bi-speedometer2', 'dashboard panel inicio home'),
+    (t('settings_nav.dashboard'), '/admin', 'bi-speedometer2', 'dashboard panel inicio home upload subir archivos'),
     (t('settings_nav.settings'), '/admin/settings', 'bi-gear', 'settings ajustes'),
     (t('settings_nav.settings') ~ ' › ' ~ t('auth.heading'), '/admin/settings#Authentication', 'bi-people', 'users usuarios password contrasena'),
     (t('settings_nav.settings') ~ ' › ' ~ t('sections.library'), '/admin/settings#Library', 'bi-folder', 'paths rutas carpetas organizer compression verification'),
@@ -93,7 +93,7 @@
     (t('settings_nav.settings') ~ ' › ' ~ t('sections.workers'), '/admin/settings#Workers', 'bi-cpu', 'workers procesos'),
     (t('settings_nav.settings') ~ ' › ' ~ t('backup.heading'), '/admin/settings#Backup', 'bi-box-arrow-down', 'export import exportar importar'),
     (t('settings_nav.services'), '/admin/services', 'bi-broadcast', 'services servicios discovery descubrimiento'),
-    (t('settings_nav.files'), '/admin/files', 'bi-file-earmark', 'files archivos upload subir'),
+    (t('settings_nav.files'), '/admin/files', 'bi-file-earmark', 'files archivos'),
     (t('settings_nav.tasks'), '/admin/tasks', 'bi-list-task', 'tasks tareas workers'),
     (t('settings_nav.stats'), '/admin/stats', 'bi-bar-chart', 'stats estadisticas'),
     (t('settings_nav.stats') ~ ' › ' ~ t('dl.heading'), '/admin/stats#downloadsSection', 'bi-download', 'downloads descargas history historial'),

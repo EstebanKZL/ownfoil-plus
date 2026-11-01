@@ -15,9 +15,15 @@
     <div class="stat-grid mb-4" id="dashTiles"></div>
 
     <section class="mb-4">
-        <h4 class="mb-3">{{ t('dash.storage') }}</h4>
+        <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+            <h4 class="mb-0">{{ t('dash.storage') }}</h4>
+            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                <i class="bi bi-cloud-upload"></i> {{ t('upload.button') }}
+            </button>
+        </div>
         <div id="dashStorage"></div>
     </section>
+    {% include '_upload_modal.html' %}
 
     <div class="stat-sections">
         <section class="mb-4">
@@ -45,6 +51,7 @@
 
 {% block panel_scripts %}
 <script src="{{ url_for('static', filename='js/format.js') }}"></script>
+<script src="{{ url_for('static', filename='js/upload.js') }}"></script>
 <script>
     const D = {
         allGood: {{ t('dash.all_good') | tojson }},
@@ -222,11 +229,15 @@
                 renderList('dashRecentDownloads', d.recent_downloads, e => [
                     e.name, [e.user || D.anonymous, D.clients[e.client] || e.client].join(' · '), when(e.downloaded_at)]);
                 renderStatus(d);
+                limitVisibleRows(document.getElementById('dashRecentFiles'), 'li', 10);
+                limitVisibleRows(document.getElementById('dashRecentDownloads'), 'li', 10);
             })
             .catch(err => console.error('Could not load the dashboard', err));
     }
 
     document.getElementById('refreshDashboard').addEventListener('click', loadDashboard);
+    // A finished upload shows up in "Recently added" and the storage bar.
+    document.addEventListener('upload:finished', loadDashboard);
     loadDashboard();
 </script>
 {% endblock %}

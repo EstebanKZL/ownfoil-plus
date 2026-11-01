@@ -3,6 +3,7 @@ library, refusals, and the API around them."""
 import datetime
 import json
 import os
+import re
 
 import fixture
 import pytest
@@ -191,6 +192,23 @@ def test_abandoned_uploads_are_cleaned_up(library, session_dir):
     assert [s["id"] for s in uploads.list_sessions()] == [fresh["id"]]
 
 
-def test_files_page_has_the_upload_dialog(admin_client):
-    html = admin_client.get("/admin/files").get_data(as_text=True)
+def test_dashboard_has_the_upload_dialog(admin_client):
+    html = admin_client.get("/admin").get_data(as_text=True)
     assert 'id="uploadModal"' in html and 'id="uploadDrop"' in html
+    assert 'data-bs-target="#uploadModal"' in html and "/static/js/upload.js" in html
+    # The strings the script reads, as JSON (pages keep a single bare inline <script>).
+    assert '<script type="application/json" id="uploadStrings">' in html
+
+
+def test_files_page_no_longer_has_the_upload_button(admin_client):
+    html = admin_client.get("/admin/files").get_data(as_text=True)
+    assert 'id="uploadModal"' not in html and "upload.js" not in html
+
+
+def test_upload_strings_are_valid_json(admin_client):
+    import json
+    html = admin_client.get("/admin").get_data(as_text=True)
+    raw = re.search(r'<script type="application/json" id="uploadStrings">(.*?)</script>', html, re.DOTALL).group(1)
+    strings = json.loads(raw)
+    assert {"queued", "uploading", "done", "failed", "leaveWarning"} <= set(strings)
+    assert set(strings["errors"]) == {"exists", "bad_extension", "no_space", "library_offline"}

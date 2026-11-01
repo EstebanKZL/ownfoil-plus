@@ -614,7 +614,7 @@
         games.forEach(function (game) {
             const gameCol = $('<div class="col game-col"></div>').addClass(cardColumnClasses());
 
-            const card = $('<div class="card text-bg-dark game-card"></div>');
+            const card = $('<div class="card game-surface game-card"></div>');
 
             const img = $('<img class="card-img"></img>').attr('src', game.bannerUrl);
             img.css('cursor', 'pointer').attr('title', I18N.detailsTooltip);
@@ -1109,7 +1109,7 @@
             const ownership = t.ownership || {haveBase: false, upToDate: false, complete: false};
 
             const col = $('<div class="col-12"></div>');
-            const card = $('<div class="card text-bg-dark list-game-card mb-3"></div>');
+            const card = $('<div class="card game-surface list-game-card mb-3"></div>');
             if (t.titleId && t.bannerUrl && SHOW_GAME_BACKGROUND_IMAGE) {
                 // Sits behind the whole card - see .list-card-body's own gradient in
                 // style.css for the fixed-pixel fade zone that keeps contrast readable

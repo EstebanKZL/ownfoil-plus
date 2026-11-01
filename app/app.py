@@ -493,6 +493,16 @@ def stats_page():
     return render_template('stats.html', title='Stats',
                            admin_account_created=admin_account_created())
 
+@app.delete('/api/tasks/history')
+@access_required('admin')
+def clear_task_history_api():
+    """Tasks page > History > trash button. Only the log of finished operations;
+    queued, running and failed tasks are untouched."""
+    deleted = TaskHistory.query.delete()
+    db.session.commit()
+    logger.info(f'Task history cleared ({deleted} entries).')
+    return jsonify({'success': True, 'deleted': deleted})
+
 # --- Prometheus metrics (see metrics.py) ---
 
 @app.route('/metrics')
@@ -586,7 +596,8 @@ def dashboard_api():
         return name if name and name != 'Unrecognized' else title_id
 
     recent_files = []
-    for f in Files.query.filter(Files.identified.is_(True)).order_by(Files.added_at.desc()).limit(8):
+    # 30 each: the dashboard shows 10 and scrolls the rest.
+    for f in Files.query.filter(Files.identified.is_(True)).order_by(Files.added_at.desc()).limit(30):
         app_row = f.apps[0] if f.apps else None
         title_id = app_row.title.title_id if app_row else None
         recent_files.append({
@@ -600,7 +611,7 @@ def dashboard_api():
     recent_downloads = [{
         'name': name_of(e.title_id) or e.filename, 'filename': e.filename, 'user': e.user,
         'client': e.client, 'downloaded_at': (e.downloaded_at + offset).isoformat(timespec='minutes'),
-    } for e in DownloadEvent.query.order_by(DownloadEvent.downloaded_at.desc()).limit(6)]
+    } for e in DownloadEvent.query.order_by(DownloadEvent.downloaded_at.desc()).limit(30)]
 
     settings = get_settings()
     backup_list = backups.list_backups()
@@ -727,7 +738,7 @@ def download_stats_api():
         'total_bytes': total_bytes,
         'all_time': DownloadEvent.query.count(),
         'by_day': [{'date': d.isoformat(), 'count': c} for d, c in sorted(by_day.items())],
-        'top_titles': [{'title_id': t, 'name': title_name(t), 'count': c} for t, c in ranked(titles, 10)],
+        'top_titles': [{'title_id': t, 'name': title_name(t), 'count': c} for t, c in ranked(titles, 50)],
         'by_user': [{'user': u or None, 'count': c} for u, c in ranked(users)],
         'by_client': [{'client': cl, 'count': c} for cl, c in ranked(clients)],
         'recent': [{

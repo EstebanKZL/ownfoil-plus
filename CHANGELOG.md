@@ -4,6 +4,40 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.44]
+
+UI polish, from screenshots of a real 266-game library.
+
+- **Card view: no more cut-off cards.** On a narrow card (6+ per row) the game info
+  sits under the banner, and every card in a row stretches to the tallest one - but
+  the info block didn't stretch with it, leaving a bare strip under shorter cards that
+  read as the card being cut off. The info block now fills the card down to its edge,
+  with the badges pinned to the bottom, so a row lines up.
+- **A softer light theme**: warm off-white "paper" tones (the page `#eceae4`, cards
+  and panels a step lighter) with charcoal text, instead of Bootstrap's stark white and
+  near-black - easier on the eyes for long reading.
+- **The light theme now covers the game cards too.** Card and List views were forced
+  dark with `text-bg-dark` in both themes, which also left some text unreadable in the
+  light theme (e.g. "Base game" and version labels in the List view, dark grey on the
+  dark card). They follow the theme now; the dark theme looks exactly as before.
+- **Tasks > History: 5 visible, the rest by scrolling, and a "Clear history" button**
+  (new `DELETE /api/tasks/history`, admin only; queued, running and failed tasks are
+  untouched).
+- **Dashboard: "Recently added" and "Latest downloads" show 10, the rest by
+  scrolling** (now up to 30 each, from 8 and 6).
+- **Stats > Downloads: "Most downloaded", "By user", "By client" and "Latest
+  downloads" show 10 rows each, the rest by scrolling, with the header row kept in
+  view.** "Most downloaded" now lists up to 50 titles (was 10).
+- **"Upload files" moved from the Files page to the dashboard**, next to the `Storage`
+  heading (above the free-space figures). Finishing an upload refreshes the dashboard,
+  so the new game shows in "Recently added". The dialog and its script are now a
+  reusable partial (`_upload_modal.html`) and `static/js/upload.js`; the global search
+  finds it under the dashboard ("upload", "subir").
+- The row capping is one small helper (`static/js/scroll-limit.js`) that sizes each
+  list from its rendered rows, so it's exact on a phone too, where rows wrap to two
+  lines.
+- New `tests/test_ui_polish.py` (13 tests).
+
 ## [6.2.5.43]
 
 Performance for large libraries ("Etapa 4"), measured on a synthetic library of 6,000
