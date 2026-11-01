@@ -127,7 +127,7 @@ class Libraries(db.Model):
 
 class Files(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    library_id = db.Column(db.Integer, db.ForeignKey('libraries.id', ondelete="CASCADE"), nullable=False)
+    library_id = db.Column(db.Integer, db.ForeignKey('libraries.id', ondelete="CASCADE"), nullable=False, index=True)
     filepath = db.Column(db.String, unique=True, nullable=False)
     folder = db.Column(db.String)
     filename = db.Column(db.String, nullable=False)
@@ -151,7 +151,7 @@ class Files(db.Model):
     mtime = db.Column(db.Float)
     # When ownfoil first saw the file. Distinct from mtime, which a re-organize or a
     # copy rewrites - only this one can answer "recently added".
-    added_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    added_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, index=True)
 
     library = db.relationship('Libraries', backref=db.backref('files', lazy=True, cascade="all, delete-orphan"))
 
@@ -292,7 +292,7 @@ app_files = db.Table('app_files',
 
 class Apps(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    title_id = db.Column(db.Integer, db.ForeignKey('titles.id', ondelete="CASCADE"), nullable=False)
+    title_id = db.Column(db.Integer, db.ForeignKey('titles.id', ondelete="CASCADE"), nullable=False, index=True)
     app_id = db.Column(db.String)
     app_version = db.Column(db.String)
     app_type = db.Column(db.String)
@@ -613,6 +613,11 @@ def get_library_id(library_path):
 
 def get_library_file_paths(library_id):
     return [file.filepath for file in Files.query.filter_by(library_id=library_id).all()]
+
+def file_path_in_db(filepath):
+    """One indexed lookup (filepath is unique), unlike `filepath in
+    get_library_file_paths(...)`, which loads every path of the library."""
+    return db.session.query(Files.id).filter_by(filepath=filepath).first() is not None
 
 def set_library_scan_time(library_id, scan_time=None):
     library = get_library(library_id)

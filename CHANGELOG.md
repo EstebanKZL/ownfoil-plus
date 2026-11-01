@@ -4,6 +4,33 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.43]
+
+Performance for large libraries ("Etapa 4"), measured on a synthetic library of 6,000
+games / 30,000 apps / 18,000 files rather than guessed. (WAL mode, `synchronous=NORMAL`
+and a busy timeout were already set on the database.)
+
+- **New indexes** (migration `d5e6f7a8b9c0`, applied automatically on start with the
+  usual pre-migration backup):
+  - `apps(title_id)`: every per-game recompute scanned the whole apps table. **The
+    batch recompute after each TitleDB refresh went from 19.4 s to 3.8 s**, and each
+    per-game lookup from ~1 ms to 0.05 ms.
+  - `files(added_at)`: the Files page's default newest-first order and the dashboard's
+    recently added list sorted the whole table on every page (4.1 ms -> 0.06 ms).
+  - `files(library_id)`: the foreign key a library removal cascades through.
+- **Adding a file no longer loads every path of its library**: `add_file` checked
+  `filepath in get_library_file_paths(...)` - every path of the library, for every
+  file - which on an 18,000-file first scan was ~8 ms per file, minutes in total. It's
+  now one indexed lookup.
+- **New: Prometheus metrics at `/metrics`** (library size, unidentified files, owned /
+  complete / up-to-date games, files per verification status, tasks per status,
+  downloads, disk space and reachability per library, backup count and age, users,
+  shop visibility). Plain text format written by hand, so no new dependency; values are
+  exact (no rounding of byte counts or timestamps). Needs an admin account (Basic Auth
+  or a session) or the new `OWNFOIL_METRICS_TOKEN` bearer token. `Install.md` has a
+  scrape config and alert examples.
+- New `tests/test_performance_metrics.py` (11 tests).
+
 ## [6.2.5.42]
 
 Phone layout fixes for the admin pages, found by going through every page at 375px.
