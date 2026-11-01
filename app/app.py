@@ -24,8 +24,10 @@ import realtime
 import titledb
 import discovery
 import media
+import notifications
 import os
 import secrets
+from i18n import SUPPORTED_LANGUAGES
 from clients import CyberFoilClient, TinfoilClient, SphairaClient
 
 def init():
@@ -551,6 +553,33 @@ def set_shop_settings_api():
     }
     return jsonify(resp)
 
+@app.post('/api/settings/notifications')
+@access_required('admin')
+def set_notification_settings_api():
+    data = request.json or {}
+    language = data.get('language')
+    if language is not None and language not in SUPPORTED_LANGUAGES:
+        return jsonify({'success': False, 'errors': [
+            {'path': 'notifications/language', 'error': f'Unsupported language {language}'}]})
+    set_notification_settings(data)
+    return jsonify({'success': True, 'errors': []})
+
+@app.post('/api/settings/notifications/test')
+@access_required('admin')
+def test_notification_settings_api():
+    """Send a test message with the form as currently filled in (saved or not), and
+    report each enabled provider's outcome so the UI can say which one is wrong."""
+    config = copy.deepcopy(get_settings()['notifications'])
+    for key, value in (request.json or {}).items():
+        if isinstance(value, dict) and isinstance(config.get(key), dict):
+            config[key].update(value)
+        else:
+            config[key] = value
+    results = notifications.send_test(config)
+    if not results:
+        return jsonify({'success': False, 'results': {}, 'error': 'no_provider'})
+    return jsonify({'success': all(err is None for err in results.values()), 'results': results})
+
 @app.post('/api/settings/services')
 @access_required('admin')
 def set_services_settings_api():
@@ -802,6 +831,10 @@ def export_settings():
         for client_settings in settings.get('shop', {}).get('clients', {}).values():
             for key in ('hauth', 'clientCertKey', 'clientCertPub'):
                 client_settings.pop(key, None)
+        # Webhook URLs and bot tokens are credentials: anyone holding one can post.
+        for provider, key in (('discord', 'webhook_url'), ('telegram', 'bot_token'),
+                              ('ntfy', 'token'), ('webhook', 'url')):
+            settings.get('notifications', {}).get(provider, {}).pop(key, None)
     yaml_text = yaml.safe_dump(settings, sort_keys=False, allow_unicode=True)
     suffix = '' if include_secrets else '-shareable'
     filename = f"ownfoil-settings-{datetime.date.today().isoformat()}{suffix}.yaml"

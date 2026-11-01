@@ -301,6 +301,63 @@ TRANSLATIONS = {
     'sections.workers': {'en': 'Workers', 'es': 'Procesos'},
     'sections.discovery': {'en': 'LAN discovery', 'es': 'Descubrimiento en la red local'},
     'sections.media': {'en': 'Local artworks', 'es': 'Artes locales'},
+    'sections.notifications': {'en': 'Notifications', 'es': 'Notificaciones'},
+
+    # Notification messages (sent by notifications.py, in the language chosen in
+    # Settings > Notifications - not the browser's).
+    'notify.event.file_added.title': {'en': 'Added to the library ({count})',
+                                      'es': 'Agregado a la biblioteca ({count})'},
+    'notify.event.update_available.title': {'en': 'New updates/DLC available ({count})',
+                                            'es': 'Nuevas actualizaciones/DLC disponibles ({count})'},
+    'notify.event.file_corrupt.title': {'en': 'Corrupt files found ({count})',
+                                        'es': 'Archivos corruptos detectados ({count})'},
+    'notify.event.task_failed.title': {'en': 'Failed tasks ({count})', 'es': 'Tareas fallidas ({count})'},
+    'notify.more': {'en': '...and {count} more', 'es': '...y {count} más'},
+    'notify.test.title': {'en': 'Test notification', 'es': 'Notificación de prueba'},
+    'notify.test.body': {'en': 'Notifications are working.', 'es': 'Las notificaciones funcionan.'},
+
+    # Settings > Notifications
+    'notif.desc': {
+        'en': 'Get a message when something happens in the library. Events are grouped: a scan that adds 200 files sends one message, not 200.',
+        'es': 'Recibí un mensaje cuando pasa algo en la biblioteca. Los eventos se agrupan: un escaneo que agrega 200 archivos manda un solo mensaje, no 200.'},
+    'notif.enabled': {'en': 'Enable notifications', 'es': 'Activar notificaciones'},
+    'notif.language': {'en': 'Message language', 'es': 'Idioma de los mensajes'},
+    'notif.events_heading': {'en': 'Notify me when', 'es': 'Avisarme cuando'},
+    'notif.event.file_added': {'en': 'A game, update or DLC is added to the library',
+                               'es': 'Se agrega un juego, actualización o DLC a la biblioteca'},
+    'notif.event.update_available': {
+        'en': 'A new update or DLC is released for a game I have (checked on each TitleDB refresh)',
+        'es': 'Sale una actualización o DLC nuevo de un juego que tengo (se comprueba en cada actualización de TitleDB)'},
+    'notif.event.file_corrupt': {'en': 'Verification finds a corrupt file',
+                                 'es': 'La verificación encuentra un archivo corrupto'},
+    'notif.event.task_failed': {'en': 'A background task fails', 'es': 'Falla una tarea en segundo plano'},
+    'notif.channels_heading': {'en': 'Channels', 'es': 'Canales'},
+    'notif.discord_webhook': {'en': 'Webhook URL', 'es': 'URL del webhook'},
+    'notif.discord_help': {'en': 'Channel settings → Integrations → Webhooks → New webhook → Copy URL.',
+                           'es': 'Ajustes del canal → Integraciones → Webhooks → Nuevo webhook → Copiar URL.'},
+    'notif.telegram_token': {'en': 'Bot token', 'es': 'Token del bot'},
+    'notif.telegram_chat': {'en': 'Chat ID', 'es': 'ID del chat'},
+    'notif.telegram_help': {
+        'en': 'Create a bot with @BotFather, send it a message, then get your chat ID from @userinfobot.',
+        'es': 'Creá un bot con @BotFather, mandale un mensaje y obtené tu ID de chat con @userinfobot.'},
+    'notif.ntfy_server': {'en': 'Server', 'es': 'Servidor'},
+    'notif.ntfy_topic': {'en': 'Topic', 'es': 'Tema (topic)'},
+    'notif.ntfy_token': {'en': 'Access token (optional)', 'es': 'Token de acceso (opcional)'},
+    'notif.ntfy_help': {
+        'en': 'Subscribe to the same topic in the ntfy app. On the public ntfy.sh server, anyone who knows the topic name can read it: pick a hard-to-guess one.',
+        'es': 'Suscribite al mismo tema en la app de ntfy. En el servidor público ntfy.sh cualquiera que sepa el nombre del tema puede leerlo: elegí uno difícil de adivinar.'},
+    'notif.webhook_url': {'en': 'URL', 'es': 'URL'},
+    'notif.webhook_help': {
+        'en': 'Receives a JSON POST: {"shop", "event", "title", "items": [...]}. For Home Assistant, n8n, scripts...',
+        'es': 'Recibe un POST JSON: {"shop", "event", "title", "items": [...]}. Para Home Assistant, n8n, scripts...'},
+    'notif.provider_enabled': {'en': 'Enabled', 'es': 'Activado'},
+    'notif.save': {'en': 'Save', 'es': 'Guardar'},
+    'notif.test': {'en': 'Send test', 'es': 'Enviar prueba'},
+    'notif.saved': {'en': 'Saved.', 'es': 'Guardado.'},
+    'notif.test_ok': {'en': 'Test sent to: {providers}', 'es': 'Prueba enviada a: {providers}'},
+    'notif.test_failed': {'en': 'Failed', 'es': 'Falló'},
+    'notif.test_no_provider': {'en': 'Enable at least one channel first.',
+                               'es': 'Primero activá al menos un canal.'},
 
     'media.desc': {'en': "For your shop to be fully self-hosted and not rely on external sources, Ownfoil-Plus can download all artworks locally and serve them to clients. Instead of providing direct eShop links, your Switch will retrieve them from your server and never connect to Nintendo's servers.",
                    'es': 'Para que tu tienda sea completamente autoalojada y no dependa de fuentes externas, Ownfoil-Plus puede descargar todas las artes localmente y servirlas a los clientes. En vez de dar enlaces directos a la eShop, tu Switch las va a obtener de tu servidor y nunca se va a conectar a los servidores de Nintendo.'},

@@ -436,6 +436,25 @@ def set_services_settings(data):
             if service in settings['services']:
                 settings['services'][service].update(config)
 
+def set_notification_settings(data):
+    """Merge a (possibly partial) notifications form into settings, keeping only the
+    keys DEFAULT_SETTINGS knows and coercing each to its default's type."""
+    defaults = DEFAULT_SETTINGS['notifications']
+    with settings_transaction() as settings:
+        current = settings['notifications']
+        for key, default in defaults.items():
+            if key not in data:
+                continue
+            if isinstance(default, dict):
+                for sub_key, sub_default in default.items():
+                    if sub_key in (data[key] or {}):
+                        value = data[key][sub_key]
+                        current[key][sub_key] = bool(value) if isinstance(sub_default, bool) else str(value or '').strip()
+            elif isinstance(default, bool):
+                current[key] = bool(data[key])
+            else:
+                current[key] = str(data[key] or '').strip()
+
 def set_scheduler_settings(data):
     with settings_transaction() as settings:
         settings['scheduler'].update(data)

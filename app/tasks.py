@@ -10,6 +10,7 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 import titles as titles_lib
 import titledb
 import media
+import notifications
 from containers import compression
 from containers import verification as verification_lib
 from constants import COMPRESS_EXT, DECOMPRESS_EXT
@@ -908,6 +909,8 @@ def _needs_identify(file, mgmt):
 def _identify(file, mgmt):
     """Identify one file and upsert its Apps/Titles."""
     identified_title_ids = []
+    # A re-identify pass (filename -> keys) is not a new arrival worth announcing.
+    was_identified = bool(file.identified)
     filepath = file.filepath
     logger.info(f'Identifying file: {file.filename}')
     identification, success, file_contents, error = titles_lib.identify_file(filepath)
@@ -954,6 +957,10 @@ def _identify(file, mgmt):
         file.nb_content = nb_content
         file.identified = True
         identified_title_ids = title_ids
+        if not was_identified and notifications.is_enabled(notifications.EVENT_FILE_ADDED):
+            for file_content in file_contents:
+                notifications.notify(notifications.EVENT_FILE_ADDED, notifications.app_label(
+                    file_content['title_id'], file_content['type'], file_content['version']))
     else:
         logger.warning(f"Error identifying file {file.filename}: {error}")
         file.identification_error = error
@@ -1324,6 +1331,8 @@ def verify_file_task(file_id, manual=False, **kwargs):
 
     if error:
         logger.warning(f'Verification failed for {file_obj.filename}: {error}')
+    if verification_status(file_obj) == verification_lib.STATUS_CORRUPT:
+        notifications.notify(notifications.EVENT_FILE_CORRUPT, file_obj.filename)
     enqueue_task('process_file', {'file_id': file_id})
 
 

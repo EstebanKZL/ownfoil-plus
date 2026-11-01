@@ -122,6 +122,21 @@ DEFAULT_SETTINGS = {
     "scheduler": {
         "titledb_update_interval": "12h",
     },
+    # Push notifications (see notifications.py). Off until a provider is set up.
+    "notifications": {
+        "enabled": False,
+        "language": "en",
+        "events": {
+            "file_added": True,
+            "update_available": True,
+            "file_corrupt": True,
+            "task_failed": True,
+        },
+        "discord": {"enabled": False, "webhook_url": ""},
+        "telegram": {"enabled": False, "bot_token": "", "chat_id": ""},
+        "ntfy": {"enabled": False, "server": "https://ntfy.sh", "topic": "", "token": ""},
+        "webhook": {"enabled": False, "url": ""},
+    },
     "worker": {
         "count": 2,
         "group_limits": {

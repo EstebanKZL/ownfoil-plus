@@ -295,6 +295,26 @@ The interval is a number followed by a unit: `s`, `m`, `h` or `d`, so `30m`, `2h
 
 TitleDB is updated upstream once per day, this scheduled task will sync your local reference and add the new titles, updates and DLCs. Libraries will be re-processed after the update, for example to identify files to titles that were not available before.
 
+## Notifications
+
+Get a message when something happens in the library. Off by default: turn on `Enable notifications`, at least one channel, and use `Send test` to check it.
+
+| Event | Sent when |
+| --- | --- |
+| Added to the library | A game, update or DLC file is identified for the first time. |
+| New updates/DLC available | A TitleDB refresh finds a new update or DLC for a game whose base is in your library. |
+| Corrupt files found | Verification marks a file as corrupt (not repacks or modified files). |
+| Failed tasks | A background task fails. |
+
+Events are grouped: everything that happens within 20 seconds of the first event goes out as one message per event type, listing up to 15 items. Messages are written in the `Message language` chosen in this section.
+
+| Channel | What you need |
+| --- | --- |
+| Discord | A channel webhook URL: channel settings → Integrations → Webhooks. |
+| Telegram | A bot token from [@BotFather](https://t.me/BotFather) and your chat ID (send the bot a message first). |
+| ntfy | A server (`https://ntfy.sh` by default, or your own) and a topic; an access token for protected topics. On the public server anyone who knows the topic can read it, so pick a hard-to-guess name. |
+| Webhook | Any URL; it receives a `POST` with `{"shop", "event", "title", "items": [...]}` as JSON. |
+
 ## Workers
 
 | Setting | Default | Description |
