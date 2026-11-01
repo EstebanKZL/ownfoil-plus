@@ -82,6 +82,7 @@ This is usefull if you don't want to remember the `docker run` command and have 
 | `USER_ADMIN_NAME` / `USER_ADMIN_PASSWORD` | Creates (or updates) an admin user at every startup. |
 | `USER_GUEST_NAME` / `USER_GUEST_PASSWORD` | Creates (or updates) a regular user with shop access at every startup. |
 | `OWNFOIL_SECRET_KEY` | Optional. The key that signs login cookies. When unset, a random one is generated on first start and kept in `config/.secret_key` - keep that file private. |
+| `OWNFOIL_METRICS_TOKEN` | Optional. A token Prometheus can send as `Authorization: Bearer <token>` to read `/metrics`, instead of an admin username and password. See [Monitoring with Prometheus](#monitoring-with-prometheus). |
 
 > [!TIP]
 > You can control the `UID` and `GID` of the user running the app in the container with the `PUID` and `PGID` environment variables. By default the user is created with `1000:1000`. If you want to have the same ownership for mounted directories, you need to set those variables with the UID and GID returned by the `id` command.
@@ -102,6 +103,28 @@ Exposing your shop to the internet is done with a reverse proxy in front of Ownf
 * Don't set a small request body limit, clients download multi-GB files through it. Web uploads (Files page) send 8 MiB chunks and shrink them automatically down to 512 KiB if the proxy refuses them (nginx's default `client_max_body_size` is `1m`), but raising the limit to `16m` or more keeps uploads fast.
 
 Once that is done, set the `Shop URL` in the `Settings` to the same hostname - see [Shop](./Usage.md#shop) for what it does and how to configure it.
+
+# Monitoring with Prometheus
+
+`/metrics` serves library-level metrics in Prometheus' text format: files and total size, unidentified files, owned / complete / up-to-date games, files per verification status, tasks per status (including failed), downloads, free and total disk space and reachability per library, backup count and age, users, and whether the shop is public. `/api/health` is the separate, unauthenticated liveness check.
+
+It needs an admin account (Basic Auth) or, if you'd rather not put a password in the scrape config, the `OWNFOIL_METRICS_TOKEN` environment variable:
+
+```yaml
+scrape_configs:
+  - job_name: ownfoil-plus
+    static_configs:
+      - targets: ['ownfoil:8465']
+    # either an admin account...
+    basic_auth:
+      username: admin
+      password: your-admin-password
+    # ...or, with OWNFOIL_METRICS_TOKEN set on the container:
+    # authorization:
+    #   credentials: your-metrics-token
+```
+
+Useful alerts: `ownfoil_library_online == 0`, `ownfoil_tasks{status="failed"} > 0`, `time() - ownfoil_backup_last_timestamp_seconds > 2 * 86400`, and free space from `ownfoil_library_disk_free_bytes / ownfoil_library_disk_total_bytes`.
 
 # LAN discovery
 

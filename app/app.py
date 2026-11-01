@@ -27,6 +27,7 @@ import backups
 import titles as titles_lib
 import uploads
 import media
+import metrics
 import notifications
 import re
 import shutil
@@ -491,6 +492,31 @@ def tasks_page():
 def stats_page():
     return render_template('stats.html', title='Stats',
                            admin_account_created=admin_account_created())
+
+# --- Prometheus metrics (see metrics.py) ---
+
+@app.route('/metrics')
+def prometheus_metrics():
+    """Admin credentials (Basic Auth for a scraper, or a session), or the
+    OWNFOIL_METRICS_TOKEN bearer token. Open while no admin account exists, like
+    every other admin page."""
+    token = os.environ.get('OWNFOIL_METRICS_TOKEN')
+    authorized = not admin_account_created()
+    header = request.headers.get('Authorization', '')
+    if not authorized and token and header.startswith('Bearer '):
+        authorized = secrets.compare_digest(header[7:].strip(), token)
+    if not authorized and current_user.is_authenticated:
+        authorized = current_user.has_access('admin')
+    if not authorized and request.authorization:
+        ok, _, user = basic_auth(request)
+        authorized = ok and user.has_access('admin')
+    if not authorized:
+        response = Response('Unauthorized\n', 401, mimetype='text/plain')
+        response.headers['WWW-Authenticate'] = 'Basic realm="Ownfoil-Plus metrics"'
+        return response
+    body = metrics.render_metrics(db, get_settings(), discovery._app_version(),
+                                  get_library_paths(), backups.list_backups())
+    return Response(body, mimetype='text/plain; version=0.0.4; charset=utf-8')
 
 # --- Global search (Ctrl+K, see static/js/search.js) ---
 

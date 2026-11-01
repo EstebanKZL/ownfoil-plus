@@ -15,7 +15,7 @@ from containers import compression
 from containers import verification as verification_lib
 from constants import COMPRESS_EXT, DECOMPRESS_EXT
 from db import (
-    db, Task, TaskHistory, Files, Apps, Libraries, get_library_id, get_library_path, get_library_file_paths,
+    db, Task, TaskHistory, Files, Apps, Libraries, get_library_id, get_library_path, get_library_file_paths, file_path_in_db,
     get_libraries, add_title_id_in_db, get_title_id_db_id, add_file_to_app,
     file_exists_in_db, update_file_path, delete_file_by_filepath,
     delete_files_under_dir, add_ignored_event, pop_ignored_event,
@@ -947,7 +947,8 @@ def _insert_file(library_path, library_id, filepath):
 def add_file_task(library_path, filepath, **kwargs):
     """Add a single file to the library DB."""
     library_id = get_library_id(library_path)
-    if filepath in get_library_file_paths(library_id):
+    # Runs once per file of a scan: an indexed lookup, not every path of the library.
+    if file_path_in_db(filepath):
         return
 
     new_file = _insert_file(library_path, library_id, filepath)
