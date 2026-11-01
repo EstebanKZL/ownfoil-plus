@@ -455,6 +455,13 @@ def set_notification_settings(data):
             else:
                 current[key] = str(data[key] or '').strip()
 
+def set_maintenance_settings(data):
+    """Already-validated values (see the /api/settings/maintenance route)."""
+    with settings_transaction() as settings:
+        for key in DEFAULT_SETTINGS['maintenance']:
+            if key in data:
+                settings['maintenance'][key] = data[key]
+
 def set_scheduler_settings(data):
     with settings_transaction() as settings:
         settings['scheduler'].update(data)

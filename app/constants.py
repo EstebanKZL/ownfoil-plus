@@ -122,6 +122,17 @@ DEFAULT_SETTINGS = {
     "scheduler": {
         "titledb_update_interval": "12h",
     },
+    # Daily maintenance window (tasks.py's scheduled_maintenance). `time` is the
+    # server's local HH:MM; `verify_all` re-checks every file, not just new ones.
+    "maintenance": {
+        "enabled": False,
+        "time": "04:00",
+        "scan": True,
+        "verify_all": "off",
+        "remove_outdated_updates": False,
+        "backup": True,
+        "backup_keep": 7,
+    },
     # Push notifications (see notifications.py). Off until a provider is set up.
     "notifications": {
         "enabled": False,

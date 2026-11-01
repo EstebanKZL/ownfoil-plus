@@ -4,6 +4,36 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.37]
+
+- **New: daily maintenance window** (Settings > Maintenance & backups). Off by
+  default; once on, runs every day at a chosen time (server local time, `04:00` by
+  default) and can:
+  - **back up** the database, settings and console keys (on by default once the
+    window is enabled), keeping the newest N (`7` by default);
+  - **scan the libraries** - finds new and missing files and processes what's
+    pending, useful with the file watcher off or on network shares;
+  - **delete update files superseded by a newer version**;
+  - **re-verify every file**, never / Sundays only / every day - unlike the normal
+    verification, which only checks new files, this catches files damaged after they
+    were added. Slow on big libraries, hence weekly as the suggested choice.
+  Each job runs as its own task, so it shows on the Tasks page and one failing doesn't
+  stop the others. The next run is shown next to the time, and is recomputed on
+  every start (so a clock or timezone change, or turning it off while the server was
+  down, never leaves a stale run behind). A failed backup still books the next day's
+  run, and with notifications on it is reported as a failed task.
+- **Backups**: one zip per backup in `config/backups/` (the persistent config volume)
+  with `ownfoil.db`, `settings.yaml` and `keys.txt`. The database is copied with
+  SQLite's online backup API, so the snapshot is consistent even while workers are
+  writing, and each zip is written under a temporary name and renamed into place, so
+  an interrupted backup never leaves a truncated file that looks valid. TitleDB and
+  artwork are left out: they're downloaded again on their own.
+- **"Back up now" button and backup list** in the same section, with download and
+  delete per backup (admin only; names are matched exactly, so the endpoints can't be
+  pointed at any other file). Restoring is a manual step, documented in the section
+  and in `Usage.md`.
+- New `tests/test_maintenance_backups.py` (20 tests).
+
 ## [6.2.5.36]
 
 - **New: push notifications** (Settings > Notifications), through **Discord**,

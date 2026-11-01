@@ -302,6 +302,43 @@ TRANSLATIONS = {
     'sections.discovery': {'en': 'LAN discovery', 'es': 'Descubrimiento en la red local'},
     'sections.media': {'en': 'Local artworks', 'es': 'Artes locales'},
     'sections.notifications': {'en': 'Notifications', 'es': 'Notificaciones'},
+    'sections.maintenance': {'en': 'Maintenance & backups', 'es': 'Mantenimiento y backups'},
+
+    # Settings > Maintenance & backups
+    'maint.desc': {
+        'en': 'Run housekeeping once a day at a quiet hour, and keep automatic backups of the database, settings and console keys.',
+        'es': 'Ejecutá el mantenimiento una vez por día en un horario tranquilo y guardá backups automáticos de la base de datos, los ajustes y las claves de consola.'},
+    'maint.enabled': {'en': 'Enable daily maintenance', 'es': 'Activar mantenimiento diario'},
+    'maint.time': {'en': 'Time (server time)', 'es': 'Hora (del servidor)'},
+    'maint.next_run': {'en': 'Next run: {when}', 'es': 'Próxima ejecución: {when}'},
+    'maint.not_scheduled': {'en': 'Not scheduled.', 'es': 'Sin programar.'},
+    'maint.actions_heading': {'en': 'During maintenance', 'es': 'Durante el mantenimiento'},
+    'maint.backup': {'en': 'Back up the database, settings and console keys',
+                     'es': 'Hacer backup de la base de datos, los ajustes y las claves de consola'},
+    'maint.backup_keep': {'en': 'Backups to keep', 'es': 'Backups a conservar'},
+    'maint.scan': {'en': 'Scan the libraries (finds new or missing files and processes what is pending)',
+                   'es': 'Escanear las bibliotecas (encuentra archivos nuevos o faltantes y procesa lo pendiente)'},
+    'maint.remove_outdated': {'en': 'Delete update files superseded by a newer version',
+                              'es': 'Eliminar archivos de actualizaciones superadas por una versión más nueva'},
+    'maint.verify_all': {'en': 'Re-verify every file (detects files damaged since they were added)',
+                         'es': 'Volver a verificar todos los archivos (detecta archivos dañados después de agregarse)'},
+    'maint.verify_off': {'en': 'Never', 'es': 'Nunca'},
+    'maint.verify_daily': {'en': 'Every day', 'es': 'Todos los días'},
+    'maint.verify_weekly': {'en': 'Sundays only', 'es': 'Solo los domingos'},
+    'maint.verify_hint': {'en': 'Slow on large libraries: it reads every file in full.',
+                          'es': 'Lento en bibliotecas grandes: lee cada archivo completo.'},
+    'maint.save': {'en': 'Save', 'es': 'Guardar'},
+    'maint.saved': {'en': 'Saved.', 'es': 'Guardado.'},
+    'maint.backups_heading': {'en': 'Backups', 'es': 'Backups'},
+    'maint.backup_now': {'en': 'Back up now', 'es': 'Hacer backup ahora'},
+    'maint.no_backups': {'en': 'No backups yet.', 'es': 'Todavía no hay backups.'},
+    'maint.col_date': {'en': 'Date', 'es': 'Fecha'},
+    'maint.col_size': {'en': 'Size', 'es': 'Tamaño'},
+    'maint.col_actions': {'en': 'Actions', 'es': 'Acciones'},
+    'maint.delete_confirm': {'en': 'Delete backup {name}?', 'es': '¿Eliminar el backup {name}?'},
+    'maint.restore_hint': {
+        'en': 'Stored in <code>config/backups/</code>. To restore one: stop Ownfoil-Plus, extract the zip into <code>config/</code> (replacing <code>ownfoil.db</code>, <code>settings.yaml</code> and <code>keys.txt</code>), then start it again.',
+        'es': 'Se guardan en <code>config/backups/</code>. Para restaurar uno: detené Ownfoil-Plus, extraé el zip en <code>config/</code> (reemplazando <code>ownfoil.db</code>, <code>settings.yaml</code> y <code>keys.txt</code>) y volvé a iniciarlo.'},
 
     # Notification messages (sent by notifications.py, in the language chosen in
     # Settings > Notifications - not the browser's).
