@@ -4,6 +4,38 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.36]
+
+- **New: push notifications** (Settings > Notifications), through **Discord**,
+  **Telegram**, **ntfy** and a **generic JSON webhook** (for Home Assistant, n8n,
+  scripts...), any combination at once. Off by default. Four events, each with its own
+  checkbox:
+  - **A game, update or DLC is added to the library** - announced on a file's first
+    identification only, so a later re-identify pass (e.g. after uploading keys)
+    doesn't announce the whole library again.
+  - **A new update or DLC is released for a game you have** - checked after every
+    TitleDB refresh, for titles whose base game is in the library. Adding a new game
+    doesn't announce its existing updates/DLC as "new", and neither does the very
+    first refresh of an empty database.
+  - **Verification finds a corrupt file** (the CORRUPT status only - repacks and
+    modified files don't trigger it).
+  - **A background task fails**, with the task name and error.
+- **Grouped, not spammed**: events are collected for 20 seconds after the first one
+  and sent as one message per event type (up to 15 lines, then "...and N more"), so a
+  scan adding 200 files sends one message instead of 200, and stays clear of Discord's
+  and Telegram's rate limits.
+- **Messages in English or Spanish**, chosen in the same section (independent of the
+  browser's UI language).
+- **"Send test" button** that uses the form as filled in, even before saving, and
+  reports each channel's result separately (e.g. "Test sent to: discord · telegram
+  (Failed: HTTP 401)").
+- A channel that's down never fails a scan or a task: delivery errors are only logged.
+- ntfy is published through its JSON API, so titles with accents (game names,
+  Spanish texts) arrive intact; an access token is supported for protected topics.
+- The "without sensitive data" settings export also leaves out the Discord/webhook
+  URLs and the Telegram/ntfy tokens.
+- New `tests/test_notifications.py` (21 tests).
+
 ## [6.2.5.35]
 
 Quality and infrastructure ("Etapa 1").

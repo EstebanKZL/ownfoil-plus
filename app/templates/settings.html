@@ -629,6 +629,115 @@
                 </div>
 
                 <hr class="hr-settings">
+                <h2 class="pb-2" id="Notifications">{{ t('sections.notifications') }}</h2>
+                <p>{{ t('notif.desc') }}</p>
+                <div class="row g-3 mb-3 align-items-center">
+                    <div class="col-auto">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="notifEnabledCheck">
+                            <label class="form-check-label" for="notifEnabledCheck">{{ t('notif.enabled') }}</label>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <label for="notifLanguageSelect" class="col-form-label">{{ t('notif.language') }}</label>
+                    </div>
+                    <div class="col-auto">
+                        <select class="form-select form-select-sm" id="notifLanguageSelect">
+                            <option value="en">English</option>
+                            <option value="es">Español</option>
+                        </select>
+                    </div>
+                </div>
+
+                <h3 class="h5 pt-2">{{ t('notif.events_heading') }}</h3>
+                <div class="mb-3">
+                    {% for event in ['file_added', 'update_available', 'file_corrupt', 'task_failed'] %}
+                    <div class="form-check">
+                        <input class="form-check-input notif-event" type="checkbox" id="notifEvent_{{ event }}" data-event="{{ event }}">
+                        <label class="form-check-label" for="notifEvent_{{ event }}">{{ t('notif.event.' ~ event) }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <h3 class="h5 pt-2">{{ t('notif.channels_heading') }}</h3>
+                <div class="row g-3 mb-3">
+                    <div class="col-12 col-xl-6">
+                        <div class="card h-100"><div class="card-body">
+                            <div class="form-check form-switch float-end">
+                                <input class="form-check-input notif-provider" type="checkbox" role="switch" id="notifDiscordEnabled" data-provider="discord">
+                                <label class="form-check-label" for="notifDiscordEnabled">{{ t('notif.provider_enabled') }}</label>
+                            </div>
+                            <h4 class="h6 card-title"><i class="bi bi-discord"></i> Discord</h4>
+                            <label for="notifDiscordWebhook" class="form-label">{{ t('notif.discord_webhook') }}</label>
+                            <input type="password" class="form-control" id="notifDiscordWebhook" autocomplete="off" placeholder="https://discord.com/api/webhooks/...">
+                            <div class="form-text">{{ t('notif.discord_help') }}</div>
+                        </div></div>
+                    </div>
+                    <div class="col-12 col-xl-6">
+                        <div class="card h-100"><div class="card-body">
+                            <div class="form-check form-switch float-end">
+                                <input class="form-check-input notif-provider" type="checkbox" role="switch" id="notifTelegramEnabled" data-provider="telegram">
+                                <label class="form-check-label" for="notifTelegramEnabled">{{ t('notif.provider_enabled') }}</label>
+                            </div>
+                            <h4 class="h6 card-title"><i class="bi bi-telegram"></i> Telegram</h4>
+                            <div class="row g-2">
+                                <div class="col-7">
+                                    <label for="notifTelegramToken" class="form-label">{{ t('notif.telegram_token') }}</label>
+                                    <input type="password" class="form-control" id="notifTelegramToken" autocomplete="off">
+                                </div>
+                                <div class="col-5">
+                                    <label for="notifTelegramChat" class="form-label">{{ t('notif.telegram_chat') }}</label>
+                                    <input type="text" class="form-control" id="notifTelegramChat" autocomplete="off">
+                                </div>
+                            </div>
+                            <div class="form-text">{{ t('notif.telegram_help') }}</div>
+                        </div></div>
+                    </div>
+                    <div class="col-12 col-xl-6">
+                        <div class="card h-100"><div class="card-body">
+                            <div class="form-check form-switch float-end">
+                                <input class="form-check-input notif-provider" type="checkbox" role="switch" id="notifNtfyEnabled" data-provider="ntfy">
+                                <label class="form-check-label" for="notifNtfyEnabled">{{ t('notif.provider_enabled') }}</label>
+                            </div>
+                            <h4 class="h6 card-title"><i class="bi bi-bell"></i> ntfy</h4>
+                            <div class="row g-2">
+                                <div class="col-7">
+                                    <label for="notifNtfyServer" class="form-label">{{ t('notif.ntfy_server') }}</label>
+                                    <input type="text" class="form-control" id="notifNtfyServer" placeholder="https://ntfy.sh">
+                                </div>
+                                <div class="col-5">
+                                    <label for="notifNtfyTopic" class="form-label">{{ t('notif.ntfy_topic') }}</label>
+                                    <input type="text" class="form-control" id="notifNtfyTopic" autocomplete="off">
+                                </div>
+                                <div class="col-12">
+                                    <label for="notifNtfyToken" class="form-label">{{ t('notif.ntfy_token') }}</label>
+                                    <input type="password" class="form-control" id="notifNtfyToken" autocomplete="off">
+                                </div>
+                            </div>
+                            <div class="form-text">{{ t('notif.ntfy_help') }}</div>
+                        </div></div>
+                    </div>
+                    <div class="col-12 col-xl-6">
+                        <div class="card h-100"><div class="card-body">
+                            <div class="form-check form-switch float-end">
+                                <input class="form-check-input notif-provider" type="checkbox" role="switch" id="notifWebhookEnabled" data-provider="webhook">
+                                <label class="form-check-label" for="notifWebhookEnabled">{{ t('notif.provider_enabled') }}</label>
+                            </div>
+                            <h4 class="h6 card-title"><i class="bi bi-braces"></i> Webhook</h4>
+                            <label for="notifWebhookUrl" class="form-label">{{ t('notif.webhook_url') }}</label>
+                            <input type="password" class="form-control" id="notifWebhookUrl" autocomplete="off" placeholder="https://...">
+                            <div class="form-text">{{ t('notif.webhook_help') }}</div>
+                        </div></div>
+                    </div>
+                </div>
+
+                <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+                    <button type="button" id="submitNotifSettingsBtn" class="btn btn-primary">{{ t('notif.save') }}</button>
+                    <button type="button" id="testNotifBtn" class="btn btn-outline-secondary"><i class="bi bi-send"></i> {{ t('notif.test') }}</button>
+                    <span id="notifFeedback" class="small"></span>
+                </div>
+
+                <hr class="hr-settings">
                 <h2 class="pb-2">{{ t('sections.workers') }}</h2>
                 <p>{{ t('workers.desc') }}</p>
                 <div class="row mb-3">
@@ -746,6 +855,10 @@
         backup: {{ t('auth.backup') | tojson }},
         admin: {{ t('auth.admin') | tojson }},
         editTooltip: {{ t('auth.edit_tooltip') | tojson }},
+        notifSaved: {{ t('notif.saved') | tojson }},
+        notifTestOk: {{ t('notif.test_ok', providers='__PROVIDERS__') | tojson }},
+        notifTestFailed: {{ t('notif.test_failed') | tojson }},
+        notifNoProvider: {{ t('notif.test_no_provider') | tojson }},
         deleteUserConfirm: {{ t('auth.delete_user_confirm', user='__USER__') | tojson }},
         resetSuccess: {{ t('danger.reset_success') | tojson }},
         resetFailed: {{ t('danger.reset_failed') | tojson }},
@@ -1556,6 +1669,80 @@
         });
     }
 
+    function fillNotificationSettings(n) {
+        if (!n) return;
+        $('#notifEnabledCheck').prop('checked', Boolean(n.enabled));
+        $('#notifLanguageSelect').val(n.language || 'en');
+        $('.notif-event').each(function () {
+            $(this).prop('checked', Boolean((n.events || {})[$(this).data('event')]));
+        });
+        $('.notif-provider').each(function () {
+            $(this).prop('checked', Boolean((n[$(this).data('provider')] || {}).enabled));
+        });
+        $('#notifDiscordWebhook').val(n.discord.webhook_url);
+        $('#notifTelegramToken').val(n.telegram.bot_token);
+        $('#notifTelegramChat').val(n.telegram.chat_id);
+        $('#notifNtfyServer').val(n.ntfy.server);
+        $('#notifNtfyTopic').val(n.ntfy.topic);
+        $('#notifNtfyToken').val(n.ntfy.token);
+        $('#notifWebhookUrl').val(n.webhook.url);
+    }
+
+    function collectNotificationSettings() {
+        const events = {};
+        $('.notif-event').each(function () { events[$(this).data('event')] = $(this).prop('checked'); });
+        const enabled = provider => $('.notif-provider[data-provider="' + provider + '"]').prop('checked');
+        return {
+            enabled: $('#notifEnabledCheck').prop('checked'),
+            language: $('#notifLanguageSelect').val(),
+            events: events,
+            discord: {enabled: enabled('discord'), webhook_url: $('#notifDiscordWebhook').val()},
+            telegram: {enabled: enabled('telegram'), bot_token: $('#notifTelegramToken').val(),
+                       chat_id: $('#notifTelegramChat').val()},
+            ntfy: {enabled: enabled('ntfy'), server: $('#notifNtfyServer').val(),
+                   topic: $('#notifNtfyTopic').val(), token: $('#notifNtfyToken').val()},
+            webhook: {enabled: enabled('webhook'), url: $('#notifWebhookUrl').val()},
+        };
+    }
+
+    function showNotifFeedback(message, ok) {
+        $('#notifFeedback').text(message).removeClass('text-success text-danger')
+            .addClass(ok ? 'text-success' : 'text-danger');
+    }
+
+    $('#submitNotifSettingsBtn').on('click', function () {
+        const btn = $(this).prop('disabled', true);
+        $.ajax({
+            url: '/api/settings/notifications', type: 'POST', contentType: 'application/json',
+            data: JSON.stringify(collectNotificationSettings()),
+            success: result => showNotifFeedback(result.success ? I18N.notifSaved
+                : (result.errors || []).map(e => e.error).join(', '), result.success),
+            error: xhr => showNotifFeedback('HTTP ' + xhr.status, false),
+            complete: () => btn.prop('disabled', false),
+        });
+    });
+
+    $('#testNotifBtn').on('click', function () {
+        const btn = $(this).prop('disabled', true);
+        $.ajax({
+            url: '/api/settings/notifications/test', type: 'POST', contentType: 'application/json',
+            data: JSON.stringify(collectNotificationSettings()),
+            success: result => {
+                if (result.error === 'no_provider') return showNotifFeedback(I18N.notifNoProvider, false);
+                const results = result.results || {};
+                const ok = Object.keys(results).filter(p => results[p] === null);
+                const failed = Object.keys(results).filter(p => results[p] !== null)
+                    .map(p => p + ' (' + I18N.notifTestFailed + ': ' + results[p] + ')');
+                const parts = [];
+                if (ok.length) parts.push(I18N.notifTestOk.replace('__PROVIDERS__', ok.join(', ')));
+                parts.push(...failed);
+                showNotifFeedback(parts.join(' · '), failed.length === 0);
+            },
+            error: xhr => showNotifFeedback('HTTP ' + xhr.status, false),
+            complete: () => btn.prop('disabled', false),
+        });
+    });
+
     function submitSchedulerSettings() {
         $('#submitSchedulerSettingsBtn').prop('disabled', true);
         data = {
@@ -1866,6 +2053,8 @@
             if (schedulerSettings && schedulerSettings['titledb_update_interval'] !== undefined) {
                 setInputVal("titledbUpdateIntervalInput", schedulerSettings['titledb_update_interval']);
             }
+
+            fillNotificationSettings(result['notifications']);
 
             // Worker settings
             workerSettings = result['worker'];

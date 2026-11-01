@@ -118,6 +118,8 @@ class TaskWorker:
             db.session.commit()
             tasks_mod._run_cleanup_hook(task_name, input_json)
             on_task_completed(task_id, parent_id)
+            import notifications
+            notifications.notify(notifications.EVENT_TASK_FAILED, f'{display_name}: {str(e)[:300]}')
 
     def run(self):
         with self.app.app_context():

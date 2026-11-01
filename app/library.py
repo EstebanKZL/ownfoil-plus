@@ -274,6 +274,7 @@ def add_missing_apps_for_title(title_id):
 def add_missing_apps_to_db():
     """Batch: expand missing apps for every title. Used post-titledb-update."""
     logger.info('Adding missing apps to database...')
+    known_apps = {(a, v) for a, v in db.session.query(Apps.app_id, Apps.app_version).all()}
     titles = get_all_titles()
     total = 0
     for n, title in enumerate(titles):
@@ -281,6 +282,29 @@ def add_missing_apps_to_db():
         if (n + 1) % 100 == 0:
             logger.info(f'Processed {n + 1}/{len(titles)} titles, upserted {total} apps so far')
     logger.info(f'Finished adding missing apps to database. Total apps upserted: {total}')
+    # Only this batch path (run after a TitleDB refresh) announces new versions: the
+    # per-title one runs when a game is first added, where every existing update/DLC
+    # is "new" to the database but not to the world. An empty database is the same
+    # case at install scale.
+    if known_apps:
+        notify_new_apps_available(known_apps)
+
+def notify_new_apps_available(known_apps):
+    """Announce update/DLC rows that appeared since `known_apps` was taken, for games
+    whose base the library actually has."""
+    import notifications
+    if not notifications.is_enabled(notifications.EVENT_UPDATE_AVAILABLE):
+        return
+    rows = (db.session.query(Apps.app_id, Apps.app_version, Apps.app_type, Titles.title_id)
+            .join(Titles, Apps.title_id == Titles.id)
+            .filter(Apps.owned.is_(False), Apps.app_type.in_([APP_TYPE_UPD, APP_TYPE_DLC]),
+                    Titles.have_base.is_(True))
+            .all())
+    for app_id, app_version, app_type, title_id in rows:
+        if (app_id, app_version) in known_apps:
+            continue
+        notifications.notify(notifications.EVENT_UPDATE_AVAILABLE, notifications.app_label(
+            title_id if app_type == APP_TYPE_UPD else app_id, app_type, app_version))
 
 def remove_outdated_update_files():
     logger.info("Starting removal of outdated update files...")
