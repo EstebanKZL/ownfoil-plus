@@ -39,7 +39,12 @@ Quality and infrastructure ("Etapa 1").
   (`C:\...\library\Test Game/file.nsp`), which made 11 Sphaira download tests fail
   when the suite ran on Windows. A real scan never stores such paths; only the fixture
   did.
-- New `tests/test_ops_hardening.py` (14 tests).
+- **Restored `app/data/titledb/languages.json` to the repository.** The placeholder
+  Settings reads before the first TitleDB download had silently dropped out of git
+  (`/app/data/` in `.gitignore`), so the Docker image shipped without it and a fresh
+  install's Settings page returned 500 until TitleDB finished downloading. The new CI
+  caught it on its first run. `.gitignore` now un-ignores that one file explicitly.
+- New `tests/test_ops_hardening.py` (15 tests).
 
 ## [6.2.5.34]
 

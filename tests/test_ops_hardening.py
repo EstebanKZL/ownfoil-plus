@@ -109,6 +109,22 @@ def test_dockerfile_ships_pyproject_for_the_version():
     assert "COPY ./pyproject.toml /app/pyproject.toml" in _read("Dockerfile")
 
 
+# --- tracked placeholder -----------------------------------------------------------
+
+def test_titledb_languages_placeholder_is_tracked_by_git():
+    """Settings reads it before the first titledb download; CI and the Docker image
+    only have what git tracks, and `/app/data/` in .gitignore once dropped it."""
+    import shutil
+    import subprocess
+
+    import pytest
+    if shutil.which("git") is None or not os.path.isdir(os.path.join(ROOT, ".git")):
+        pytest.skip("not a git checkout")
+    tracked = subprocess.run(["git", "ls-files", "app/data/titledb/languages.json"],
+                             cwd=ROOT, capture_output=True, text=True).stdout.strip()
+    assert tracked == "app/data/titledb/languages.json"
+
+
 # --- Files.last_attempt --------------------------------------------------------------
 
 def test_last_attempt_default_is_evaluated_per_insert():
