@@ -4,6 +4,25 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.42]
+
+Phone layout fixes for the admin pages, found by going through every page at 375px.
+None of the pages scrolled sideways; these are about how much fits on a screen.
+
+- **Files: the six summary tiles are two compact columns on a phone** instead of one
+  full-width tile per row, which took more than a full screen of scrolling before the
+  file list itself. Now the list starts on the first screen.
+- **Tasks: task names are no longer cut to a few letters on a phone** ("Daily …",
+  "Updat…"): the date and details move to a second line under the name, which gets
+  the whole width.
+- **Admin tabs are one horizontally scrolling row on a phone** instead of wrapping onto
+  two lines, and the current page's tab is scrolled into view (so `Stats` isn't hidden
+  past the right edge).
+- **Settings: half-width fields are full width on a phone** (worker count, intervals,
+  region/language, ...), still half width from tablets up.
+- Desktop and tablet layouts are unchanged.
+- New `tests/test_mobile_layout.py` (5 tests).
+
 ## [6.2.5.41]
 
 - **New: light / dark / automatic theme**, from a sun/moon menu in the navbar.

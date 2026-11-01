@@ -192,7 +192,7 @@
                     <div class="card card-body">
                         <label class="form-label">{{ t('lib.add_a_new_directory') }}</label>
                         <div class="row g-3">
-                            <div class="col-6">
+                            <div class="col-12 col-md-6">
                                 <input type="text" class="form-control" id="libraryPathInput" placeholder="{{ t('lib.path_placeholder') }}">
                             </div>
                             <div class="col-auto">
@@ -407,12 +407,12 @@
                             <label class="form-check-label d-block">{{ t('organizer.naming_language') }}</label>
                             <div class="form-text mb-2">{{ t('organizer.naming_language_help') }}</div>
                             <div class="row g-2">
-                                <div class="col-6">
+                                <div class="col-12 col-md-6">
                                     <select id="organizerNameRegionSelect" class="form-select form-select-sm" aria-label="Select organizer naming region">
                                         <option value="">{{ t('organizer.same_as_library') }}</option>
                                     </select>
                                 </div>
-                                <div class="col-6">
+                                <div class="col-12 col-md-6">
                                     <select id="organizerNameLanguageSelect" class="form-select form-select-sm" aria-label="Select organizer naming language"></select>
                                 </div>
                             </div>
@@ -485,7 +485,7 @@
 
                 <div class="row mb-3">
                     <!-- Console key upload form -->
-                    <div class="col-6">
+                    <div class="col-12 col-md-6">
                         <label id="consoleKeysInputLabel" for="consoleKeysInput" class="form-label">{{ t('titles.console_keys_label') }}</label>
                         <input class="form-control" type="file"
                             accept=".keys,.txt" id="consoleKeysInput">
@@ -495,7 +495,7 @@
                     </div>
 
                     <!-- Missing console keys -->
-                    <div class="col-6">
+                    <div class="col-12 col-md-6">
                         <label for="keysAlert" class="form-label">{{ t('titles.master_key_revisions') }}</label>
                         <div id="keysAlert" class="alert alert-secondary py-2 mb-0">
                             <p id="keysMissingLabel" class="mb-0"></p>
@@ -615,7 +615,7 @@
                 <h2 class="pb-2" id="Scheduler">{{ t('sections.scheduler') }}</h2>
                 <p>{{ t('scheduler.desc') | safe }}</p>
                 <div class="row mb-3">
-                    <div class="col-6">
+                    <div class="col-12 col-md-6">
                         <label for="titledbUpdateIntervalInput" class="form-label">{{ t('scheduler.titledb_interval_label') }}</label>
                         <input type="text" class="form-control" id="titledbUpdateIntervalInput" aria-describedby="titledbUpdateIntervalHelp" placeholder="2h">
                         <div id="titledbUpdateIntervalFeedback"></div>
@@ -811,7 +811,7 @@
                 <h2 class="pb-2" id="Workers">{{ t('sections.workers') }}</h2>
                 <p>{{ t('workers.desc') }}</p>
                 <div class="row mb-3">
-                    <div class="col-6">
+                    <div class="col-12 col-md-6">
                         <label for="workerCountInput" class="form-label">{{ t('workers.count_label') }}</label>
                         <input type="number" class="form-control" id="workerCountInput" min="1" step="1">
                         <div id="workerCountFeedback"></div>
@@ -820,7 +820,7 @@
                 </div>
 
                 <div class="row mb-3">
-                    <div class="col-6">
+                    <div class="col-12 col-md-6">
                         <label for="ioLimitInput" class="form-label">{{ t('workers.io_limit_label') }}</label>
                         <input type="number" class="form-control" id="ioLimitInput" min="1" step="1">
                         <div id="ioLimitFeedback"></div>
@@ -836,7 +836,7 @@
                 </div>
 
                 <div class="row mb-3">
-                    <div class="col-6">
+                    <div class="col-12 col-md-6">
                         <label for="netLimitInput" class="form-label">{{ t('workers.net_limit_label') }}</label>
                         <input type="number" class="form-control" id="netLimitInput" min="1" step="1">
                         <div id="netLimitFeedback"></div>
