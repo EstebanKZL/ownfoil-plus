@@ -361,6 +361,30 @@ class Task(db.Model):
     )
 
 
+class DownloadEvent(db.Model):
+    """One row per counted download (same 60s per file+client throttle as
+    Files.download_count, so a console probing with Range requests or resuming isn't
+    logged twice). The file's name and title are copied in, so the history still reads
+    right after the file is deleted or renamed. Kept for DOWNLOAD_HISTORY_DAYS."""
+    __tablename__ = 'download_events'
+
+    id = db.Column(db.Integer, primary_key=True)
+    file_id = db.Column(db.Integer, db.ForeignKey('files.id', ondelete='SET NULL'), nullable=True)
+    filename = db.Column(db.String, nullable=False)
+    title_id = db.Column(db.String, index=True)
+    app_type = db.Column(db.String)
+    app_version = db.Column(db.String)
+    size = db.Column(db.BigInteger)
+    user = db.Column(db.String)
+    client = db.Column(db.String, nullable=False)
+    address = db.Column(db.String)
+    downloaded_at = db.Column(db.DateTime, nullable=False, index=True,
+                              default=datetime.datetime.utcnow)
+
+
+DOWNLOAD_HISTORY_DAYS = 365
+
+
 class TaskHistory(db.Model):
     """One row per completed top-level operation (a scan, a verify pass, a titledb
     update, a manual action, ...) - not per individual file. A library scan or verify
@@ -1119,10 +1143,33 @@ def increment_download_count(filepath):
         logger.error(f"An error occurred while incrementing download count for '{filepath}': {str(e)}")
         return False
 
-@throttle(60, key_func=lambda filepath, host: (filepath, host))
-def increment_download_count_throttled(filepath, host):
-    """Throttled wrapper around increment_download_count per (filepath, host) pair."""
+def record_download(filepath, host, user=None, client='other'):
+    """Append a DownloadEvent for this file, and drop events past the retention window.
+    Never raises: the history is a nice-to-have, the download itself must go through."""
+    try:
+        file_entry = Files.query.filter_by(filepath=filepath).first()
+        if file_entry is None:
+            return
+        first_app = file_entry.apps[0] if file_entry.apps else None
+        db.session.add(DownloadEvent(
+            file_id=file_entry.id, filename=file_entry.filename, size=file_entry.size,
+            title_id=first_app.title.title_id if first_app else None,
+            app_type='MULTI' if file_entry.multicontent else (first_app.app_type if first_app else None),
+            app_version=first_app.app_version if first_app and not file_entry.multicontent else None,
+            user=user, client=client, address=host,
+        ))
+        cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=DOWNLOAD_HISTORY_DAYS)
+        DownloadEvent.query.filter(DownloadEvent.downloaded_at < cutoff).delete()
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Could not record download of '{filepath}': {e}")
+
+@throttle(60, key_func=lambda filepath, host, *args, **kwargs: (filepath, host))
+def increment_download_count_throttled(filepath, host, user=None, client='other'):
+    """Throttled per (filepath, host) pair: bump the file's counter and log the download."""
     increment_download_count(filepath)
+    record_download(filepath, host, user=user, client=client)
 
 
 def reset_files_organized():

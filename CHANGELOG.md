@@ -4,6 +4,30 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.38]
+
+- **New: download history** (Stats > Downloads). Until now each file only had a
+  counter; now every counted download is logged with **who** (the console's shop
+  user, or the signed-in web user; none on a public shop), **which client** (Tinfoil,
+  Sphaira, CyberFoil, the web UI's own download button, or "other"), **from which
+  address** (the real one behind a reverse proxy) and **when**.
+- The new section shows, for the last 7, 30, 90 or 365 days: total downloads and data
+  served, a **downloads-per-day chart** (plain CSS bars - no chart library, so it works
+  offline like the rest of the UI), the **10 most downloaded titles**, counts **per
+  user** and **per client**, and the **50 latest downloads**. All-time total too.
+- Logged on exactly the same 60-second per-file-and-address throttle as the existing
+  counter, so a Sphaira HEAD-then-GET, a resumed download or a Range probe is one
+  entry, not several.
+- Each entry keeps its own copy of the file name and title, so the history still reads
+  right after the file is deleted, renamed or reorganized (the link to the file is set
+  to null instead of cascading the entry away).
+- Kept for one year (older entries are pruned as new ones come in), and a "Clear
+  history" button empties it without touching the per-file counters. A failure to
+  write the log never affects the download itself.
+- New `download_events` table: database migration `c4d5e6f7a8b9`, applied
+  automatically on start (with the usual pre-migration database backup).
+- New `tests/test_download_history.py` (15 tests).
+
 ## [6.2.5.37]
 
 - **New: daily maintenance window** (Settings > Maintenance & backups). Off by

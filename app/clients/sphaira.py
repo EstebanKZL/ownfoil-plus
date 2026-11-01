@@ -162,6 +162,8 @@ class SphairaClient(BaseClient):
         # Count only once the response exists: a range past the end of the file raises out
         # of here, and a transfer that never happened is not a download.
         response = send_from_directory(file.folder, file.filename)
-        increment_download_count_throttled(file.filepath, client_address(request))
+        increment_download_count_throttled(
+            file.filepath, client_address(request),
+            user=request.authorization.username if request.authorization else None, client='sphaira')
 
         return response
