@@ -393,6 +393,27 @@ p.game-description {
 
 /* Two columns rather than auto-fit: four sections in a row would put each table's
    figures a screen away from the next, and the tables are all the same shape anyway. */
+/* Downloads per day: plain flex bars, no chart library (the UI must work offline). */
+.download-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 7rem;
+    padding-bottom: 1px;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+.download-bar {
+    flex: 1 1 0;
+    min-width: 2px;
+    background: var(--bs-info);
+    border-radius: 2px 2px 0 0;
+}
+
+.download-bar.empty {
+    background: var(--bs-border-color);
+}
+
 .stat-sections {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

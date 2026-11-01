@@ -24,6 +24,7 @@ import realtime
 import titledb
 import discovery
 import backups
+import titles as titles_lib
 import media
 import notifications
 import re
@@ -241,6 +242,20 @@ def get_client_for_request(request):
             return client_class(get_settings())
     return None
 
+def download_caller(request):
+    """(user, client) for the download history: the Basic Auth user a console sends,
+    else the signed-in browser's; the client from the same identification the shop
+    routes use, else 'web' for a browser session and 'other' for anything else."""
+    user = None
+    if request.authorization and request.authorization.username:
+        user = request.authorization.username
+    elif current_user.is_authenticated:
+        user = current_user.user
+    for client_class in SUPPORTED_CLIENTS:
+        if client_class.identify_client(request):
+            return user, client_class.CLIENT_NAME.lower()
+    return user, ('web' if current_user.is_authenticated else 'other')
+
 def file_access(f):
     """Decorator for file-serving endpoints: the logged-in browser's session cookie,
     or HTTP Basic Auth for a console client (Tinfoil, Sphaira) that carries no
@@ -425,6 +440,69 @@ def tasks_page():
 def stats_page():
     return render_template('stats.html', title='Stats',
                            admin_account_created=admin_account_created())
+
+@app.get('/api/stats/downloads')
+@access_required('admin')
+def download_stats_api():
+    """Downloads over the last `days` (default 30, max 365): per-day counts in the
+    server's local time, top titles, per-user and per-client counts, plus the most
+    recent downloads and all-time totals."""
+    try:
+        days = min(max(int(request.args.get('days', 30)), 1), DOWNLOAD_HISTORY_DAYS)
+    except ValueError:
+        days = 30
+    offset = tasks_mod.utc_offset()
+    today = (datetime.datetime.utcnow() + offset).date()
+    first_day = today - datetime.timedelta(days=days - 1)
+    since_utc = datetime.datetime.combine(first_day, datetime.time()) - offset
+
+    events = (DownloadEvent.query.filter(DownloadEvent.downloaded_at >= since_utc)
+              .order_by(DownloadEvent.downloaded_at.desc()).all())
+    by_day = {first_day + datetime.timedelta(days=n): 0 for n in range(days)}
+    titles, users, clients = {}, {}, {}
+    total_bytes = 0
+    for e in events:
+        by_day[(e.downloaded_at + offset).date()] = by_day.get((e.downloaded_at + offset).date(), 0) + 1
+        if e.title_id:
+            titles[e.title_id] = titles.get(e.title_id, 0) + 1
+        users[e.user or ''] = users.get(e.user or '', 0) + 1
+        clients[e.client] = clients.get(e.client, 0) + 1
+        total_bytes += e.size or 0
+
+    def title_name(title_id):
+        name = (titles_lib.get_game_info(title_id) or {}).get('name')
+        return name if name and name != 'Unrecognized' else title_id
+
+    def ranked(counts, limit=None):
+        items = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+        return items[:limit] if limit else items
+
+    recent = events[:50]
+    return jsonify({
+        'days': days,
+        'total': len(events),
+        'total_bytes': total_bytes,
+        'all_time': DownloadEvent.query.count(),
+        'by_day': [{'date': d.isoformat(), 'count': c} for d, c in sorted(by_day.items())],
+        'top_titles': [{'title_id': t, 'name': title_name(t), 'count': c} for t, c in ranked(titles, 10)],
+        'by_user': [{'user': u or None, 'count': c} for u, c in ranked(users)],
+        'by_client': [{'client': cl, 'count': c} for cl, c in ranked(clients)],
+        'recent': [{
+            'downloaded_at': (e.downloaded_at + offset).isoformat(timespec='seconds'),
+            'filename': e.filename, 'title_id': e.title_id,
+            'name': title_name(e.title_id) if e.title_id else None,
+            'app_type': e.app_type, 'app_version': e.app_version, 'size': e.size,
+            'user': e.user, 'client': e.client, 'address': e.address,
+        } for e in recent],
+    })
+
+@app.delete('/api/stats/downloads')
+@access_required('admin')
+def clear_download_history_api():
+    deleted = DownloadEvent.query.delete()
+    db.session.commit()
+    logger.info(f'Download history cleared ({deleted} entries).')
+    return jsonify({'success': True, 'deleted': deleted})
 
 @app.route('/setup')
 def setup_page():
@@ -837,7 +915,8 @@ def serve_game(id):
     # Count only once the response exists: clients probe files with a Range before taking
     # them, and a range past the end of the file raises out of here without transferring.
     response = send_from_directory(filedir, filename)
-    increment_download_count_throttled(filepath, client_address(request))
+    user, client = download_caller(request)
+    increment_download_count_throttled(filepath, client_address(request), user=user, client=client)
     return response
 
 @app.route('/api/library/download/<int:file_id>')
@@ -861,7 +940,9 @@ def download_library_file(file_id):
         return jsonify({'error': f'No file with id {file_id}.'}), 404
     filedir, filename = os.path.split(file_obj.filepath)
     response = send_from_directory(filedir, filename, as_attachment=True)
-    increment_download_count_throttled(file_obj.filepath, client_address(request))
+    increment_download_count_throttled(file_obj.filepath, client_address(request),
+                                       user=current_user.user if current_user.is_authenticated else None,
+                                       client='web')
     return response
 
 @app.route('/api/media/<title_id>/<kind>/<int:position>/<size>/<path:name>')

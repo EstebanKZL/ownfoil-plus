@@ -49,6 +49,12 @@ Everything Ownfoil-Plus does in the background is a task, and this page shows th
 
 The worker section shows what each worker process is doing right now. How many there are is configured in [Workers](#workers), you can use it to see if the backlog of tasks can be optimized.
 
+## Stats page
+
+Admin only. Library-wide figures (files, sizes, verification status, duplicates) and, under `Downloads`, the download history: how many downloads and how much data over the last 7, 30, 90 or 365 days, a per-day chart, the most downloaded titles, counts per user and per client (Tinfoil, Sphaira, CyberFoil or the web UI), and the 50 latest downloads with who took them and from which address.
+
+A file taken again by the same address within a minute counts once, so a console resuming or probing a download isn't counted twice. The history is kept for a year, survives deleting the file it refers to, and can be cleared from the same section (the per-file download counters are kept).
+
 ## Settings page
 
 Admin only, and a single scrolling page.

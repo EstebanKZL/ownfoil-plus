@@ -53,6 +53,60 @@
         </section>
     </div>
 
+    <div class="mt-4" id="downloadsSection">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <h4 class="mb-0">{{ t('dl.heading') }}</h4>
+            <div class="d-flex align-items-center gap-2">
+                <select class="form-select form-select-sm" id="downloadsDaysSelect" style="width: auto;">
+                    <option value="7">{{ t('dl.last_days', days=7) }}</option>
+                    <option value="30" selected>{{ t('dl.last_days', days=30) }}</option>
+                    <option value="90">{{ t('dl.last_days', days=90) }}</option>
+                    <option value="365">{{ t('dl.last_days', days=365) }}</option>
+                </select>
+                <button type="button" id="clearDownloadsBtn" class="btn btn-sm btn-outline-danger">
+                    <i class="bi bi-trash"></i> {{ t('dl.clear') }}
+                </button>
+            </div>
+        </div>
+        <div class="stat-grid mb-3" id="downloadTiles"></div>
+        <div class="download-chart mb-1" id="downloadChart" role="img" aria-label="{{ t('dl.per_day') }}"></div>
+        <div class="d-flex justify-content-between text-secondary small mb-4" id="downloadChartAxis"></div>
+
+        <div class="stat-sections">
+            <section>
+                <h5 class="mb-2">{{ t('dl.top_titles') }}</h5>
+                <table class="table table-sm stat-table">
+                    <thead><tr><th>{{ t('common.title') }}</th><th>{{ t('dl.downloads') }}</th></tr></thead>
+                    <tbody id="downloadTopTitles"></tbody>
+                </table>
+            </section>
+            <section>
+                <h5 class="mb-2">{{ t('dl.by_user') }}</h5>
+                <table class="table table-sm stat-table">
+                    <thead><tr><th>{{ t('dl.user') }}</th><th>{{ t('dl.downloads') }}</th></tr></thead>
+                    <tbody id="downloadByUser"></tbody>
+                </table>
+                <h5 class="mb-2 mt-3">{{ t('dl.by_client') }}</h5>
+                <table class="table table-sm stat-table">
+                    <thead><tr><th>{{ t('dl.client') }}</th><th>{{ t('dl.downloads') }}</th></tr></thead>
+                    <tbody id="downloadByClient"></tbody>
+                </table>
+            </section>
+        </div>
+
+        <h5 class="mb-2 mt-2">{{ t('dl.recent') }}</h5>
+        <div class="table-responsive">
+            <table class="table table-sm table-hover">
+                <thead><tr>
+                    <th>{{ t('dl.when') }}</th><th>{{ t('common.title') }}</th><th>{{ t('common.file') }}</th>
+                    <th>{{ t('dl.user') }}</th><th>{{ t('dl.client') }}</th><th>{{ t('dl.address') }}</th>
+                </tr></thead>
+                <tbody id="downloadRecent"></tbody>
+            </table>
+        </div>
+        <p class="text-secondary small">{{ t('dl.hint') }}</p>
+    </div>
+
     <div class="mt-4" id="duplicatesSection">
         <div class="d-flex justify-content-between align-items-start mb-1 flex-wrap gap-2">
             <h4 class="mb-0">{{ t('stats.duplicate_files') }}</h4>
@@ -1156,6 +1210,99 @@
             }, 3000);
         }
     });
+
+    // --- Downloads: who took what, and when -----------------------------------------
+
+    const DL = {
+        count: {{ t('dl.tile.count') | tojson }},
+        countNote: {{ t('dl.tile.count_note', days='__DAYS__') | tojson }},
+        bytes: {{ t('dl.tile.bytes') | tojson }},
+        bytesNote: {{ t('dl.tile.bytes_note') | tojson }},
+        allTime: {{ t('dl.tile.all_time') | tojson }},
+        allTimeNote: {{ t('dl.tile.all_time_note') | tojson }},
+        anonymous: {{ t('dl.anonymous') | tojson }},
+        none: {{ t('dl.none') | tojson }},
+        clearConfirm: {{ t('dl.clear_confirm') | tojson }},
+        dayTitle: {{ t('dl.day_title', date='__DATE__', count='__COUNT__') | tojson }},
+        clients: {web: 'Web', tinfoil: 'Tinfoil', sphaira: 'Sphaira', cyberfoil: 'CyberFoil', other: {{ t('dl.client_other') | tojson }}},
+    };
+
+    function dlCells(tbody, rows) {
+        const body = document.getElementById(tbody);
+        body.innerHTML = '';
+        if (!rows.length) {
+            const tr = body.insertRow();
+            const td = tr.insertCell();
+            td.colSpan = 6;
+            td.className = 'text-secondary fst-italic';
+            td.textContent = DL.none;
+            return;
+        }
+        rows.forEach(cells => {
+            const tr = body.insertRow();
+            cells.forEach(value => { tr.insertCell().textContent = value ?? ''; });
+        });
+    }
+
+    function renderDownloads(d) {
+        const tiles = document.getElementById('downloadTiles');
+        tiles.innerHTML = '';
+        [[DL.count, count(d.total), DL.countNote.replace('__DAYS__', d.days)],
+         [DL.bytes, formatBytes(d.total_bytes), DL.bytesNote],
+         [DL.allTime, count(d.all_time), DL.allTimeNote]].forEach(([label, value, note]) => {
+            const tile = document.createElement('div');
+            tile.innerHTML = `<div class="stat-value">${value}</div>
+                <div class="stat-label">${label}</div>
+                <div class="stat-note">${note}</div>`;
+            tiles.appendChild(tile);
+        });
+
+        const chart = document.getElementById('downloadChart');
+        chart.innerHTML = '';
+        const peak = Math.max(1, ...d.by_day.map(b => b.count));
+        d.by_day.forEach(b => {
+            const bar = document.createElement('div');
+            bar.className = 'download-bar' + (b.count ? '' : ' empty');
+            bar.style.height = (b.count ? Math.max(4, Math.round(100 * b.count / peak)) : 2) + '%';
+            bar.title = DL.dayTitle.replace('__DATE__', new Date(b.date + 'T00:00').toLocaleDateString())
+                .replace('__COUNT__', b.count);
+            chart.appendChild(bar);
+        });
+        const axis = document.getElementById('downloadChartAxis');
+        const fmt = iso => new Date(iso + 'T00:00').toLocaleDateString([], {day: 'numeric', month: 'short'});
+        axis.innerHTML = '';
+        if (d.by_day.length) {
+            [d.by_day[0].date, d.by_day[d.by_day.length - 1].date].forEach(iso => {
+                const span = document.createElement('span');
+                span.textContent = fmt(iso);
+                axis.appendChild(span);
+            });
+        }
+
+        dlCells('downloadTopTitles', d.top_titles.map(t => [t.name, count(t.count)]));
+        dlCells('downloadByUser', d.by_user.map(u => [u.user || DL.anonymous, count(u.count)]));
+        dlCells('downloadByClient', d.by_client.map(c => [DL.clients[c.client] || c.client, count(c.count)]));
+        dlCells('downloadRecent', d.recent.map(r => [
+            new Date(r.downloaded_at).toLocaleString([], {dateStyle: 'short', timeStyle: 'short'}),
+            r.name || r.title_id || '', r.filename, r.user || DL.anonymous,
+            DL.clients[r.client] || r.client, r.address]));
+    }
+
+    function loadDownloads() {
+        const days = document.getElementById('downloadsDaysSelect').value;
+        fetch('/api/stats/downloads?days=' + days, {credentials: 'same-origin'})
+            .then(r => r.json())
+            .then(renderDownloads)
+            .catch(err => console.error('Could not load download stats', err));
+    }
+
+    document.getElementById('downloadsDaysSelect').addEventListener('change', loadDownloads);
+    document.getElementById('clearDownloadsBtn').addEventListener('click', () => {
+        if (!confirm(DL.clearConfirm)) return;
+        fetch('/api/stats/downloads', {method: 'DELETE', credentials: 'same-origin'}).then(loadDownloads);
+    });
+    document.getElementById('refreshStats').addEventListener('click', loadDownloads);
+    loadDownloads();
 
 </script>
 {% endblock %}
