@@ -4,6 +4,31 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.41]
+
+- **New: light / dark / automatic theme**, from a sun/moon menu in the navbar.
+  Automatic follows the device's own setting and switches live when it changes. The
+  choice is remembered per browser (localStorage) and applied by a small script in
+  `<head>` before the first paint, so there's no flash of the wrong colors. Dark stays
+  the default, so nothing changes for anyone who doesn't pick a theme. The UI was
+  already built on Bootstrap's theme variables; game cards (card and list views)
+  deliberately stay dark over their artwork in both themes, as do the "console screen"
+  boxes on the Setup page and the navbar.
+- **New: global search** (`Ctrl+K` / `Cmd+K`, `/`, or the magnifier in the navbar),
+  on every page. Finds games in the library by name or title ID, files by name (admins
+  only), and pages and settings sections by name or keyword in English and Spanish
+  ("notificaciones", "backup", "usuarios", "discord"...), accent-insensitive. Arrow keys
+  move, `Enter` opens: a game opens the library already filtered to it, a file opens
+  the Files page filtered to it, a setting jumps to its section. A user without admin
+  access only ever sees games and the pages they can open.
+- New `/api/search` endpoint (shop access; files only for admins). The library page
+  and the Files page now accept `?q=` to start pre-filtered.
+- Settings sections that had no anchor now have one (`#Library`, `#Titles`, `#Media`,
+  `#Shop`, `#Scheduler`, `#Workers`, `#Backup`), so links can jump straight to them.
+- New `tests/test_theme_search.py` (13 tests); `test_settings_i18n`'s divider check
+  now finds the sections by their ids, since their names also appear in the search
+  list.
+
 ## [6.2.5.40]
 
 - **New: dashboard**, now the landing page of `Admin` (and the first entry of its

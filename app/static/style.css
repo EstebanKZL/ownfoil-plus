@@ -393,6 +393,17 @@ p.game-description {
 
 /* Two columns rather than auto-fit: four sections in a row would put each table's
    figures a screen away from the next, and the tables are all the same shape anyway. */
+/* Global search palette (nav.html / static/js/search.js): near the top, like a
+   command palette, rather than vertically centred. */
+.search-dialog {
+    margin-top: 8vh;
+    max-width: 36rem;
+}
+
+.search-dialog .modal-body {
+    max-height: 60vh;
+}
+
 /* Dashboard tiles are links: a hint of the hover state, nothing louder. */
 .dash-tile {
     display: block;

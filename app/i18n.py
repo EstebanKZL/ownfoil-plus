@@ -36,6 +36,18 @@ TRANSLATIONS = {
     'settings_nav.dashboard': {'en': 'Dashboard', 'es': 'Panel'},
     'settings_nav.settings': {'en': 'Settings', 'es': 'Ajustes'},
     'nav.install_app': {'en': 'Install app', 'es': 'Instalar app'},
+    'theme.title': {'en': 'Theme', 'es': 'Tema'},
+    'theme.light': {'en': 'Light', 'es': 'Claro'},
+    'theme.dark': {'en': 'Dark', 'es': 'Oscuro'},
+    'theme.auto': {'en': 'Automatic (system)', 'es': 'Automático (sistema)'},
+    'search.open_title': {'en': 'Search (Ctrl+K)', 'es': 'Buscar (Ctrl+K)'},
+    'search.placeholder': {'en': 'Search games, files, settings...', 'es': 'Buscar juegos, archivos, ajustes...'},
+    'search.games': {'en': 'Games', 'es': 'Juegos'},
+    'search.files': {'en': 'Files', 'es': 'Archivos'},
+    'search.pages': {'en': 'Pages', 'es': 'Páginas'},
+    'search.empty': {'en': 'No results.', 'es': 'Sin resultados.'},
+    'search.hint': {'en': 'Type a game name, a title ID, a file name or a setting.',
+                    'es': 'Escribí el nombre de un juego, un ID de título, un nombre de archivo o un ajuste.'},
 
     # Offline page (shown by the service worker when the server can't be reached)
     'offline.title': {'en': "Can't reach the server", 'es': 'No se puede conectar con el servidor'},
