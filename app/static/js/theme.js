@@ -75,5 +75,10 @@
     applyStyle();
     media.addEventListener('change', () => { if (stored() === 'auto') apply('auto'); });
     // The navbar's menu doesn't exist yet when this runs in <head>: mark it once it does.
-    document.addEventListener('DOMContentLoaded', () => { apply(stored()); applyStyle(); });
+    // Pages with the phone's bottom bar (admins) get room for it at the bottom.
+    document.addEventListener('DOMContentLoaded', () => {
+        apply(stored());
+        applyStyle();
+        if (document.querySelector('.bottom-nav')) document.body.classList.add('has-bottom-nav');
+    });
 })();

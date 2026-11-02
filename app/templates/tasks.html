@@ -467,12 +467,14 @@
         }
         scheduleRender();
         // The top bar's counter is rendered at page load; keep it live here.
-        const navCount = document.getElementById('navCountTasks');
-        if (navCount) {
-            const running = Object.values(tasks).filter(t => !t.done && t.status === 'running').length;
-            navCount.textContent = running;
-            navCount.hidden = !running;
-        }
+        const running = Object.values(tasks).filter(t => !t.done && t.status === 'running').length;
+        ['navCountTasks', 'navCountTasksPhone'].forEach(id => {
+            const navCount = document.getElementById(id);
+            if (navCount) {
+                navCount.textContent = running;
+                navCount.hidden = !running;
+            }
+        });
     });
 
     live.on('workers', (type, data) => {

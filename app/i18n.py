@@ -21,6 +21,10 @@ TRANSLATIONS = {
     'nav.admin': {'en': 'Admin', 'es': 'Administración'},
     'nav.login': {'en': 'Login', 'es': 'Iniciar sesión'},
     'nav.logout': {'en': 'Logout', 'es': 'Cerrar sesión'},
+    'nav.more': {'en': 'More', 'es': 'Más'},
+    'nav.main': {'en': 'Main navigation', 'es': 'Navegación principal'},
+    'nav.close': {'en': 'Close', 'es': 'Cerrar'},
+    'nav.language': {'en': 'Language', 'es': 'Idioma'},
 
     'login.please_login': {'en': 'Please login to your account', 'es': 'Iniciá sesión en tu cuenta'},
     'login.username': {'en': 'Username', 'es': 'Usuario'},

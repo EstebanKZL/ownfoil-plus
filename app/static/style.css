@@ -286,6 +286,81 @@ p.game-description {
     border: 1px solid var(--op-border);
 }
 
+/* ============== Phone bottom bar (admins) ============== */
+
+.bottom-nav {
+    display: none;
+}
+
+@media (max-width: 767.98px) {
+    .bottom-nav {
+        display: flex;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1030;
+        padding: .3rem .25rem calc(.3rem + env(safe-area-inset-bottom));
+        background-color: rgba(var(--op-surface-0-rgb), .92);
+        backdrop-filter: blur(10px);
+        border-top: 1px solid var(--op-border);
+    }
+
+    body.has-bottom-nav {
+        padding-bottom: calc(4.25rem + env(safe-area-inset-bottom));
+    }
+
+    /* The bottom bar and its "More" sheet replace the top bar's menu for admins. */
+    .op-toggler-admin {
+        display: none;
+    }
+}
+
+.bottom-nav-item {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .1rem;
+    position: relative;
+    padding: .3rem 0;
+    border: 0;
+    border-radius: var(--op-radius-sm);
+    background: none;
+    color: var(--op-text-muted);
+    font-size: .7rem;
+    text-decoration: none;
+}
+
+.bottom-nav-item .bi {
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
+.bottom-nav-item.active {
+    color: var(--op-nav);
+    background-color: rgba(var(--op-nav-rgb), .12);
+}
+
+.bottom-nav-item .op-count {
+    position: absolute;
+    top: 0;
+    left: calc(50% + .45rem);
+    font-size: .62rem;
+}
+
+.more-sheet {
+    height: auto;
+    max-height: 80vh;
+    border-radius: var(--op-radius-lg) var(--op-radius-lg) 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+.more-sheet-list .dropdown-item {
+    border-radius: var(--op-radius-sm);
+    padding: .55rem .75rem;
+}
+
 .settings-panel {
     min-width: 0;  /* let long task names shrink instead of widening the row */
 }

@@ -96,3 +96,49 @@ def test_active_item_is_marked(admin_client):
 def test_tasks_page_keeps_the_nav_count_live():
     html = open(os.path.join(ROOT, "app", "templates", "tasks.html"), encoding="utf-8").read()
     assert "navCountTasks" in html
+
+
+# --- phone bottom bar ----------------------------------------------------------------
+
+def _css():
+    with open(os.path.join(ROOT, "app", "static", "style.css"), encoding="utf-8") as f:
+        return f.read()
+
+
+def _media_block(css, query):
+    """The body of every `@media (<query>)` block, concatenated."""
+    out = []
+    for match in re.finditer(r"@media \(" + re.escape(query) + r"\) \{", css):
+        depth, i = 1, match.end()
+        while depth:
+            depth += {"{": 1, "}": -1}.get(css[i], 0)
+            i += 1
+        out.append(css[match.end():i - 1])
+    return "\n".join(out)
+
+
+def test_bottom_nav_for_admins_only(shop_app, admin_client):
+    html = admin_client.get("/").get_data(as_text=True)
+    assert 'class="bottom-nav' in html and 'id="moreSheet"' in html
+    for href in ('href="/"', 'href="/admin/files"', 'href="/admin/tasks"', 'href="/admin/stats"'):
+        assert re.search(r'class="bottom-nav.*?' + re.escape(href), html, re.DOTALL), href
+    shopper = shop_app.app.test_client()
+    _login(shopper, "shopper")
+    assert 'class="bottom-nav' not in shopper.get("/").get_data(as_text=True)
+
+
+def test_more_sheet_has_admin_links_and_theme_choices(admin_client):
+    html = admin_client.get("/").get_data(as_text=True)
+    sheet = html.split('id="moreSheet"', 1)[1]
+    for href in ('href="/setup"', 'href="/admin"', 'href="/admin/settings"', 'href="/admin/services"'):
+        assert href in sheet, href
+    assert 'data-style-choice="joycon"' in sheet and 'data-theme-choice="dark"' in sheet
+
+
+def test_bottom_nav_is_phone_only_and_padded():
+    css = _css()
+    phone = _media_block(css, "max-width: 767.98px")
+    assert re.search(r"\.bottom-nav \{[^}]*display: flex", phone)
+    assert "safe-area-inset-bottom" in phone
+    assert re.search(r"body\.has-bottom-nav \{[^}]*padding-bottom", phone)
+    assert re.search(r"(^|\n)\.bottom-nav \{[^}]*display: none", css)  # hidden on wider screens

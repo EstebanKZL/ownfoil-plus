@@ -93,6 +93,53 @@
         </div>
     </div>
 </nav>
+{% if nav_admin %}
+{# Phones (< 768px): the admin's pages as a bottom bar, the rest in the "More" sheet.
+   Shown by style.css only below md; theme.js pads <body> so nothing hides under it. #}
+<nav class="bottom-nav" aria-label="{{ t('nav.main') }}">
+    {% for key, href, icon, label, count_id, count, tone in [
+        ('library', '/', 'bi-grid', t('nav.library'), None, 0, 'nav'),
+        ('files', '/admin/files', 'bi-file-earmark', t('settings_nav.files'), 'navCountFilesPhone', nav_counts.unidentified, 'wait'),
+        ('tasks', '/admin/tasks', 'bi-list-task', t('settings_nav.tasks'), 'navCountTasksPhone', nav_counts.running_tasks, 'nav'),
+        ('stats', '/admin/stats', 'bi-bar-chart', t('settings_nav.stats'), None, 0, 'nav'),
+    ] %}
+    <a class="bottom-nav-item{% if nav_active == key %} active{% endif %}" href="{{ href }}"{% if nav_active == key %} aria-current="page"{% endif %}>
+        <i class="bi {{ icon }}" aria-hidden="true"></i>
+        <span>{{ label }}</span>
+        {% if count_id %}<span class="op-count op-count--{{ tone }}" id="{{ count_id }}"{% if not count %} hidden{% endif %}>{{ count }}</span>{% endif %}
+    </a>
+    {% endfor %}
+    <button type="button" class="bottom-nav-item{% if nav_active in ('admin', 'setup') %} active{% endif %}" data-bs-toggle="offcanvas" data-bs-target="#moreSheet" aria-controls="moreSheet">
+        <i class="bi bi-three-dots" aria-hidden="true"></i>
+        <span>{{ t('nav.more') }}</span>
+    </button>
+</nav>
+<div class="offcanvas offcanvas-bottom more-sheet" tabindex="-1" id="moreSheet" aria-labelledby="moreSheetLabel">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="moreSheetLabel">{{ t('nav.more') }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="{{ t('nav.close') }}"></button>
+    </div>
+    <div class="offcanvas-body">
+        <ul class="list-unstyled more-sheet-list">
+            <li><a class="dropdown-item{% if nav_active == 'setup' %} active{% endif %}" href="/setup"><i class="bi bi-joystick me-2"></i>{{ t('nav.setup') }}</a></li>
+            <li><a class="dropdown-item{% if p == '/admin' %} active{% endif %}" href="/admin"><i class="bi bi-speedometer2 me-2"></i>{{ t('settings_nav.dashboard') }}</a></li>
+            <li><a class="dropdown-item{% if p == '/admin/settings' %} active{% endif %}" href="/admin/settings"><i class="bi bi-gear me-2"></i>{{ t('settings_nav.settings') }}</a></li>
+            <li><a class="dropdown-item{% if p.startswith('/admin/services') %} active{% endif %}" href="/admin/services"><i class="bi bi-broadcast me-2"></i>{{ t('settings_nav.services') }}</a></li>
+            <li><hr class="dropdown-divider"></li>
+            {% include '_theme_choices.html' %}
+            <li><hr class="dropdown-divider"></li>
+            <li><h6 class="dropdown-header">{{ t('nav.language') }}</h6></li>
+            {% for lang in SUPPORTED_LANGUAGES %}
+            <li><a class="dropdown-item{% if current_language() == lang %} active{% endif %}" href="/set-language/{{ lang }}"><i class="bi bi-translate me-2"></i>{{ t('language.' ~ lang) }}</a></li>
+            {% endfor %}
+            {% if current_user.is_authenticated %}
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="/logout"><i class="bi bi-box-arrow-right me-2"></i>{{ t('nav.logout') }}</a></li>
+            {% endif %}
+        </ul>
+    </div>
+</div>
+{% endif %}
 {# Global search (Ctrl+K): the pages this user can open, matched in the browser by
    static/js/search.js; games and files come from /api/search. #}
 {% set search_is_admin = nav_admin %}
