@@ -249,6 +249,18 @@
     --bs-progress-bar-bg: var(--op-nav);
 }
 
+.form-range::-webkit-slider-thumb {
+    background-color: var(--op-nav);
+}
+
+.form-range::-moz-range-thumb {
+    background-color: var(--op-nav);
+}
+
+.form-range:focus::-webkit-slider-thumb {
+    box-shadow: 0 0 0 1px var(--op-surface-0), 0 0 0 .25rem rgba(var(--op-nav-rgb), .25);
+}
+
 .text-bg-primary {
     color: var(--op-on-action) !important;
     background-color: var(--op-action) !important;

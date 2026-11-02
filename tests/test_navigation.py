@@ -142,3 +142,9 @@ def test_bottom_nav_is_phone_only_and_padded():
     assert "safe-area-inset-bottom" in phone
     assert re.search(r"body\.has-bottom-nav \{[^}]*padding-bottom", phone)
     assert re.search(r"(^|\n)\.bottom-nav \{[^}]*display: none", css)  # hidden on wider screens
+
+
+def test_more_sheet_grows_with_its_content():
+    # Bootstrap's bottom offcanvas is a fixed 30vh: too short for the sheet's list.
+    css = _css()
+    assert re.search(r"\.offcanvas\.more-sheet \{[^}]*--bs-offcanvas-height: auto[^}]*max-height: 85vh", css)

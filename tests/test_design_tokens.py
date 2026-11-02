@@ -125,3 +125,22 @@ def test_login_and_offline_use_the_surface_card(shop_app):
 def test_setup_uses_page_head(admin_client):
     html = admin_client.get("/setup").get_data(as_text=True)
     assert 'class="page-head' in html
+
+
+# --- found in the browser check -----------------------------------------------------
+
+def test_page_head_glow_does_not_widen_the_page():
+    # A glow wider than the header made phone pages scroll sideways.
+    body = _rule(_read("app/static/style.css"), ".page-head::before")
+    inset = re.search(r"inset: ([^;]+);", body).group(1).split()
+    assert inset[1] == "0" and inset[3] == "0"
+
+
+def test_appearance_picker_marks_the_chosen_style():
+    css = _read("app/static/style.css")
+    assert "var(--op-nav)" in _rule(css, ".btn-check:checked + .style-option")
+
+
+def test_range_inputs_follow_the_style():
+    css = _read("app/static/css/tokens.css")
+    assert "var(--op-nav)" in _rule(css, ".form-range::-webkit-slider-thumb")

@@ -349,9 +349,9 @@ p.game-description {
     font-size: .62rem;
 }
 
-.more-sheet {
-    height: auto;
-    max-height: 80vh;
+.offcanvas.more-sheet {
+    --bs-offcanvas-height: auto;  /* Bootstrap's bottom offcanvas is a fixed 30vh */
+    max-height: 85vh;
     border-radius: var(--op-radius-lg) var(--op-radius-lg) 0 0;
     padding-bottom: env(safe-area-inset-bottom);
 }
@@ -359,6 +359,12 @@ p.game-description {
 .more-sheet-list .dropdown-item {
     border-radius: var(--op-radius-sm);
     padding: .55rem .75rem;
+}
+
+.more-sheet-list .dropdown-divider {
+    margin: .5rem 0;
+    border-top: 1px solid var(--op-border);
+    opacity: 1;
 }
 
 .settings-panel {
@@ -524,10 +530,11 @@ p.game-description {
     isolation: isolate;
 }
 
+/* The glow stays inside the header's own box: wider, it made phone pages scroll sideways. */
 .page-head::before {
     content: "";
     position: absolute;
-    inset: -1.5rem -40% auto -10%;
+    inset: -1rem 0 auto 0;
     height: 9rem;
     z-index: -1;
     pointer-events: none;
@@ -744,6 +751,46 @@ a.stat-tile:hover {
     font-size: 1.15rem;
     margin: 0;
     color: var(--op-text);
+}
+
+/* Settings > Appearance: the three styles as pills; the chosen one is outlined. */
+.style-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+}
+
+.style-picker legend {
+    width: 100%;
+    margin-bottom: .25rem;
+}
+
+.style-option {
+    display: inline-flex;
+    align-items: center;
+    padding: .45rem .9rem;
+    border-radius: 2rem;
+    border: 1px solid var(--op-border);
+    background-color: var(--op-surface-1);
+    color: var(--op-text);
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color var(--op-dur) var(--op-ease), background-color var(--op-dur) var(--op-ease);
+}
+
+.style-option:hover {
+    border-color: var(--op-border-strong);
+}
+
+.btn-check:checked + .style-option {
+    border-color: var(--op-nav);
+    background-color: rgba(var(--op-nav-rgb), .14);
+    box-shadow: 0 0 0 1px var(--op-nav);
+}
+
+.btn-check:focus-visible + .style-option {
+    outline: 2px solid var(--op-nav);
+    outline-offset: 2px;
 }
 
 /* Login and offline pages: one centered card on the style's glow. */
