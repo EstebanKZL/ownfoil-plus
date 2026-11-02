@@ -70,9 +70,10 @@ def test_light_theme_covers_the_game_cards():
         assert selector + " {" in css, selector
 
 
-def test_dark_theme_cards_look_as_before():
+def test_game_cards_follow_the_design_tokens():
+    # Stage 1 design system: the card colors come from the tokens, not literals.
     rule = _block(_read("app", "static", "style.css"), ".game-surface")
-    assert "#212529" in rule and "#fff" in rule
+    assert "var(--op-surface-1)" in rule and "var(--op-text)" in rule
 
 
 # --- task history ------------------------------------------------------------------------

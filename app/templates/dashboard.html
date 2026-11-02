@@ -2,13 +2,16 @@
 {% block panel %}
 <div class="settings-container container mt-3">
 
-    <div class="task-section-head">
-        <h2 class="mb-0">{{ t('dash.title') }}</h2>
-        <button type="button" id="refreshDashboard" class="icon-btn ms-auto" title="{{ t('stats.refresh') }}">
-            <i class="bi bi-arrow-clockwise"></i>
-        </button>
-    </div>
-    <p class="text-secondary">{{ t('dash.subtitle') }}</p>
+    <header class="page-head">
+        <span class="page-head__icon"><i class="bi bi-speedometer2" aria-hidden="true"></i></span>
+        <h2 class="page-head__title">{{ t('dash.title') }}</h2>
+        <p class="page-head__desc">{{ t('dash.subtitle') }}</p>
+        <div class="page-head__actions">
+            <button type="button" id="refreshDashboard" class="icon-btn" title="{{ t('stats.refresh') }}">
+                <i class="bi bi-arrow-clockwise"></i>
+            </button>
+        </div>
+    </header>
 
     <div class="list-group mb-4" id="dashAlerts"></div>
 
@@ -132,20 +135,28 @@
     function renderTiles(d) {
         const lib = d.library;
         const pct = (n, of) => of ? Math.round(100 * n / of) + '%' : '-';
+        // (value, label, note, link, icon, tone) - the tone is the tile's one color.
         const tiles = [
             [fmtNum(lib.owned_titles), D.tileTitles,
-             fill(D.tileTitlesNote, {complete: pct(lib.complete_titles, lib.owned_titles), uptodate: pct(lib.up_to_date_titles, lib.owned_titles)}), '/'],
-            [fmtNum(lib.files), D.tileFiles, fill(D.tileFilesNote, {size: formatBytes(lib.size)}), '/admin/files'],
-            [fmtNum(d.downloads_week), D.tileDownloads, D.tileDownloadsNote, '/admin/stats#downloadsSection'],
+             fill(D.tileTitlesNote, {complete: pct(lib.complete_titles, lib.owned_titles), uptodate: pct(lib.up_to_date_titles, lib.owned_titles)}),
+             '/', 'bi-controller', 'ok'],
+            [fmtNum(lib.files), D.tileFiles, fill(D.tileFilesNote, {size: formatBytes(lib.size)}),
+             '/admin/files', 'bi-hdd-stack', 'nav'],
+            [fmtNum(d.downloads_week), D.tileDownloads, D.tileDownloadsNote,
+             '/admin/stats#downloadsSection', 'bi-download', 'action'],
             [fmtNum(d.tasks.running + d.tasks.pending), D.tileTasks,
-             fill(D.tileTasksNote, {running: fmtNum(d.tasks.running), pending: fmtNum(d.tasks.pending)}), '/admin/tasks'],
+             fill(D.tileTasksNote, {running: fmtNum(d.tasks.running), pending: fmtNum(d.tasks.pending)}),
+             '/admin/tasks', 'bi-list-task', 'wait'],
         ];
         const box = document.getElementById('dashTiles');
         box.innerHTML = '';
-        tiles.forEach(([value, label, note, href]) => {
-            const a = el('a', 'dash-tile text-reset text-decoration-none');
+        tiles.forEach(([value, label, note, href, icon, tone]) => {
+            const a = el('a', `stat-tile stat-tile--${tone}`);
             a.href = href;
-            a.append(el('div', 'stat-value', value), el('div', 'stat-label', label), el('div', 'stat-note', note));
+            const iconBox = el('span', 'stat-tile__icon');
+            iconBox.append(el('i', `bi ${icon}`));
+            a.append(iconBox, el('div', 'stat-tile__value', value), el('div', 'stat-tile__label', label),
+                     el('div', 'stat-tile__note', note));
             box.append(a);
         });
     }

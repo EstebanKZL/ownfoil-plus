@@ -506,16 +506,268 @@ p.game-description {
     max-height: 60vh;
 }
 
-/* Dashboard tiles are links: a hint of the hover state, nothing louder. */
-.dash-tile {
-    display: block;
-    padding: .25rem .5rem;
-    margin: -.25rem -.5rem;
-    border-radius: .375rem;
+/* ============== Shared components (design system, stage 1) ============== */
+/* Built only from the tokens in css/tokens.css, so they follow every style and mode.
+   The Dashboard is the reference page; the other pages adopt them stage by stage. */
+
+/* Page header: colored icon, title with an optional count, one line of description, a
+   soft glow of the style's colors behind it. */
+.page-head {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    column-gap: .9rem;
+    row-gap: .15rem;
+    padding: 1.25rem 0 1rem;
+    margin-bottom: 1rem;
+    isolation: isolate;
 }
 
-.dash-tile:hover {
-    background: var(--bs-tertiary-bg);
+.page-head::before {
+    content: "";
+    position: absolute;
+    inset: -1.5rem -40% auto -10%;
+    height: 9rem;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(closest-side at 20% 50%, var(--op-glow-1), transparent),
+        radial-gradient(closest-side at 70% 40%, var(--op-glow-2), transparent);
+    filter: blur(10px);
+}
+
+.page-head__icon {
+    grid-row: span 2;
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: var(--op-radius);
+    font-size: 1.35rem;
+    color: var(--op-nav);
+    background-color: rgba(var(--op-nav-rgb), .14);
+}
+
+.page-head__title {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -.02em;
+}
+
+.page-head__count {
+    padding: .1rem .55rem;
+    border-radius: 2rem;
+    font-size: .9rem;
+    font-weight: 700;
+    color: var(--op-text);
+    background-color: var(--op-surface-2);
+    border: 1px solid var(--op-border);
+}
+
+.page-head__desc {
+    grid-column: 2;
+    margin: 0;
+    color: var(--op-text-muted);
+}
+
+.page-head__actions {
+    grid-row: 1 / span 2;
+    grid-column: 3;
+    display: flex;
+    gap: .5rem;
+}
+
+/* Stat tile: icon, big number, label (and an optional note), tinted with one color. */
+.stat-tile {
+    --tile: var(--op-nav);
+    --tile-rgb: var(--op-nav-rgb);
+    position: relative;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: .85rem;
+    align-items: center;
+    padding: 1rem 1.1rem;
+    overflow: hidden;
+    border-radius: var(--op-radius-lg);
+    border: 1px solid rgba(var(--tile-rgb), .25);
+    background:
+        radial-gradient(closest-side at 85% 50%, rgba(var(--tile-rgb), .14), transparent),
+        var(--op-surface-1);
+    color: var(--op-text);
+    text-decoration: none;
+    transition: transform var(--op-dur) var(--op-ease), border-color var(--op-dur) var(--op-ease);
+}
+
+a.stat-tile:hover {
+    color: var(--op-text);
+    border-color: rgba(var(--tile-rgb), .55);
+    transform: translateY(-2px);
+}
+
+.stat-tile--ok { --tile: var(--op-ok); --tile-rgb: var(--op-ok-rgb); }
+.stat-tile--wait { --tile: var(--op-wait); --tile-rgb: var(--op-wait-rgb); }
+.stat-tile--nav { --tile: var(--op-nav); --tile-rgb: var(--op-nav-rgb); }
+.stat-tile--action { --tile: var(--op-action); --tile-rgb: var(--op-action-rgb); }
+
+.stat-tile__icon {
+    grid-row: span 3;
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: var(--op-radius);
+    font-size: 1.3rem;
+    color: var(--tile);
+    background-color: rgba(var(--tile-rgb), .15);
+}
+
+.stat-tile__value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -.02em;
+}
+
+.stat-tile__label {
+    font-weight: 500;
+    font-size: .9rem;
+}
+
+.stat-tile__note {
+    color: var(--op-text-muted);
+    font-size: .78rem;
+}
+
+/* Filter pill with its count; the active one is filled with the navigation accent. */
+.filter-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .35rem .8rem;
+    border-radius: 2rem;
+    border: 1px solid var(--op-border);
+    background-color: var(--op-surface-1);
+    color: var(--op-text);
+    font-size: .875rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color var(--op-dur) var(--op-ease), border-color var(--op-dur) var(--op-ease);
+}
+
+.filter-pill:hover {
+    border-color: rgba(var(--op-nav-rgb), .5);
+}
+
+.filter-pill.active {
+    color: var(--op-surface-0);
+    background-color: var(--op-nav);
+    border-color: var(--op-nav);
+}
+
+.filter-pill__count {
+    font-size: .75rem;
+    font-weight: 700;
+    opacity: .8;
+}
+
+/* Toolbar: search, sort and view toggles in one block. */
+.toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem;
+    padding: .5rem;
+    border-radius: var(--op-radius);
+    border: 1px solid var(--op-border);
+    background-color: var(--op-surface-1);
+}
+
+.toolbar .form-control,
+.toolbar .form-select {
+    border-color: transparent;
+    background-color: var(--op-surface-2);
+}
+
+/* Card surface. */
+.surface {
+    border-radius: var(--op-radius-lg);
+    border: 1px solid var(--op-border);
+    background-color: var(--op-surface-1);
+    color: var(--op-text);
+    padding: 1.25rem;
+}
+
+/* Status badge, one fixed color per meaning. */
+.status-badge {
+    --badge: var(--op-text-muted);
+    --badge-rgb: var(--op-text-rgb);
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    padding: .2rem .6rem;
+    border-radius: 2rem;
+    font-size: .75rem;
+    font-weight: 600;
+    color: var(--badge);
+    background-color: rgba(var(--badge-rgb), .14);
+    border: 1px solid rgba(var(--badge-rgb), .3);
+}
+
+.status-badge--ok { --badge: var(--op-ok); --badge-rgb: var(--op-ok-rgb); }
+.status-badge--wait { --badge: var(--op-wait); --badge-rgb: var(--op-wait-rgb); }
+.status-badge--dlc { --badge: var(--op-nav); --badge-rgb: var(--op-nav-rgb); }
+.status-badge--fav { --badge: var(--op-fav); --badge-rgb: var(--op-fav-rgb); }
+
+/* Empty state: an invitation, not an apology. */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .5rem;
+    padding: 2.5rem 1rem;
+    text-align: center;
+    color: var(--op-text-muted);
+}
+
+.empty-state > .bi {
+    font-size: 2.25rem;
+    color: var(--op-nav);
+}
+
+.empty-state h3 {
+    font-size: 1.15rem;
+    margin: 0;
+    color: var(--op-text);
+}
+
+@media (max-width: 575.98px) {
+    .page-head__title {
+        font-size: 1.4rem;
+    }
+
+    .page-head__actions {
+        grid-row: auto;
+        grid-column: 1 / -1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .stat-tile,
+    .filter-pill,
+    .game-surface,
+    .op-nav-link {
+        transition: none;
+    }
+
+    a.stat-tile:hover {
+        transform: none;
+    }
 }
 
 /* Files page upload drop zone. */
@@ -1533,9 +1785,20 @@ p.game-description {
    light theme - and left text that takes the light theme's dark grey ("Base game",
    versions) unreadable on them. They follow the theme now; dark looks exactly as
    before. */
+/* Game cards share the .surface look (design tokens); the cover art and its overlay sit
+   on top of it, so the dark card keeps light text in every style. */
 .game-surface {
-    background-color: #212529;
-    color: #fff;
+    background-color: var(--op-surface-1);
+    color: var(--op-text);
+    border-color: var(--op-border);
+    border-radius: var(--op-radius-lg) !important;
+    transition: transform var(--op-dur) var(--op-ease), box-shadow var(--op-dur) var(--op-ease),
+        border-color var(--op-dur) var(--op-ease);
+}
+
+.game-surface:hover {
+    border-color: rgba(var(--op-nav-rgb), .5);
+    box-shadow: var(--op-shadow);
 }
 
 /* ============== Light theme: soft, not stark white ============== */
@@ -1558,9 +1821,9 @@ p.game-description {
 
 /* Game cards in the light theme. */
 [data-bs-theme=light] .game-surface {
-    background-color: #f7f5f0;
-    color: #30353a;
-    border-color: #d5d1c7;
+    background-color: var(--op-surface-1);
+    color: var(--op-text);
+    border-color: var(--op-border);
 }
 
 [data-bs-theme=light] .game-info {

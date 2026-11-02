@@ -71,3 +71,42 @@ def test_style_css_has_no_bootstrap_blue_literal():
 def test_light_palette_lives_in_tokens_only():
     # style.css loads after tokens.css: a leftover light block there would win.
     assert not _rule(_read("app/static/style.css"), "[data-bs-theme=light]").strip()
+
+
+# --- shared components ---------------------------------------------------------------
+
+COMPONENTS = (".page-head", ".stat-tile", ".filter-pill", ".toolbar", ".surface",
+              ".status-badge", ".empty-state")
+
+
+def test_components_exist_and_use_tokens_only():
+    css = _read("app/static/style.css")
+    for cls in COMPONENTS:
+        body = _rule(css, cls)
+        assert body.strip(), cls
+        assert not re.search(r"#[0-9a-fA-F]{3,8}\b", body), cls
+
+
+def test_component_modifiers_use_the_semantic_colors():
+    css = _read("app/static/style.css")
+    for modifier, token in (("--ok", "--op-ok"), ("--wait", "--op-wait"), ("--nav", "--op-nav"),
+                            ("--action", "--op-action")):
+        assert token in _rule(css, ".stat-tile" + modifier), modifier
+    for modifier, token in (("--ok", "--op-ok"), ("--wait", "--op-wait"), ("--fav", "--op-fav")):
+        assert token in _rule(css, ".status-badge" + modifier), modifier
+
+
+def test_reduced_motion_disables_component_transitions():
+    css = _read("app/static/style.css")
+    assert "prefers-reduced-motion: reduce" in css
+
+
+def test_game_cards_share_the_surface_look():
+    css = _read("app/static/style.css")
+    assert "var(--op-surface-1)" in _rule(css, ".game-surface")
+
+
+def test_dashboard_uses_page_head_and_stat_tiles(admin_client):
+    html = admin_client.get("/admin").get_data(as_text=True)
+    assert 'class="page-head' in html and "stat-tile" in html
+    assert 'id="dashTiles"' in html
