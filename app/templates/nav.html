@@ -44,9 +44,7 @@
                         <span class="d-lg-none ms-1">{{ t('theme.title') }}</span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="themeDropdown">
-                        <li><button type="button" class="dropdown-item" data-theme-choice="light" onclick="setTheme('light')"><i class="bi bi-sun me-2"></i>{{ t('theme.light') }}</button></li>
-                        <li><button type="button" class="dropdown-item" data-theme-choice="dark" onclick="setTheme('dark')"><i class="bi bi-moon-stars me-2"></i>{{ t('theme.dark') }}</button></li>
-                        <li><button type="button" class="dropdown-item" data-theme-choice="auto" onclick="setTheme('auto')"><i class="bi bi-circle-half me-2"></i>{{ t('theme.auto') }}</button></li>
+                        {% include '_theme_choices.html' %}
                     </ul>
                 </li>
                 <li class="nav-item dropdown me-lg-2">

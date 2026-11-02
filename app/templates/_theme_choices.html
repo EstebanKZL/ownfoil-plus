@@ -1,0 +1,12 @@
+{# Mode and color style choices, as <li> items: the navbar's theme dropdown and the phone's
+   "More" sheet both include this. theme.js marks the active item of each group. #}
+<li><h6 class="dropdown-header">{{ t('theme.mode') }}</h6></li>
+<li><button type="button" class="dropdown-item" data-theme-choice="light" onclick="setTheme('light')"><i class="bi bi-sun me-2"></i>{{ t('theme.light') }}</button></li>
+<li><button type="button" class="dropdown-item" data-theme-choice="dark" onclick="setTheme('dark')"><i class="bi bi-moon-stars me-2"></i>{{ t('theme.dark') }}</button></li>
+<li><button type="button" class="dropdown-item" data-theme-choice="auto" onclick="setTheme('auto')"><i class="bi bi-circle-half me-2"></i>{{ t('theme.auto') }}</button></li>
+<li><hr class="dropdown-divider"></li>
+<li><h6 class="dropdown-header">{{ t('theme.style') }}</h6></li>
+{% for style in ['joycon', 'ownfoil', 'neon'] %}
+<li><button type="button" class="dropdown-item" data-style-choice="{{ style }}" onclick="setStyle('{{ style }}')"><span class="style-swatch" data-swatch="{{ style }}" aria-hidden="true"></span>{{ t('style.' ~ style) }}</button></li>
+{% endfor %}
+<li><button type="button" class="dropdown-item" data-style-choice="server" onclick="setStyle(null)"><i class="bi bi-hdd-network me-2"></i>{{ t('theme.style_server') }}</button></li>

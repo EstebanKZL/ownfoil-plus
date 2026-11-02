@@ -44,6 +44,19 @@ def test_theme_menu_offers_three_choices(admin_client):
     assert {"light", "dark", "auto"} <= set(re.findall(r'data-theme-choice="(\w+)"', html))
 
 
+def test_theme_script_validates_style_names(shop_app):
+    js = shop_app.client.get("/static/js/theme.js").get_data(as_text=True)
+    assert "['ownfoil', 'neon', 'joycon']" in js
+    assert "STYLE_KEY" in js and "window.setStyle" in js
+    # An unknown stored value (old version, typo) must fall back, never be applied.
+    assert re.search(r"STYLES\.includes\(", js)
+
+
+def test_theme_menu_offers_three_styles_and_server_default(admin_client):
+    html = admin_client.get("/").get_data(as_text=True)
+    assert {"ownfoil", "neon", "joycon", "server"} <= set(re.findall(r'data-style-choice="(\w+)"', html))
+
+
 def test_theme_script_handles_auto_and_storage_errors(shop_app):
     js = shop_app.client.get("/static/js/theme.js").get_data(as_text=True)
     assert "prefers-color-scheme: dark" in js
