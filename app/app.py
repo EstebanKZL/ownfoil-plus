@@ -380,6 +380,12 @@ def inject_shop_name():
     """Templates show the configured shop name, not the product name."""
     return {'shop_name': get_settings()['shop'].get('name') or 'Ownfoil-Plus'}
 
+@app.context_processor
+def inject_default_style():
+    """base.html renders the admin's color style on <html>, before any JS runs;
+    theme.js then applies this browser's own choice, if it made one."""
+    return {'default_style': get_default_style()}
+
 # --- Installable app (PWA) ---
 # Both live at the site root: a service worker only controls pages under its own path,
 # and the manifest carries the shop's own name. No login needed - like the favicon,
@@ -996,6 +1002,17 @@ def set_scheduler_settings_api():
         run_after = datetime.datetime.utcnow() + delta if delta else None
         tasks_mod.update_scheduled_task('update_titledb', run_after)
 
+    return jsonify({'success': True, 'errors': []})
+
+@app.post('/api/settings/appearance')
+@access_required('admin')
+def set_appearance_settings_api():
+    data = request.json or {}
+    style = data.get('default_style')
+    if style not in APPEARANCE_STYLES:
+        return jsonify({'success': False, 'errors': [
+            {'path': 'appearance/default_style', 'error': f'Use one of: {", ".join(APPEARANCE_STYLES)}'}]})
+    set_appearance_settings({'default_style': style})
     return jsonify({'success': True, 'errors': []})
 
 @app.post('/api/settings/maintenance')

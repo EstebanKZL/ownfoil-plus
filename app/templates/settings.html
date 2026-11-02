@@ -850,6 +850,21 @@
                 </div>
 
                 <hr class="hr-settings">
+                <h2 class="pb-2" id="Appearance">{{ t('sections.appearance') }}</h2>
+                <p class="text-secondary">{{ t('appearance.desc') }}</p>
+                <fieldset class="style-picker mb-2">
+                    <legend class="form-label fs-6">{{ t('appearance.default_style') }}</legend>
+                    {% for style in ['joycon', 'ownfoil', 'neon'] %}
+                    <input type="radio" class="btn-check" name="defaultStyle" id="defaultStyle-{{ style }}" value="{{ style }}"
+                           autocomplete="off"{% if default_style == style %} checked{% endif %}>
+                    <label class="style-option" for="defaultStyle-{{ style }}">
+                        <span class="style-swatch" data-swatch="{{ style }}" aria-hidden="true"></span>{{ t('style.' ~ style) }}
+                    </label>
+                    {% endfor %}
+                </fieldset>
+                <p class="small mb-3" id="appearanceFeedback" role="status"></p>
+
+                <hr class="hr-settings">
                 <h2 class="pb-2" id="Backup">{{ t('backup.heading') }}</h2>
                 <p class="text-secondary">{{ t('backup.description') }}</p>
                 <div class="row g-3 align-items-end">
@@ -1793,6 +1808,23 @@
         $.ajax({url: '/api/backups/' + encodeURIComponent(name), type: 'DELETE',
                 success: result => renderBackups(result.backups || [])});
     }
+
+    // Saved on change: the page itself switches to the new style unless this browser
+    // picked its own in the theme menu (theme.js keeps that override).
+    $('input[name="defaultStyle"]').on('change', function () {
+        const style = this.value;
+        $.ajax({
+            url: '/api/settings/appearance', type: 'POST', contentType: 'application/json',
+            data: JSON.stringify({default_style: style}),
+            success: result => {
+                $('#appearanceFeedback').removeClass('text-success text-danger')
+                    .addClass(result.success ? 'text-success' : 'text-danger')
+                    .text(result.success ? I18N.maintSaved : (result.errors || []).map(e => e.error).join(', '));
+                if (result.success && window.setServerStyle) window.setServerStyle(style);
+            },
+            error: xhr => $('#appearanceFeedback').addClass('text-danger').text('HTTP ' + xhr.status),
+        });
+    });
 
     $('#submitMaintSettingsBtn').on('click', function () {
         const btn = $(this).prop('disabled', true);

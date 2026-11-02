@@ -400,6 +400,14 @@ TRANSLATIONS = {
     'sections.discovery': {'en': 'LAN discovery', 'es': 'Descubrimiento en la red local'},
     'sections.media': {'en': 'Local artworks', 'es': 'Artes locales'},
     'sections.notifications': {'en': 'Notifications', 'es': 'Notificaciones'},
+    'sections.appearance': {'en': 'Appearance', 'es': 'Apariencia'},
+    'appearance.desc': {
+        'en': 'The color style everyone sees, also on the login page. Each person can still pick another one in the theme menu, for their own browser.',
+        'es': 'El estilo de color que ven todos, también en el inicio de sesión. Cada persona puede elegir otro en el menú del tema, para su propio navegador.'},
+    'appearance.default_style': {'en': 'Default style', 'es': 'Estilo por defecto'},
+    'style.ownfoil': {'en': 'Ownfoil', 'es': 'Ownfoil'},
+    'style.neon': {'en': 'Neon', 'es': 'Neón'},
+    'style.joycon': {'en': 'Joy-Con', 'es': 'Joy-Con'},
     'sections.maintenance': {'en': 'Maintenance & backups', 'es': 'Mantenimiento y backups'},
 
     # Settings > Maintenance & backups

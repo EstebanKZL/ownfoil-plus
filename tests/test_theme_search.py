@@ -36,7 +36,7 @@ def test_theme_script_runs_in_head_before_the_stylesheets(admin_client):
     head = html.split("</head>", 1)[0]
     assert head.index("js/theme.js") < head.index("bootstrap.min.css")
     # Dark stays the default for anyone who never picks a theme.
-    assert '<html lang="en" data-bs-theme="dark">' in html
+    assert '<html lang="en" data-bs-theme="dark" data-style="joycon">' in html
 
 
 def test_theme_menu_offers_three_choices(admin_client):

@@ -33,6 +33,10 @@ DISCOVERY_PORT = 8465
 DISCOVERY_REQUEST = b'OWNFOIL_DISCOVER'
 DISCOVERY_MAGIC = 'OWNFOIL'
 
+# Color styles of the web UI (static/css/tokens.css); the admin picks the default one.
+APPEARANCE_STYLES = ('ownfoil', 'neon', 'joycon')
+DEFAULT_APPEARANCE_STYLE = 'joycon'
+
 # Global file watcher defaults
 DEFAULT_WATCHER = {"enabled": True, "polling_interval": 60}
 
@@ -158,7 +162,10 @@ DEFAULT_SETTINGS = {
             # make each one slower.
             "net": 1,
         },
-    }
+    },
+    "appearance": {
+        "default_style": DEFAULT_APPEARANCE_STYLE,
+    },
 }
 
 
