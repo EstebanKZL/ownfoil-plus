@@ -2,49 +2,14 @@
 {% block content %}
 {% include 'nav.html' %}
 
+{# The admin pages used to have their own sidebar of tabs; the flat top bar (and the
+   phone's bottom bar) now link every one of them. #}
 <div class="container-fluid setting-body">
-    <div class="row g-0">
-        <nav class="settings-sidebar bg-body-tertiary border-end">
-            <ul class="nav flex-column">
-                <li class="nav-item">
-                    <a class="nav-link{% if request.path == '/admin' %} active{% endif %}" href="/admin">
-                        {{ t('settings_nav.dashboard') }}
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{% if request.path == '/admin/settings' %} active{% endif %}" href="/admin/settings">
-                        {{ t('settings_nav.settings') }}
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{% if request.path.startswith('/admin/services') %} active{% endif %}" href="/admin/services">
-                        {{ t('settings_nav.services') }}
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{% if request.path.startswith('/admin/files') %} active{% endif %}" href="/admin/files">
-                        {{ t('settings_nav.files') }}
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{% if request.path.startswith('/admin/tasks') %} active{% endif %}" href="/admin/tasks">
-                        {{ t('settings_nav.tasks') }}
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{% if request.path.startswith('/admin/stats') %} active{% endif %}" href="/admin/stats">
-                        {{ t('settings_nav.stats') }}
-                    </a>
-                </li>
-            </ul>
-        </nav>
-        <div class="col settings-panel">
-            {% block panel %}{% endblock %}
-        </div>
+    <div class="settings-panel">
+        {% block panel %}{% endblock %}
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/admin-nav.js') }}"></script>
 <script src="{{ url_for('static', filename='js/scroll-limit.js') }}"></script>
 {% block panel_scripts %}{% endblock %}
 {% endblock %}

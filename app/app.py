@@ -28,6 +28,7 @@ import titles as titles_lib
 import uploads
 import media
 import metrics
+import nav_counts
 import notifications
 import re
 import shutil
@@ -385,6 +386,17 @@ def inject_default_style():
     """base.html renders the admin's color style on <html>, before any JS runs;
     theme.js then applies this browser's own choice, if it made one."""
     return {'default_style': get_default_style()}
+
+@app.context_processor
+def inject_nav():
+    """Who sees what in nav.html. Mirrors access_required: with no admin account
+    created yet, auth is effectively off and everyone is treated as an admin. Only an
+    admin's pages pay for the counters."""
+    nav_admin = (not admin_account_created()) or (
+        current_user.is_authenticated and bool(current_user.is_admin))
+    nav_shop = nav_admin or (current_user.is_authenticated and bool(current_user.has_shop_access()))
+    return {'nav_admin': nav_admin, 'nav_shop': nav_shop,
+            'nav_counts': nav_counts.get_nav_counts() if nav_admin else {}}
 
 # --- Installable app (PWA) ---
 # Both live at the site root: a service worker only controls pages under its own path,

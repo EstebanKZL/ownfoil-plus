@@ -45,14 +45,12 @@ def test_task_details_wrap_under_the_name_on_phones():
     assert re.search(r"\.task-head > \.task-meta \{[^}]*flex-basis: 100%", phone)
 
 
-def test_admin_tabs_are_one_scrollable_row_on_phones():
-    tablet = _media_block(_css(), "max-width: 767.98px")
-    assert re.search(r"\.settings-sidebar \.nav \{[^}]*flex-wrap: nowrap[^}]*overflow-x: auto", tablet)
-
-
-def test_admin_pages_scroll_the_active_tab_into_view(admin_client):
+def test_admin_pages_have_no_sidebar_of_tabs(admin_client):
+    # Stage 1 design system: the flat top bar and the phone's bottom bar replaced the
+    # admin sidebar (a row of scrolling tabs on phones) - see test_navigation.py.
     for url in ("/admin", "/admin/files", "/admin/tasks", "/admin/stats", "/admin/settings"):
-        assert "/static/js/admin-nav.js" in admin_client.get(url).get_data(as_text=True), url
+        html = admin_client.get(url).get_data(as_text=True)
+        assert "settings-sidebar" not in html and "admin-nav.js" not in html, url
 
 
 def test_settings_fields_are_full_width_on_phones(admin_client):

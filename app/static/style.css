@@ -201,74 +201,93 @@ p.game-description {
     margin-top: 2rem !important;
 }
 
-/* Settings / Tasks sidebar */
-.settings-sidebar {
+/* ============== Top bar ============== */
+
+.op-topbar {
+    background-color: rgba(var(--op-surface-0-rgb), .85);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--op-border);
     position: sticky;
     top: 0;
-    align-self: flex-start;
-    width: 200px;
-    flex: 0 0 200px;
-    height: 100vh;
-    padding-top: 1rem;
+    z-index: 1020;
 }
 
-.settings-sidebar .nav-link {
-    color: var(--bs-secondary-color);
-    border-radius: 0;
-    border-left: 3px solid transparent;
+.op-brand {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-weight: 700;
+    letter-spacing: -.01em;
 }
 
-.settings-sidebar .nav-link:hover {
-    color: var(--bs-body-color);
-    background-color: var(--bs-secondary-bg);
+.op-nav {
+    gap: .15rem;
 }
 
-.settings-sidebar .nav-link.active {
-    color: var(--bs-body-color);
-    background-color: var(--bs-secondary-bg);
-    border-left-color: var(--bs-primary);
+.op-nav-link {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    border-radius: var(--op-radius-sm);
+    color: var(--op-text-muted);
+    padding-inline: .7rem !important;
+    position: relative;
+    transition: background-color var(--op-dur) var(--op-ease), color var(--op-dur) var(--op-ease);
+}
+
+.op-nav-link:hover,
+.op-nav-link:focus-visible {
+    color: var(--op-text);
+    background-color: rgba(var(--op-text-rgb), .06);
+}
+
+.op-nav-link.active,
+.op-nav-link.show {
+    color: var(--op-nav) !important;
+    background-color: rgba(var(--op-nav-rgb), .14);
+}
+
+@media (min-width: 992px) {
+    .op-nav-link.active::after {
+        content: "";
+        position: absolute;
+        left: .7rem;
+        right: .7rem;
+        bottom: -.55rem;
+        height: 2px;
+        border-radius: 2px;
+        background-color: var(--op-nav);
+    }
+}
+
+.op-count {
+    min-width: 1.35rem;
+    padding: .05rem .4rem;
+    border-radius: 2rem;
+    font-size: .72rem;
+    font-weight: 700;
+    line-height: 1.3;
+    text-align: center;
+    color: var(--op-surface-0);
+    background-color: var(--op-nav);
+}
+
+.op-count--wait {
+    background-color: var(--op-wait);
+}
+
+.op-count[hidden] {
+    display: none;
+}
+
+.op-search-btn kbd {
+    background-color: var(--op-surface-2);
+    color: var(--op-text-muted);
+    border: 1px solid var(--op-border);
 }
 
 .settings-panel {
     min-width: 0;  /* let long task names shrink instead of widening the row */
-}
-
-/* Below md the sidebar becomes a row of tabs across the top. 767.98 rather than 768,
-   so the switch happens exactly where Bootstrap's own md rules take over. */
-@media (max-width: 767.98px) {
-    .settings-sidebar {
-        position: static;
-        width: 100%;
-        flex-basis: 100%;
-        height: auto;
-        /* The divider now separates the tabs from the panel below them, not from a
-           column beside them. */
-        border-right: 0 !important;
-        border-bottom: var(--bs-border-width) solid var(--bs-border-color);
-    }
-
-    .settings-sidebar .nav {
-        flex-direction: row !important;
-    }
-
-    /* The panel's flex-basis is 0, so a full-width sidebar alone never overflows the
-       row and the two stay on one line: the sidebar takes all of it and the panel is
-       squeezed to nothing against the right edge. Giving the panel a basis of its own
-       is what pushes it onto the next line. */
-    .settings-panel {
-        flex-basis: 100%;
-    }
-
-    /* A left border marks the active item in a column of links; in a row of tabs it
-       belongs underneath. */
-    .settings-sidebar .nav-link {
-        border-left: 0;
-        border-bottom: 3px solid transparent;
-    }
-
-    .settings-sidebar .nav-link.active {
-        border-bottom-color: var(--bs-primary);
-    }
 }
 
 /* Task list */
@@ -1382,24 +1401,6 @@ p.game-description {
 }
 
 /* ============== Phones ============== */
-
-/* Admin tabs (the sidebar turned into a row below md): one scrollable row instead of
-   wrapping onto a second line - six sections don't fit across a phone. */
-@media (max-width: 767.98px) {
-    .settings-sidebar .nav {
-        flex-wrap: nowrap !important;
-        overflow-x: auto;
-        scrollbar-width: none;
-    }
-
-    .settings-sidebar .nav::-webkit-scrollbar {
-        display: none;
-    }
-
-    .settings-sidebar .nav-link {
-        white-space: nowrap;
-    }
-}
 
 @media (max-width: 575.98px) {
     /* Files: the six summary tiles were one per row, more than a screen of scrolling
