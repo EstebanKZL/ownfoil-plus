@@ -5,6 +5,7 @@ network without the console's user having to type an address.
 """
 import json
 import os
+import re
 import socket
 
 import fixture
@@ -48,7 +49,7 @@ def test_setting_a_shop_name_replaces_the_brand_in_the_navbar_and_title(client):
     assert "<title>Esteban Switch Shop | Settings</title>" in html
     # The navbar brand switches too - other mentions of the product name elsewhere on the
     # page (e.g. help text referencing "Ownfoil-Plus" by name) are unrelated and untouched.
-    assert ">\n        Esteban Switch Shop\n        </a>" in html
+    assert re.search(r'class="navbar-brand[^"]*".*?<span>Esteban Switch Shop</span>\s*</a>', html, re.DOTALL)
 
 
 def test_clearing_the_shop_name_falls_back_to_the_default_brand(client):

@@ -746,6 +746,33 @@ a.stat-tile:hover {
     color: var(--op-text);
 }
 
+/* Login and offline pages: one centered card on the style's glow. */
+.auth-page {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 1.5rem 1rem;
+    background:
+        radial-gradient(40rem 24rem at 20% 15%, var(--op-glow-1), transparent),
+        radial-gradient(36rem 22rem at 85% 85%, var(--op-glow-2), transparent);
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 24rem;
+    padding: 2rem 1.75rem;
+    box-shadow: var(--op-shadow);
+}
+
+.auth-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .35rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
 @media (max-width: 575.98px) {
     .page-head__title {
         font-size: 1.4rem;

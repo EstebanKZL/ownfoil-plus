@@ -412,7 +412,7 @@ TRANSLATIONS = {
         'en': 'The color style everyone sees, also on the login page. Each person can still pick another one in the theme menu, for their own browser.',
         'es': 'El estilo de color que ven todos, también en el inicio de sesión. Cada persona puede elegir otro en el menú del tema, para su propio navegador.'},
     'appearance.default_style': {'en': 'Default style', 'es': 'Estilo por defecto'},
-    'style.ownfoil': {'en': 'Ownfoil', 'es': 'Ownfoil'},
+    'style.ownfoil': {'en': 'Ownfoil-Plus', 'es': 'Ownfoil-Plus'},
     'style.neon': {'en': 'Neon', 'es': 'Neón'},
     'style.joycon': {'en': 'Joy-Con', 'es': 'Joy-Con'},
     'sections.maintenance': {'en': 'Maintenance & backups', 'es': 'Mantenimiento y backups'},
@@ -1070,6 +1070,8 @@ TRANSLATIONS = {
     # (shop_name, usernames, addresses) stay split so that value is still emitted
     # through plain `{{ }}` and autoescaped normally.
     'setup.title': {'en': 'Setup Guide', 'es': 'Guía de configuración'},
+    'setup.subtitle': {'en': 'Connect your console to this shop with Sphaira, CyberFoil or Tinfoil.',
+                       'es': 'Conectá tu consola a esta tienda con Sphaira, CyberFoil o Tinfoil.'},
 
     'setup.sphaira.heading': {'en': 'Sphaira', 'es': 'Sphaira'},
     'setup.sphaira.intro_before_code': {'en': 'has a built-in', 'es': 'tiene un menú'},

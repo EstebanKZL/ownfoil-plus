@@ -4,7 +4,11 @@
 {% set username = current_user.user if current_user.is_authenticated else 'Username' %}
 {% include 'nav.html' %}
 <div class="container mt-4">
-    <h1 class="mb-4">{{ t('setup.title') }}</h1>
+    <header class="page-head">
+        <span class="page-head__icon"><i class="bi bi-joystick" aria-hidden="true"></i></span>
+        <h1 class="page-head__title">{{ t('setup.title') }}</h1>
+        <p class="page-head__desc">{{ t('setup.subtitle') }}</p>
+    </header>
 
     {# Sphaira: the "Ownfoil" menu (Sphaira's own fixed client-side label - see this
        card's own legitimate mentions of it below), the recommended client. #}

@@ -110,3 +110,18 @@ def test_dashboard_uses_page_head_and_stat_tiles(admin_client):
     html = admin_client.get("/admin").get_data(as_text=True)
     assert 'class="page-head' in html and "stat-tile" in html
     assert 'id="dashTiles"' in html
+
+
+# --- login, setup and offline pages -------------------------------------------------
+
+def test_login_and_offline_use_the_surface_card(shop_app):
+    anonymous = shop_app.app.test_client()
+    for url in ("/login", "/offline"):
+        html = anonymous.get(url).get_data(as_text=True)
+        assert 'class="surface' in html and "logo/logo.svg" in html, url
+    assert 'class="empty-state' in anonymous.get("/offline").get_data(as_text=True)
+
+
+def test_setup_uses_page_head(admin_client):
+    html = admin_client.get("/setup").get_data(as_text=True)
+    assert 'class="page-head' in html
