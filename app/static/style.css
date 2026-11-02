@@ -840,11 +840,6 @@ a.stat-tile:hover {
     .page-head__title {
         font-size: 1.4rem;
     }
-
-    .page-head__actions {
-        grid-row: auto;
-        grid-column: 1 / -1;
-    }
 }
 
 @media (prefers-reduced-motion: reduce) {
