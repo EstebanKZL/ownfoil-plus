@@ -680,10 +680,10 @@ p.game-description {
 .btn-check:active + .btn-outline-primary,
 .btn-check:focus + .btn-outline-primary,
 .btn-check:checked + .btn-outline-primary {
-    background-color: #0d6efd;
-    color: #fff;
+    background-color: var(--op-action);
+    color: var(--op-on-action);
     outline: none;
-    border-color: #0d6efd;
+    border-color: var(--op-action);
 }
 
 .btn-group:focus-within,
@@ -721,8 +721,8 @@ p.game-description {
     --files-warning-bg: #fcf0d6;
     --files-danger: #b83434;
     --files-danger-bg: #fae4e4;
-    --files-primary: #0d6efd;
-    --files-primary-bg: #e6effe;
+    --files-primary: var(--op-nav);
+    --files-primary-bg: rgba(var(--op-nav-rgb), .12);
     --files-secondary: #68707a;
     --files-secondary-bg: #eceef1;
     --files-off: #c3c8ce;
@@ -739,8 +739,8 @@ p.game-description {
     --files-warning-bg: #362b0e;
     --files-danger: #ea868f;
     --files-danger-bg: #3a1a1d;
-    --files-primary: #6ea8fe;
-    --files-primary-bg: #1b2b45;
+    --files-primary: var(--op-nav);
+    --files-primary-bg: rgba(var(--op-nav-rgb), .14);
     --files-secondary: #9aa3ad;
     --files-secondary-bg: #2f343a;
     --files-off: #525a63;
@@ -1464,42 +1464,16 @@ p.game-description {
 
 /* ============== Light theme: soft, not stark white ============== */
 
-/* Bootstrap's light theme is pure white with near-black text, tiring to read for long.
-   Warm off-white "paper" tones instead, with the page a step darker than the cards and
-   panels on it, and charcoal rather than black text. */
-[data-bs-theme=light] {
-    --bs-body-bg: #eceae4;
-    --bs-body-bg-rgb: 236, 234, 228;
-    --bs-body-color: #30353a;
-    --bs-body-color-rgb: 48, 53, 58;
-    --bs-emphasis-color: #1f2327;
-    --bs-emphasis-color-rgb: 31, 35, 39;
-    --bs-secondary-color: rgba(48, 53, 58, .72);
-    --bs-secondary-bg: #e2dfd7;
-    --bs-secondary-bg-rgb: 226, 223, 215;
-    --bs-tertiary-bg: #f4f2ec;
-    --bs-tertiary-bg-rgb: 244, 242, 236;
-    --bs-border-color: #d5d1c7;
-    --bs-border-color-translucent: rgba(60, 50, 30, .14);
-    --bs-heading-color: #262a2e;
-}
-
-[data-bs-theme=light] .card,
-[data-bs-theme=light] .modal,
-[data-bs-theme=light] .dropdown-menu,
-[data-bs-theme=light] .popover,
+/* The warm "paper" palette itself lives in css/tokens.css; these rules only adapt
+   components that need more than Bootstrap's variables. */
 [data-bs-theme=light] .list-group {
-    --bs-card-bg: #f7f5f0;
-    --bs-modal-bg: #f7f5f0;
-    --bs-dropdown-bg: #f7f5f0;
-    --bs-popover-bg: #f7f5f0;
     --bs-list-group-bg: transparent;
 }
 
 [data-bs-theme=light] .form-control,
 [data-bs-theme=light] .form-select,
 [data-bs-theme=light] .input-group-text {
-    background-color: #f9f8f4;
+    background-color: var(--op-surface-2);
 }
 
 [data-bs-theme=light] .table {

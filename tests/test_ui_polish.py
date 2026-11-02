@@ -54,11 +54,13 @@ def test_game_cards_are_no_longer_forced_dark():
 # --- light theme -----------------------------------------------------------------------
 
 def test_light_theme_is_soft_not_stark_white():
-    css = _read("app", "static", "style.css")
-    light = _block(css, "[data-bs-theme=light]")
-    bg = re.search(r"--bs-body-bg: (#[0-9a-f]{6})", light).group(1)
+    # The palette moved to the design tokens (stage 1), Bootstrap reads it from there.
+    css = _read("app", "static", "css", "tokens.css")
+    light = _block(css, '[data-bs-theme="light"]')
+    bg = re.search(r"--op-surface-0: (#[0-9a-f]{6})", light).group(1)
     assert bg.lower() not in ("#fff", "#ffffff")
-    assert "--bs-body-color:" in light and "--bs-tertiary-bg:" in light
+    assert "--op-text:" in light and "--op-surface-1:" in light
+    assert "--bs-body-bg: var(--op-surface-0)" in css
 
 
 def test_light_theme_covers_the_game_cards():
