@@ -90,17 +90,20 @@ gradients) are replaced by tokens.
 
 ### Top bar (desktop, >= 768 px)
 
-Left to right: logo + shop name; **Library**, **Files** (count of unidentified files),
-**Tasks** (count of running tasks), **Statistics**; **Admin** dropdown (Dashboard,
-Settings, Services, Setup); right side: Ctrl+K search, theme menu (mode + style),
-language, account (profile / logout, or login).
+Left to right: logo + shop name; **Library**, **Setup** (shown to anyone with shop
+access, as today), then for admins **Files** (count of unidentified files), **Tasks**
+(count of running tasks), **Statistics** and an **Admin** dropdown (Dashboard,
+Settings, Services); right side: Ctrl+K search, theme menu (mode + style), language,
+account (profile / logout, or login). "Admin" means `current_user.is_admin` or no admin
+account created yet, exactly as `nav.html` decides it today.
 
 - Active page: a pill tinted with `--op-nav` plus an underline.
 - Counters: computed server-side by a helper cached for a few seconds (no extra query
   per click), exposed through a context processor, only for admins. The Tasks counter
   is also updated live through `realtime.js` (`tasks` topic) on pages that already
   open the socket; a zero count hides the badge.
-- Non-admin users see Library, search, theme, language and account only (as today).
+- Non-admin users see Library (and Setup with shop access), search, theme, language and
+  account only (as today).
 - The Admin sub-navigation in `settings_layout.html` is removed; routes stay the same
   (`/admin`, `/admin/settings`, `/admin/files`, ...), so bookmarks keep working.
 
@@ -109,8 +112,8 @@ language, account (profile / logout, or login).
 - Fixed at the bottom: **Library, Files, Tasks, Statistics, More** (icons + short
   labels, counters as dots/badges). Non-admins: no bottom bar entries beyond Library,
   so the bar is not shown; the top bar menu is used instead.
-- **More** opens a bottom sheet (Bootstrap offcanvas-bottom) with the Admin links,
-  theme (mode + style), language and account.
+- **More** opens a bottom sheet (Bootstrap offcanvas-bottom) with Setup, the Admin
+  links, theme (mode + style), language and account.
 - Respects `env(safe-area-inset-bottom)`; page content gets bottom padding so nothing
   hides under the bar. On phones the top bar keeps only the logo and search.
 
