@@ -6,7 +6,7 @@
     else 'stats' if p.startswith('/admin/stats') else 'admin' if p.startswith('/admin') else '' %}
 {% macro nav_item(key, href, icon, label, count_id=None, count=0, tone='nav') %}
 <li class="nav-item">
-    <a class="nav-link op-nav-link{% if nav_active == key %} active{% endif %}" data-nav="{{ key }}" href="{{ href }}"{% if nav_active == key %} aria-current="page"{% endif %}>
+    <a class="nav-link op-nav-link{% if nav_active == key %} active{% endif %}" data-nav="{{ key }}" href="{{ href }}" title="{{ label }}"{% if nav_active == key %} aria-current="page"{% endif %}>
         <i class="bi {{ icon }}" aria-hidden="true"></i><span>{{ label }}</span>
         {% if count_id %}<span class="op-count op-count--{{ tone }}" id="{{ count_id }}"{% if not count %} hidden{% endif %}>{{ count }}</span>{% endif %}
     </a>
@@ -36,7 +36,7 @@
                 {{ nav_item('tasks', '/admin/tasks', 'bi-list-task', t('settings_nav.tasks'), 'navCountTasks', nav_counts.running_tasks) }}
                 {{ nav_item('stats', '/admin/stats', 'bi-bar-chart', t('settings_nav.stats')) }}
                 <li class="nav-item dropdown">
-                    <a class="nav-link op-nav-link dropdown-toggle{% if nav_active == 'admin' %} active{% endif %}" data-nav="admin" href="#" id="adminDropdown"
+                    <a class="nav-link op-nav-link dropdown-toggle{% if nav_active == 'admin' %} active{% endif %}" data-nav="admin" href="#" id="adminDropdown" title="{{ t('nav.admin') }}"
                        role="button" data-bs-toggle="dropdown" aria-expanded="false"{% if nav_active == 'admin' %} aria-current="page"{% endif %}>
                         <i class="bi bi-sliders" aria-hidden="true"></i><span>{{ t('nav.admin') }}</span>
                     </a>

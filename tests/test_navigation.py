@@ -148,3 +148,18 @@ def test_more_sheet_grows_with_its_content():
     # Bootstrap's bottom offcanvas is a fixed 30vh: too short for the sheet's list.
     css = _css()
     assert re.search(r"\.offcanvas\.more-sheet \{[^}]*--bs-offcanvas-height: auto[^}]*max-height: 85vh", css)
+
+
+def test_top_bar_labels_never_wrap_and_collapse_to_icons_below_xxl():
+    # Spanish labels broke the bar into two lines and pushed "Cerrar sesión" off-screen
+    # at 1280px; below 1400px only the icons show (each link keeps a title tooltip).
+    css = _css()
+    assert re.search(r"\.op-topbar \.nav-link,[^{]*\{[^}]*white-space: nowrap", css)
+    mid = re.search(r"@media \(min-width: 992px\) and \(max-width: 1399\.98px\) \{(.*?)\n\}", css, re.DOTALL)
+    assert mid and ".op-nav-link > span:not(.op-count)" in mid.group(1)
+
+
+def test_top_bar_links_have_tooltips(admin_client):
+    html = admin_client.get("/admin").get_data(as_text=True)
+    assert re.search(r'data-nav="files" href="/admin/files" title="[^"]+"', html)
+    assert re.search(r'id="adminDropdown" title="[^"]+"', html)

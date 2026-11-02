@@ -260,6 +260,22 @@ p.game-description {
     }
 }
 
+/* Labels never wrap: Spanish ones ("Configuración inicial", "Cerrar sesión") broke the bar
+   into two lines. Below xxl the Spanish labels don't fit beside the right-hand menus, so
+   only the icons show there; the label stays as a tooltip. */
+.op-topbar .nav-link,
+.op-topbar .btn,
+.op-topbar kbd {
+    white-space: nowrap;
+}
+
+@media (min-width: 992px) and (max-width: 1399.98px) {
+    .op-nav-link > span:not(.op-count),
+    .op-search-btn kbd {
+        display: none;
+    }
+}
+
 .op-count {
     min-width: 1.35rem;
     padding: .05rem .4rem;
