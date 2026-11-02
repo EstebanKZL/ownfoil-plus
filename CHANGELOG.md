@@ -4,6 +4,36 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [Unreleased - beta]
+
+A new design for the web UI, stage 1 of a redesign inspired by
+[Switch Library Manager Web](https://github.com/DeLFuS77/switch-library-manager-web)
+(AGPL-3.0, like Ownfoil; credited in the new `NOTICE.md`). This stage lays the
+foundation the next ones build on, so every page ends up looking like one product
+instead of each page carrying its own colors.
+
+- **Design tokens.** Every color now lives in one file, `static/css/tokens.css`, which
+  also feeds Bootstrap's variables: existing pages take the new look without being
+  rewritten. Each color has one meaning everywhere - green up to date, amber something
+  waits for you, gold favorites, red errors.
+- **Three color styles, on top of light / dark / auto.** Joy-Con (the default: cyan to
+  navigate, red for actions), Ownfoil-Plus (the logo's cyan) and Neon (red with cyan).
+  The admin picks the one everyone sees, also on the login page, in the new
+  `Settings > Appearance`; each browser can still choose its own from the theme menu.
+  Contrast of text on the accent colors is at least 4.5:1 in all six combinations,
+  which is why the red is a little deeper than a pure neon red.
+- **Flat navigation.** The admin pages were behind `Admin` and a second row of tabs;
+  now `Files`, `Tasks` and `Stats` are on the top bar, with counters for unidentified
+  files and running tasks (the tasks one updates live on the Tasks page), and the rest
+  under an `Admin` menu. URLs are unchanged. On phones, admins get a bottom bar with a
+  `More` sheet for everything else.
+- **Inter font**, served by the app itself like the other front-end libraries, so the
+  UI still works on a LAN with no internet access.
+- **Shared components** (page header, stat tiles, filter pills, toolbar, surfaces,
+  status badges, empty states), shown first on the Dashboard, the login, the setup
+  guide and the offline page. The library, the game page and the other admin pages
+  adopt them in the next stages.
+
 ## [6.2.5.45]
 
 Image vulnerabilities, from a Docker Scout report of 5 critical / 30 high.

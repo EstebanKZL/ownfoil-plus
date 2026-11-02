@@ -88,6 +88,10 @@ Ownfoil-Plus builds on [Ownfoil](https://github.com/a1ex4/ownfoil), created by
 [@a1ex4](https://github.com/a1ex4) - full credit to them and every contributor to
 the original project.
 
+The web UI's design is inspired by
+[Switch Library Manager Web](https://github.com/DeLFuS77/switch-library-manager-web) by
+[@DeLFuS77](https://github.com/DeLFuS77), also AGPL-3.0 - see [NOTICE.md](NOTICE.md).
+
 Thanks also to the following projects and their maintainers for making Ownfoil
 possible in the first place:
 - [@blawar](https://github.com/blawar) for Tinfoil, Fs, the nsz format, TitleDB

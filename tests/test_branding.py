@@ -118,3 +118,19 @@ def test_no_bare_old_name_remains_in_the_renamed_templates(client):
             html = html.replace(allowed, "")
         bare_matches = re.findall(r"Ownfoil(?!-Plus)", html)
         assert not bare_matches, f"{path} still has a bare 'Ownfoil' mention ({len(bare_matches)} time(s))"
+
+
+def test_notice_credits_upstream_and_the_design_inspiration():
+    """Stage 1 design system: the design adapts Switch Library Manager Web (AGPL-3.0,
+    like Ownfoil); both are credited in NOTICE.md, linked from the README."""
+    root = os.path.join(os.path.dirname(__file__), "..")
+    with open(os.path.join(root, "NOTICE.md"), encoding="utf-8") as f:
+        notice = f.read()
+    assert "a1ex4/ownfoil" in notice
+    assert "DeLFuS77/switch-library-manager-web" in notice
+    assert notice.count("AGPL-3.0") >= 2
+    with open(os.path.join(root, "README.md"), encoding="utf-8") as f:
+        assert "NOTICE.md" in f.read()
+    with open(os.path.join(root, "CHANGELOG.md"), encoding="utf-8") as f:
+        changelog = f.read()
+    assert changelog.index("## [Unreleased - beta]") < changelog.index("## [6.2.5.45]")

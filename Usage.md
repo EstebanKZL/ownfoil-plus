@@ -29,11 +29,16 @@ Three features need valid keys and are unavailable without them:
 
 # The Web UI
 
-There are three main pages: the library view, the setup guide, and under `Admin` the dashboard, the settings, the files, the task list and the stats.
+The top bar links every page: `Library` and `Setup` for everyone with shop access, and for admins `Files`, `Tasks`, `Stats` and the `Admin` menu (dashboard, settings, services). `Files` shows how many files are not identified yet and `Tasks` how many are running. On a phone, admins get a bottom bar instead (`Library`, `Files`, `Tasks`, `Stats` and `More`, which holds the rest: setup, admin pages, theme, language and logout).
 
-## Theme and search
+## Theme, style and search
 
-The sun/moon icon in the navbar switches between a **light**, **dark** (the default) or **automatic** theme that follows the device's own setting. The choice is remembered per browser. Game cards keep their dark style over the artwork in both themes.
+The sun/moon icon in the navbar sets two things:
+
+- the **mode**: **light**, **dark** (the default) or **automatic**, following the device's own setting;
+- the **style**, the colors of the interface: **Joy-Con** (the default: cyan to navigate, red for actions), **Ownfoil-Plus** (cyan, the logo's color) or **Neon** (red, with cyan details).
+
+Both are remembered per browser. The admin chooses the style everyone sees by default, also on the login page, in `Settings > Appearance`; a browser that picked its own keeps it until `Use the server's style` is chosen.
 
 **Search** from any page with `Ctrl+K` (`Cmd+K` on a Mac), `/`, or the magnifier in the navbar: type a game's name or title ID, a file name (admins), or a page or setting ("notifications", "backup", "users"...). Arrow keys move through the results and `Enter` opens one: a game opens the library filtered to it, a file opens the Files page filtered to it. Results only include what your account can access.
 
@@ -360,6 +365,12 @@ Events are grouped: everything that happens within 20 seconds of the first event
 | Telegram | A bot token from [@BotFather](https://t.me/BotFather) and your chat ID (send the bot a message first). |
 | ntfy | A server (`https://ntfy.sh` by default, or your own) and a topic; an access token for protected topics. On the public server anyone who knows the topic can read it, so pick a hard-to-guess name. |
 | Webhook | Any URL; it receives a `POST` with `{"shop", "event", "title", "items": [...]}` as JSON. |
+
+## Appearance
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| `Default style` | `Joy-Con` | The color style of the web UI for everyone: `Joy-Con`, `Ownfoil-Plus` or `Neon` (`appearance.default_style`: `joycon`, `ownfoil`, `neon`). Each person can still pick another one for their own browser from the theme menu. |
 
 ## Workers
 
