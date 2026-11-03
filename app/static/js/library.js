@@ -244,6 +244,7 @@ async function loadPage() {
         renderCardView(data.apps.items.map(cardModel));
     }
     updatePaginationControls(totalPages);
+    restoreLibraryScroll();
 
     // init version tooltips
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
@@ -435,6 +436,25 @@ function applyPill(name) {
     $('#ownershipOwned').prop('checked', pill.ownership === 'Owned');
     $('#ownershipMissing').prop('checked', false);
     onFilterChange();
+}
+
+// Back from a game page, the browser can't restore the scroll position itself: the
+// grid is drawn after its data arrives. The position is kept per tab when leaving and
+// put back once, after the first grid is on screen.
+let scrollToRestore = null;
+try {
+    scrollToRestore = parseInt(sessionStorage.getItem('libraryScroll'));
+    sessionStorage.removeItem('libraryScroll');
+} catch (e) { /* storage unavailable: start at the top */ }
+window.addEventListener('pagehide', () => {
+    try { sessionStorage.setItem('libraryScroll', String(Math.round(window.scrollY))); } catch (e) { /* ignore */ }
+});
+
+function restoreLibraryScroll() {
+    if (!(scrollToRestore > 0)) return;
+    const y = scrollToRestore;
+    scrollToRestore = null;
+    requestAnimationFrame(() => window.scrollTo(0, y));
 }
 
 function goToPage(page) {

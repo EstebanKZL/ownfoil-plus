@@ -291,3 +291,15 @@ def test_the_dlc_highlight_runs_once_the_sections_are_visible():
     load = _function_body(js, "loadGame")
     assert load.index("gameState('game')") < load.index("highlightDlcFromUrl()")
     assert "highlightDlcFromUrl()" not in _function_body(js, "renderSections")
+
+
+def test_the_library_restores_its_scroll_when_coming_back():
+    """Found in the browser: back from a game page kept filters and sort but landed at
+    the top - the grid is drawn after its data arrives, too late for the browser's own
+    scroll restoration."""
+    js = _js("library.js")
+    assert "pagehide" in js and "libraryScroll" in js
+    assert "restoreLibraryScroll()" in _function_body(js, "loadPage")
+    body = _function_body(js, "restoreLibraryScroll")
+    assert "scrollTo" in body
+    assert "sessionStorage.getItem('libraryScroll')" in js and "sessionStorage.setItem('libraryScroll'" in js
