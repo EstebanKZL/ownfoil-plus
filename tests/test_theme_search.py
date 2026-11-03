@@ -118,5 +118,7 @@ def test_settings_sections_linked_by_the_palette_exist(admin_client):
 
 
 def test_library_and_files_pages_accept_a_search_from_the_url(admin_client):
-    assert "new URLSearchParams(location.search).get('q')" in admin_client.get("/").get_data(as_text=True)
+    # The library's logic lives in static/js/library.js since stage 2.
+    assert "/static/js/library.js" in admin_client.get("/").get_data(as_text=True)
+    assert "new URLSearchParams(location.search).get('q')" in admin_client.get("/static/js/library.js").get_data(as_text=True)
     assert "TABS.all.search = urlSearch" in admin_client.get("/admin/files").get_data(as_text=True)
