@@ -49,6 +49,21 @@
     const I18N = {
         library: {{ t('nav.library') | tojson }},
         unrecognized: {{ t('library.unrecognized') | tojson }},
+        inLibrary: {{ t('game.in_library') | tojson }},
+        notInLibrary: {{ t('game.not_in_library') | tojson }},
+        badgeUpdate: {{ t('library.badge_update') | tojson }},
+        badgeMissingDlc: {{ t('library.badge_missing_dlc') | tojson }},
+        badgeComplete: {{ t('library.badge_complete') | tojson }},
+        titleId: {{ t('library.title_id_label') | tojson }},
+        releaseDate: {{ t('library.release_date') | tojson }},
+        region: {{ t('game.region') | tojson }},
+        languages: {{ t('library.languages') | tojson }},
+        genre: {{ t('library.genre') | tojson }},
+        players: {{ t('library.number_of_players') | tojson }},
+        rating: {{ t('library.rating') | tojson }},
+        size: {{ t('library.file_size') | tojson }},
+        installedVersion: {{ t('game.installed_version') | tojson }},
+        latestVersion: {{ t('game.latest_version') | tojson }},
     };
 </script>
 <script src="{{ url_for('static', filename='js/format.js') }}"></script>

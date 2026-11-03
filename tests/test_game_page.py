@@ -105,3 +105,59 @@ def test_skeleton_has_every_region(shop_app):
     for region in ("gameBreadcrumb", "gameHero", "gameFacts", "gameSections", "gameLoading",
                    "gameNotFound", "gameError", "gameRetryBtn"):
         assert f'id="{region}"' in html, region
+
+
+# --- the game query, hero, facts and states ---------------------------------------------
+
+from test_card_icon_metadata_query import ALPHA, library  # noqa: E402,F401  (pytest fixture)
+
+
+def _extract_query(js_source, const_name):
+    m = re.search(rf"const {const_name} = `(.*?)`;", js_source, re.DOTALL)
+    assert m, f"{const_name} not found"
+    return m.group(1)
+
+
+def _gql(client, query, **variables):
+    resp = client.get("/api/graphql", query_string={"query": query, "variables": json.dumps(variables)})
+    assert resp.status_code == 200, resp.get_data(as_text=True)
+    body = resp.get_json()
+    assert "errors" not in body, body.get("errors")
+    return body["data"]
+
+
+def test_the_shipped_game_query_runs_for_an_owned_game(library):
+    data = _gql(library.client, _extract_query(_js("game.js"), "GAME_QUERY"), titleId=ALPHA)
+    t = data["title"]
+    assert t["titleId"] == ALPHA and t["name"] == "Alpha Game"
+    assert t["ownership"]["haveBase"] is True
+    assert {a["appType"] for a in t["apps"]} == {"BASE", "DLC"}
+    assert [d["appId"] for d in t["availableDlc"]]
+
+
+def test_an_unknown_id_reads_null(library):
+    data = _gql(library.client, _extract_query(_js("game.js"), "GAME_QUERY"), titleId="0100000000FFF000")
+    assert data["title"] is None
+
+
+def test_a_shopper_never_gets_files(shop_app):
+    client = _login(shop_app.client, "shopper")
+    t = _gql(client, _extract_query(_js("game.js"), "GAME_QUERY"), titleId=OWNED)["title"]
+    assert t is not None
+    assert all(a.get("files") is None for a in t["apps"])
+
+
+def test_hero_and_facts_are_built_from_text():
+    js = _js("game.js")
+    hero, facts = _function_body(js, "renderHero"), _function_body(js, "renderFacts")
+    assert "game-hero" in hero or "gameHero" in hero
+    assert "statusBadge(" in hero and ".text(" in hero
+    assert "game-fact" in facts and ".text(" in facts
+    # A fact without a value is not drawn.
+    assert "filter(" in facts
+
+
+def test_load_handles_not_found_and_failure():
+    body = _function_body(_js("game.js"), "loadGame")
+    assert "gameNotFound" in body
+    assert "gameError" in body.split("catch", 1)[1]
