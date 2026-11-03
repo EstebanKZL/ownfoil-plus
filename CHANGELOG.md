@@ -43,12 +43,18 @@ Stage 2, the **Library**, the page people open the most:
 - **One toolbar** instead of a row of separate blue buttons: search, sort, view, a
   *View* menu (page size, card size) and a *Filters* menu holding every filter group,
   with a dot when one is on.
-- **Sorting by name or release date**, ascending or descending. The server always
-  supported it; the page never offered it. ("Recently added" only exists for files, so
-  it isn't offered here.)
+- **Sorting by name or release date**, ascending or descending. The page never
+  offered it. ("Recently added" only exists for files, so it isn't offered here.)
+  Doing so found a GraphQL bug: `apps(orderBy: {field: RELEASE_DATE})` compared the
+  app row's own date, empty for base games, so it didn't sort at all. It now uses the
+  game's catalogue date, as the schema documents and `titles` already did - a DLC sorts
+  with its game, as with `NAME`.
 - **Filter pills with exact counts.** The common filters are one click, and each pill
   says how many results it gives. The counts come from one request built from the same
-  variables as the grid, so a number is exactly what clicking it shows.
+  variables as the grid, so a number is exactly what clicking it shows. *Update
+  pending*, *Missing DLC* and *Up to date* cover the games you have, like the header
+  tiles: something you don't own is never "up to date", so without that the first one
+  would list every missing DLC in the catalogue.
 - **New cards**: the cover, the name, publisher and year, and text badges for the
   state (update, missing DLC, complete) in the colors that mean the same everywhere.
   Two cards per row on phones.
