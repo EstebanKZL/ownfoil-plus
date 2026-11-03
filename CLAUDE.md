@@ -94,17 +94,23 @@ package - `tests/conftest.py` puts `app/` on `sys.path`.
 - Front-end: Jinja templates + Bootstrap 5.3 + jQuery, **vendored** in
   `app/static/vendor/` (no CDNs - the UI must work offline on a LAN). Shared JS in
   `app/static/js/` (`theme.js`, `search.js`, `pwa.js`, `upload.js`, `scroll-limit.js`,
-  `admin-nav.js`). Styles in `app/static/style.css`.
+  `library-common.js`, `charts.js`, `format.js`), and each big page's own script there
+  too (`library.js`, `game.js`, `stats.js`, `dashboard.js`, `files.js`, `tasks.js`,
+  `settings.js`). Colors are design tokens in `app/static/css/tokens.css`; styles in
+  `app/static/style.css`.
 
 ## Conventions and gotchas
 
 - **One bare inline `<script>` per page.** Several tests (`test_*_i18n.py`) assert each
   page has exactly one `<script>...</script>` without attributes, holding its `I18N`
-  object and page JS. Put shared code in `app/static/js/*.js` and data in
-  `<script type="application/json" id="...">` blocks.
-- Light theme is a soft warm palette overriding Bootstrap variables under
-  `[data-bs-theme=light]` in `style.css`; dark is the default. Game cards use the
-  `game-surface` class (theme-aware), never `text-bg-dark`.
+  object and server values; the page's logic lives in `app/static/js/<page>.js`,
+  loaded after it, and data goes in `<script type="application/json" id="...">` blocks.
+  Tests that check page JS read the static file.
+- Two theme axes on `<html>`: `data-bs-theme` (light/dark, dark default) and
+  `data-style` (joycon/ownfoil/neon; the admin's default from settings, each browser
+  can pick its own). Every color is a `--op-*` token in `tokens.css` with one meaning
+  (ok green, wait amber, fav gold, danger red, info blue; `--op-nav` is the style's
+  accent) - never hard-code colors. Cards use `.surface`; game cards `game-surface`.
 - Long lists: `limitVisibleRows(container, rowSelector, n)` from `scroll-limit.js`.
 - Settings sections have anchor ids (`#Authentication`, `#Maintenance`,
   `#Notifications`, ...) used by the dashboard and the Ctrl+K search
@@ -128,18 +134,16 @@ package - `tests/conftest.py` puts `app/` on `sys.path`.
 
 ## Status and pending work
 
-Done through 6.2.5.45: security hardening, CI, health check, offline UI, notifications,
+Done through 6.2.5.46: security hardening, CI, health check, offline UI, notifications,
 daily maintenance + backups, download history, resumable web uploads, dashboard, PWA,
 light/dark theme, Ctrl+K search, mobile layout, DB indexes, Prometheus metrics, UI
-polish, dependency/image vulnerability fixes, Dependabot.
+polish, dependency/image vulnerability fixes, Dependabot, the SLMW-inspired redesign
+(tokens, three styles, flat nav, library, game page, stats/dashboard, admin pages,
+Settings index) with every big page's JS moved to `app/static/js/`.
 
 Postponed - **remind the maintainer of these when a round of work wraps up**:
 
-1. **Split the JavaScript out of the big templates** (`settings.html`, `index.html`,
-   `files.html`, 1,200-2,000 lines each) into `app/static/js/`. Internal refactor, no
-   visible change; do it in parts, and update the single-inline-script tests
-   deliberately.
-2. **Save backups from Sphaira** - the `backup_access` permission and the handshake's
+1. **Save backups from Sphaira** - the `backup_access` permission and the handshake's
    `save_backup` / `resumable_upload` features are placeholders; depends on the client
    supporting it.
 

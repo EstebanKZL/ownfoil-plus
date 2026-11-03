@@ -46,7 +46,7 @@ def test_narrow_card_info_fills_the_card_and_pins_the_badges():
 
 
 def test_game_cards_are_no_longer_forced_dark():
-    html = _read("app", "templates", "index.html")
+    html = _read("app", "static", "js", "library.js")  # the cards are built there since stage 2
     assert "text-bg-dark game-card" not in html and "text-bg-dark list-game-card" not in html
     assert html.count("card game-surface") == 2
 
@@ -54,11 +54,13 @@ def test_game_cards_are_no_longer_forced_dark():
 # --- light theme -----------------------------------------------------------------------
 
 def test_light_theme_is_soft_not_stark_white():
-    css = _read("app", "static", "style.css")
-    light = _block(css, "[data-bs-theme=light]")
-    bg = re.search(r"--bs-body-bg: (#[0-9a-f]{6})", light).group(1)
+    # The palette moved to the design tokens (stage 1), Bootstrap reads it from there.
+    css = _read("app", "static", "css", "tokens.css")
+    light = _block(css, '[data-bs-theme="light"]')
+    bg = re.search(r"--op-surface-0: (#[0-9a-f]{6})", light).group(1)
     assert bg.lower() not in ("#fff", "#ffffff")
-    assert "--bs-body-color:" in light and "--bs-tertiary-bg:" in light
+    assert "--op-text:" in light and "--op-surface-1:" in light
+    assert "--bs-body-bg: var(--op-surface-0)" in css
 
 
 def test_light_theme_covers_the_game_cards():
@@ -68,9 +70,10 @@ def test_light_theme_covers_the_game_cards():
         assert selector + " {" in css, selector
 
 
-def test_dark_theme_cards_look_as_before():
+def test_game_cards_follow_the_design_tokens():
+    # Stage 1 design system: the card colors come from the tokens, not literals.
     rule = _block(_read("app", "static", "style.css"), ".game-surface")
-    assert "#212529" in rule and "#fff" in rule
+    assert "var(--op-surface-1)" in rule and "var(--op-text)" in rule
 
 
 # --- task history ------------------------------------------------------------------------
@@ -92,7 +95,8 @@ def test_clearing_history_is_admin_only(shop_app):
 
 
 def test_tasks_page_caps_history_to_five_and_offers_clearing(admin_client):
-    html = admin_client.get("/admin/tasks").get_data(as_text=True)
+    html = (admin_client.get("/admin/tasks").get_data(as_text=True)
+            + admin_client.get("/static/js/tasks.js").get_data(as_text=True))  # JS moved in stage 5a
     assert 'id="clearHistory"' in html
     assert "limitVisibleRows(document.getElementById('historyScroll'), '.task-row', 5)" in html
 
@@ -105,7 +109,7 @@ def test_admin_pages_load_the_row_limiter(admin_client):
 
 
 def test_dashboard_lists_show_ten_and_return_up_to_thirty(admin_client):
-    html = admin_client.get("/admin").get_data(as_text=True)
+    html = admin_client.get("/static/js/dashboard.js").get_data(as_text=True)  # since stage 4
     assert "limitVisibleRows(document.getElementById('dashRecentFiles'), 'li', 10)" in html
     assert "limitVisibleRows(document.getElementById('dashRecentDownloads'), 'li', 10)" in html
     with admin_client.application.app_context():
@@ -121,7 +125,8 @@ def test_stats_download_tables_show_ten(admin_client):
     html = admin_client.get("/admin/stats").get_data(as_text=True)
     for table in ("downloadTopTitles", "downloadByUser", "downloadByClient", "downloadRecent"):
         assert f'id="{table}Scroll"' in html, table
-    assert "limitVisibleRows(document.getElementById(id + 'Scroll'), 'tbody tr', 10)" in html
+    js = admin_client.get("/static/js/stats.js").get_data(as_text=True)  # since stage 4
+    assert "limitVisibleRows(document.getElementById(id + 'Scroll'), 'tbody tr', 10)" in js
 
 
 def test_stats_top_titles_go_beyond_ten(admin_client):

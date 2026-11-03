@@ -1,0 +1,293 @@
+/*
+ * Ownfoil-Plus design tokens: the only place the web UI's colors are defined.
+ *
+ * Two independent axes on <html>:
+ *   data-bs-theme  light | dark            (mode, theme.js; dark is the default)
+ *   data-style     ownfoil | neon | joycon (color style; the admin's default comes from
+ *                                           settings, theme.js applies a browser's own)
+ *
+ * Every style shares the surfaces, the type and the colors that carry one meaning each:
+ *   --op-ok      green  done, up to date
+ *   --op-wait    amber  something waits for you: an update, missing DLC, a step to do
+ *   --op-fav     gold   favorites
+ *   --op-danger  red    errors, destructive actions
+ *   --op-info    blue   neutral facts: a check that passed, work being processed
+ * A style only changes the navigation accent (active page, filters, focus), the action
+ * color (primary buttons) and the soft glows behind page headers.
+ *
+ * The design language (layered surfaces, rounded components, one meaning per color) is
+ * adapted from Switch Library Manager Web by DeLFuS77 (AGPL-3.0) - see NOTICE.md.
+ */
+
+@font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url("../vendor/inter/InterVariable.woff2") format("woff2");
+}
+
+/* --- Shared ----------------------------------------------------------------------- */
+
+:root {
+    --op-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif;
+    --op-radius-sm: 8px;
+    --op-radius: 12px;
+    --op-radius-lg: 16px;
+    --op-dur: 180ms;
+    --op-ease: cubic-bezier(.2, .7, .3, 1);
+}
+
+[data-bs-theme="dark"] {
+    --op-surface-0: #0d1117;
+    --op-surface-0-rgb: 13, 17, 23;
+    --op-surface-1: #161b22;
+    --op-surface-2: #1c2230;
+    --op-text: #e6edf3;
+    --op-text-rgb: 230, 237, 243;
+    --op-text-muted: #8b949e;
+    --op-border: #2a313c;
+    --op-border-strong: #3a4250;
+    --op-chart-track: #2a313c;   /* empty part of bars, donuts and rings */
+    --op-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .25);
+    --op-ok: #3fb950;
+    --op-ok-rgb: 63, 185, 80;
+    --op-wait: #f59a23;
+    --op-wait-rgb: 245, 154, 35;
+    --op-on-wait: #0d1117;
+    --op-fav: #f2b51d;
+    --op-fav-rgb: 242, 181, 29;
+    --op-danger: #f85149;
+    --op-danger-rgb: 248, 81, 73;
+    --op-info: #58a6ff;
+    --op-info-rgb: 88, 166, 255;
+}
+
+/* The soft warm light theme Ownfoil-Plus already had, now as tokens. */
+[data-bs-theme="light"] {
+    --op-surface-0: #eceae4;
+    --op-surface-0-rgb: 236, 234, 228;
+    --op-surface-1: #f7f5f0;
+    --op-surface-2: #f9f8f4;
+    --op-text: #30353a;
+    --op-text-rgb: 48, 53, 58;
+    --op-text-muted: #5d6268;
+    --op-border: #d5d1c7;
+    --op-border-strong: #bfbab0;
+    --op-chart-track: #dcd8ce;
+    --op-shadow: 0 1px 2px rgba(60, 50, 30, .08), 0 8px 24px rgba(60, 50, 30, .08);
+    --op-ok: #1a7f37;
+    --op-ok-rgb: 26, 127, 55;
+    --op-wait: #9a6512;
+    --op-wait-rgb: 154, 101, 18;
+    --op-on-wait: #ffffff;
+    --op-fav: #9a7000;
+    --op-fav-rgb: 154, 112, 0;
+    --op-danger: #cf222e;
+    --op-danger-rgb: 207, 34, 46;
+    --op-info: #0969da;
+    --op-info-rgb: 9, 105, 218;
+}
+
+/* --- Styles ----------------------------------------------------------------------- */
+/* Text on --op-action and --op-action-hover is --op-on-action, and text on --op-wait is
+   --op-on-wait: every such pair is at least 4.5:1 (checked by tests/test_design_tokens.py). */
+
+[data-style="ownfoil"][data-bs-theme="dark"] {
+    --op-nav: #00e5d0;
+    --op-nav-rgb: 0, 229, 208;
+    --op-action: #00b8a6;
+    --op-action-rgb: 0, 184, 166;
+    --op-action-hover: #00d1bd;
+    --op-on-action: #0d1117;
+    --op-glow-1: rgba(0, 229, 208, .16);
+    --op-glow-2: rgba(0, 140, 255, .10);
+}
+
+[data-style="ownfoil"][data-bs-theme="light"] {
+    --op-nav: #00756b;
+    --op-nav-rgb: 0, 117, 107;
+    --op-action: #00756b;
+    --op-action-rgb: 0, 117, 107;
+    --op-action-hover: #00655c;
+    --op-on-action: #ffffff;
+    --op-glow-1: rgba(0, 180, 165, .18);
+    --op-glow-2: rgba(0, 120, 220, .08);
+}
+
+[data-style="neon"][data-bs-theme="dark"] {
+    --op-nav: #ff5c6c;
+    --op-nav-rgb: 255, 92, 108;
+    --op-action: #d62839;
+    --op-action-rgb: 214, 40, 57;
+    --op-action-hover: #b81f30;
+    --op-on-action: #ffffff;
+    --op-glow-1: rgba(214, 40, 57, .20);
+    --op-glow-2: rgba(15, 181, 216, .12);
+}
+
+[data-style="neon"][data-bs-theme="light"] {
+    --op-nav: #c41f30;
+    --op-nav-rgb: 196, 31, 48;
+    --op-action: #c41f30;
+    --op-action-rgb: 196, 31, 48;
+    --op-action-hover: #a91a29;
+    --op-on-action: #ffffff;
+    --op-glow-1: rgba(214, 40, 57, .14);
+    --op-glow-2: rgba(15, 181, 216, .10);
+}
+
+[data-style="joycon"][data-bs-theme="dark"] {
+    --op-nav: #00e5d0;
+    --op-nav-rgb: 0, 229, 208;
+    --op-action: #d62839;
+    --op-action-rgb: 214, 40, 57;
+    --op-action-hover: #b81f30;
+    --op-on-action: #ffffff;
+    --op-glow-1: rgba(0, 229, 208, .14);
+    --op-glow-2: rgba(255, 69, 84, .14);
+}
+
+[data-style="joycon"][data-bs-theme="light"] {
+    --op-nav: #00756b;
+    --op-nav-rgb: 0, 117, 107;
+    --op-action: #c41f30;
+    --op-action-rgb: 196, 31, 48;
+    --op-action-hover: #a91a29;
+    --op-on-action: #ffffff;
+    --op-glow-1: rgba(0, 180, 165, .16);
+    --op-glow-2: rgba(214, 40, 57, .10);
+}
+
+/* --- Bootstrap wiring --------------------------------------------------------------- */
+/* Bootstrap's own variables read the tokens, so every existing page follows the style. */
+
+[data-bs-theme] {
+    --bs-body-font-family: var(--op-font);
+    --bs-body-bg: var(--op-surface-0);
+    --bs-body-bg-rgb: var(--op-surface-0-rgb);
+    --bs-body-color: var(--op-text);
+    --bs-body-color-rgb: var(--op-text-rgb);
+    --bs-emphasis-color: var(--op-text);
+    --bs-secondary-color: var(--op-text-muted);
+    --bs-secondary-bg: var(--op-surface-2);
+    --bs-tertiary-bg: var(--op-surface-1);
+    --bs-heading-color: var(--op-text);
+    --bs-border-color: var(--op-border);
+    --bs-border-radius: var(--op-radius-sm);
+    --bs-border-radius-lg: var(--op-radius);
+    --bs-border-radius-xl: var(--op-radius-lg);
+    --bs-primary: var(--op-action);
+    --bs-primary-rgb: var(--op-action-rgb);
+    --bs-link-color: var(--op-nav);
+    --bs-link-color-rgb: var(--op-nav-rgb);
+    --bs-link-hover-color: var(--op-nav);
+    --bs-link-hover-color-rgb: var(--op-nav-rgb);
+    --bs-success: var(--op-ok);
+    --bs-success-rgb: var(--op-ok-rgb);
+    --bs-warning: var(--op-wait);
+    --bs-warning-rgb: var(--op-wait-rgb);
+    --bs-danger: var(--op-danger);
+    --bs-danger-rgb: var(--op-danger-rgb);
+    --bs-focus-ring-color: rgba(var(--op-nav-rgb), .35);
+}
+
+.card, .modal, .dropdown-menu, .popover, .offcanvas, .toast {
+    --bs-card-bg: var(--op-surface-1);
+    --bs-card-border-color: var(--op-border);
+    --bs-modal-bg: var(--op-surface-1);
+    --bs-dropdown-bg: var(--op-surface-2);
+    --bs-dropdown-border-color: var(--op-border);
+    --bs-dropdown-link-active-bg: rgba(var(--op-nav-rgb), .16);
+    --bs-dropdown-link-active-color: var(--op-text);
+    --bs-popover-bg: var(--op-surface-2);
+    --bs-offcanvas-bg: var(--op-surface-1);
+}
+
+/* Bootstrap compiles these colors as literals: point them at the tokens. */
+.btn-primary {
+    --bs-btn-color: var(--op-on-action);
+    --bs-btn-bg: var(--op-action);
+    --bs-btn-border-color: var(--op-action);
+    --bs-btn-hover-color: var(--op-on-action);
+    --bs-btn-hover-bg: var(--op-action-hover);
+    --bs-btn-hover-border-color: var(--op-action-hover);
+    --bs-btn-active-color: var(--op-on-action);
+    --bs-btn-active-bg: var(--op-action-hover);
+    --bs-btn-active-border-color: var(--op-action-hover);
+    --bs-btn-disabled-color: var(--op-on-action);
+    --bs-btn-disabled-bg: var(--op-action);
+    --bs-btn-disabled-border-color: var(--op-action);
+    --bs-btn-focus-shadow-rgb: var(--op-nav-rgb);
+}
+
+.btn-outline-primary {
+    --bs-btn-color: var(--op-nav);
+    --bs-btn-border-color: rgba(var(--op-nav-rgb), .6);
+    --bs-btn-hover-color: var(--op-on-action);
+    --bs-btn-hover-bg: var(--op-action);
+    --bs-btn-hover-border-color: var(--op-action);
+    --bs-btn-active-color: var(--op-on-action);
+    --bs-btn-active-bg: var(--op-action);
+    --bs-btn-active-border-color: var(--op-action);
+    --bs-btn-focus-shadow-rgb: var(--op-nav-rgb);
+}
+
+.form-control:focus, .form-select:focus, .form-check-input:focus {
+    border-color: rgba(var(--op-nav-rgb), .6);
+    box-shadow: 0 0 0 .2rem rgba(var(--op-nav-rgb), .25);
+}
+
+.form-check-input:checked {
+    background-color: var(--op-action);
+    border-color: var(--op-action);
+}
+
+.nav-pills {
+    --bs-nav-pills-link-active-bg: var(--op-action);
+    --bs-nav-pills-link-active-color: var(--op-on-action);
+}
+
+.pagination {
+    --bs-pagination-active-bg: var(--op-action);
+    --bs-pagination-active-border-color: var(--op-action);
+    --bs-pagination-active-color: var(--op-on-action);
+    --bs-pagination-color: var(--op-nav);
+}
+
+.progress {
+    --bs-progress-bar-bg: var(--op-nav);
+}
+
+.form-range::-webkit-slider-thumb {
+    background-color: var(--op-nav);
+}
+
+.form-range::-moz-range-thumb {
+    background-color: var(--op-nav);
+}
+
+.form-range:focus::-webkit-slider-thumb {
+    box-shadow: 0 0 0 1px var(--op-surface-0), 0 0 0 .25rem rgba(var(--op-nav-rgb), .25);
+}
+
+.text-bg-primary {
+    color: var(--op-on-action) !important;
+    background-color: var(--op-action) !important;
+}
+
+/* --- Style swatches (theme menu, Settings > Appearance) ---------------------------- */
+
+.style-swatch {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    margin-right: .5rem;
+    vertical-align: -2px;
+    box-shadow: 0 0 0 1px var(--op-border-strong);
+}
+
+.style-swatch[data-swatch="ownfoil"] { background: #00e5d0; }
+.style-swatch[data-swatch="neon"] { background: linear-gradient(90deg, #d62839 50%, #0fb5d8 50%); }
+.style-swatch[data-swatch="joycon"] { background: linear-gradient(90deg, #00e5d0 50%, #d62839 50%); }

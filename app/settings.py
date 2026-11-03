@@ -462,6 +462,17 @@ def set_maintenance_settings(data):
             if key in data:
                 settings['maintenance'][key] = data[key]
 
+def get_default_style():
+    """The admin's default color style, always one of APPEARANCE_STYLES: a hand-edited
+    or outdated settings.yaml falls back to the default instead of an unstyled page."""
+    style = (get_settings().get('appearance') or {}).get('default_style')
+    return style if style in APPEARANCE_STYLES else DEFAULT_APPEARANCE_STYLE
+
+def set_appearance_settings(data):
+    """Already-validated values (see the /api/settings/appearance route)."""
+    with settings_transaction() as settings:
+        settings.setdefault('appearance', {}).update(data)
+
 def set_scheduler_settings(data):
     with settings_transaction() as settings:
         settings['scheduler'].update(data)

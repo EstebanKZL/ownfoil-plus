@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% include 'nav.html' %}
+{# One game's page. The markup is the frame; static/js/game.js fills it from one
+   GraphQL query (the title, its updates, DLC and files). #}
+<div class="container-fluid game-page">
+
+    <nav class="game-breadcrumb" id="gameBreadcrumb" aria-label="{{ t('game.breadcrumb') }}">
+        <a href="/" id="gameBackLink"><i class="bi bi-grid" aria-hidden="true"></i> {{ t('nav.library') }}</a>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span id="gameBreadcrumbName" aria-current="page"></span>
+    </nav>
+
+    <div class="game-loading" id="gameLoading"{% if not game_title_id %} hidden{% endif %} aria-busy="true">
+        <div class="game-skeleton game-skeleton--hero"></div>
+        <div class="game-skeleton-row">
+            <div class="game-skeleton"></div><div class="game-skeleton"></div><div class="game-skeleton"></div>
+        </div>
+    </div>
+
+    <div class="surface empty-state game-state" id="gameNotFound"{% if game_title_id %} hidden{% endif %}>
+        <i class="bi bi-question-circle" aria-hidden="true"></i>
+        <h3>{{ t('game.not_found_title') }}</h3>
+        <p class="mb-2">{{ t('game.not_found_body') }}</p>
+        <a class="btn btn-primary" href="/"><i class="bi bi-grid"></i> {{ t('game.back_to_library') }}</a>
+    </div>
+
+    <div class="surface empty-state game-state" id="gameError" hidden role="alert">
+        <i class="bi bi-wifi-off" aria-hidden="true"></i>
+        <h3>{{ t('game.error_title') }}</h3>
+        <p class="mb-2">{{ t('library.error_body') }}</p>
+        <button type="button" class="btn btn-primary" id="gameRetryBtn"><i class="bi bi-arrow-clockwise"></i> {{ t('library.retry') }}</button>
+    </div>
+
+    <section class="game-hero" id="gameHero" hidden></section>
+    <section class="game-facts" id="gameFacts" hidden aria-label="{{ t('game.facts') }}"></section>
+    <div class="game-sections" id="gameSections" hidden></div>
+</div>
+
+{# Copied title id and similar short confirmations. #}
+<div class="toast-container position-fixed bottom-0 end-0 p-3 game-toasts">
+    <div class="toast align-items-center" id="gameToast" role="status" aria-live="polite" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="gameToastText"></div>
+            <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="{{ t('nav.close') }}"></button>
+        </div>
+    </div>
+</div>
+
+{% if is_admin %}
+{# Admins: correct what the catalogue says about this game. #}
+<div class="modal fade" id="gameEditModal" tabindex="-1" aria-labelledby="gameEditTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="gameEditTitle">{{ t('game.edit_metadata') }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ t('nav.close') }}"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label" for="gameEditName">{{ t('library.metadata_name_label') }}</label>
+                    <input type="text" class="form-control" id="gameEditName">
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label" for="gameEditDeveloper">{{ t('library.metadata_developer_label') }}</label>
+                        <input type="text" class="form-control" id="gameEditDeveloper">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="gameEditPublisher">{{ t('library.metadata_publisher_label') }}</label>
+                        <input type="text" class="form-control" id="gameEditPublisher">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="gameEditReleaseDate">{{ t('library.metadata_release_date_label') }}</label>
+                    <input type="text" class="form-control" id="gameEditReleaseDate" placeholder="20240131">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="gameEditDescription">{{ t('library.metadata_description_label') }}</label>
+                    <textarea class="form-control" id="gameEditDescription" rows="5"></textarea>
+                </div>
+                <p class="text-secondary small mb-0">{{ t('game.edit_hint') }}</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-danger me-auto" id="gameEditResetBtn">{{ t('game.reset') }}</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ t('nav.close') }}</button>
+                <button type="button" class="btn btn-primary" id="gameEditSaveBtn">{{ t('game.save') }}</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{# A screenshot, full size. #}
+<div class="modal fade" id="shotModal" tabindex="-1" aria-label="{{ t('game.screenshots') }}" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content shot-modal">
+            <button type="button" class="btn-close shot-modal__close" data-bs-dismiss="modal" aria-label="{{ t('nav.close') }}"></button>
+            <img id="shotModalImg" class="w-100" alt="">
+        </div>
+    </div>
+</div>
+
+<script>
+    // Fed by the server: the same viewer rules as the Library (app.py's
+    // library_page_context), so buttons only show where the routes behind them work.
+    const TITLE_ID = {{ game_title_id | tojson }};
+    const IS_ADMIN = {{ is_admin | tojson }};
+    const IS_SHOP = {{ is_shop | tojson }};
+    const WEB_DOWNLOADS_ENABLED = {{ web_downloads_enabled | tojson }};
+
+    const I18N = {
+        library: {{ t('nav.library') | tojson }},
+        unrecognized: {{ t('library.unrecognized') | tojson }},
+        inLibrary: {{ t('game.in_library') | tojson }},
+        notInLibrary: {{ t('game.not_in_library') | tojson }},
+        badgeUpdate: {{ t('library.badge_update') | tojson }},
+        badgeMissingDlc: {{ t('library.badge_missing_dlc') | tojson }},
+        badgeComplete: {{ t('library.badge_complete') | tojson }},
+        titleId: {{ t('library.title_id_label') | tojson }},
+        releaseDate: {{ t('library.release_date') | tojson }},
+        region: {{ t('game.region') | tojson }},
+        languages: {{ t('library.languages') | tojson }},
+        genre: {{ t('library.genre') | tojson }},
+        players: {{ t('library.number_of_players') | tojson }},
+        rating: {{ t('library.rating') | tojson }},
+        size: {{ t('library.file_size') | tojson }},
+        installedVersion: {{ t('game.installed_version') | tojson }},
+        latestVersion: {{ t('game.latest_version') | tojson }},
+        description: {{ t('game.description') | tojson }},
+        screenshots: {{ t('game.screenshots') | tojson }},
+        updates: {{ t('game.updates') | tojson }},
+        updateMissing: {{ t('game.update_missing') | tojson }},
+        noUpdates: {{ t('game.no_updates') | tojson }},
+        dlc: {{ t('game.dlc') | tojson }},
+        files: {{ t('game.files') | tojson }},
+        fileFormat: {{ t('game.file_format') | tojson }},
+        owned: {{ t('game.owned') | tojson }},
+        missing: {{ t('game.missing') | tojson }},
+        downloadTooltip: {{ t('library.download_tooltip') | tojson }},
+        downloadAria: {{ t('library.download_aria') | tojson }},
+        downloadAll: {{ t('game.download_all') | tojson }},
+        editMetadata: {{ t('game.edit_metadata') | tojson }},
+        copyTitleId: {{ t('game.copy_title_id') | tojson }},
+        copied: {{ t('game.copied') | tojson }},
+        saveFailed: {{ t('game.save_failed') | tojson }},
+    };
+</script>
+<script src="{{ url_for('static', filename='js/format.js') }}"></script>
+<script src="{{ url_for('static', filename='js/library-common.js') }}"></script>
+<script src="{{ url_for('static', filename='js/game.js') }}"></script>
+{% endblock %}

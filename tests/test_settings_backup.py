@@ -176,5 +176,8 @@ def test_settings_page_script_is_not_split_by_a_stray_closing_tag(settings_page_
     script_blocks = re.findall(r"<script>(.*?)</script>", html, re.DOTALL)
     assert len(script_blocks) == 1, (
         f"Expected exactly one inline <script>...</script> block, found {len(script_blocks)}")
-    assert "function importSettings" in script_blocks[0]
-    assert "function submitWorkerSettings" in script_blocks[0]
+    # The logic lives in static/js/settings.js since stage 5b.
+    assert "/static/js/settings.js" in html
+    js = settings_page_client.get("/static/js/settings.js").get_data(as_text=True)
+    assert "function importSettings" in js
+    assert "function submitWorkerSettings" in js

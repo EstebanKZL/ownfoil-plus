@@ -36,12 +36,25 @@ def test_theme_script_runs_in_head_before_the_stylesheets(admin_client):
     head = html.split("</head>", 1)[0]
     assert head.index("js/theme.js") < head.index("bootstrap.min.css")
     # Dark stays the default for anyone who never picks a theme.
-    assert '<html lang="en" data-bs-theme="dark">' in html
+    assert '<html lang="en" data-bs-theme="dark" data-style="joycon">' in html
 
 
 def test_theme_menu_offers_three_choices(admin_client):
     html = admin_client.get("/").get_data(as_text=True)
     assert {"light", "dark", "auto"} <= set(re.findall(r'data-theme-choice="(\w+)"', html))
+
+
+def test_theme_script_validates_style_names(shop_app):
+    js = shop_app.client.get("/static/js/theme.js").get_data(as_text=True)
+    assert "['ownfoil', 'neon', 'joycon']" in js
+    assert "STYLE_KEY" in js and "window.setStyle" in js
+    # An unknown stored value (old version, typo) must fall back, never be applied.
+    assert re.search(r"STYLES\.includes\(", js)
+
+
+def test_theme_menu_offers_three_styles_and_server_default(admin_client):
+    html = admin_client.get("/").get_data(as_text=True)
+    assert {"ownfoil", "neon", "joycon", "server"} <= set(re.findall(r'data-style-choice="(\w+)"', html))
 
 
 def test_theme_script_handles_auto_and_storage_errors(shop_app):
@@ -105,5 +118,9 @@ def test_settings_sections_linked_by_the_palette_exist(admin_client):
 
 
 def test_library_and_files_pages_accept_a_search_from_the_url(admin_client):
-    assert "new URLSearchParams(location.search).get('q')" in admin_client.get("/").get_data(as_text=True)
-    assert "TABS.all.search = urlSearch" in admin_client.get("/admin/files").get_data(as_text=True)
+    # The library's logic lives in static/js/library.js since stage 2.
+    assert "/static/js/library.js" in admin_client.get("/").get_data(as_text=True)
+    assert "new URLSearchParams(location.search).get('q')" in admin_client.get("/static/js/library.js").get_data(as_text=True)
+    # And the Files page's in static/js/files.js since stage 5a.
+    assert "/static/js/files.js" in admin_client.get("/admin/files").get_data(as_text=True)
+    assert "TABS.all.search = urlSearch" in admin_client.get("/static/js/files.js").get_data(as_text=True)

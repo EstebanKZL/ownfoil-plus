@@ -1,26 +1,50 @@
-<nav class="navbar navbar-expand-lg bg-body-secondary bg-dark border-bottom border-body" data-bs-theme="dark">
+{# Top bar. Flat: an admin's pages are one click away, with counters on the ones that
+   need attention. nav_admin / nav_shop / nav_counts come from app.py's inject_nav. #}
+{% set p = request.path %}
+{% set nav_active = 'library' if title == 'Library' else 'setup' if title == 'Setup'
+    else 'files' if p.startswith('/admin/files') else 'tasks' if p.startswith('/admin/tasks')
+    else 'stats' if p.startswith('/admin/stats') else 'admin' if p.startswith('/admin') else '' %}
+{% macro nav_item(key, href, icon, label, count_id=None, count=0, tone='nav') %}
+<li class="nav-item">
+    <a class="nav-link op-nav-link{% if nav_active == key %} active{% endif %}" data-nav="{{ key }}" href="{{ href }}" title="{{ label }}"{% if nav_active == key %} aria-current="page"{% endif %}>
+        <i class="bi {{ icon }}" aria-hidden="true"></i><span>{{ label }}</span>
+        {% if count_id %}<span class="op-count op-count--{{ tone }}" id="{{ count_id }}"{% if not count %} hidden{% endif %}>{{ count }}</span>{% endif %}
+    </a>
+</li>
+{% endmacro %}
+<nav class="navbar navbar-expand-lg op-topbar">
     <div class="container-fluid">
-        <a class="navbar-brand p-0" href="#">
-            <img class="d-inline-block mb-1" src="{{ url_for('static', filename='logo/logo.svg') }}" alt="logo" width="30" height="22">
-        {{ shop_name }}
+        <a class="navbar-brand op-brand" href="/">
+            <img src="{{ url_for('static', filename='logo/logo.svg') }}" alt="" width="28" height="28">
+            <span>{{ shop_name }}</span>
         </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+        <button type="button" class="nav-link op-search-btn d-lg-none ms-auto" onclick="openSearch()" title="{{ t('search.open_title') }}" aria-label="{{ t('search.open_title') }}">
+            <i class="bi bi-search"></i>
+        </button>
+        <button class="navbar-toggler{% if nav_admin %} op-toggler-admin{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
             aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav">
-                <li class="nav-item">
-                    <a class="nav-link{% if title == 'Library' %} active" aria-current="page"{% else %}"{% endif %} href="/">{{ t('nav.library') }}</a>
-                </li>
-                {% if admin_account_created == false or (current_user.is_authenticated and current_user.has_shop_access()) %}
-                <li class="nav-item">
-                    <a class="nav-link{% if title == 'Setup' %} active" aria-current="page"{% else %}"{% endif %}" href="/setup">{{ t('nav.setup') }}</a>
-                </li>
+            <ul class="navbar-nav op-nav">
+                {{ nav_item('library', '/', 'bi-grid', t('nav.library')) }}
+                {% if nav_shop %}
+                {{ nav_item('setup', '/setup', 'bi-joystick', t('nav.setup')) }}
                 {% endif %}
-                {% if current_user.is_admin or admin_account_created == false %}
-                <li class="nav-item">
-                    <a class="nav-link{% if request.path.startswith('/admin') %} active" aria-current="page"{% else %}"{% endif %}" href="/admin">{{ t('nav.admin') }}</a>
+                {% if nav_admin %}
+                {{ nav_item('files', '/admin/files', 'bi-file-earmark', t('settings_nav.files'), 'navCountFiles', nav_counts.unidentified, 'wait') }}
+                {{ nav_item('tasks', '/admin/tasks', 'bi-list-task', t('settings_nav.tasks'), 'navCountTasks', nav_counts.running_tasks) }}
+                {{ nav_item('stats', '/admin/stats', 'bi-bar-chart', t('settings_nav.stats')) }}
+                <li class="nav-item dropdown">
+                    <a class="nav-link op-nav-link dropdown-toggle{% if nav_active == 'admin' %} active{% endif %}" data-nav="admin" href="#" id="adminDropdown" title="{{ t('nav.admin') }}"
+                       role="button" data-bs-toggle="dropdown" aria-expanded="false"{% if nav_active == 'admin' %} aria-current="page"{% endif %}>
+                        <i class="bi bi-sliders" aria-hidden="true"></i><span>{{ t('nav.admin') }}</span>
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="adminDropdown">
+                        <li><a class="dropdown-item{% if p == '/admin' %} active{% endif %}" href="/admin"><i class="bi bi-speedometer2 me-2"></i>{{ t('settings_nav.dashboard') }}</a></li>
+                        <li><a class="dropdown-item{% if p == '/admin/settings' %} active{% endif %}" href="/admin/settings"><i class="bi bi-gear me-2"></i>{{ t('settings_nav.settings') }}</a></li>
+                        <li><a class="dropdown-item{% if p.startswith('/admin/services') %} active{% endif %}" href="/admin/services"><i class="bi bi-broadcast me-2"></i>{{ t('settings_nav.services') }}</a></li>
+                    </ul>
                 </li>
                 {% endif %}
             </ul>
@@ -30,11 +54,10 @@
                         <i class="bi bi-download"></i> {{ t('nav.install_app') }}
                     </button>
                 </li>
-                <li class="nav-item me-lg-1">
-                    <button type="button" class="nav-link" onclick="openSearch()" title="{{ t('search.open_title') }}">
+                <li class="nav-item me-lg-1 d-none d-lg-block">
+                    <button type="button" class="nav-link op-search-btn" onclick="openSearch()" title="{{ t('search.open_title') }}">
                         <i class="bi bi-search"></i>
-                        <span class="d-lg-none ms-1">{{ t('search.placeholder') }}</span>
-                        <kbd class="d-none d-lg-inline ms-1 small">Ctrl K</kbd>
+                        <kbd class="ms-1 small">Ctrl K</kbd>
                     </button>
                 </li>
                 <li class="nav-item dropdown me-lg-1">
@@ -44,9 +67,7 @@
                         <span class="d-lg-none ms-1">{{ t('theme.title') }}</span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="themeDropdown">
-                        <li><button type="button" class="dropdown-item" data-theme-choice="light" onclick="setTheme('light')"><i class="bi bi-sun me-2"></i>{{ t('theme.light') }}</button></li>
-                        <li><button type="button" class="dropdown-item" data-theme-choice="dark" onclick="setTheme('dark')"><i class="bi bi-moon-stars me-2"></i>{{ t('theme.dark') }}</button></li>
-                        <li><button type="button" class="dropdown-item" data-theme-choice="auto" onclick="setTheme('auto')"><i class="bi bi-circle-half me-2"></i>{{ t('theme.auto') }}</button></li>
+                        {% include '_theme_choices.html' %}
                     </ul>
                 </li>
                 <li class="nav-item dropdown me-lg-2">
@@ -61,21 +82,71 @@
                 </li>
                 {% if current_user.is_authenticated %}
                 <li class="nav-item">
-                    <a class="btn btn-outline-secondary me-2" href="/logout" role="button">{{ t('nav.logout') }}</a>
+                    <a class="btn btn-sm btn-outline-secondary" href="/logout" role="button">{{ t('nav.logout') }}</a>
                 </li>
                 {% else %}
                 <li class="nav-item">
-                    <a class="btn btn-outline-secondary me-2" href="/login" role="button">{{ t('nav.login') }}</a>
+                    <a class="btn btn-sm btn-primary" href="/login" role="button">{{ t('nav.login') }}</a>
                 </li>
                 {% endif %}
             </ul>
         </div>
     </div>
 </nav>
+{% if nav_admin %}
+{# Phones (< 768px): the admin's pages as a bottom bar, the rest in the "More" sheet.
+   Shown by style.css only below md; theme.js pads <body> so nothing hides under it. #}
+<nav class="bottom-nav" aria-label="{{ t('nav.main') }}">
+    {% for key, href, icon, label, count_id, count, tone in [
+        ('library', '/', 'bi-grid', t('nav.library'), None, 0, 'nav'),
+        ('files', '/admin/files', 'bi-file-earmark', t('settings_nav.files'), 'navCountFilesPhone', nav_counts.unidentified, 'wait'),
+        ('tasks', '/admin/tasks', 'bi-list-task', t('settings_nav.tasks'), 'navCountTasksPhone', nav_counts.running_tasks, 'nav'),
+        ('stats', '/admin/stats', 'bi-bar-chart', t('settings_nav.stats'), None, 0, 'nav'),
+    ] %}
+    <a class="bottom-nav-item{% if nav_active == key %} active{% endif %}" href="{{ href }}"{% if nav_active == key %} aria-current="page"{% endif %}>
+        <i class="bi {{ icon }}" aria-hidden="true"></i>
+        <span>{{ label }}</span>
+        {% if count_id %}<span class="op-count op-count--{{ tone }}" id="{{ count_id }}"{% if not count %} hidden{% endif %}>{{ count }}</span>{% endif %}
+    </a>
+    {% endfor %}
+    <button type="button" class="bottom-nav-item{% if nav_active in ('admin', 'setup') %} active{% endif %}" data-bs-toggle="offcanvas" data-bs-target="#moreSheet" aria-controls="moreSheet">
+        <i class="bi bi-three-dots" aria-hidden="true"></i>
+        <span>{{ t('nav.more') }}</span>
+    </button>
+</nav>
+<div class="offcanvas offcanvas-bottom more-sheet" tabindex="-1" id="moreSheet" aria-labelledby="moreSheetLabel">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="moreSheetLabel">{{ t('nav.more') }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="{{ t('nav.close') }}"></button>
+    </div>
+    <div class="offcanvas-body">
+        <ul class="list-unstyled more-sheet-list">
+            {# Below 768px admins have no hamburger menu, so the install button lives here too
+               (pwa.js shows every .install-app-btn once the browser offers it). #}
+            <li><button type="button" class="dropdown-item install-app-btn d-none" onclick="installApp()"><i class="bi bi-download me-2"></i>{{ t('nav.install_app') }}</button></li>
+            <li><a class="dropdown-item{% if nav_active == 'setup' %} active{% endif %}" href="/setup"><i class="bi bi-joystick me-2"></i>{{ t('nav.setup') }}</a></li>
+            <li><a class="dropdown-item{% if p == '/admin' %} active{% endif %}" href="/admin"><i class="bi bi-speedometer2 me-2"></i>{{ t('settings_nav.dashboard') }}</a></li>
+            <li><a class="dropdown-item{% if p == '/admin/settings' %} active{% endif %}" href="/admin/settings"><i class="bi bi-gear me-2"></i>{{ t('settings_nav.settings') }}</a></li>
+            <li><a class="dropdown-item{% if p.startswith('/admin/services') %} active{% endif %}" href="/admin/services"><i class="bi bi-broadcast me-2"></i>{{ t('settings_nav.services') }}</a></li>
+            <li><hr class="dropdown-divider"></li>
+            {% include '_theme_choices.html' %}
+            <li><hr class="dropdown-divider"></li>
+            <li><h6 class="dropdown-header">{{ t('nav.language') }}</h6></li>
+            {% for lang in SUPPORTED_LANGUAGES %}
+            <li><a class="dropdown-item{% if current_language() == lang %} active{% endif %}" href="/set-language/{{ lang }}"><i class="bi bi-translate me-2"></i>{{ t('language.' ~ lang) }}</a></li>
+            {% endfor %}
+            {% if current_user.is_authenticated %}
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="/logout"><i class="bi bi-box-arrow-right me-2"></i>{{ t('nav.logout') }}</a></li>
+            {% endif %}
+        </ul>
+    </div>
+</div>
+{% endif %}
 {# Global search (Ctrl+K): the pages this user can open, matched in the browser by
    static/js/search.js; games and files come from /api/search. #}
-{% set search_is_admin = current_user.is_admin or admin_account_created == false %}
-{% set search_is_shop = search_is_admin or (current_user.is_authenticated and current_user.has_shop_access()) %}
+{% set search_is_admin = nav_admin %}
+{% set search_is_shop = nav_shop %}
 {% set search_pages = [{'title': t('nav.library'), 'url': '/', 'icon': 'bi-grid', 'keywords': 'library games biblioteca juegos'}] %}
 {% if search_is_shop %}
 {% set _ = search_pages.append({'title': t('nav.setup'), 'url': '/setup', 'icon': 'bi-joystick', 'keywords': 'setup tinfoil sphaira cyberfoil console configuracion consola'}) %}
@@ -87,11 +158,15 @@
     (t('settings_nav.settings') ~ ' › ' ~ t('auth.heading'), '/admin/settings#Authentication', 'bi-people', 'users usuarios password contrasena'),
     (t('settings_nav.settings') ~ ' › ' ~ t('sections.library'), '/admin/settings#Library', 'bi-folder', 'paths rutas carpetas organizer compression verification'),
     (t('settings_nav.settings') ~ ' › ' ~ t('sections.titles'), '/admin/settings#Titles', 'bi-translate', 'keys claves region language idioma'),
+    (t('settings_nav.settings') ~ ' › ' ~ t('sections.media'), '/admin/settings#Media', 'bi-image', 'media artworks artes icons iconos banners screenshots capturas'),
     (t('settings_nav.settings') ~ ' › ' ~ t('sections.shop'), '/admin/settings#Shop', 'bi-shop', 'shop tienda clients public privada host'),
+    (t('settings_nav.settings') ~ ' › ' ~ t('sections.scheduler'), '/admin/settings#Scheduler', 'bi-clock', 'scheduler programacion programación scan escaneo interval intervalo'),
     (t('settings_nav.settings') ~ ' › ' ~ t('sections.maintenance'), '/admin/settings#Maintenance', 'bi-archive', 'maintenance mantenimiento backup schedule'),
     (t('settings_nav.settings') ~ ' › ' ~ t('sections.notifications'), '/admin/settings#Notifications', 'bi-bell', 'notifications discord telegram ntfy webhook'),
     (t('settings_nav.settings') ~ ' › ' ~ t('sections.workers'), '/admin/settings#Workers', 'bi-cpu', 'workers procesos'),
+    (t('settings_nav.settings') ~ ' › ' ~ t('sections.appearance'), '/admin/settings#Appearance', 'bi-palette', 'appearance apariencia theme tema style estilo colors colores'),
     (t('settings_nav.settings') ~ ' › ' ~ t('backup.heading'), '/admin/settings#Backup', 'bi-box-arrow-down', 'export import exportar importar'),
+    (t('settings_nav.settings') ~ ' › ' ~ t('danger.heading'), '/admin/settings#Danger', 'bi-exclamation-triangle', 'reset danger peligro limpiar clean'),
     (t('settings_nav.services'), '/admin/services', 'bi-broadcast', 'services servicios discovery descubrimiento'),
     (t('settings_nav.files'), '/admin/files', 'bi-file-earmark', 'files archivos'),
     (t('settings_nav.tasks'), '/admin/tasks', 'bi-list-task', 'tasks tareas workers'),

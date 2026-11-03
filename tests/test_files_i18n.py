@@ -28,7 +28,7 @@ def client(shop_app):
 def test_files_page_renders_in_english_by_default(client):
     html = client.get("/admin/files").get_data(as_text=True)
 
-    assert "<h2 class=\"mb-0\">Files</h2>" in html
+    assert '<h2 class="page-head__title">Files</h2>' in html
     assert ">All files<" in html
     assert ">Unidentified<" in html
     assert ">Verification issues<" in html
@@ -43,7 +43,7 @@ def test_files_page_renders_in_spanish(client):
     client.set_cookie("ownfoil_lang", "es")
     html = client.get("/admin/files").get_data(as_text=True)
 
-    assert "<h2 class=\"mb-0\">Archivos</h2>" in html
+    assert '<h2 class="page-head__title">Archivos</h2>' in html
     assert ">Todos los archivos<" in html
     assert ">No identificados<" in html
     assert ">Problemas de verificación<" in html
@@ -86,13 +86,15 @@ def test_pending_tab_humanizes_stage_identifiers_instead_of_showing_them_raw(cli
     move, but a missing humanize step, flagged separately from the rest of this i18n
     pass and fixed here. Confirm it now goes through a PENDING_STAGE_LABEL map fed by
     the I18N bridge (so it also gets translated), in English and in Spanish."""
-    html = client.get("/admin/files").get_data(as_text=True)
+    html = (client.get("/admin/files").get_data(as_text=True)
+            + client.get("/static/js/files.js").get_data(as_text=True))  # JS moved in stage 5a
     assert "const PENDING_STAGE_LABEL = {identify: I18N.pendingStageIdentify" in html
     assert "r._stages.map(humanizeStage).join(' · ')" in html
     assert 'pendingStageOrganize: "Organize"' in html
 
     client.set_cookie("ownfoil_lang", "es")
-    html = client.get("/admin/files").get_data(as_text=True)
+    html = (client.get("/admin/files").get_data(as_text=True)
+            + client.get("/static/js/files.js").get_data(as_text=True))  # JS moved in stage 5a
     assert 'pendingStageOrganize: "Organizar"' in html
     assert 'pendingStageVerify: "Verificar"' in html
 
@@ -102,7 +104,8 @@ def test_js_reads_the_bridge_instead_of_hardcoding_english(client):
     from I18N instead - confirm the raw template source references the bridge rather
     than a literal string, the same way this fork's other tests assert on template JS
     source via string-matching rather than executing a JS engine."""
-    html = client.get("/admin/files").get_data(as_text=True)
+    html = (client.get("/admin/files").get_data(as_text=True)
+            + client.get("/static/js/files.js").get_data(as_text=True))  # JS moved in stage 5a
     assert "const yesNo = v => v ? I18N.yes : I18N.no;" in html
     assert "REASONS = {" in html and "I18N.reasonVerification" in html
     assert "I18N.pagerRangeTemplate" in html

@@ -157,8 +157,10 @@ def test_settings_page_script_is_still_one_block(client):
         f"Expected exactly one inline <script>...</script> block, found {len(script_blocks)}")
     body = script_blocks[0]
     assert "const I18N = {" in body
-    assert "function fillUserTable" in body
-    assert "function importSettings" in body
+    # The logic lives in static/js/settings.js since stage 5b.
+    js = client.get("/static/js/settings.js").get_data(as_text=True)
+    assert "function fillUserTable" in js
+    assert "function importSettings" in js
 
 
 def test_auto_resolve_duplicates_checkbox_is_present_and_translated(client):
@@ -211,9 +213,9 @@ def test_compression_preference_select_is_present_and_translated(client):
     assert "Preferir la sin comprimir (nsp/xci)" in html
 
 
-def test_workers_and_backup_sections_both_have_a_leading_divider(client):
-    """Backup previously lacked the <hr class="hr-settings"> every other top-level
-    section uses, making it look stuck onto Workers instead of its own section."""
+def test_workers_and_backup_are_separate_sections(client):
+    """Backup once lacked the divider every other top-level section had, making it look
+    stuck onto Workers. Since stage 5b each section is its own card."""
     client.set_cookie("ownfoil_lang", "es")
     resp = client.get("/admin/settings")
     html = resp.get_data(as_text=True)
@@ -224,8 +226,7 @@ def test_workers_and_backup_sections_both_have_a_leading_divider(client):
     backup_idx = html.index('id="Backup"')
     assert workers_idx < backup_idx
     between = html[workers_idx:backup_idx]
-    assert '<hr class="hr-settings">' in between, (
-        "Expected a divider between Workers and Backup sections")
+    assert "</section>" in between, "Expected Workers' card to close before Backup's"
 
 
 def test_web_clean_record_checkbox_no_longer_exists(client):
@@ -245,7 +246,7 @@ def test_reset_library_tracking_section_is_present_and_translated(client):
     assert 'id="resetLibraryConfirmBtn"' in html
     assert "Clean Library" in html
     assert "Type RESET below to confirm." in html
-    assert "const RESET_LIBRARY_MUTATION" in html
+    assert "const RESET_LIBRARY_MUTATION" in client.get("/static/js/settings.js").get_data(as_text=True)
 
     client.set_cookie("ownfoil_lang", "es")
     resp = client.get("/admin/settings")
@@ -297,6 +298,7 @@ def test_local_artworks_disk_usage_table_reports_all_four_renditions(client):
     assert "Thumb" in html
     assert "Client" in html
     assert "Screen" in html
-    assert "const MEDIA_SIZES = ['original', 'thumb', 'client', 'screen'];" in html
-    assert '"/api/settings/local_media"' in html
-    assert '"/api/settings/local_media/usage"' in html
+    js = client.get("/static/js/settings.js").get_data(as_text=True)
+    assert "const MEDIA_SIZES = ['original', 'thumb', 'client', 'screen'];" in js
+    assert '"/api/settings/local_media"' in js
+    assert '"/api/settings/local_media/usage"' in js

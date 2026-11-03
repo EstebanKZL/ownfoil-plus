@@ -4,6 +4,137 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.46]
+
+A new design for the web UI, built in five stages, inspired by
+[Switch Library Manager Web](https://github.com/DeLFuS77/switch-library-manager-web)
+(AGPL-3.0, like Ownfoil; credited in the new `NOTICE.md`). Every page now looks like
+one product instead of each page carrying its own colors, and every big page's
+JavaScript moved out of its template into `static/js/`. Nothing a setting does changed;
+no server, route or database changes beyond what each stage notes.
+
+Stage 1 lays the foundation the next ones build on:
+
+- **Design tokens.** Every color now lives in one file, `static/css/tokens.css`, which
+  also feeds Bootstrap's variables: existing pages take the new look without being
+  rewritten. Each color has one meaning everywhere - green up to date, amber something
+  waits for you, gold favorites, red errors.
+- **Three color styles, on top of light / dark / auto.** Joy-Con (the default: cyan to
+  navigate, red for actions), Ownfoil-Plus (the logo's cyan) and Neon (red with cyan).
+  The admin picks the one everyone sees, also on the login page, in the new
+  `Settings > Appearance`; each browser can still choose its own from the theme menu.
+  Contrast of text on the accent colors is at least 4.5:1 in all six combinations,
+  which is why the red is a little deeper than a pure neon red.
+- **Flat navigation.** The admin pages were behind `Admin` and a second row of tabs;
+  now `Files`, `Tasks` and `Stats` are on the top bar, with counters for unidentified
+  files and running tasks (the tasks one updates live on the Tasks page), and the rest
+  under an `Admin` menu. URLs are unchanged. On phones, admins get a bottom bar with a
+  `More` sheet for everything else.
+- **Inter font**, served by the app itself like the other front-end libraries, so the
+  UI still works on a LAN with no internet access.
+- **Shared components** (page header, stat tiles, filter pills, toolbar, surfaces,
+  status badges, empty states), shown first on the Dashboard, the login, the setup
+  guide and the offline page. The library, the game page and the other admin pages
+  adopt them in the next stages.
+
+Stage 2, the **Library**, the page people open the most:
+
+- **The library at a glance.** A header with the number of games, tiles for games
+  with a pending update and games missing DLC (clicking one filters the grid), the
+  total size for admins, and a bar with the share of games up to date. It replaces the
+  one line of numbers above the grid.
+- **One toolbar** instead of a row of separate blue buttons: search, sort, view, a
+  *View* menu (page size, card size) and a *Filters* menu holding every filter group,
+  with a dot when one is on.
+- **Sorting by name or release date**, ascending or descending. The page never
+  offered it. ("Recently added" only exists for files, so it isn't offered here.)
+  Doing so found a GraphQL bug: `apps(orderBy: {field: RELEASE_DATE})` compared the
+  app row's own date, empty for base games, so it didn't sort at all. It now uses the
+  game's catalogue date, as the schema documents and `titles` already did - a DLC sorts
+  with its game, as with `NAME`.
+- **Filter pills with exact counts.** The common filters are one click, and each pill
+  says how many results it gives. The counts come from one request built from the same
+  variables as the grid, so a number is exactly what clicking it shows. *Update
+  pending*, *Missing DLC* and *Up to date* cover the games you have, like the header
+  tiles: something you don't own is never "up to date", so without that the first one
+  would list every missing DLC in the catalogue.
+- **New cards**: the cover, the name, publisher and year, and text badges for the
+  state (update, missing DLC, complete) in the colors that mean the same everywhere.
+  Two cards per row on phones.
+- **Empty and error states**: no matches offers *Clear filters*, an empty library
+  points admins to the library folders and to uploading, and a failed request says so
+  with a *Retry* button instead of leaving an empty grid.
+- **The page's JavaScript moved to `static/js/library.js`** (about 1,300 lines out of
+  the template), and remembered preferences are now validated, so a stale or broken
+  value can't break the page.
+
+Stage 3, **a page per game** (`/game/<title ID>`), instead of the Library's details
+pop-up:
+
+- **Everything about a game in one place**, with its own address - to bookmark, share,
+  open in a new tab or come back to with the browser's back button. What the pop-up
+  showed and what was only in the list view (updates, DLC, files, downloads) are
+  together now.
+- **A header over the game's own artwork** with its state (in your library, update
+  available, missing DLC, complete), *Download all*, *Edit metadata* and *Copy title
+  ID*; detail tiles; the description; a screenshot gallery; the updates with a notice
+  when the latest is missing; the DLC you have and the ones missing; and, for admins,
+  every file with its verification.
+- **Every way to a game leads there**: the Library's cards and icons are real links
+  (middle-click works), a DLC card opens its game's page scrolled to that DLC, the
+  list view's names link to it, and `Ctrl+K` opens a game's page directly instead of a
+  filtered Library.
+- Downloads keep the rule the server enforces (shop access plus Settings > web
+  downloads), and metadata edits use the same overrides as before.
+
+Stage 4, **Statistics and the Dashboard**:
+
+- **Statistics read at a glance instead of as tables**: four main tiles, a donut of
+  the space each format takes, a bar per library, a ring with how much of the library
+  is verified (each status still opens its files), what you own of each content type,
+  and the ten largest files, linked to their game. Downloads and duplicates keep every
+  action, in the same cards as the rest. The charts are drawn with CSS, no chart
+  library, so the page still works with no internet.
+- **The Dashboard's alerts read as notices** in the color of what they mean, storage
+  as a bar per library that turns amber and then red as space runs out, and the
+  latest files and downloads show the game's icon and open its page. Recent downloads
+  now carry their title id for that.
+- Both pages' JavaScript moved out of the templates (`static/js/stats.js`,
+  `dashboard.js`, with shared chart helpers in `charts.js`) - the Statistics template
+  went from 1,300 lines to under 300.
+
+Stage 5a, the **Files, Tasks and Services** pages:
+
+- **The same look as the rest of the admin**: a page header, sections as cards. Files'
+  state tiles carry one color per state, and the page's own pastel palette now comes
+  from the design tokens, so it follows the chosen style in both modes.
+- **A file leads to its game**: the title links in the file details pointed at a page
+  that never existed (they ended up on the Library); they open the game page now.
+- **Tasks read at a glance**: the running task's bar in the accent color, failed tasks
+  marked red and scheduled ones amber, and each worker a card with a dot for its state
+  (working, waiting, stopped). Worker cards no longer build HTML from task names.
+- The Files and Tasks JavaScript moved to `static/js/files.js` and `tasks.js`, and a
+  test now checks that every element the admin pages' scripts look up exists.
+
+Stage 5b, the **Settings** page:
+
+- **Any section one click away**: Settings was one long page of twelve sections with
+  nothing but dividers between them. An index now sits beside them on desktop - fixed
+  while you scroll, marking the section you're reading - and becomes a row of chips
+  under the top bar on phones. A click scrolls there and updates the address, so a
+  section can be shared or bookmarked, without filling the Back history.
+- **Sections as cards**, with the same header as the other admin pages; sub-parts
+  (compression, verification, organizer, clients, notification channels) sit inside
+  their card, and the danger zone has its own red-edged card and its own link
+  (`#Danger`).
+- **Links into the page land in view**: links from the Dashboard, Ctrl+K, Files and
+  Setup (to a section or to a single control) stop below the top bar and the chips
+  instead of under them.
+- The page's 1,340 lines of JavaScript moved to `static/js/settings.js`; the template
+  went from 2,300 lines to about 1,000. This finishes moving the big templates'
+  scripts out (Library, game page, Statistics, Dashboard, Files, Tasks and now
+  Settings).
+
 ## [6.2.5.45]
 
 Image vulnerabilities, from a Docker Scout report of 5 critical / 30 high.

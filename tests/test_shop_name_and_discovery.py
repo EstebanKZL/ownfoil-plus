@@ -5,6 +5,7 @@ network without the console's user having to type an address.
 """
 import json
 import os
+import re
 import socket
 
 import fixture
@@ -48,7 +49,7 @@ def test_setting_a_shop_name_replaces_the_brand_in_the_navbar_and_title(client):
     assert "<title>Esteban Switch Shop | Settings</title>" in html
     # The navbar brand switches too - other mentions of the product name elsewhere on the
     # page (e.g. help text referencing "Ownfoil-Plus" by name) are unrelated and untouched.
-    assert ">\n        Esteban Switch Shop\n        </a>" in html
+    assert re.search(r'class="navbar-brand[^"]*".*?<span>Esteban Switch Shop</span>\s*</a>', html, re.DOTALL)
 
 
 def test_clearing_the_shop_name_falls_back_to_the_default_brand(client):
@@ -208,7 +209,7 @@ def test_duplicate_tie_break_controls_are_disabled_when_auto_resolve_is_off(clie
     resolve_duplicate_files_task no-ops entirely while it's off) - the Settings page
     greys the two controls out to match, instead of leaving them checkable while
     inert."""
-    html = client.get("/admin/settings").get_data(as_text=True)
+    html = client.get("/static/js/settings.js").get_data(as_text=True)  # settings JS, stage 5b
     assert "function syncDuplicateTieBreakControls" in html
     assert "#preferMulticontentCheck').prop('disabled', !auto)" in html
     assert "#preferLargerOnTieCheck').prop('disabled', !auto)" in html

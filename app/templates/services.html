@@ -1,41 +1,41 @@
 {% extends "settings_layout.html" %}
 {% block panel %}
-            <div class="settings-container container mt-3">
+<div class="settings-container container-fluid admin-page mt-3">
 
-                {% if admin_account_created == false %}
-                <div class="alert alert-danger" role="alert">
-                    <h4 class="alert-heading">{{ t('settings.missing_admin_heading') }}</h4>
-                    <p>{{ t('settings.missing_admin_body') }}
-                        <br>
-                        <a href="/admin/settings#Authentication" class="alert-link">{{ t('settings.missing_admin_link') }}</a>
-                    </p>
-                </div>
-                {% endif %}
+    {% if admin_account_created == false %}
+    <div class="alert alert-danger" role="alert">
+        <h4 class="alert-heading">{{ t('settings.missing_admin_heading') }}</h4>
+        <p>{{ t('settings.missing_admin_body') }}
+            <br>
+            <a href="/admin/settings#Authentication" class="alert-link">{{ t('settings.missing_admin_link') }}</a>
+        </p>
+    </div>
+    {% endif %}
 
-                <h1 class="pb-2">{{ t('services.title') }}</h1>
-                <p>{{ t('services.desc') }}</p>
+    <header class="page-head">
+        <span class="page-head__icon"><i class="bi bi-broadcast" aria-hidden="true"></i></span>
+        <h2 class="page-head__title">{{ t('services.title') }}</h2>
+        <p class="page-head__desc">{{ t('services.desc') }}</p>
+    </header>
 
-                <hr class="hr-settings">
+    <section class="surface admin-section" id="servicesDiscovery">
+        <h3 class="admin-section__title"><i class="bi bi-wifi" aria-hidden="true"></i> {{ t('sections.discovery') }}</h3>
+        <p>{{ t('services.discovery_desc') }}</p>
+        <div class="alert alert-warning" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            {{ t('services.discovery_docker_note') | safe }}
+        </div>
+        <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" id="discoveryEnabledCheck"
+                aria-describedby="discoveryEnabledCheckHelp">
+            <label class="form-check-label" for="discoveryEnabledCheck">{{ t('services.discovery_enabled_label') }}</label>
+            <div id="discoveryEnabledCheckHelp" class="form-text">{{ t('services.discovery_enabled_help', port=discovery_port) }}</div>
+        </div>
+        <button type="button" id="submitServicesSettingsBtn" class="btn btn-primary"
+            onClick='submitServicesSettings()'>{{ t('services.submit') }}</button>
+    </section>
 
-                <h2 class="pb-2">{{ t('sections.discovery') }}</h2>
-                <p>{{ t('services.discovery_desc') }}</p>
-                <div class="alert alert-warning" role="alert">
-                    <i class="bi bi-exclamation-triangle-fill"></i>
-                    {{ t('services.discovery_docker_note') | safe }}
-                </div>
-                <div class="mb-3 form-check">
-                    <input type="checkbox" class="form-check-input" id="discoveryEnabledCheck"
-                        aria-describedby="discoveryEnabledCheckHelp">
-                    <label class="form-check-label" for="discoveryEnabledCheck">{{ t('services.discovery_enabled_label') }}</label>
-                    <div id="discoveryEnabledCheckHelp" class="form-text">{{ t('services.discovery_enabled_help', port=discovery_port) }}</div>
-                </div>
-
-                <div class="mb-3">
-                    <button type="button" id="submitServicesSettingsBtn" class="btn btn-primary"
-                        onClick='submitServicesSettings()'>{{ t('services.submit') }}</button>
-                </div>
-
-            </div>
+</div>
 {% endblock %}
 
 {% block panel_scripts %}

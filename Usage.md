@@ -29,11 +29,16 @@ Three features need valid keys and are unavailable without them:
 
 # The Web UI
 
-There are three main pages: the library view, the setup guide, and under `Admin` the dashboard, the settings, the files, the task list and the stats.
+The top bar links every page: `Library` and `Setup` for everyone with shop access, and for admins `Files`, `Tasks`, `Stats` and the `Admin` menu (dashboard, settings, services). `Files` shows how many files are not identified yet and `Tasks` how many are running. On a phone, admins get a bottom bar instead (`Library`, `Files`, `Tasks`, `Stats` and `More`, which holds the rest: setup, admin pages, theme, language and logout).
 
-## Theme and search
+## Theme, style and search
 
-The sun/moon icon in the navbar switches between a **light**, **dark** (the default) or **automatic** theme that follows the device's own setting. The choice is remembered per browser. Game cards keep their dark style over the artwork in both themes.
+The sun/moon icon in the navbar sets two things:
+
+- the **mode**: **light**, **dark** (the default) or **automatic**, following the device's own setting;
+- the **style**, the colors of the interface: **Joy-Con** (the default: cyan to navigate, red for actions), **Ownfoil-Plus** (cyan, the logo's color) or **Neon** (red, with cyan details).
+
+Both are remembered per browser. The admin chooses the style everyone sees by default, also on the login page, in `Settings > Appearance`; a browser that picked its own keeps it until `Use the server's style` is chosen.
 
 **Search** from any page with `Ctrl+K` (`Cmd+K` on a Mac), `/`, or the magnifier in the navbar: type a game's name or title ID, a file name (admins), or a page or setting ("notifications", "backup", "users"...). Arrow keys move through the results and `Enter` opens one: a game opens the library filtered to it, a file opens the Files page filtered to it. Results only include what your account can access.
 
@@ -45,15 +50,30 @@ Browsers only allow this over **HTTPS** (see [Remote access and HTTPS](./Install
 
 ## Dashboard
 
-The landing page of `Admin`. At the top, what needs attention, each linking to where to fix it: missing console keys, an unreachable library, low disk space, corrupt or unidentified files, duplicates, failed tasks, no backups yet. Then the figures that matter (games and how many are complete and up to date, files and total size, downloads this week, running and queued tasks), free space per library, the latest added files and downloads, and the state of maintenance, backups, notifications and shop access.
+The landing page of `Admin`. At the top, what needs attention, each linking to where to fix it: missing console keys, an unreachable library, low disk space, corrupt or unidentified files, duplicates, failed tasks, no backups yet. Then the figures that matter (games and how many are complete and up to date, files and total size, downloads this week, running and queued tasks), a bar per library with the space used and free (amber below 15 % free, red below 5 %), the latest added files and downloads - each opens its game's page - and the state of maintenance, backups, notifications and shop access.
 
 `Upload files`, on the dashboard next to `Storage`, adds games from the browser: pick the destination library, then drop `nsp`, `nsz`, `xci` or `xcz` files (or click to choose them). They go up in chunks, one file at a time, with progress and speed, and can be paused, resumed or cancelled. If the connection drops, the tab is closed or the server restarts, choosing the same file again continues from where it stopped; unfinished uploads are listed in the same window and removed after 7 days without activity. While uploading, the file is a hidden `.part` file in the library folder that scans ignore; once complete it's renamed into place and identified like any other new file. A file whose name is already in the library is refused.
 
 ## Library view
 
-The landing page, a grid view of your whole library, with labels and filtering to highlight owned and missing content.
+The landing page: your whole library as cards, icons or a list.
 
-You can filter by type (base game or DLC), by ownership, by whether an update is missing, and by whether the DLC set is complete. There is also a search box, a card and an icon view, a card size slider and a page size selector. The version badge on a card opens a popover listing every known version of that title with its release date, and whether you own it.
+- **At the top**, how the library is doing: the number of games, how many have an update pending, how many are missing DLC, the total size (admins only), and a bar with the share of games up to date. Clicking *Pending updates* or *Missing DLC* shows those games.
+- **The toolbar**: search (by name or title ID), sort by **name** or **release date** in either direction, the view (cards, icons, list), the **View** menu (games per page, card size) and the **Filters** menu (type, ownership, update, DLC; in the list view, the state of the files). A dot on *Filters* means some filter is on.
+- **The pills** under it are one-click filters, each with how many results it gives: *All*, *Update pending*, *Missing DLC*, *Up to date* (in the list view: *Complete*, *Incomplete*, *With errors*, *Repacks*). The counts follow the search and the Filters menu.
+- **Each card** shows the cover, the name, the publisher and year, and badges for its state: update available, missing DLC, or complete. Games you don't have are dimmed. The clock button lists every known version of the title with its release date and whether you own it; the cover or the name opens the game's page.
+
+Search, sort, view, filters and page size are remembered per browser. When nothing matches, *Clear filters* resets them.
+
+## Game page
+
+Every game has its own page, `/game/<title ID>`, opened from its card in the Library, its name in the list view, or a search with `Ctrl+K`. A DLC opens its game's page, scrolled to that DLC.
+
+- **At the top**, the cover over the game's own artwork, whether you have it (and whether it's up to date and complete), the publisher and year, and the actions: *Download all* (when web downloads are on in Settings, for users with shop access), *Edit metadata* (admins) and *Copy title ID*.
+- **The details**: title ID, release date, region, languages, genre, players, rating, size, the version you have and the latest one. Details the catalogue doesn't have aren't shown.
+- **The sections**: the description; the screenshots (click one to see it full size); the updates, with a notice when you don't have the latest; the DLC, the ones you have and the ones missing; and, for admins, every file of the game with its verification and download.
+
+*Edit metadata* corrects the name, developer, publisher, release date or description for this shop; an empty field keeps the catalogue's value, and *Back to the catalogue data* undoes your changes. The *Library* link at the top goes back to the Library as you left it.
 
 ## Setup page
 
@@ -74,13 +94,13 @@ The worker section shows what each worker process is doing right now. How many t
 
 ## Stats page
 
-Admin only. Library-wide figures (files, sizes, verification status, duplicates) and, under `Downloads`, the download history: how many downloads and how much data over the last 7, 30, 90 or 365 days, a per-day chart, the most downloaded titles, counts per user and per client (Tinfoil, Sphaira, CyberFoil or the web UI), and the 50 latest downloads with who took them and from which address.
+Admin only. An overview of the library: games, files, total size and unidentified files; the space each format takes (a donut) and each library (bars - click one for its titles); how much of the library is verified (a ring, with a row per status that lists its files); how much you own of each kind of content (base, updates, DLC); the ten largest files, each linking to its game; the duplicates; and, under `Downloads`, the download history: how many downloads and how much data over the last 7, 30, 90 or 365 days, a per-day chart, the most downloaded titles, counts per user and per client (Tinfoil, Sphaira, CyberFoil or the web UI), and the 50 latest downloads with who took them and from which address.
 
 A file taken again by the same address within a minute counts once, so a console resuming or probing a download isn't counted twice. The history is kept for a year, survives deleting the file it refers to, and can be cleared from the same section (the per-file download counters are kept).
 
 ## Settings page
 
-Admin only, and a single scrolling page.
+Admin only, and a single scrolling page with its twelve sections as cards. An index beside them (a row of chips under the top bar on phones) marks the section you're reading and takes you to any of them; the address follows, so `/admin/settings#Notifications` - or any other section's name - opens the page right there.
 
 # Clients
 
@@ -360,6 +380,12 @@ Events are grouped: everything that happens within 20 seconds of the first event
 | Telegram | A bot token from [@BotFather](https://t.me/BotFather) and your chat ID (send the bot a message first). |
 | ntfy | A server (`https://ntfy.sh` by default, or your own) and a topic; an access token for protected topics. On the public server anyone who knows the topic can read it, so pick a hard-to-guess name. |
 | Webhook | Any URL; it receives a `POST` with `{"shop", "event", "title", "items": [...]}` as JSON. |
+
+## Appearance
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| `Default style` | `Joy-Con` | The color style of the web UI for everyone: `Joy-Con`, `Ownfoil-Plus` or `Neon` (`appearance.default_style`: `joycon`, `ownfoil`, `neon`). Each person can still pick another one for their own browser from the theme menu. |
 
 ## Workers
 
