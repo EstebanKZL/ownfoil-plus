@@ -1159,8 +1159,10 @@ button.stat-tile:hover {
     background-color: var(--op-surface-2);
 }
 
+/* Green, the color that means "up to date" in every style: a gradient from the
+   style's accent read as red-to-green, a status bar, in Neon. */
 .library-progress .progress-bar {
-    background: linear-gradient(90deg, var(--op-nav), var(--op-ok));
+    background-color: var(--op-ok);
     border-radius: 1rem;
 }
 
