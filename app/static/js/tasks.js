@@ -232,7 +232,10 @@ function updateRow(li, task) {
     }
 
     own('.task-head > .task-name').textContent = task.displayName;
-    own('.task-head > .task-meta').textContent = taskMeta(task);
+    // A failed task's meta is its error message: cut to the row, whole in the tooltip.
+    const meta = own('.task-head > .task-meta');
+    meta.textContent = taskMeta(task);
+    meta.title = meta.textContent;
 
     // Only a live row carries a bar: a queued one has nothing to report yet, and a
     // finished, cancelled or failed one says so in its icon and meta text already.

@@ -437,6 +437,9 @@ p.game-description {
     margin-left: auto;
     font-size: .875rem;
     white-space: nowrap;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* Bare icon buttons: the rows are already dense, and bordered buttons competed with the

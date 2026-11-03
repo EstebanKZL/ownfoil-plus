@@ -147,3 +147,11 @@ def test_long_task_names_ellipsize_inside_the_narrower_columns():
     css = _css()
     assert re.search(r"\.task-name \{[^}]*min-width: 0", css)
     assert re.search(r"\.task-head \{[^}]*min-width: 0", css)
+
+
+def test_a_long_task_error_ellipsizes_and_keeps_the_full_text_in_a_tooltip():
+    """The sideways scroll came from the meta line: a failed task's error message."""
+    css = _css()
+    assert re.search(r"\.task-meta \{[^}]*min-width: 0[^}]*text-overflow: ellipsis", css)
+    js = _read("app", "static", "js", "tasks.js")
+    assert "meta.title = meta.textContent" in js
