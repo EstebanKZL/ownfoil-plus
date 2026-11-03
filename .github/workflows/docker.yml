@@ -7,10 +7,14 @@ name: Docker
 # pushed, which is the single biggest contributor to a registry vulnerability scan
 # climbing over time even with no code changes. Two triggers cover that:
 #   - a version tag push (release-day build, tagged with that version and "latest")
-#   - a weekly schedule (rebuilds "latest" from the exact same source, picking up
+#   - a weekly schedule (rebuilds "latest" from the newest version tag, picking up
 #     whatever OS/package patches landed upstream since the last build - the Dockerfile
 #     itself also runs `apk upgrade` at build time, so this is the other half: forcing
 #     a fresh build often enough that there's never a long gap to accumulate in)
+#
+# The schedule and a manual run build the latest *release*, never main: work merged but
+# not yet released must not reach the published image (until 6.2.5.48 it did, every
+# Monday). The `release` job picks the ref; the tests and the build both use it.
 #
 # Requires two repository secrets to actually push: DOCKERHUB_USERNAME and
 # DOCKERHUB_TOKEN (a Docker Hub access token, not the account password - created under
@@ -25,15 +29,45 @@ on:
   workflow_dispatch: {}
 
 jobs:
+  release:
+    runs-on: ubuntu-latest
+    outputs:
+      ref: ${{ steps.ref.outputs.ref }}
+    steps:
+      - name: Checkout (tags only)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Pick the version to build
+        id: ref
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            ref="${{ github.ref_name }}"
+          else
+            ref="$(git tag --list '*.*.*.*' --sort=-v:refname | head -n 1)"
+          fi
+          if [ -z "$ref" ]; then
+            echo "No version tag to build" >&2
+            exit 1
+          fi
+          echo "Building $ref"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
   tests:
+    needs: release
     uses: ./.github/workflows/tests.yml
+    with:
+      ref: ${{ needs.release.outputs.ref }}
 
   build-and-push:
-    needs: tests
+    needs: [release, tests]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.ref }}
 
       - name: Set up QEMU (for the arm/v6, arm/v7, arm64 targets)
         uses: docker/setup-qemu-action@v3

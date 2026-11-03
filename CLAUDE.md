@@ -34,7 +34,8 @@ Docker image `estebankzl/ownfoil-plus`.
 - Publish: `gh release create 6.2.5.N --target <full SHA> --notes-file <notes>` (needs
   the **full** SHA). The tag triggers `.github/workflows/docker.yml`: tests, then a
   multi-arch build (amd64, arm64, arm/v7, arm/v6) pushed as `6.2.5.N` and `latest`.
-  It also rebuilds `latest` every Monday.
+  It also rebuilds `latest` every Monday from the newest version tag (never from
+  `main`), so merging without tagging publishes nothing.
 - If Docker Hub login fails with "malformed HTTP Authorization header", a repo secret
   (`DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN`) has a stray newline/space. Only the
   maintainer can reset secrets (`gh secret set ...`); then `gh run rerun <id> --failed`.
@@ -134,7 +135,7 @@ package - `tests/conftest.py` puts `app/` on `sys.path`.
 
 ## Status and pending work
 
-Done through 6.2.5.47: security hardening, CI, health check, offline UI, notifications,
+Done through 6.2.5.48: security hardening, CI, health check, offline UI, notifications,
 daily maintenance + backups, download history, resumable web uploads, dashboard, PWA,
 light/dark theme, Ctrl+K search, mobile layout, DB indexes, Prometheus metrics, UI
 polish, dependency/image vulnerability fixes, Dependabot, the SLMW-inspired redesign

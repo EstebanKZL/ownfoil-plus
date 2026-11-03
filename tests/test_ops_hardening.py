@@ -86,7 +86,31 @@ def test_image_build_waits_for_the_tests():
     workflow = yaml.safe_load(_read(".github", "workflows", "docker.yml"))
     jobs = workflow["jobs"]
     assert jobs["tests"]["uses"] == "./.github/workflows/tests.yml"
-    assert jobs["build-and-push"]["needs"] == "tests"
+    assert "tests" in jobs["build-and-push"]["needs"]
+
+
+def test_weekly_rebuild_publishes_the_latest_release_not_main():
+    """The Monday rebuild exists to pick up OS/Python patches for the image people run.
+    Built from main it published whatever was merged but not yet released as `latest`;
+    it now rebuilds the newest version tag, and so do its tests."""
+    workflow = yaml.safe_load(_read(".github", "workflows", "docker.yml"))
+    jobs = workflow["jobs"]
+    release = jobs["release"]
+    assert release["outputs"]["ref"] == "${{ steps.ref.outputs.ref }}"
+    script = "\n".join(step.get("run", "") for step in release["steps"])
+    assert "git tag --list '*.*.*.*' --sort=-v:refname" in script
+    assert "github.ref_name" in script or "GITHUB_REF_NAME" in script
+    ref = "${{ needs.release.outputs.ref }}"
+    assert "release" in jobs["tests"]["needs"] and jobs["tests"]["with"]["ref"] == ref
+    assert "release" in jobs["build-and-push"]["needs"]
+    checkout = next(s for s in jobs["build-and-push"]["steps"] if s.get("uses", "").startswith("actions/checkout"))
+    assert checkout["with"]["ref"] == ref
+
+    tests = yaml.safe_load(_read(".github", "workflows", "tests.yml"))
+    triggers = tests.get("on") or tests.get(True)
+    assert "ref" in triggers["workflow_call"]["inputs"]
+    tests_checkout = next(s for s in tests["jobs"]["pytest"]["steps"] if s.get("uses", "").startswith("actions/checkout"))
+    assert tests_checkout["with"]["ref"] == "${{ inputs.ref }}"
 
 
 # --- version -----------------------------------------------------------------------
