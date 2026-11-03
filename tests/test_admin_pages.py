@@ -191,3 +191,34 @@ def test_a_tile_with_broken_files_glows_in_the_danger_color():
     assert "tile.dataset.tone = alert ? tone : '';" in js
     css = _css()
     assert re.search(r'\.files-tile\[data-tone="danger"\] \{ --tile: var\(--op-danger\); --tile-rgb: var\(--op-danger-rgb\); \}', css)
+
+
+# --- Settings (stage 5b) ----------------------------------------------------------------
+
+def test_settings_js_lives_in_a_static_file(admin_client):
+    html = admin_client.get("/admin/settings").get_data(as_text=True)
+    inline = re.findall(r"<script>(.*?)</script>", html, re.S)
+    assert len(inline) == 1
+    assert html.index('/static/js/settings.js') > html.index("<script>")
+    assert "function scanLibrary" not in html
+    assert "async function scanLibrary" in _js("settings.js")
+
+
+def test_settings_js_has_no_jinja():
+    js = _js("settings.js")
+    assert "{{" not in js and "{%" not in js
+
+
+def test_settings_server_values_are_data(admin_client):
+    html = admin_client.get("/admin/settings").get_data(as_text=True)
+    assert re.search(r'<script type="application/json" id="settingsLanguages">', html)
+    assert "const ADMIN_ACCOUNT_CREATED =" in html
+    assert "if (!ADMIN_ACCOUNT_CREATED)" in _js("settings.js")
+
+
+def test_no_admin_yet_forces_the_new_user_access_boxes():
+    js = _js("settings.js")
+    block = js[js.index("if (!ADMIN_ACCOUNT_CREATED)"):]
+    block = block[:block.index("}")]
+    for box in ("checkboxNewUserAdminAccess", "checkboxNewUserShopAccess", "checkboxNewUserBackupAccess"):
+        assert box in block, box

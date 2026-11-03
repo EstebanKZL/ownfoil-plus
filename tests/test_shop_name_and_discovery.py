@@ -209,7 +209,7 @@ def test_duplicate_tie_break_controls_are_disabled_when_auto_resolve_is_off(clie
     resolve_duplicate_files_task no-ops entirely while it's off) - the Settings page
     greys the two controls out to match, instead of leaving them checkable while
     inert."""
-    html = client.get("/admin/settings").get_data(as_text=True)
+    html = client.get("/static/js/settings.js").get_data(as_text=True)  # settings JS, stage 5b
     assert "function syncDuplicateTieBreakControls" in html
     assert "#preferMulticontentCheck').prop('disabled', !auto)" in html
     assert "#preferLargerOnTieCheck').prop('disabled', !auto)" in html

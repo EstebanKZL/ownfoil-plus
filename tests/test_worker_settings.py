@@ -131,7 +131,8 @@ def test_settings_page_loads_net_limit_from_saved_settings(settings_page_client)
     resp = settings_page_client.get("/admin/settings")
     html = resp.get_data(as_text=True)
 
-    assert "workerSettings['group_limits']['net']" in html
+    assert "/static/js/settings.js" in html
+    assert "workerSettings['group_limits']['net']" in settings_page_client.get("/static/js/settings.js").get_data(as_text=True)
 
 
 def test_net_limit_i18n_keys_exist_in_both_locales():
