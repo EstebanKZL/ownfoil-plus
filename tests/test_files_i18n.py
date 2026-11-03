@@ -28,7 +28,7 @@ def client(shop_app):
 def test_files_page_renders_in_english_by_default(client):
     html = client.get("/admin/files").get_data(as_text=True)
 
-    assert "<h2 class=\"mb-0\">Files</h2>" in html
+    assert '<h2 class="page-head__title">Files</h2>' in html
     assert ">All files<" in html
     assert ">Unidentified<" in html
     assert ">Verification issues<" in html
@@ -43,7 +43,7 @@ def test_files_page_renders_in_spanish(client):
     client.set_cookie("ownfoil_lang", "es")
     html = client.get("/admin/files").get_data(as_text=True)
 
-    assert "<h2 class=\"mb-0\">Archivos</h2>" in html
+    assert '<h2 class="page-head__title">Archivos</h2>' in html
     assert ">Todos los archivos<" in html
     assert ">No identificados<" in html
     assert ">Problemas de verificación<" in html

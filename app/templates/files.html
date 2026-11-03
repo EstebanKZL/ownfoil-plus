@@ -23,13 +23,16 @@
 {% block panel %}
 <div class="settings-container container-fluid mt-3 files-page">
 
-    <div class="task-section-head">
-        <h2 class="mb-0">{{ t('files.heading') }}</h2>
-        <button type="button" id="refreshFiles" class="icon-btn ms-auto" title="{{ t('files.refresh_title') }}">
-            <i class="bi bi-arrow-clockwise"></i>
-        </button>
-    </div>
-    <p class="text-secondary">{{ t('files.manage_desc') | safe }}</p>
+    <header class="page-head">
+        <span class="page-head__icon"><i class="bi bi-file-earmark" aria-hidden="true"></i></span>
+        <h2 class="page-head__title">{{ t('files.heading') }}</h2>
+        <p class="page-head__desc">{{ t('files.manage_desc') | safe }}</p>
+        <div class="page-head__actions">
+            <button type="button" id="refreshFiles" class="icon-btn" title="{{ t('files.refresh_title') }}">
+                <i class="bi bi-arrow-clockwise"></i>
+            </button>
+        </div>
+    </header>
 
     <nav class="files-tiles" id="filesTiles">
         {% for key, label in tiles %}

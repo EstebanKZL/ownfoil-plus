@@ -49,3 +49,25 @@ def test_page_logic_lives_in_its_own_script(admin_client, url, script, moved):
     for name in moved:
         assert name not in inline[0], name
         assert name in js, name
+
+
+# --- headers and surfaces ------------------------------------------------------------------
+
+@pytest.mark.parametrize("url", ["/admin/files", "/admin/tasks", "/admin/services"])
+def test_admin_pages_have_the_page_head(admin_client, url):
+    assert 'class="page-head' in admin_client.get(url).get_data(as_text=True)
+
+
+def test_tasks_sections_are_surfaces(admin_client):
+    html = admin_client.get("/admin/tasks").get_data(as_text=True)
+    for section in ("tasksQueue", "tasksScheduled", "tasksFailed", "tasksHistory", "tasksWorkers"):
+        assert re.search(rf'<section class="surface[^"]*" id="{section}"', html), section
+    for kept in ("queueTasks", "scheduledTasks", "failedTasks", "historyList", "workerCards",
+                 "purgeFailed", "refreshHistory", "clearHistory", "queueEmpty", "historyEmpty"):
+        assert f'id="{kept}"' in html, kept
+
+
+def test_services_section_is_a_surface(admin_client):
+    html = admin_client.get("/admin/services").get_data(as_text=True)
+    assert re.search(r'<section class="surface[^"]*" id="servicesDiscovery"', html)
+    assert 'id="discoveryEnabledCheck"' in html and 'id="submitServicesSettingsBtn"' in html

@@ -3034,3 +3034,46 @@ a.dash-list__row:hover {
     text-decoration: none;
     font-size: .85rem;
 }
+
+/* ============== Admin pages (stage 5a) ============== */
+
+.admin-page {
+    max-width: 1400px;
+}
+
+.admin-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+}
+
+.admin-grid > * {
+    min-width: 0;
+}
+
+@media (min-width: 1200px) {
+    .admin-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-section--wide {
+        grid-column: 1 / -1;
+    }
+}
+
+.admin-section__head {
+    margin-bottom: .85rem;
+}
+
+.admin-section__title {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin: 0 0 .85rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.admin-section__title .bi {
+    color: var(--op-nav);
+}
