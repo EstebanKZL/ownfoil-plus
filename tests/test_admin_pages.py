@@ -102,3 +102,25 @@ def test_identified_files_link_to_their_game_page():
     assert "`/game/${titleId}`" in body and "/title/" not in body
     # Only identified files get the link: the drawer builds it from a title it found.
     assert "titles.length ? titleLink(" in _function_body(_js("files.js"), "renderDrawer")
+
+
+# --- Tasks: state tones and worker cards ------------------------------------------------------
+
+def test_task_states_have_their_tones():
+    css = _css()
+    assert re.search(r"\.task-progress \{[^}]*background-color: var\(--op-chart-track\)", css)
+    assert re.search(r"\.task-progress \.progress-bar \{[^}]*background-color: var\(--op-nav\)", css)
+    assert re.search(r"\.task-list--failed \.task-row \{[^}]*var\(--op-danger", css)
+    assert re.search(r"\.task-list--scheduled \.task-row \{[^}]*var\(--op-wait", css)
+
+
+def test_worker_cards_are_surfaces_with_a_status_dot():
+    body = _function_body(_js("tasks.js"), "renderWorkers")
+    assert "worker-card surface" in body
+    for state in ("busy", "idle", "offline"):
+        assert f"worker-dot--{state}" in body or f"'{state}'" in body, state
+    # Task names and worker data go in as text, not HTML.
+    assert "innerHTML = `" not in body
+    css = _css()
+    for state, token in (("busy", "--op-nav"), ("idle", "--op-ok"), ("offline", "--op-text-muted")):
+        assert re.search(rf"\.worker-dot--{state} \{{[^}}]*var\({token}\)", css), state

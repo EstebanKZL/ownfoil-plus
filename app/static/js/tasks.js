@@ -284,38 +284,41 @@ function section(listId, emptyId, items) {
     document.getElementById(emptyId).classList.toggle('d-none', count > 0);
 }
 
+/** A small element with a class and plain text: task names never go in as HTML. */
+function textNode(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined && text !== null) node.textContent = text;
+    return node;
+}
+
 function renderWorkers() {
     const container = document.getElementById('workerCards');
-    container.innerHTML = '';
+    container.replaceChildren();
     const list = Object.values(workers).sort((a, b) => a.id - b.id);
     if (!list.length) {
-        container.innerHTML =
-            `<p class="text-secondary fst-italic">${I18N.noWorkersReported}</p>`;
+        container.appendChild(textNode('p', 'text-secondary fst-italic mb-0', I18N.noWorkersReported));
         return;
     }
     list.forEach(worker => {
         const task = worker.taskId ? tasks[worker.taskId] : null;
-        const col = document.createElement('div');
-        col.className = 'col-md-6 col-xl-4';
-        col.innerHTML = `
-            <div class="card h-100">
-                <div class="card-body">
-                    <h5 class="card-title d-flex justify-content-between">
-                        <span>${I18N.workerN.replace('{n}', worker.id)}</span>
-                        <span class="badge ${worker.alive ? 'text-bg-success' : 'text-bg-danger'}">
-                            ${worker.alive ? I18N.alive : I18N.stopped}</span>
-                    </h5>
-                    <p class="card-subtitle text-secondary small mb-2">${I18N.pid.replace('{pid}', worker.pid ?? '—')}</p>
-                    <div class="worker-task"></div>
-                </div>
-            </div>`;
-        const slot = col.querySelector('.worker-task');
+        // One dot per state: working on something, waiting for work, or gone.
+        const state = !worker.alive ? 'offline' : task ? 'busy' : 'idle';
+        const col = textNode('div', 'col-md-6 col-xl-4');
+        const card = textNode('div', 'worker-card surface h-100');
+        const head = textNode('div', 'worker-card__head');
+        const name = textNode('span', 'worker-card__name');
+        name.append(textNode('span', `worker-dot worker-dot--${state}`), I18N.workerN.replace('{n}', worker.id));
+        head.append(name, textNode('span', 'worker-card__state', worker.alive ? I18N.alive : I18N.stopped));
+        card.append(head, textNode('div', 'worker-card__pid', I18N.pid.replace('{pid}', worker.pid ?? '—')));
+        const slot = textNode('div', 'worker-task');
         if (task) {
-            slot.innerHTML = `<div class="fw-semibold">${task.displayName}</div>
-                <div class="text-secondary small">${taskMeta(task)}</div>`;
+            slot.append(textNode('div', 'fw-semibold', task.displayName), textNode('div', 'text-secondary small', taskMeta(task)));
         } else {
-            slot.innerHTML = `<span class="text-secondary fst-italic">${I18N.idle}</span>`;
+            slot.appendChild(textNode('span', 'text-secondary fst-italic', I18N.idle));
         }
+        card.appendChild(slot);
+        col.appendChild(card);
         container.appendChild(col);
     });
 }

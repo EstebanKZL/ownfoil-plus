@@ -474,13 +474,73 @@ p.game-description {
 .task-progress {
     height: .8rem;
     margin-top: .25rem;
+    border-radius: 1rem;
+    background-color: var(--op-chart-track);
 }
 
 /* The bar is driven by percentages arriving a few times a second; easing the width
    turns those steps into continuous movement. */
 .task-progress .progress-bar {
     transition: width .3s linear;
+    border-radius: 1rem;
+    background-color: var(--op-nav);
 }
+
+/* Failed and scheduled rows carry their state's color on the edge. */
+.task-list--failed .task-row,
+.task-list--scheduled .task-row {
+    padding-left: .6rem;
+    border-left: 3px solid var(--op-border);
+}
+
+.task-list--failed .task-row {
+    border-left-color: var(--op-danger);
+}
+
+.task-list--scheduled .task-row {
+    border-left-color: var(--op-wait);
+}
+
+/* Workers. */
+.worker-card {
+    padding: .9rem 1rem;
+}
+
+.worker-card__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .5rem;
+    margin-bottom: .2rem;
+}
+
+.worker-card__name {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    font-weight: 700;
+}
+
+.worker-card__state,
+.worker-card__pid {
+    font-size: .8rem;
+    color: var(--op-text-muted);
+}
+
+.worker-card__pid {
+    margin-bottom: .5rem;
+}
+
+.worker-dot {
+    width: .6rem;
+    height: .6rem;
+    border-radius: 50%;
+    background-color: var(--op-text-muted);
+}
+
+.worker-dot--busy { background-color: var(--op-nav); box-shadow: 0 0 0 3px rgba(var(--op-nav-rgb), .25); }
+.worker-dot--idle { background-color: var(--op-ok); }
+.worker-dot--offline { background-color: var(--op-text-muted); }
 
 .task-children {
     list-style: none;
