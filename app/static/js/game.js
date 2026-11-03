@@ -91,6 +91,11 @@ function ownedDlcIds(t) {
     return new Set((t.apps || []).filter(a => a.appType === 'DLC').map(a => a.appId));
 }
 
+function missingDlcCount(t) {
+    const owned = ownedDlcIds(t);
+    return (t.availableDlc || []).filter(d => !owned.has(d.appId)).length;
+}
+
 // --- hero -----------------------------------------------------------------------------
 
 function renderHero(t) {
@@ -114,10 +119,12 @@ function renderHero(t) {
     const badges = $('<div class="library-badges game-hero__badges">');
     if (own && own.haveBase) {
         badges.append(statusBadge('ok', 'bi-check-circle', I18N.inLibrary));
-        const hasDlc = (t.availableDlc || []).length > 0;
+        // From the DLC list this page shows, so the hero never contradicts its own
+        // DLC section (the stored "complete" flag lags until titles are re-checked).
+        const missingDlc = missingDlcCount(t) > 0;
         if (!own.upToDate) badges.append(statusBadge('wait', 'bi-arrow-up-circle', I18N.badgeUpdate));
-        if (hasDlc && !own.complete) badges.append(statusBadge('dlc', 'bi-puzzle', I18N.badgeMissingDlc));
-        if (own.upToDate && (own.complete || !hasDlc)) badges.append(statusBadge('ok', 'bi-stars', I18N.badgeComplete));
+        if (missingDlc) badges.append(statusBadge('dlc', 'bi-puzzle', I18N.badgeMissingDlc));
+        if (own.upToDate && !missingDlc) badges.append(statusBadge('ok', 'bi-stars', I18N.badgeComplete));
     } else {
         badges.append(statusBadge('', 'bi-dash-circle', I18N.notInLibrary));
     }

@@ -269,3 +269,16 @@ def test_the_metadata_modal_is_gone_from_the_library(shop_app):
 def test_ctrl_k_opens_the_game_page():
     js = _js("search.js")
     assert "'/game/' + encodeURIComponent(g.title_id)" in js
+
+
+# --- found in the browser check -----------------------------------------------------------
+
+def test_hero_dlc_state_agrees_with_the_dlc_section():
+    """The hero said "Complete" over a DLC section listing 3 missing DLC: it trusted the
+    stored ownership.complete flag (stale until titles are re-checked) instead of the
+    DLC list the page itself shows."""
+    hero = _function_body(_js("game.js"), "renderHero")
+    assert "own.complete" not in hero
+    assert "missingDlcCount(t)" in hero
+    body = _function_body(_js("game.js"), "missingDlcCount")
+    assert "availableDlc" in body and "ownedDlcIds(t)" in body
