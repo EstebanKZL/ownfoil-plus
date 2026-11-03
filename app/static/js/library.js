@@ -443,7 +443,12 @@ function applyPill(name) {
 // put back once, after the first grid is on screen.
 let scrollToRestore = null;
 try {
-    scrollToRestore = parseInt(sessionStorage.getItem('libraryScroll'));
+    // Only coming back (Back/Forward): any other visit - a nav link, a reload - starts
+    // at the top, and the saved position is dropped either way.
+    const nav = (performance.getEntriesByType('navigation') || [])[0];
+    if (nav && nav.type === 'back_forward') {
+        scrollToRestore = parseInt(sessionStorage.getItem('libraryScroll'));
+    }
     sessionStorage.removeItem('libraryScroll');
 } catch (e) { /* storage unavailable: start at the top */ }
 window.addEventListener('pagehide', () => {

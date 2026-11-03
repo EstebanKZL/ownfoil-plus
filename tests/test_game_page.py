@@ -306,3 +306,13 @@ def test_the_library_restores_its_scroll_when_coming_back():
     # silently did nothing there.
     assert "requestAnimationFrame" not in body and "setTimeout(attempt" in body
     assert "sessionStorage.getItem('libraryScroll')" in js and "sessionStorage.setItem('libraryScroll'" in js
+
+
+def test_scroll_is_only_restored_when_going_back():
+    """Final review: the saved position was applied to any later fresh visit (nav link to
+    the Library after a bfcache Back), jumping to the middle of the page."""
+    js = _js("library.js")
+    i = js.index("sessionStorage.getItem('libraryScroll')")
+    setup = js[js.rindex("let scrollToRestore", 0, i):i + 200]
+    assert "back_forward" in setup
+    assert "sessionStorage.removeItem('libraryScroll')" in setup
