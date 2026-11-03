@@ -100,7 +100,7 @@ A file taken again by the same address within a minute counts once, so a console
 
 ## Settings page
 
-Admin only, and a single scrolling page.
+Admin only, and a single scrolling page with its twelve sections as cards. An index beside them (a row of chips under the top bar on phones) marks the section you're reading and takes you to any of them; the address follows, so `/admin/settings#Notifications` - or any other section's name - opens the page right there.
 
 # Clients
 

@@ -4,13 +4,16 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
-## [Unreleased - beta]
+## [6.2.5.46]
 
-A new design for the web UI, stage 1 of a redesign inspired by
+A new design for the web UI, built in five stages, inspired by
 [Switch Library Manager Web](https://github.com/DeLFuS77/switch-library-manager-web)
-(AGPL-3.0, like Ownfoil; credited in the new `NOTICE.md`). This stage lays the
-foundation the next ones build on, so every page ends up looking like one product
-instead of each page carrying its own colors.
+(AGPL-3.0, like Ownfoil; credited in the new `NOTICE.md`). Every page now looks like
+one product instead of each page carrying its own colors, and every big page's
+JavaScript moved out of its template into `static/js/`. Nothing a setting does changed;
+no server, route or database changes beyond what each stage notes.
+
+Stage 1 lays the foundation the next ones build on:
 
 - **Design tokens.** Every color now lives in one file, `static/css/tokens.css`, which
   also feeds Bootstrap's variables: existing pages take the new look without being
