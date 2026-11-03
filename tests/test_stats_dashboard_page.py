@@ -51,3 +51,25 @@ def test_page_logic_lives_in_its_own_script(admin_client, url, script, moved):
     for name in moved:
         assert name not in inline[0], name
         assert name in js, name
+
+
+# --- chart helpers (static/js/charts.js) -------------------------------------------------
+
+def test_chart_helpers_guard_empty_data():
+    js = _js("charts.js")
+    pct = _function_body(js, "percent")
+    assert "!total" in pct or "total <= 0" in pct
+    donut = _function_body(js, "donutGradient")
+    # Nothing to draw (no segments, or all zero): one neutral ring, never NaN degrees.
+    assert "var(--op-surface-2) 0deg 360deg" in donut
+    assert "acc" in donut and "360" in donut
+    ring = _function_body(js, "ringGradient")
+    assert "conic-gradient(" in ring
+    assert "const CHART_COLORS" in js and "var(--op-nav)" in js
+
+
+@pytest.mark.parametrize("url", ["/admin/stats", "/admin"])
+def test_pages_load_the_chart_helpers_first(admin_client, url):
+    html = admin_client.get(url).get_data(as_text=True)
+    own = "stats.js" if url.endswith("stats") else "dashboard.js"
+    assert html.index("js/charts.js") < html.index(f"js/{own}")

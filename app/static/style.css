@@ -2649,3 +2649,24 @@ button.stat-tile:hover {
 .list-title-link:hover {
     color: var(--op-nav);
 }
+
+/* ============== Statistics and Dashboard (stage 4) ============== */
+
+/* Percent bars (static/js/charts.js). */
+.chart-bar {
+    height: .5rem;
+    border-radius: 1rem;
+    background-color: var(--op-surface-2);
+    overflow: hidden;
+}
+
+.chart-bar__fill {
+    height: 100%;
+    border-radius: 1rem;
+    background-color: var(--op-nav);
+}
+
+.chart-bar--ok .chart-bar__fill { background-color: var(--op-ok); }
+.chart-bar--wait .chart-bar__fill { background-color: var(--op-wait); }
+.chart-bar--danger .chart-bar__fill { background-color: var(--op-danger); }
+.chart-bar--action .chart-bar__fill { background-color: var(--op-action); }

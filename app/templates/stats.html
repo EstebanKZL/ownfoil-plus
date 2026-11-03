@@ -294,5 +294,6 @@
         clients: {web: 'Web', tinfoil: 'Tinfoil', sphaira: 'Sphaira', cyberfoil: 'CyberFoil', other: {{ t('dl.client_other') | tojson }}},
     };
 </script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
 <script src="{{ url_for('static', filename='js/stats.js') }}"></script>
 {% endblock %}
