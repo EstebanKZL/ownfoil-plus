@@ -466,7 +466,7 @@ function restoreLibraryScroll() {
         tries += 1;
         setTimeout(attempt, 100);
     };
-    // A timer, not requestAnimationFrame: that one doesn't run in a background tab.
+    // A timer, not an animation-frame callback: those don't run in a background tab.
     setTimeout(attempt, 0);
 }
 
