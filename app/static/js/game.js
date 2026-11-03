@@ -319,7 +319,125 @@ function highlightDlcFromUrl() {
     row.scrollIntoView({block: 'center', behavior: reduce ? 'auto' : 'smooth'});
 }
 
+// --- actions --------------------------------------------------------------------------
+
+/** Every downloadable file of the game: the base, its updates and its DLC. */
+function downloadableFileIds(t) {
+    const ids = new Set();
+    (t.apps || []).forEach(a => { if (a.downloadableFile) ids.add(a.downloadableFile.id); });
+    (t.updateApps || []).forEach(a => { if (a.owned && a.downloadableFile) ids.add(a.downloadableFile.id); });
+    return [...ids];
+}
+
 function renderActions(t) {
+    const box = $('#gameActions').empty();
+    const fileIds = downloadableFileIds(t);
+    if (canDownload() && fileIds.length) {
+        box.append($('<button type="button" class="btn btn-primary">')
+            .append($('<i class="bi bi-download" aria-hidden="true"></i>'),
+                    $('<span>').text(` ${I18N.downloadAll} (${fileIds.length})`))
+            .on('click', () => downloadAll(fileIds)));
+    }
+    if (IS_ADMIN) {
+        box.append($('<button type="button" class="btn btn-outline-secondary">')
+            .append($('<i class="bi bi-pencil-square" aria-hidden="true"></i>'),
+                    $('<span>').text(` ${I18N.editMetadata}`))
+            .on('click', () => openEdit(t)));
+    }
+    box.append($('<button type="button" class="btn btn-outline-secondary">')
+        .append($('<i class="bi bi-clipboard" aria-hidden="true"></i>'),
+                $('<span>').text(` ${I18N.copyTitleId}`))
+        .on('click', () => copyTitleId(t.titleId)));
+}
+
+/** One file after another: each is a normal download through the existing route
+ *  (which re-checks access), spaced so the browser doesn't drop any of them. */
+function downloadAll(fileIds) {
+    fileIds.forEach((id, i) => setTimeout(() => {
+        const a = document.createElement('a');
+        a.href = `/api/library/download/${id}`;
+        a.download = '';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    }, i * 800));
+}
+
+async function copyTitleId(titleId) {
+    try {
+        await navigator.clipboard.writeText(titleId);
+    } catch (e) {
+        // Plain-http LAN addresses have no Clipboard API: fall back to a selection.
+        const area = $('<textarea class="visually-hidden">').val(titleId).appendTo('body');
+        area.get(0).select();
+        try { document.execCommand('copy'); } catch (err) { /* nothing more to try */ }
+        area.remove();
+    }
+    showToast(I18N.copied.replace('{id}', titleId));
+}
+
+function showToast(text) {
+    const toast = document.getElementById('gameToast');
+    if (!toast) return;
+    $('#gameToastText').text(text);
+    bootstrap.Toast.getOrCreateInstance(toast, {delay: 2500}).show();
+}
+
+// --- metadata edit (admins) -----------------------------------------------------------
+// The setTitleOverride / deleteTitleOverride mutations: a blank field is sent as
+// omitted, not as an empty string, so it defers to what titledb (or a lower-priority
+// override) already has instead of blanking it out.
+
+const SET_TITLE_OVERRIDE_MUTATION = `
+    mutation SetOverride($id: ID!, $record: String!) {
+        setTitleOverride(titleId: $id, record: $record) { titleId }
+    }`;
+const DELETE_TITLE_OVERRIDE_MUTATION = `
+    mutation DeleteOverride($id: ID!) {
+        deleteTitleOverride(titleId: $id)
+    }`;
+
+const EDIT_FIELDS = [
+    ['name', 'gameEditName'], ['developer', 'gameEditDeveloper'], ['publisher', 'gameEditPublisher'],
+    ['releaseDate', 'gameEditReleaseDate'], ['description', 'gameEditDescription'],
+];
+
+function openEdit(t) {
+    EDIT_FIELDS.forEach(([key, id]) => $(`#${id}`).val(t[key] || ''));
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('gameEditModal')).show();
+}
+
+async function saveEdit() {
+    const btn = $('#gameEditSaveBtn').prop('disabled', true);
+    const record = {};
+    EDIT_FIELDS.forEach(([key, id]) => {
+        const value = ($(`#${id}`).val() || '').trim();
+        if (value) record[key] = value;
+    });
+    try {
+        await gqlMutate(SET_TITLE_OVERRIDE_MUTATION, {id: TITLE_ID, record: JSON.stringify(record)});
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('gameEditModal')).hide();
+        loadGame();
+    } catch (e) {
+        console.error(e);
+        alert(I18N.saveFailed);
+    } finally {
+        btn.prop('disabled', false);
+    }
+}
+
+async function resetEdit() {
+    const btn = $('#gameEditResetBtn').prop('disabled', true);
+    try {
+        await gqlMutate(DELETE_TITLE_OVERRIDE_MUTATION, {id: TITLE_ID});
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('gameEditModal')).hide();
+        loadGame();
+    } catch (e) {
+        console.error(e);
+        alert(I18N.saveFailed);
+    } finally {
+        btn.prop('disabled', false);
+    }
 }
 
 // --- start ----------------------------------------------------------------------------
@@ -337,5 +455,7 @@ $(function () {
         } catch (err) { /* malformed referrer: follow the link */ }
     });
     $('#gameRetryBtn').on('click', loadGame);
+    $('#gameEditSaveBtn').on('click', saveEdit);
+    $('#gameEditResetBtn').on('click', resetEdit);
     loadGame();
 });

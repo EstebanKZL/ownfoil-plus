@@ -205,3 +205,33 @@ def test_section_strings_are_translated():
                 "game.dlc", "game.files", "game.owned", "game.missing", "game.no_updates",
                 "game.file_format"):
         assert {"en", "es"} <= set(i18n.TRANSLATIONS[key]), key
+
+
+# --- actions: download all, copy title ID, edit metadata --------------------------------
+
+def test_edit_metadata_is_for_admins_only(shop_app):
+    shopper = _page(_login(shop_app.client, "shopper")).get_data(as_text=True)
+    assert 'id="gameEditModal"' not in shopper
+    admin = _page(_login(shop_app.app.test_client(), "admin")).get_data(as_text=True)
+    for needle in ('id="gameEditModal"', 'id="gameEditName"', 'id="gameEditDeveloper"',
+                   'id="gameEditPublisher"', 'id="gameEditReleaseDate"', 'id="gameEditDescription"',
+                   'id="gameEditSaveBtn"', 'id="gameEditResetBtn"'):
+        assert needle in admin, needle
+
+
+def test_actions_use_the_existing_mutations_and_gates():
+    js = _js("game.js")
+    assert "setTitleOverride(titleId: $id, record: $record)" in js
+    assert "deleteTitleOverride(titleId: $id)" in js
+    actions = _function_body(js, "renderActions")
+    assert "canDownload()" in actions and "IS_ADMIN" in actions
+    assert "navigator.clipboard" in _function_body(js, "copyTitleId")
+    body = _function_body(js, "downloadAll")
+    assert "/api/library/download/" in body
+
+
+def test_action_strings_are_translated():
+    import i18n
+    for key in ("game.download_all", "game.edit_metadata", "game.copy_title_id", "game.copied",
+                "game.save", "game.reset", "game.edit_hint", "game.save_failed"):
+        assert {"en", "es"} <= set(i18n.TRANSLATIONS[key]), key

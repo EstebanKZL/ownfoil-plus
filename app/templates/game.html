@@ -38,6 +38,60 @@
     <div class="game-sections" id="gameSections" hidden></div>
 </div>
 
+{# Copied title id and similar short confirmations. #}
+<div class="toast-container position-fixed bottom-0 end-0 p-3 game-toasts">
+    <div class="toast align-items-center" id="gameToast" role="status" aria-live="polite" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="gameToastText"></div>
+            <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="{{ t('nav.close') }}"></button>
+        </div>
+    </div>
+</div>
+
+{% if is_admin %}
+{# Admins: correct what the catalogue says about this game. #}
+<div class="modal fade" id="gameEditModal" tabindex="-1" aria-labelledby="gameEditTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="gameEditTitle">{{ t('game.edit_metadata') }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ t('nav.close') }}"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label" for="gameEditName">{{ t('library.metadata_name_label') }}</label>
+                    <input type="text" class="form-control" id="gameEditName">
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label" for="gameEditDeveloper">{{ t('library.metadata_developer_label') }}</label>
+                        <input type="text" class="form-control" id="gameEditDeveloper">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="gameEditPublisher">{{ t('library.metadata_publisher_label') }}</label>
+                        <input type="text" class="form-control" id="gameEditPublisher">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="gameEditReleaseDate">{{ t('library.metadata_release_date_label') }}</label>
+                    <input type="text" class="form-control" id="gameEditReleaseDate" placeholder="20240131">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="gameEditDescription">{{ t('library.metadata_description_label') }}</label>
+                    <textarea class="form-control" id="gameEditDescription" rows="5"></textarea>
+                </div>
+                <p class="text-secondary small mb-0">{{ t('game.edit_hint') }}</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-danger me-auto" id="gameEditResetBtn">{{ t('game.reset') }}</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ t('nav.close') }}</button>
+                <button type="button" class="btn btn-primary" id="gameEditSaveBtn">{{ t('game.save') }}</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 {# A screenshot, full size. #}
 <div class="modal fade" id="shotModal" tabindex="-1" aria-label="{{ t('game.screenshots') }}" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
@@ -86,6 +140,11 @@
         missing: {{ t('game.missing') | tojson }},
         downloadTooltip: {{ t('library.download_tooltip') | tojson }},
         downloadAria: {{ t('library.download_aria') | tojson }},
+        downloadAll: {{ t('game.download_all') | tojson }},
+        editMetadata: {{ t('game.edit_metadata') | tojson }},
+        copyTitleId: {{ t('game.copy_title_id') | tojson }},
+        copied: {{ t('game.copied') | tojson }},
+        saveFailed: {{ t('game.save_failed') | tojson }},
     };
 </script>
 <script src="{{ url_for('static', filename='js/format.js') }}"></script>
