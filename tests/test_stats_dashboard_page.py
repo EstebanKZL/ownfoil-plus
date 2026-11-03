@@ -190,3 +190,14 @@ def test_dashboard_strings_are_translated():
     import i18n
     for key in ("dash.storage_used",):
         assert {"en", "es"} <= set(i18n.TRANSLATIONS[key]), key
+
+
+# --- found in the browser check ---------------------------------------------------------
+
+def test_long_labels_wrap_and_the_verify_button_reaches_the_edge():
+    """A long library path squeezed its "(6)" into a one-character column, and the old
+    30rem cap on .stat-section-head (sized for the tables) left "Verify" mid-card."""
+    css = _read("app", "static", "style.css")
+    label = re.search(r"\.chart-row__label \{([^}]*)\}", css).group(1)
+    assert "flex-wrap: wrap" in label
+    assert re.search(r"\.stats-section \.stat-section-head \{[^}]*max-width: none", css)
