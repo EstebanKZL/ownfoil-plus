@@ -84,3 +84,14 @@ function verificationBadge(status) {
     const [icon, cls, label] = VERIFICATION_BADGES[status] || VERIFICATION_BADGES.UNVERIFIED;
     return $(`<i class="bi ${icon} ${cls}" data-bs-toggle="tooltip" data-bs-placement="top" title="${label}"></i>`);
 }
+
+/** A download icon-button, only ever built when the caller has already confirmed
+ *  the admin toggle is on and the row is actually owned - see WEB_DOWNLOADS_ENABLED
+ *  and IS_SHOP below (any user with shop access, admin or not - see access_shop()
+ *  in app.py). The endpoint itself re-checks both regardless. */
+function downloadButton(fileId, label) {
+    const btn = $(`<a class="btn btn-sm icon-btn p-0" data-bs-toggle="tooltip" data-bs-placement="top" title="${I18N.downloadTooltip}"><i class="bi bi-download"></i></a>`);
+    btn.attr('href', `/api/library/download/${fileId}`);
+    btn.attr('aria-label', I18N.downloadAria.replace('{name}', label));
+    return btn;
+}

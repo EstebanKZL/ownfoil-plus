@@ -161,3 +161,47 @@ def test_load_handles_not_found_and_failure():
     body = _function_body(_js("game.js"), "loadGame")
     assert "gameNotFound" in body
     assert "gameError" in body.split("catch", 1)[1]
+
+
+# --- sections ----------------------------------------------------------------------------
+
+def test_sections_render_from_the_query():
+    js = _js("game.js")
+    body = _function_body(js, "renderSections")
+    for fn in ("renderDescription", "renderScreenshots", "renderUpdates", "renderDlc", "renderFiles"):
+        assert f"{fn}(" in body, fn
+        _function_body(js, fn)  # defined
+
+
+def test_downloads_follow_the_existing_gate():
+    js = _js("game.js")
+    assert "function canDownload" in js
+    gate = _function_body(js, "canDownload")
+    assert "IS_SHOP" in gate and "WEB_DOWNLOADS_ENABLED" in gate
+    assert "function downloadButton" in _js("library-common.js")
+    assert "function downloadButton" not in _js("library.js")
+
+
+def test_files_are_for_admins_only():
+    assert "IS_ADMIN" in _function_body(_js("game.js"), "renderFiles")
+
+
+def test_dlc_link_is_validated_scrolled_and_highlighted():
+    body = _function_body(_js("game.js"), "highlightDlcFromUrl")
+    assert "[0-9A-F]{16}" in body
+    assert "is-highlighted" in body and "scrollIntoView" in body
+
+
+def test_screenshots_open_full_size(shop_app):
+    html = _page(_login(shop_app.client, "shopper")).get_data(as_text=True)
+    assert 'id="shotModal"' in html
+    body = _function_body(_js("game.js"), "renderScreenshots")
+    assert ".attr('src'" in body and "game-shots" in body
+
+
+def test_section_strings_are_translated():
+    import i18n
+    for key in ("game.description", "game.screenshots", "game.updates", "game.update_missing",
+                "game.dlc", "game.files", "game.owned", "game.missing", "game.no_updates",
+                "game.file_format"):
+        assert {"en", "es"} <= set(i18n.TRANSLATIONS[key]), key
