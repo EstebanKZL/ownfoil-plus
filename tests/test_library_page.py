@@ -288,3 +288,11 @@ def test_remembered_preferences_are_guarded_and_validated():
     assert "savedItemsPerPage > 0" in js and "savedCardSize >= 1" in js
     load = _function_body(js, "loadFiltersFromStorage")
     assert "try { filters = JSON.parse(" in load
+
+
+def test_a_card_without_artwork_uses_a_local_placeholder():
+    # placehold.it is gone, and the UI must not depend on the internet anyway.
+    js = _library_js()
+    assert "placehold.it" not in js
+    body = _function_body(js, "renderCardView")
+    assert "library-cover--empty" in body

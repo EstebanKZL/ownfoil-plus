@@ -2199,3 +2199,14 @@ button.stat-tile:hover {
     max-width: 34rem;
     margin: 2rem auto;
 }
+
+.library-cover--empty {
+    display: grid;
+    place-items: center;
+    font-size: 2.5rem;
+    color: var(--op-text-muted);
+    background:
+        radial-gradient(closest-side at 30% 40%, var(--op-glow-1), transparent),
+        radial-gradient(closest-side at 75% 70%, var(--op-glow-2), transparent),
+        var(--op-surface-2);
+}

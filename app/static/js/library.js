@@ -67,7 +67,6 @@ function setSort(field, direction) {
     resetToFirstPage();
 }
 
-const PLACEHOLDER_BANNER = '//placehold.it/400x200';
 
 async function gqlFetch(query, variables) {
     // GET (not POST) so the browser's HTTP cache automatically revalidates
@@ -503,9 +502,9 @@ function cardModel(app) {
     const recognized = isBase ? !!title.name : !!meta.name;
     // Straight off `titledb.bannerUrl`/`iconUrl` - already resolved server-side
     // to /api/media/... or the titledb hotlink (see gql/resolvers.py's
-    // _local_media_urls). Falls back to the placeholder only when titledb has
-    // nothing for this app at all.
-    const bannerUrl = meta.bannerUrl || PLACEHOLDER_BANNER;
+    // _local_media_urls). Empty when titledb has nothing for this app at all: the
+    // card then draws its own placeholder (no external image service).
+    const bannerUrl = meta.bannerUrl || '';
     const iconUrl = meta.iconUrl || '';
 
     if (isBase) {
@@ -564,9 +563,16 @@ function renderCardView(games) {
             .toggleClass('is-missing', game.owned === false);
 
         const coverWrap = $('<div class="library-cover-wrap">');
-        const img = $('<img class="library-cover" loading="lazy" alt="">').attr('src', game.bannerUrl);
-        img.attr('title', I18N.detailsTooltip).on('click', () => openMetadata(game.meta));
-        coverWrap.append(img);
+        const cover = game.bannerUrl
+            ? $('<img class="library-cover" loading="lazy" alt="">').attr('src', game.bannerUrl)
+            : $('<div class="library-cover library-cover--empty"><i class="bi bi-controller" aria-hidden="true"></i></div>');
+        // An artwork URL that fails to load shows the same placeholder.
+        cover.filter('img').on('error', function () {
+            $(this).replaceWith($('<div class="library-cover library-cover--empty"><i class="bi bi-controller" aria-hidden="true"></i></div>')
+                .attr('title', I18N.detailsTooltip).on('click', () => openMetadata(game.meta)));
+        });
+        cover.attr('title', I18N.detailsTooltip).on('click', () => openMetadata(game.meta));
+        coverWrap.append(cover);
 
         // State badges, one fixed color per meaning (design tokens).
         const badges = $('<div class="library-badges">');
