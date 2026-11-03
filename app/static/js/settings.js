@@ -1344,3 +1344,92 @@ if (!ADMIN_ACCOUNT_CREATED) {
     $('#checkboxNewUserShopAccess').prop('checked', true).attr("disabled", true);
     $('#checkboxNewUserBackupAccess').prop('checked', true).attr("disabled", true);
 }
+
+// --- Section index (stage 5b) -------------------------------------------------------
+// The index beside the sections (chips on the phone) marks the section being read,
+// scrolls to a section on click and keeps the URL's hash in step without adding a
+// history entry per click.
+
+let indexScrollBehavior = 'auto';
+// A click scrolls past other sections; the scrollspy waits until that scroll is over.
+let indexClickedAt = 0;
+
+// The last short sections never reach the scrollspy's band: at the bottom of the page
+// the last one is the one being read.
+function atIndexBottom() {
+    return window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+}
+
+function setActiveSection(id) {
+    let active = null;
+    document.querySelectorAll('.settings-index__link').forEach(link => {
+        const on = link.dataset.section === id;
+        link.classList.toggle('active', on);
+        if (on) {
+            link.setAttribute('aria-current', 'true');
+            active = link;
+        } else {
+            link.removeAttribute('aria-current');
+        }
+    });
+    // Chips: bring the active one into the row's view. The row scrolls, never the page.
+    const row = active && active.parentElement;
+    if (row && row.scrollWidth > row.clientWidth) {
+        row.scrollTo({left: active.offsetLeft - (row.clientWidth - active.offsetWidth) / 2,
+                      behavior: indexScrollBehavior});
+    }
+}
+
+function initSettingsIndex() {
+    const index = document.getElementById('settingsIndex');
+    if (!index) return;
+    indexScrollBehavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+    const sections = [...document.querySelectorAll('.settings-section')];
+
+    index.addEventListener('click', event => {
+        const link = event.target.closest('.settings-index__link');
+        const target = link && document.getElementById(link.dataset.section);
+        if (!target) return;
+        event.preventDefault();
+        indexClickedAt = Date.now();
+        target.scrollIntoView({behavior: indexScrollBehavior, block: 'start'});
+        history.replaceState(null, '', `#${target.id}`);
+        setActiveSection(target.id);
+    });
+
+    // Arriving with a hash: a section, or a control inside one.
+    let arrived = null;
+    if (location.hash.length > 1) {
+        try {
+            const el = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+            arrived = el && el.closest('.settings-section');
+        } catch (e) { /* a malformed hash marks nothing */ }
+    }
+    setActiveSection((arrived || sections[0] || {}).id);
+
+    if ('IntersectionObserver' in window) {
+        // A section is "being read" while it crosses the band below the sticky bars.
+        const observer = new IntersectionObserver(entries => {
+            if (Date.now() - indexClickedAt < 1000) return;
+            if (atIndexBottom()) {
+                setActiveSection(sections[sections.length - 1].id);
+                return;
+            }
+            const hit = entries.filter(e => e.isIntersecting)
+                .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+            if (hit) setActiveSection(hit.target.id);
+        }, {rootMargin: '-15% 0px -70% 0px'});
+        sections.forEach(section => observer.observe(section));
+    }
+
+    // The observer only fires when a section crosses the band; reaching the bottom
+    // doesn't always make one cross it.
+    window.addEventListener('scroll', () => {
+        if (Date.now() - indexClickedAt < 1000 || !sections.length) return;
+        if (atIndexBottom()) {
+            setActiveSection(sections[sections.length - 1].id);
+        }
+    }, {passive: true});
+}
+
+$(initSettingsIndex);

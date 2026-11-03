@@ -3243,6 +3243,11 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     scroll-margin-top: calc(var(--settings-top) + 1rem);
 }
 
+/* A control lands with room for the label above it. */
+.settings-section [id] {
+    scroll-margin-top: calc(var(--settings-top) + 3rem);
+}
+
 @media (min-width: 992px) {
     .settings-layout {
         display: grid;
@@ -3287,6 +3292,10 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     .settings-section,
     .settings-section [id] {
         scroll-margin-top: calc(var(--settings-top) + 4rem);
+    }
+
+    .settings-section [id] {
+        scroll-margin-top: calc(var(--settings-top) + 6rem);
     }
 }
 

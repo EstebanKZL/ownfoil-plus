@@ -294,3 +294,50 @@ def test_settings_index_is_sticky_and_becomes_chips():
 def test_anchor_targets_clear_the_sticky_bars():
     css = _css()
     assert re.search(r"\.settings-section,\s*\.settings-section \[id\] \{[^}]*scroll-margin-top", css)
+
+
+def test_index_click_scrolls_and_replaces_the_hash():
+    body = _function_body(_js("settings.js"), "initSettingsIndex")
+    assert "history.replaceState" in body
+    assert "scrollIntoView" in body
+    assert "prefers-reduced-motion" in body
+    assert "'smooth'" in body and "'auto'" in body
+
+
+def test_scrollspy_is_guarded():
+    body = _function_body(_js("settings.js"), "initSettingsIndex")
+    assert "'IntersectionObserver' in window" in body
+    assert body.index("'IntersectionObserver' in window") < body.index("new IntersectionObserver")
+
+
+def test_arriving_hash_marks_its_section():
+    body = _function_body(_js("settings.js"), "initSettingsIndex")
+    assert "location.hash" in body
+    assert ".closest('.settings-section')" in body
+
+
+def test_active_chip_scrolls_its_row_not_the_page():
+    body = _function_body(_js("settings.js"), "setActiveSection")
+    assert "aria-current" in body and "'active'" in body
+    assert "scrollIntoView" not in body
+    assert ".scrollTo(" in body
+
+
+def test_settings_index_starts_on_ready():
+    assert re.search(r"\$\(\s*initSettingsIndex\s*\)|DOMContentLoaded', initSettingsIndex", _js("settings.js"))
+
+
+def test_the_bottom_of_the_page_marks_the_last_section_in_both_paths():
+    """Found in the browser: the observer fired after the scroll handler and put an
+    earlier section back. Both decide with the same atIndexBottom() check."""
+    body = _function_body(_js("settings.js"), "initSettingsIndex")
+    observer = body[body.index("new IntersectionObserver"):body.index("observer.observe")]
+    assert "atIndexBottom()" in observer
+    assert "function atIndexBottom" in _js("settings.js")
+
+
+def test_a_linked_control_keeps_its_label_in_view():
+    """Found in the browser: #shopHostInput landed under the chips with its label hidden."""
+    css = _css()
+    assert re.search(r"(?m)^\.settings-section \[id\] \{[^}]*scroll-margin-top: calc\(var\(--settings-top\) \+ 3rem\)", css)
+    assert re.search(r"(?m)^    \.settings-section \[id\] \{[^}]*scroll-margin-top: calc\(var\(--settings-top\) \+ 6rem\)", css)
