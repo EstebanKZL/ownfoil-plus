@@ -454,7 +454,20 @@ function restoreLibraryScroll() {
     if (!(scrollToRestore > 0)) return;
     const y = scrollToRestore;
     scrollToRestore = null;
-    requestAnimationFrame(() => window.scrollTo(0, y));
+    // The header tiles and pills arrive on their own requests: until they do, the
+    // page may be too short to reach y. Try for about a second, then give up.
+    let tries = 0;
+    const attempt = () => {
+        const reachable = document.documentElement.scrollHeight - window.innerHeight >= y;
+        if (reachable || tries >= 10) {
+            window.scrollTo(0, y);
+            return;
+        }
+        tries += 1;
+        setTimeout(attempt, 100);
+    };
+    // A timer, not requestAnimationFrame: that one doesn't run in a background tab.
+    setTimeout(attempt, 0);
 }
 
 function goToPage(page) {

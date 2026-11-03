@@ -302,4 +302,7 @@ def test_the_library_restores_its_scroll_when_coming_back():
     assert "restoreLibraryScroll()" in _function_body(js, "loadPage")
     body = _function_body(js, "restoreLibraryScroll")
     assert "scrollTo" in body
+    # A timer: requestAnimationFrame never runs in a background tab, so the restore
+    # silently did nothing there.
+    assert "requestAnimationFrame" not in body and "setTimeout(attempt" in body
     assert "sessionStorage.getItem('libraryScroll')" in js and "sessionStorage.setItem('libraryScroll'" in js
