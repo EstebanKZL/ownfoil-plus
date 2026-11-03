@@ -113,6 +113,25 @@ Stage 5a, the **Files, Tasks and Services** pages:
 - The Files and Tasks JavaScript moved to `static/js/files.js` and `tasks.js`, and a
   test now checks that every element the admin pages' scripts look up exists.
 
+Stage 5b, the **Settings** page:
+
+- **Any section one click away**: Settings was one long page of twelve sections with
+  nothing but dividers between them. An index now sits beside them on desktop - fixed
+  while you scroll, marking the section you're reading - and becomes a row of chips
+  under the top bar on phones. A click scrolls there and updates the address, so a
+  section can be shared or bookmarked, without filling the Back history.
+- **Sections as cards**, with the same header as the other admin pages; sub-parts
+  (compression, verification, organizer, clients, notification channels) sit inside
+  their card, and the danger zone has its own red-edged card and its own link
+  (`#Danger`).
+- **Links into the page land in view**: links from the Dashboard, Ctrl+K, Files and
+  Setup (to a section or to a single control) stop below the top bar and the chips
+  instead of under them.
+- The page's 1,340 lines of JavaScript moved to `static/js/settings.js`; the template
+  went from 2,300 lines to about 1,000. This finishes moving the big templates'
+  scripts out (Library, game page, Statistics, Dashboard, Files, Tasks and now
+  Settings).
+
 ## [6.2.5.45]
 
 Image vulnerabilities, from a Docker Scout report of 5 critical / 30 high.
