@@ -3190,14 +3190,21 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     border-color: var(--op-danger);
 }
 
-.settings-section--danger .admin-section__title {
+.settings-section--danger .admin-section__title,
+.settings-section--danger .admin-section__title .bi {
     color: var(--op-danger);
+}
+
+/* Sections take focus from the index (tabindex="-1") so Tab continues inside them;
+   the scroll already shows where you are. */
+.settings-section:focus {
+    outline: none;
 }
 
 /* The index: a sticky column beside the sections on desktop, a sticky row of chips
    under the top bar below 992px. --settings-top is the top bar's height. */
 .settings-page {
-    --settings-top: 4.25rem;
+    --settings-top: 3.5625rem;
 }
 
 .settings-index {

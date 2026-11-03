@@ -1393,6 +1393,9 @@ function initSettingsIndex() {
         event.preventDefault();
         indexClickedAt = Date.now();
         target.scrollIntoView({behavior: indexScrollBehavior, block: 'start'});
+        // preventDefault() cancelled the anchor's own focus move: the next Tab
+        // continues inside the section, not in the index.
+        target.focus({preventScroll: true});
         history.replaceState(null, '', `#${target.id}`);
         setActiveSection(target.id);
     });

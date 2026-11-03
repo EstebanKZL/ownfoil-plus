@@ -341,3 +341,28 @@ def test_a_linked_control_keeps_its_label_in_view():
     css = _css()
     assert re.search(r"(?m)^\.settings-section \[id\] \{[^}]*scroll-margin-top: calc\(var\(--settings-top\) \+ 3rem\)", css)
     assert re.search(r"(?m)^    \.settings-section \[id\] \{[^}]*scroll-margin-top: calc\(var\(--settings-top\) \+ 6rem\)", css)
+
+
+# --- Stage 5b final review fixes ----------------------------------------------------------
+
+def test_danger_title_icon_is_red_too():
+    """The 5a rule colors every section title's icon with the style accent."""
+    assert re.search(r"\.settings-section--danger \.admin-section__title \.bi \{[^}]*color: var\(--op-danger\)", _css())
+
+
+def test_every_settings_section_is_in_the_search_palette():
+    nav = _read("app", "templates", "nav.html")
+    missing = [s for s in SETTINGS_IDS if f"'/admin/settings#{s}'" not in nav]
+    assert not missing, missing
+
+
+def test_index_click_moves_keyboard_focus_into_the_section(admin_client):
+    html = admin_client.get("/admin/settings").get_data(as_text=True)
+    assert len(re.findall(r'<section class="surface admin-section settings-section[^"]*" id="\w+" tabindex="-1"', html)) == 12
+    body = _function_body(_js("settings.js"), "initSettingsIndex")
+    assert "target.focus({preventScroll: true})" in body
+
+
+def test_phone_chips_sit_right_under_the_top_bar():
+    """The top bar measures 57px; 4.25rem left an 11px gap content showed through."""
+    assert re.search(r"\.settings-page \{\s*--settings-top: 3\.5625rem;", _css())
