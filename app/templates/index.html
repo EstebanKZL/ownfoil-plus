@@ -184,6 +184,33 @@
         <ul class="pagination justify-content-center" id="paginationControlsTop"></ul>
     </nav>
 
+    {# What the grid shows instead of nothing: no match for the filters, an empty
+       library, or a request that failed. library.js shows at most one of them. #}
+    <div class="surface empty-state library-state" id="libraryEmpty" hidden>
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <h3>{{ t('library.empty_title') }}</h3>
+        <p class="mb-2">{{ t('library.empty_body') }}</p>
+        <button type="button" class="btn btn-primary" id="clearFiltersBtn"><i class="bi bi-x-circle"></i> {{ t('library.clear_filters') }}</button>
+    </div>
+    <div class="surface empty-state library-state" id="libraryEmptyLibrary" hidden>
+        <i class="bi bi-controller" aria-hidden="true"></i>
+        <h3>{{ t('library.empty_library_title') }}</h3>
+        <p class="mb-2">{{ t('library.empty_library_body') }}</p>
+        {% if is_admin %}
+        <p class="mb-0">{{ t('library.empty_library_admin') }}</p>
+        <div class="d-flex flex-wrap justify-content-center gap-2 mt-2">
+            <a class="btn btn-outline-secondary" href="/admin/settings#Library"><i class="bi bi-folder"></i> {{ t('library.empty_library_paths') }}</a>
+            <a class="btn btn-primary" href="/admin"><i class="bi bi-cloud-upload"></i> {{ t('library.empty_library_upload') }}</a>
+        </div>
+        {% endif %}
+    </div>
+    <div class="surface empty-state library-state" id="libraryError" hidden role="alert">
+        <i class="bi bi-wifi-off" aria-hidden="true"></i>
+        <h3>{{ t('library.error_title') }}</h3>
+        <p class="mb-2">{{ t('library.error_body') }}</p>
+        <button type="button" class="btn btn-primary" id="libraryRetryBtn"><i class="bi bi-arrow-clockwise"></i> {{ t('library.retry') }}</button>
+    </div>
+
     <div class="grid-container" id="gridContainer">
         <div class="row g-3" id="gameGrid"></div>
         <!-- <div class="row row-cols-1 row-cols-md-3 g-4" id="gameGrid"></div> -->

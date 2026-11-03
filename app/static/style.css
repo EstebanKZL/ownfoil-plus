@@ -2193,3 +2193,9 @@ button.stat-tile:hover {
 .dl-scroll > .table {
     margin-bottom: 0;
 }
+
+/* The Library's stand-ins for an empty or failed grid. */
+.library-state {
+    max-width: 34rem;
+    margin: 2rem auto;
+}

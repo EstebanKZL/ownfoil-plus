@@ -2,6 +2,20 @@
 // constants (IS_ADMIN, IS_SHOP, WEB_DOWNLOADS_ENABLED, SHOW_GAME_BACKGROUND_IMAGE) and
 // the I18N strings in its one inline script, then loads this file.
 
+// Remembered preferences. Storage can be missing (private windows, blocked site data)
+// or hold anything (an older version, a hand edit): every access goes through these.
+function storageGet(key) {
+    try { return localStorage.getItem(key); } catch (e) { return null; }
+}
+
+function storageSet(key, value) {
+    try { localStorage.setItem(key, value); } catch (e) { /* this page only */ }
+}
+
+function storageRemove(key) {
+    try { localStorage.removeItem(key); } catch (e) { /* this page only */ }
+}
+
 let itemsPerPage = 12;
 let currentPage = 1;
 let totalItems = 0;
@@ -27,7 +41,7 @@ let librarySort = {field: 'NAME', direction: 'ASC'};
  *  instead of sending the server an enum value it rejects. */
 function loadSortFromStorage() {
     try {
-        const saved = JSON.parse(localStorage.getItem('librarySort') || 'null');
+        const saved = JSON.parse(storageGet('librarySort') || 'null');
         if (saved && SORT_FIELDS.includes(saved.field) && SORT_DIRECTIONS.includes(saved.direction)) {
             librarySort = {field: saved.field, direction: saved.direction};
         }
@@ -48,7 +62,7 @@ function renderSortControls() {
 
 function setSort(field, direction) {
     librarySort = {field, direction};
-    try { localStorage.setItem('librarySort', JSON.stringify(librarySort)); } catch (e) { /* this page only */ }
+    storageSet('librarySort', JSON.stringify(librarySort));
     renderSortControls();
     resetToFirstPage();
 }
@@ -225,6 +239,7 @@ async function loadPage() {
         }
     } catch (e) {
         console.error(e);
+        if (seq === fetchSeq) showLibraryState('libraryError');
         return;
     }
     if (seq !== fetchSeq) return; // a newer request is already on its way back
@@ -238,6 +253,11 @@ async function loadPage() {
     }
 
     $('#cardSizeRange').val(cardSize);
+    if (!totalItems) {
+        showLibraryState(anyFilterOrSearch() ? 'libraryEmpty' : 'libraryEmptyLibrary');
+    } else {
+        showLibraryState(null);
+    }
     if (currentView === 'list') {
         renderListView(data.titles.items);
     } else if (currentView === 'icon') {
@@ -1291,7 +1311,7 @@ function adjustIconSizes() {
 }
 
 function saveFiltersToStorage() {
-    localStorage.setItem('activeFilters', JSON.stringify({
+    storageSet('activeFilters', JSON.stringify({
         type: activeTypeFilter,
         ownership: activeOwnershipFilter,
         update: activeUpdateFilter,
@@ -1301,9 +1321,9 @@ function saveFiltersToStorage() {
 }
 
 function loadFiltersFromStorage() {
-    const savedFilters = localStorage.getItem('activeFilters');
-    if (savedFilters) {
-        const filters = JSON.parse(savedFilters);
+    let filters = null;
+    try { filters = JSON.parse(storageGet('activeFilters') || 'null'); } catch (e) { /* unreadable: no filters */ }
+    if (filters && typeof filters === 'object') {
 
         $('#typeBase').prop('checked', filters.type === 'BASE');
         $('#typeDlc').prop('checked', filters.type === 'DLC');
@@ -1325,7 +1345,7 @@ function loadFiltersFromStorage() {
         updateFilter();
     }
 
-    const savedSearch = localStorage.getItem('searchTerm');
+    const savedSearch = storageGet('searchTerm');
     if (savedSearch) {
         $('#textFilter').val(savedSearch);
     }
@@ -1379,6 +1399,33 @@ function updateFilter() {
     }
 }
 
+/** Show one of the grid's stand-ins (or none), hiding the grid and paging with it. */
+function showLibraryState(id) {
+    ['libraryEmpty', 'libraryEmptyLibrary', 'libraryError'].forEach(state => {
+        $('#' + state).prop('hidden', state !== id);
+    });
+    $('#gridContainer, #paginationControlsTop, #paginationControlsBottom').toggleClass('d-none', !!id);
+}
+
+/** Is anything narrowing the current view's results? */
+function anyFilterOrSearch() {
+    const search = ($('#textFilter').val() || '').trim();
+    if (currentView === 'list') return !!(search || activeHealthFilter);
+    return !!(search || activeTypeFilter || activeOwnershipFilter || activeUpdateFilter || activeCompletionFilter);
+}
+
+/** "Clear filters": every filter group back to All, the search emptied - both
+ *  remembered that way - and back to page 1. */
+function clearAllFilters() {
+    ['#typeAll', '#ownershipAll', '#updateAll', '#completionAll', '#healthAll'].forEach(id => $(id).prop('checked', true));
+    $('#textFilter').val('');
+    storageRemove('searchTerm');
+    updateFilter();
+    saveFiltersToStorage();
+    updateFiltersDot();
+    resetToFirstPage();
+}
+
 function onFilterChange() {
     updateFilter();
     saveFiltersToStorage();
@@ -1404,22 +1451,24 @@ function applyViewToToolbar() {
 }
 
 $(document).ready(function () {
-    const savedItemsPerPage = localStorage.getItem('itemsPerPage');
-    if (savedItemsPerPage) {
-        itemsPerPage = parseInt(savedItemsPerPage);
+    // Only sensible values are taken back: a bad page size or an unknown view would
+    // otherwise reach the server as a failing query.
+    const savedItemsPerPage = parseInt(storageGet('itemsPerPage'));
+    if (savedItemsPerPage > 0 && savedItemsPerPage <= 500) {
+        itemsPerPage = savedItemsPerPage;
     }
 
-    const savedCurrentView = localStorage.getItem('currentView');
-    if (savedCurrentView) {
+    const savedCurrentView = storageGet('currentView');
+    if (['card', 'icon', 'list'].includes(savedCurrentView)) {
         currentView = savedCurrentView;
         $('.view-toggle-btn').removeClass("active");
         $(`.view-toggle-btn[data-view="${currentView}"]`).addClass("active");
         applyViewToToolbar();
     }
 
-    const savedCardSize = localStorage.getItem('cardSize');
-    if (savedCardSize){
-        cardSize = parseInt(savedCardSize);
+    const savedCardSize = parseInt(storageGet('cardSize'));
+    if (savedCardSize >= 1 && savedCardSize <= 5) {
+        cardSize = savedCardSize;
     }
 
     loadFiltersFromStorage();
@@ -1430,11 +1479,13 @@ $(document).ready(function () {
     loadPage();
     loadLibraryStats();
     loadPillCounts();
+    $('#clearFiltersBtn').on('click', clearAllFilters);
+    $('#libraryRetryBtn').on('click', () => { loadPage(); loadLibraryStats(); loadPillCounts(); });
 
     // Event listeners for items per page dropdown
     $('.items-per-page').click(function () {
         itemsPerPage = $(this).data('value');
-        localStorage.setItem('itemsPerPage', itemsPerPage);
+        storageSet('itemsPerPage', itemsPerPage);
         resetToFirstPage();
     });
 
@@ -1442,7 +1493,7 @@ $(document).ready(function () {
         const customValue = $('#customItemsPerPage').val();
         if (customValue && customValue > 0) {
             itemsPerPage = parseInt(customValue);
-            localStorage.setItem('itemsPerPage', itemsPerPage);
+            storageSet('itemsPerPage', itemsPerPage);
             resetToFirstPage();
         }
     });
@@ -1450,7 +1501,7 @@ $(document).ready(function () {
     // Event listener for card size slider
     $('#cardSizeRange').on('input', function () {
         cardSize = parseInt($(this).val());
-        localStorage.setItem('cardSize', cardSize);
+        storageSet('cardSize', cardSize);
         if (currentView === 'icon') {
             adjustIconSizes(cardSize);
         } else {
@@ -1463,7 +1514,7 @@ $(document).ready(function () {
         $('.view-toggle-btn').removeClass("active");
         $(this).addClass("active");
         currentView = $(this).data('view');
-        localStorage.setItem('currentView', currentView);
+        storageSet('currentView', currentView);
         applyViewToToolbar();
         // The views page different things (every card vs one icon per game), so the
         // page number from the previous view means nothing here.
@@ -1475,7 +1526,7 @@ $(document).ready(function () {
     // Listen to input changes in the text filter input
     $("#textFilter").on("input", function () {
         const attributeText = $(this).val();
-        localStorage.setItem('searchTerm', attributeText);
+        storageSet('searchTerm', attributeText);
         // Debounced: every keystroke would otherwise be its own query.
         clearTimeout(searchDebounce);
         searchDebounce = setTimeout(resetToFirstPage, 250);

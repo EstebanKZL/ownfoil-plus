@@ -242,3 +242,49 @@ def test_card_badge_strings_are_translated():
     for key in ("library.badge_update", "library.badge_missing_dlc", "library.badge_complete",
                 "library.badge_dlc", "library.versions"):
         assert {"en", "es"} <= set(i18n.TRANSLATIONS[key]), key
+
+
+# --- empty and error states -------------------------------------------------------------
+
+def test_empty_and_error_states_exist(client):
+    html = client.get("/").get_data(as_text=True)
+    for needle in ('id="libraryEmpty"', 'id="clearFiltersBtn"', 'id="libraryEmptyLibrary"',
+                   'id="libraryError"', 'id="libraryRetryBtn"'):
+        assert needle in html, needle
+    for state in ("libraryEmpty", "libraryEmptyLibrary", "libraryError"):
+        assert re.search(rf'id="{state}"[^>]*hidden', html), state
+
+
+def test_empty_library_links_admins_to_paths_and_upload(shop_app):
+    resp = shop_app.client.post("/login", data={"user": "admin", "password": fixture.PASSWORDS["admin"]})
+    assert resp.status_code in (302, 303)
+    html = shop_app.client.get("/").get_data(as_text=True)
+    state = html.split('id="libraryEmptyLibrary"', 1)[1].split("</div>", 1)[0]
+    assert 'href="/admin/settings#Library"' in state and 'href="/admin"' in state
+
+
+def test_a_failed_query_shows_the_error_state_and_clear_resets_everything():
+    js = _library_js()
+    load = _function_body(js, "loadPage")
+    assert "libraryError" in load.split("catch", 1)[1]
+    clear = _function_body(js, "clearAllFilters")
+    assert "searchTerm" in clear and "saveFiltersToStorage()" in clear and "resetToFirstPage()" in clear
+
+
+def test_state_strings_are_translated():
+    import i18n
+    for key in ("library.empty_title", "library.empty_body", "library.clear_filters",
+                "library.empty_library_title", "library.empty_library_body",
+                "library.empty_library_admin", "library.error_title", "library.retry"):
+        assert {"en", "es"} <= set(i18n.TRANSLATIONS[key]), key
+
+
+def test_remembered_preferences_are_guarded_and_validated():
+    js = _library_js()
+    # Only the three helpers touch localStorage, each inside try/catch.
+    uses = [l.strip() for l in js.splitlines() if "localStorage." in l]
+    assert len(uses) == 3 and all(u.startswith("try {") for u in uses), uses
+    assert "['card', 'icon', 'list'].includes(savedCurrentView)" in js
+    assert "savedItemsPerPage > 0" in js and "savedCardSize >= 1" in js
+    load = _function_body(js, "loadFiltersFromStorage")
+    assert "try { filters = JSON.parse(" in load
