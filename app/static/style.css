@@ -981,6 +981,51 @@ button.stat-tile:hover {
     transform: translateY(-2px);
 }
 
+.library-toolbar .toolbar-search {
+    position: relative;
+    flex: 1 1 16rem;
+    min-width: 0;
+}
+
+.library-toolbar .toolbar-search .bi-search {
+    position: absolute;
+    left: .75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--op-text-muted);
+    pointer-events: none;
+}
+
+.library-toolbar .toolbar-search .form-control {
+    padding-left: 2.25rem;
+}
+
+.library-toolbar .library-sort {
+    width: auto;
+    flex: 0 1 auto;
+}
+
+.library-toolbar .view-toggle-btn.active {
+    color: var(--op-nav);
+    background-color: rgba(var(--op-nav-rgb), .14);
+    border-color: rgba(var(--op-nav-rgb), .5);
+}
+
+.library-menu {
+    min-width: 17rem;
+}
+
+.filters-dot {
+    position: absolute;
+    top: .3rem;
+    right: .3rem;
+    width: .55rem;
+    height: .55rem;
+    border-radius: 50%;
+    background-color: var(--op-wait);
+    box-shadow: 0 0 0 2px var(--op-surface-1);
+}
+
 .library-tiles {
     grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
     gap: .75rem;

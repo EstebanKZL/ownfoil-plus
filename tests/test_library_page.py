@@ -128,3 +128,28 @@ def test_library_header_strings_are_translated(client):
     for key in ("library.title", "library.subtitle", "library.tile_games", "library.tile_updates",
                 "library.tile_missing_dlc", "library.tile_size", "library.progress"):
         assert {"en", "es"} <= set(i18n.TRANSLATIONS[key]), key
+
+
+# --- toolbar, View and Filters menus ---------------------------------------------------
+
+def test_toolbar_holds_search_sort_views_and_both_menus(client):
+    html = client.get("/").get_data(as_text=True)
+    bar = html.split('class="toolbar library-toolbar', 1)[1].split('<!-- Pagination controls (top)', 1)[0]
+    for needle in ('id="textFilter"', 'id="sortField"', 'id="sortDirection"', 'data-view="card"',
+                   'data-view="icon"', 'data-view="list"', 'id="viewMenuBtn"', 'id="filtersMenuBtn"',
+                   'id="customItemsPerPage"', 'id="cardSizeRange"', 'id="filtersActiveDot"'):
+        assert needle in bar, needle
+    # Every filter group lives in the one Filters menu now; the list view's own group
+    # is marked so the JS shows it only there.
+    menu = bar.split('id="filtersMenuBtn"', 1)[1]
+    for group in ("Type filter", "Ownership filter", "Update filter", "Completion filter",
+                  "Library health filter"):
+        assert f'aria-label="{group}"' in menu, group
+    assert re.search(r'id="listHealthFilterCol" data-view-only="list"', menu)
+    assert "filterDropdownBtn" not in html and "listHealthDropdownBtn" not in html
+
+
+def test_filters_dot_follows_the_view():
+    body = _function_body(_library_js(), "updateFiltersDot")
+    assert "activeHealthFilter" in body and "activeCompletionFilter" in body
+    assert "currentView === 'list'" in body

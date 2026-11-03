@@ -1286,7 +1286,25 @@ function updateFilter() {
 function onFilterChange() {
     updateFilter();
     saveFiltersToStorage();
+    updateFiltersDot();
     resetToFirstPage();
+}
+
+/** The Filters button's dot: some filter that applies to the current view is set. */
+function updateFiltersDot() {
+    const active = currentView === 'list'
+        ? !!activeHealthFilter
+        : !!(activeTypeFilter || activeOwnershipFilter || activeUpdateFilter || activeCompletionFilter);
+    $('#filtersActiveDot').prop('hidden', !active);
+}
+
+/** Show the toolbar parts that apply to the current view: card size for cards and
+ *  icons, and each view's own filter groups. */
+function applyViewToToolbar() {
+    $('#cardSizeRangeCol').toggleClass('d-none', currentView === 'list');
+    $('#filterDropdownCol').toggleClass('d-none', currentView === 'list');
+    $('#listHealthFilterCol').toggleClass('d-none', currentView !== 'list');
+    updateFiltersDot();
 }
 
 $(document).ready(function () {
@@ -1300,9 +1318,7 @@ $(document).ready(function () {
         currentView = savedCurrentView;
         $('.view-toggle-btn').removeClass("active");
         $(`.view-toggle-btn[data-view="${currentView}"]`).addClass("active");
-        $('#cardSizeRangeCol').toggleClass('d-none', currentView === 'list');
-        $('#filterDropdownCol').toggleClass('d-none', currentView === 'list');
-        $('#listHealthFilterCol').toggleClass('d-none', currentView !== 'list');
+        applyViewToToolbar();
     }
 
     const savedCardSize = localStorage.getItem('cardSize');
@@ -1311,6 +1327,7 @@ $(document).ready(function () {
     }
 
     loadFiltersFromStorage();
+    updateFiltersDot();
     loadSortFromStorage();
     $('#sortField').on('change', function () { setSort(this.value, librarySort.direction); });
     $('#sortDirection').on('click', () => setSort(librarySort.field, librarySort.direction === 'ASC' ? 'DESC' : 'ASC'));
@@ -1350,9 +1367,7 @@ $(document).ready(function () {
         $(this).addClass("active");
         currentView = $(this).data('view');
         localStorage.setItem('currentView', currentView);
-        $('#cardSizeRangeCol').toggleClass('d-none', currentView === 'list');
-        $('#filterDropdownCol').toggleClass('d-none', currentView === 'list');
-        $('#listHealthFilterCol').toggleClass('d-none', currentView !== 'list');
+        applyViewToToolbar();
         // The views page different things (every card vs one icon per game), so the
         // page number from the previous view means nothing here.
         resetToFirstPage();

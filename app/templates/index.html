@@ -22,16 +22,64 @@
         </div>
     </div>
 
-    <div class="row gy-2 gx-3 align-items-center justify-content-md-center">
-
-        <div class="col-auto" id="filterDropdownCol">
-            <div class="btn-group dropdown-center" role="group">
-                <div class="btn-group" role="group">
-                    <button id="filterDropdownBtn" type="button" class="btn btn-primary dropdown-toggle"
-                        data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                        <i class="bi bi-funnel-fill"></i>
-                    </button>
-                    <ul class="dropdown-menu">
+    {# One toolbar: search, sort, view, the View menu (page size, card size) and the
+       Filters menu (every filter group; the pills below are shortcuts into it). #}
+    <div class="toolbar library-toolbar mb-2">
+        <div class="toolbar-search">
+            <i class="bi bi-search" aria-hidden="true"></i>
+            <input type="search" id="textFilter" class="form-control" placeholder="{{ t('library.search_placeholder') }}"
+                   aria-label="{{ t('library.search_placeholder') }}">
+        </div>
+        <div class="input-group library-sort">
+            <label class="input-group-text" for="sortField"><i class="bi bi-arrow-down-up" aria-hidden="true"></i><span class="visually-hidden">{{ t('library.sort_label') }}</span></label>
+            <select class="form-select" id="sortField">
+                <option value="NAME">{{ t('library.sort_name') }}</option>
+                <option value="RELEASE_DATE">{{ t('library.sort_release_date') }}</option>
+            </select>
+            <button type="button" class="btn btn-outline-secondary" id="sortDirection" data-direction="ASC"
+                    title="{{ t('library.sort_asc') }}" aria-label="{{ t('library.sort_asc') }}"><i class="bi bi-sort-alpha-down"></i></button>
+        </div>
+        <div class="btn-group library-views" role="group" aria-label="{{ t('library.view_menu') }}">
+            <button id="view-toggle-btn-card" type="button" class="btn btn-outline-secondary view-toggle-btn active" data-view="card"
+                    title="{{ t('library.view_cards') }}" aria-label="{{ t('library.view_cards') }}"><i class="bi bi-card-heading"></i></button>
+            <button id="view-toggle-btn-icon" type="button" class="btn btn-outline-secondary view-toggle-btn" data-view="icon"
+                    title="{{ t('library.view_icons') }}" aria-label="{{ t('library.view_icons') }}"><i class="bi bi-grid-fill"></i></button>
+            <button id="view-toggle-btn-list" type="button" class="btn btn-outline-secondary view-toggle-btn" data-view="list"
+                    title="{{ t('library.view_list') }}" aria-label="{{ t('library.view_list') }}"><i class="bi bi-list-ul"></i></button>
+        </div>
+        <div class="dropdown">
+            <button id="viewMenuBtn" type="button" class="btn btn-outline-secondary dropdown-toggle"
+                    data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                <i class="bi bi-sliders2" aria-hidden="true"></i> <span class="d-none d-md-inline">{{ t('library.view_menu') }}</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end library-menu" aria-labelledby="viewMenuBtn">
+                <li><h6 class="dropdown-header" id="itemsPerPageDropdownBtn">{{ t('library.items_per_page') }}</h6></li>
+                <li><button class="dropdown-item items-per-page" data-value="9">9</button></li>
+                <li><button class="dropdown-item items-per-page" data-value="12">12</button></li>
+                <li><button class="dropdown-item items-per-page" data-value="18">18</button></li>
+                <li><button class="dropdown-item items-per-page" data-value="27">27</button></li>
+                <li>
+                    <div class="dropdown-item">
+                        <input type="number" id="customItemsPerPage" class="form-control" placeholder="{{ t('library.custom_placeholder') }}">
+                        <button id="applyCustomItemsPerPage" class="btn btn-primary mt-2">{{ t('library.apply') }}</button>
+                    </div>
+                </li>
+                <li id="cardSizeRangeCol">
+                    <hr class="dropdown-divider">
+                    <h6 class="dropdown-header"><label for="cardSizeRange">{{ t('library.card_size') }}</label></h6>
+                    <div class="px-3 pb-2"><input type="range" class="form-range" min="1" max="5" step="1" id="cardSizeRange"></div>
+                </li>
+            </ul>
+        </div>
+        <div class="dropdown">
+            <button id="filtersMenuBtn" type="button" class="btn btn-outline-secondary dropdown-toggle position-relative"
+                    data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                <i class="bi bi-funnel" aria-hidden="true"></i> <span class="d-none d-md-inline">{{ t('library.filters_menu') }}</span>
+                <span class="filters-dot" id="filtersActiveDot" hidden><span class="visually-hidden">{{ t('library.filters_active') }}</span></span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end library-menu" aria-labelledby="filtersMenuBtn">
+                <li id="filterDropdownCol" data-view-only="card icon">
+                    <ul class="list-unstyled mb-0">
                         <li>
                             <div class="dropdown-item filter-group-item">
                                 <div class="btn-group w-100" role="group" aria-label="Type filter">
@@ -97,94 +145,33 @@
                                 </div>
                             </div>
                         </li>
-                        <!-- <div class="text-center m-2">
-                            <button id="btnApplyFilters" type="button" class="btn btn-primary" style="width: 85%;">Apply
-                                filters</button>
-                        </div> -->
                     </ul>
-                </div>
-            </div>
-        </div>
+                </li>
+                <li id="listHealthFilterCol" data-view-only="list" class="d-none">
+                    <ul class="list-unstyled mb-0">
+                        <li>
+                            <div class="dropdown-item filter-group-item">
+                                <div class="btn-group-vertical w-100" role="group" aria-label="Library health filter">
+                                    <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthAll" autocomplete="off" checked>
+                                    <label class="btn btn-outline-primary" for="healthAll">{{ t('library.filter_all') }}</label>
 
-        <div class="col-auto d-none" id="listHealthFilterCol">
-            <div class="btn-group dropdown-center" role="group">
-                <button id="listHealthDropdownBtn" type="button" class="btn btn-primary dropdown-toggle"
-                    data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-funnel-fill"></i>
-                </button>
-                <ul class="dropdown-menu">
-                    <li>
-                        <div class="dropdown-item filter-group-item">
-                            <div class="btn-group-vertical w-100" role="group" aria-label="Library health filter">
-                                <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthAll" autocomplete="off" checked>
-                                <label class="btn btn-outline-primary" for="healthAll">{{ t('library.filter_all') }}</label>
+                                    <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthComplete" autocomplete="off">
+                                    <label class="btn btn-outline-primary" for="healthComplete">{{ t('library.filter_health_complete') }}</label>
 
-                                <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthComplete" autocomplete="off">
-                                <label class="btn btn-outline-primary" for="healthComplete">{{ t('library.filter_health_complete') }}</label>
+                                    <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthIncomplete" autocomplete="off">
+                                    <label class="btn btn-outline-primary" for="healthIncomplete">{{ t('library.filter_health_incomplete') }}</label>
 
-                                <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthIncomplete" autocomplete="off">
-                                <label class="btn btn-outline-primary" for="healthIncomplete">{{ t('library.filter_health_incomplete') }}</label>
+                                    <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthCorrupt" autocomplete="off">
+                                    <label class="btn btn-outline-primary" for="healthCorrupt">{{ t('library.filter_health_corrupt') }}</label>
 
-                                <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthCorrupt" autocomplete="off">
-                                <label class="btn btn-outline-primary" for="healthCorrupt">{{ t('library.filter_health_corrupt') }}</label>
-
-                                <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthRepack" autocomplete="off">
-                                <label class="btn btn-outline-primary" for="healthRepack">{{ t('library.filter_health_repack') }}</label>
+                                    <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthRepack" autocomplete="off">
+                                    <label class="btn btn-outline-primary" for="healthRepack">{{ t('library.filter_health_repack') }}</label>
+                                </div>
                             </div>
-                        </div>
-                    </li>
-                </ul>
-            </div>
-        </div>
-
-        <div class="col-auto">
-            <input type="text" id="textFilter" class="form-control" placeholder="{{ t('library.search_placeholder') }}">
-        </div>
-        <div class="col-auto library-sort">
-            <div class="input-group">
-                <label class="input-group-text" for="sortField"><i class="bi bi-arrow-down-up" aria-hidden="true"></i><span class="visually-hidden">{{ t('library.sort_label') }}</span></label>
-                <select class="form-select" id="sortField">
-                    <option value="NAME">{{ t('library.sort_name') }}</option>
-                    <option value="RELEASE_DATE">{{ t('library.sort_release_date') }}</option>
-                </select>
-                <button type="button" class="btn btn-outline-secondary" id="sortDirection" data-direction="ASC"
-                        title="{{ t('library.sort_asc') }}" aria-label="{{ t('library.sort_asc') }}"><i class="bi bi-sort-alpha-down"></i></button>
-            </div>
-        </div>
-        <div class="col-auto">
-            <div class="btn-group" role="group">
-                <button id="view-toggle-btn-card" type="button" class="btn btn-primary view-toggle-btn active" data-view="card"><i
-                        class="bi bi-card-heading"></i></button>
-                <button id="view-toggle-btn-icon" type="button" class="btn btn-primary view-toggle-btn" data-view="icon"><i
-                        class="bi bi-grid-fill"></i></button>
-                <button id="view-toggle-btn-list" type="button" class="btn btn-primary view-toggle-btn" data-view="list"><i
-                        class="bi bi-list-ul"></i></button>
-            </div>
-        </div>
-        <div class="col-auto">
-            <div class="btn-group dropdown-center" role="group">
-                <button id="itemsPerPageDropdownBtn" type="button" class="btn btn-primary dropdown-toggle"
-                    data-bs-toggle="dropdown" aria-expanded="false">
-                    {{ t('library.items_per_page') }}
-                </button>
-                <ul class="dropdown-menu" aria-labelledby="itemsPerPageDropdownBtn">
-                    <li><button class="dropdown-item items-per-page" data-value="9">9</button></li>
-                    <li><button class="dropdown-item items-per-page" data-value="12">12</button></li>
-                    <li><button class="dropdown-item items-per-page" data-value="18">18</button></li>
-                    <li><button class="dropdown-item items-per-page" data-value="27">27</button></li>
-                    <li>
-                        <div class="dropdown-item">
-                            <input type="number" id="customItemsPerPage" class="form-control" placeholder="{{ t('library.custom_placeholder') }}">
-                            <button id="applyCustomItemsPerPage" class="btn btn-primary mt-2">{{ t('library.apply') }}</button>
-                        </div>
-                    </li>
-                </ul>
-            </div>
-        </div>
-        <!-- Card size slider -->
-        <div class="col-auto" id="cardSizeRangeCol">
-            <!-- <label for="cardSizeRange" class="form-label">Card Size</label> -->
-            <input type="range" class="form-range" min="1" max="5" step="1" id="cardSizeRange">
+                        </li>
+                    </ul>
+                </li>
+            </ul>
         </div>
     </div>
 
