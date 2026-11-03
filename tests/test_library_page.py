@@ -48,3 +48,46 @@ def test_library_logic_lives_in_its_own_script(client):
 def test_library_page_has_one_bare_inline_script(client):
     html = client.get("/").get_data(as_text=True)
     assert len(re.findall(r"<script>", html)) == 1
+
+
+# --- a real GraphQL run on a seeded library (fixture shared with the query tests) ----
+
+from test_card_icon_metadata_query import library  # noqa: E402,F401  (pytest fixture)
+
+
+def _gql(library, query, **variables):
+    resp = library.client.get("/api/graphql", query_string={
+        "query": query, "variables": json.dumps(variables)})
+    assert resp.status_code == 200, resp.get_data(as_text=True)
+    body = resp.get_json()
+    assert "errors" not in body, body.get("errors")
+    return body["data"]
+
+
+# --- sorting ---------------------------------------------------------------------------
+
+def test_sort_controls_offer_name_and_release_date(client):
+    html = client.get("/").get_data(as_text=True)
+    sel = html.split('id="sortField"', 1)[1].split("</select>", 1)[0]
+    assert re.findall(r'value="(\w+)"', sel) == ["NAME", "RELEASE_DATE"]
+    assert 'id="sortDirection"' in html
+
+
+def test_queries_take_order_by_and_stored_sort_is_validated():
+    js = _library_js()
+    for name in ("CARDS_QUERY", "ICONS_QUERY", "LIST_QUERY"):
+        q = _extract_query(js, name)
+        assert "$orderBy: OrderBy" in q and "orderBy: $orderBy" in q, name
+    assert "SORT_FIELDS.includes(" in js and "SORT_DIRECTIONS.includes(" in js
+    assert "orderBy: librarySort" in js
+
+
+@pytest.mark.parametrize("direction", ["ASC", "DESC"])
+def test_shipped_queries_sort_by_release_date(library, direction):
+    js = _library_js()
+    order = {"field": "RELEASE_DATE", "direction": direction}
+    cards = _gql(library, _extract_query(js, "CARDS_QUERY"), page=1, pageSize=20,
+                 appType=["BASE", "DLC"], orderBy=order)
+    assert cards["apps"]["total"] == 2
+    listed = _gql(library, _extract_query(js, "LIST_QUERY"), page=1, pageSize=20, orderBy=order)
+    assert listed["titles"]["total"] == 1

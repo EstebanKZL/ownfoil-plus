@@ -123,6 +123,17 @@
         <div class="col-auto">
             <input type="text" id="textFilter" class="form-control" placeholder="{{ t('library.search_placeholder') }}">
         </div>
+        <div class="col-auto library-sort">
+            <div class="input-group">
+                <label class="input-group-text" for="sortField"><i class="bi bi-arrow-down-up" aria-hidden="true"></i><span class="visually-hidden">{{ t('library.sort_label') }}</span></label>
+                <select class="form-select" id="sortField">
+                    <option value="NAME">{{ t('library.sort_name') }}</option>
+                    <option value="RELEASE_DATE">{{ t('library.sort_release_date') }}</option>
+                </select>
+                <button type="button" class="btn btn-outline-secondary" id="sortDirection" data-direction="ASC"
+                        title="{{ t('library.sort_asc') }}" aria-label="{{ t('library.sort_asc') }}"><i class="bi bi-sort-alpha-down"></i></button>
+            </div>
+        </div>
         <div class="col-auto">
             <div class="btn-group" role="group">
                 <button id="view-toggle-btn-card" type="button" class="btn btn-primary view-toggle-btn active" data-view="card"><i
@@ -262,6 +273,8 @@
         metadataSaveFailed: {{ t('library.metadata_save_failed') | tojson }},
         metadataResetDone: {{ t('library.metadata_reset_done') | tojson }},
         metadataResetFailed: {{ t('library.metadata_reset_failed') | tojson }},
+        sortAsc: {{ t('library.sort_asc') | tojson }},
+        sortDesc: {{ t('library.sort_desc') | tojson }},
     };
 
 </script>

@@ -17,6 +17,42 @@ let activeUpdateFilter = "";
 let activeCompletionFilter = "";
 let activeHealthFilter = "";
 
+// Sorting: the fields both the `apps` (cards, icons) and `titles` (list) queries sort
+// on. ADDED_AT exists in the schema but only applies to `files`.
+const SORT_FIELDS = ['NAME', 'RELEASE_DATE'];
+const SORT_DIRECTIONS = ['ASC', 'DESC'];
+let librarySort = {field: 'NAME', direction: 'ASC'};
+
+/** A stored sort from an older version or a hand edit falls back to the default
+ *  instead of sending the server an enum value it rejects. */
+function loadSortFromStorage() {
+    try {
+        const saved = JSON.parse(localStorage.getItem('librarySort') || 'null');
+        if (saved && SORT_FIELDS.includes(saved.field) && SORT_DIRECTIONS.includes(saved.direction)) {
+            librarySort = {field: saved.field, direction: saved.direction};
+        }
+    } catch (e) { /* unreadable or blocked storage: keep the default */ }
+    renderSortControls();
+}
+
+function renderSortControls() {
+    $('#sortField').val(librarySort.field);
+    const asc = librarySort.direction === 'ASC';
+    const kind = librarySort.field === 'NAME' ? 'alpha' : 'numeric';
+    $('#sortDirection')
+        .attr('data-direction', librarySort.direction)
+        .attr('title', asc ? I18N.sortAsc : I18N.sortDesc)
+        .attr('aria-label', asc ? I18N.sortAsc : I18N.sortDesc)
+        .find('i').attr('class', `bi bi-sort-${kind}-${asc ? 'down' : 'up'}`);
+}
+
+function setSort(field, direction) {
+    librarySort = {field, direction};
+    try { localStorage.setItem('librarySort', JSON.stringify(librarySort)); } catch (e) { /* this page only */ }
+    renderSortControls();
+    resetToFirstPage();
+}
+
 const PLACEHOLDER_BANNER = '//placehold.it/400x200';
 
 async function gqlFetch(query, variables) {
@@ -48,8 +84,8 @@ async function gqlFetch(query, variables) {
 // There is no separate local-cache proxy to go through here any more.
 const CARDS_QUERY = `
     query Cards($page: Int!, $pageSize: Int!, $appType: [AppType!], $search: String,
-                $owned: Boolean, $upToDate: Boolean, $complete: Boolean) {
-        apps(groupByAppId: true, orderBy: {field: NAME}, page: $page, pageSize: $pageSize,
+                $owned: Boolean, $upToDate: Boolean, $complete: Boolean, $orderBy: OrderBy) {
+        apps(groupByAppId: true, orderBy: $orderBy, page: $page, pageSize: $pageSize,
              appType: $appType, search: $search, owned: $owned,
              upToDate: $upToDate, complete: $complete) {
             total
@@ -70,8 +106,8 @@ const CARDS_QUERY = `
 
 const ICONS_QUERY = `
     query Icons($page: Int!, $pageSize: Int!, $appType: [AppType!], $search: String,
-                $owned: Boolean, $upToDate: Boolean, $complete: Boolean) {
-        apps(groupByAppId: true, orderBy: {field: NAME}, page: $page, pageSize: $pageSize,
+                $owned: Boolean, $upToDate: Boolean, $complete: Boolean, $orderBy: OrderBy) {
+        apps(groupByAppId: true, orderBy: $orderBy, page: $page, pageSize: $pageSize,
              appType: $appType, search: $search, owned: $owned,
              upToDate: $upToDate, complete: $complete) {
             total
@@ -113,8 +149,8 @@ const ICONS_QUERY = `
 // same version as Missing, because titledb's catalogue disagreed with what ownfoil
 // itself considers a real update.
 const LIST_QUERY = `
-    query TitlesList($page: Int!, $pageSize: Int!, $search: String, $libraryHealth: LibraryHealth) {
-        titles(owned: true, search: $search, libraryHealth: $libraryHealth, orderBy: {field: NAME}, page: $page, pageSize: $pageSize) {
+    query TitlesList($page: Int!, $pageSize: Int!, $search: String, $libraryHealth: LibraryHealth, $orderBy: OrderBy) {
+        titles(owned: true, search: $search, libraryHealth: $libraryHealth, orderBy: $orderBy, page: $page, pageSize: $pageSize) {
             total
             items {
                 titleId name intro description developer publisher releaseDate
@@ -159,6 +195,7 @@ function queryVariables() {
         owned: activeOwnershipFilter ? activeOwnershipFilter === 'Owned' : null,
         upToDate: activeUpdateFilter ? activeUpdateFilter === 'Up to date' : null,
         complete: activeCompletionFilter ? activeCompletionFilter === 'Complete' : null,
+        orderBy: librarySort,
     };
 }
 
@@ -171,6 +208,7 @@ function listQueryVariables() {
         pageSize: itemsPerPage,
         search: search || null,
         libraryHealth: activeHealthFilter || null,
+        orderBy: librarySort,
     };
 }
 
@@ -1230,6 +1268,9 @@ $(document).ready(function () {
     }
 
     loadFiltersFromStorage();
+    loadSortFromStorage();
+    $('#sortField').on('change', function () { setSort(this.value, librarySort.direction); });
+    $('#sortDirection').on('click', () => setSort(librarySort.field, librarySort.direction === 'ASC' ? 'DESC' : 'ASC'));
     loadPage();
     loadLibraryStats();
 
