@@ -34,6 +34,31 @@ instead of each page carrying its own colors.
   guide and the offline page. The library, the game page and the other admin pages
   adopt them in the next stages.
 
+Stage 2, the **Library**, the page people open the most:
+
+- **The library at a glance.** A header with the number of games, tiles for games
+  with a pending update and games missing DLC (clicking one filters the grid), the
+  total size for admins, and a bar with the share of games up to date. It replaces the
+  one line of numbers above the grid.
+- **One toolbar** instead of a row of separate blue buttons: search, sort, view, a
+  *View* menu (page size, card size) and a *Filters* menu holding every filter group,
+  with a dot when one is on.
+- **Sorting by name or release date**, ascending or descending. The server always
+  supported it; the page never offered it. ("Recently added" only exists for files, so
+  it isn't offered here.)
+- **Filter pills with exact counts.** The common filters are one click, and each pill
+  says how many results it gives. The counts come from one request built from the same
+  variables as the grid, so a number is exactly what clicking it shows.
+- **New cards**: the cover, the name, publisher and year, and text badges for the
+  state (update, missing DLC, complete) in the colors that mean the same everywhere.
+  Two cards per row on phones.
+- **Empty and error states**: no matches offers *Clear filters*, an empty library
+  points admins to the library folders and to uploading, and a failed request says so
+  with a *Retry* button instead of leaving an empty grid.
+- **The page's JavaScript moved to `static/js/library.js`** (about 1,300 lines out of
+  the template), and remembered preferences are now validated, so a stale or broken
+  value can't break the page.
+
 ## [6.2.5.45]
 
 Image vulnerabilities, from a Docker Scout report of 5 critical / 30 high.

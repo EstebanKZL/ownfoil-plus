@@ -56,9 +56,14 @@ The landing page of `Admin`. At the top, what needs attention, each linking to w
 
 ## Library view
 
-The landing page, a grid view of your whole library, with labels and filtering to highlight owned and missing content.
+The landing page: your whole library as cards, icons or a list.
 
-You can filter by type (base game or DLC), by ownership, by whether an update is missing, and by whether the DLC set is complete. There is also a search box, a card and an icon view, a card size slider and a page size selector. The version badge on a card opens a popover listing every known version of that title with its release date, and whether you own it.
+- **At the top**, how the library is doing: the number of games, how many have an update pending, how many are missing DLC, the total size (admins only), and a bar with the share of games up to date. Clicking *Pending updates* or *Missing DLC* shows those games.
+- **The toolbar**: search (by name or title ID), sort by **name** or **release date** in either direction, the view (cards, icons, list), the **View** menu (games per page, card size) and the **Filters** menu (type, ownership, update, DLC; in the list view, the state of the files). A dot on *Filters* means some filter is on.
+- **The pills** under it are one-click filters, each with how many results it gives: *All*, *Update pending*, *Missing DLC*, *Up to date* (in the list view: *Complete*, *Incomplete*, *With errors*, *Repacks*). The counts follow the search and the Filters menu.
+- **Each card** shows the cover, the name, the publisher and year, and badges for its state: update available, missing DLC, or complete. Games you don't have are dimmed. The clock button lists every known version of the title with its release date and whether you own it; clicking the cover opens the details.
+
+Search, sort, view, filters and page size are remembered per browser. When nothing matches, *Clear filters* resets them.
 
 ## Setup page
 
