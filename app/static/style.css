@@ -961,14 +961,66 @@ a.stat-tile:hover {
     width: 15%;
 }
 
-/* The library grid's one-line summary above the cards. */
-.library-stats {
-    color: var(--bs-secondary-color);
-    text-align: center;
+/* ============== Library page (stage 2) ============== */
+
+.library-page {
+    max-width: 1600px;
+    padding-bottom: 1.5rem;
 }
 
-.library-stats span + span::before {
-    content: " · ";
+/* Tiles that apply a filter are buttons: keep the tile look, lose the button chrome. */
+button.stat-tile {
+    width: 100%;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+button.stat-tile:hover {
+    border-color: rgba(var(--tile-rgb), .55);
+    transform: translateY(-2px);
+}
+
+.library-tiles {
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+    gap: .75rem;
+}
+
+.library-progress .progress {
+    height: .5rem;
+    border-radius: 1rem;
+    background-color: var(--op-surface-2);
+}
+
+.library-progress .progress-bar {
+    background: linear-gradient(90deg, var(--op-nav), var(--op-ok));
+    border-radius: 1rem;
+}
+
+@media (max-width: 575.98px) {
+    .library-tiles {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: .5rem;
+    }
+
+    .library-tiles .stat-tile {
+        padding: .75rem;
+        column-gap: .6rem;
+    }
+
+    .library-tiles .stat-tile__icon {
+        width: 2.25rem;
+        height: 2.25rem;
+        font-size: 1.1rem;
+    }
+
+    .library-tiles .stat-tile__value {
+        font-size: 1.25rem;
+    }
+
+    .library-tiles .stat-tile__label {
+        font-size: .78rem;
+    }
 }
 
 .spin {

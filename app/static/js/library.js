@@ -256,7 +256,7 @@ async function loadPage() {
     const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl))
 }
 
-// Library-wide, so the line stays put while filters and search move the grid.
+// Library-wide, so the header stays put while filters and search move the grid.
 const LIBRARY_STATS_QUERY = `
     query LibraryStats {
         stats {
@@ -272,31 +272,74 @@ async function loadLibraryStats() {
         console.error(e);
         return;
     }
-    // An empty install, or a visitor without shop access reading zeros: either way
-    // the line has nothing to say and stays hidden.
-    if (!stats.ownedTitles) return;
+    renderLibraryStats(stats);
+}
 
-    const parts = [
-        `${stats.ownedTitles.toLocaleString()} ${I18N.statTitles}`,
-        `${stats.completeTitles.toLocaleString()} ${I18N.statComplete}`,
-        `${stats.upToDateTitles.toLocaleString()} ${I18N.statUpToDate}`,
+/** The header's count, the four tiles and the "up to date" bar. These count games
+ *  (titles); the pills under the toolbar count what the grid shows. */
+function renderLibraryStats(stats) {
+    // An empty install, or a visitor without shop access reading zeros: nothing to say.
+    if (!stats.ownedTitles) return;
+    const owned = stats.ownedTitles;
+    const pending = stats.ownedTitles - stats.upToDateTitles;
+    const missingDlc = stats.ownedTitles - stats.completeTitles;
+
+    $('#libraryCount').text(owned.toLocaleString()).prop('hidden', false);
+
+    // (value, label, icon, tone, pill it applies or null)
+    const tiles = [
+        [owned.toLocaleString(), I18N.tileGames, 'bi-controller', 'ok', null],
+        [pending.toLocaleString(), I18N.tileUpdates, 'bi-arrow-up-circle', 'wait', 'outdated'],
+        [missingDlc.toLocaleString(), I18N.tileMissingDlc, 'bi-puzzle', 'nav', 'missingDlc'],
     ];
     // File figures are admin only and read zero for every other role, which is what
     // keeps the library's storage footprint off a shop user's screen.
     if (stats.totalFiles) {
-        parts.push(`${stats.totalFiles.toLocaleString()} ${I18N.statFiles}`,
-                   formatBytes(stats.totalSize));
+        tiles.push([formatBytes(stats.totalSize), I18N.tileSize, 'bi-hdd-stack', 'action', null]);
     }
 
-    const line = document.getElementById('libraryStats');
-    line.innerHTML = '';
-    parts.forEach(text => {
-        const span = document.createElement('span');
-        span.textContent = text;
-        line.appendChild(span);
+    const box = $('#libraryTiles').empty();
+    tiles.forEach(([value, label, icon, tone, pill]) => {
+        const tile = $(pill ? '<button type="button">' : '<div>').addClass(`stat-tile stat-tile--${tone}`);
+        tile.append($('<span class="stat-tile__icon">').append($('<i>').addClass(`bi ${icon}`)),
+                    $('<div class="stat-tile__value">').text(value),
+                    $('<div class="stat-tile__label">').text(label));
+        if (pill) {
+            tile.attr('data-pill', pill).on('click', () => applyPill(pill));
+        }
+        box.append(tile);
     });
-    line.classList.remove('d-none');
+    box.prop('hidden', false);
+
+    const pct = Math.round(100 * stats.upToDateTitles / owned);
+    $('#libraryProgressLabel').text(I18N.progress
+        .replace('{pct}', pct).replace('{n}', stats.upToDateTitles.toLocaleString())
+        .replace('{total}', owned.toLocaleString()));
+    $('#libraryProgress .progress').attr('aria-valuenow', pct);
+    $('#libraryProgress .progress-bar').css('width', pct + '%');
+    $('#libraryProgress').prop('hidden', false);
 }
+
+/** Set the filters a pill (or a tile) stands for; filled in by the pills. */
+function applyPill(name) {
+    const pill = CARD_PILLS[name];
+    if (!pill) return;
+    $('#updateAll').prop('checked', !pill.update);
+    $('#updateUpToDate').prop('checked', pill.update === 'Up to date');
+    $('#updateMissingUpdate').prop('checked', pill.update === 'Outdated');
+    $('#completionAll').prop('checked', !pill.completion);
+    $('#completionComplete').prop('checked', pill.completion === 'Complete');
+    $('#completionMissingDlc').prop('checked', pill.completion === 'Missing DLC');
+    onFilterChange();
+}
+
+// What each card/icon pill sets: the update and completion filter groups.
+const CARD_PILLS = {
+    all: {update: '', completion: ''},
+    outdated: {update: 'Outdated', completion: ''},
+    missingDlc: {update: '', completion: 'Missing DLC'},
+    upToDate: {update: 'Up to date', completion: ''},
+};
 
 function goToPage(page) {
     currentPage = page;

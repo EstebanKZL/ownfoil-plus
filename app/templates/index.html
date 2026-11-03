@@ -3,7 +3,24 @@
 
 {% block content %}
 {% include 'nav.html' %}
-<div id="content" class="container-fluid mt-3">
+<div id="content" class="container-fluid library-page">
+
+    <header class="page-head">
+        <span class="page-head__icon"><i class="bi bi-grid" aria-hidden="true"></i></span>
+        <h1 class="page-head__title">{{ t('library.title') }} <span class="page-head__count" id="libraryCount" hidden></span></h1>
+        <p class="page-head__desc">{{ t('library.subtitle') }}</p>
+    </header>
+
+    <div class="stat-grid library-tiles mb-3" id="libraryTiles" hidden></div>
+    <div class="library-progress mb-3" id="libraryProgress" hidden>
+        <div class="d-flex justify-content-between small mb-1">
+            <span class="fw-semibold">{{ t('library.progress_heading') }}</span>
+            <span class="text-secondary" id="libraryProgressLabel"></span>
+        </div>
+        <div class="progress" role="progressbar" aria-label="{{ t('library.progress_heading') }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div class="progress-bar" style="width: 0%"></div>
+        </div>
+    </div>
 
     <div class="row gy-2 gx-3 align-items-center justify-content-md-center">
 
@@ -170,7 +187,6 @@
             <input type="range" class="form-range" min="1" max="5" step="1" id="cardSizeRange">
         </div>
     </div>
-    <p id="libraryStats" class="library-stats mt-3 mb-0 d-none"></p>
 
     <!-- Pagination controls (top) - mirrors the bottom one, same content, so paging
          doesn't require scrolling all the way down first. -->
@@ -230,11 +246,12 @@
     const I18N = {
         unrecognized: {{ t('library.unrecognized') | tojson }},
         notFoundInTitledb: {{ t('library.not_found_in_titledb') | tojson }},
-        statTitles: {{ t('library.stat_titles') | tojson }},
-        statComplete: {{ t('library.stat_complete') | tojson }},
-        statUpToDate: {{ t('library.stat_up_to_date') | tojson }},
-        statFiles: {{ t('library.stat_files') | tojson }},
         versionV0: {{ t('library.version_v0') | tojson }},
+        tileGames: {{ t('library.tile_games') | tojson }},
+        tileUpdates: {{ t('library.tile_updates') | tojson }},
+        tileMissingDlc: {{ t('library.tile_missing_dlc') | tojson }},
+        tileSize: {{ t('library.tile_size') | tojson }},
+        progress: {{ t('library.progress') | tojson }},
         updatesTooltip: {{ t('library.updates_tooltip') | tojson }},
         previous: {{ t('library.previous') | tojson }},
         next: {{ t('library.next') | tojson }},

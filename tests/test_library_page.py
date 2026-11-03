@@ -91,3 +91,40 @@ def test_shipped_queries_sort_by_release_date(library, direction):
     assert cards["apps"]["total"] == 2
     listed = _gql(library, _extract_query(js, "LIST_QUERY"), page=1, pageSize=20, orderBy=order)
     assert listed["titles"]["total"] == 1
+
+
+# --- header, stat tiles and progress ---------------------------------------------------
+
+def _function_body(js, name):
+    start = js.index(f"function {name}(")
+    depth, i = 0, js.index("{", start)
+    while True:
+        depth += {"{": 1, "}": -1}.get(js[i], 0)
+        i += 1
+        if depth == 0:
+            return js[start:i]
+
+
+def test_header_tiles_and_progress_replace_the_stats_line(client):
+    html = client.get("/").get_data(as_text=True)
+    assert 'class="page-head' in html and 'id="libraryCount"' in html
+    assert re.search(r'id="libraryTiles"[^>]*hidden', html)
+    assert re.search(r'id="libraryProgress"[^>]*hidden', html)
+    assert 'id="libraryStats"' not in html
+
+
+def test_tiles_are_computed_from_the_stats_query():
+    body = _function_body(_library_js(), "renderLibraryStats")
+    assert "ownedTitles - stats.upToDateTitles" in body
+    assert "ownedTitles - stats.completeTitles" in body
+    # The size tile is admin-only: totalFiles reads 0 for anyone else.
+    assert "if (stats.totalFiles)" in body
+    # Pending updates and missing DLC tiles apply their filter.
+    assert 'data-pill' in body or "dataset.pill" in body
+
+
+def test_library_header_strings_are_translated(client):
+    import i18n
+    for key in ("library.title", "library.subtitle", "library.tile_games", "library.tile_updates",
+                "library.tile_missing_dlc", "library.tile_size", "library.progress"):
+        assert {"en", "es"} <= set(i18n.TRANSLATIONS[key]), key
