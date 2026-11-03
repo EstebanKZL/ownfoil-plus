@@ -778,6 +778,11 @@ TRANSLATIONS = {
     'library.card_size': {'en': 'Card size', 'es': 'Tamaño de las tarjetas'},
     'library.filters_menu': {'en': 'Filters', 'es': 'Filtros'},
     'library.filters_active': {'en': 'Some filters are on', 'es': 'Hay filtros activos'},
+    'library.badge_update': {'en': 'Update', 'es': 'Actualización'},
+    'library.badge_missing_dlc': {'en': 'Missing DLC', 'es': 'Falta DLC'},
+    'library.badge_complete': {'en': 'Complete', 'es': 'Completo'},
+    'library.badge_dlc': {'en': 'DLC', 'es': 'DLC'},
+    'library.versions': {'en': 'Versions', 'es': 'Versiones'},
     'library.pill_all': {'en': 'All', 'es': 'Todos'},
     'library.pill_outdated': {'en': 'Update pending', 'es': 'Actualización pendiente'},
     'library.pill_missing_dlc': {'en': 'Missing DLC', 'es': 'Falta DLC'},
@@ -797,8 +802,6 @@ TRANSLATIONS = {
     'library.details': {'en': 'Details', 'es': 'Detalles'},
     'library.unrecognized': {'en': 'Unrecognized', 'es': 'No reconocido'},
     'library.not_found_in_titledb': {'en': 'not found in titledb', 'es': 'no encontrado en titledb'},
-    'library.version_v0': {'en': 'Version v0', 'es': 'Versión v0'},
-    'library.updates_tooltip': {'en': '{name} Updates', 'es': 'Updates de {name}'},
     'library.previous': {'en': 'Previous', 'es': 'Anterior'},
     'library.next': {'en': 'Next', 'es': 'Siguiente'},
     'library.owned': {'en': 'Owned', 'es': 'Poseído'},
@@ -850,7 +853,7 @@ TRANSLATIONS = {
     # than rendered as template text. A handful of parameterized values use a plain
     # `{name}`-style placeholder meant to be filled in client-side with `.replace()`
     # (the count/size/filename aren't known until the browser has the data), matching
-    # `library.updates_tooltip`'s own `{name}` convention above - these are NOT passed
+    # `library.progress`'s own `{pct}`/`{n}` convention above - these are NOT passed
     # through `t()`'s `**kwargs`/`str.format`, since that only works for values the
     # server already knows at render time.
 

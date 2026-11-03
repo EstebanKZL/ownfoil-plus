@@ -204,3 +204,41 @@ def test_pill_strings_are_translated():
                 "library.pill_up_to_date", "library.pill_complete", "library.pill_incomplete",
                 "library.pill_corrupt", "library.pill_repack"):
         assert {"en", "es"} <= set(i18n.TRANSLATIONS[key]), key
+
+
+# --- cards, icons and list rows ------------------------------------------------------
+
+def _rule(css, selector):
+    css = re.sub(r"/\*.*?\*/", "", css, flags=re.DOTALL)
+    return "\n".join(m.group(2) for m in re.finditer(r"([^{}]+)\{([^{}]*)\}", css)
+                     if selector in [s.strip() for s in m.group(1).split(",")])
+
+
+def test_cards_use_the_surface_look_and_status_badges():
+    body = _function_body(_library_js(), "renderCardView")
+    for needle in ("library-card", "library-cover", "library-card-body", "library-card-meta",
+                   "library-badges", "statusBadge('wait'", "statusBadge('dlc'", "statusBadge('ok'",
+                   "is-missing", "openMetadata(game.meta)", ".popover("):
+        assert needle in body, needle
+    # Catalogue text goes through .text(), never into HTML strings.
+    assert "${game.name}" not in body and "${game.meta" not in body
+
+
+def test_card_styles_use_tokens_only():
+    css = _read("app", "static", "style.css")
+    for selector in (".library-card", ".library-badges", ".library-card.is-missing .library-cover", ".library-card-meta",
+                     ".library-icon"):
+        body = _rule(css, selector)
+        assert body.strip(), selector
+        assert not re.search(r"#[0-9a-fA-F]{3,8}\b", body), selector
+
+
+def test_phones_get_two_card_columns():
+    assert "col-6 col-md-" in _function_body(_library_js(), "cardColumnClasses")
+
+
+def test_card_badge_strings_are_translated():
+    import i18n
+    for key in ("library.badge_update", "library.badge_missing_dlc", "library.badge_complete",
+                "library.badge_dlc", "library.versions"):
+        assert {"en", "es"} <= set(i18n.TRANSLATIONS[key]), key

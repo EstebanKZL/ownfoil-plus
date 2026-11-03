@@ -1026,6 +1026,118 @@ button.stat-tile:hover {
     box-shadow: 0 0 0 2px var(--op-surface-1);
 }
 
+/* Game cards: cover on top, name and "publisher · year" under it, state badges on the
+   cover. Built on .game-surface (tokens); the old overlay styles stay for the list view. */
+.library-card {
+    height: 100%;
+    overflow: hidden;
+}
+
+.library-card:hover {
+    transform: translateY(-3px);
+}
+
+.library-cover-wrap {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    background-color: var(--op-surface-2);
+}
+
+.library-cover {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    cursor: pointer;
+    display: block;
+}
+
+.library-badges {
+    position: absolute;
+    left: .5rem;
+    right: .5rem;
+    bottom: .5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .3rem;
+}
+
+/* Over artwork the badges need their own backdrop to stay readable. */
+.library-badges .status-badge {
+    background-color: rgba(var(--op-surface-0-rgb), .85);
+    backdrop-filter: blur(6px);
+}
+
+.library-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+    padding: .7rem .85rem .6rem;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.library-card .library-card-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--op-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.library-card-meta {
+    margin: 0;
+    font-size: .82rem;
+    color: var(--op-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.library-card-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    margin-top: auto;
+    padding-top: .35rem;
+}
+
+.library-card-id {
+    font-family: var(--bs-font-monospace);
+    font-size: .72rem;
+    color: var(--op-text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Not in the library: the card stays, dimmed. */
+.library-card.is-missing .library-cover {
+    filter: grayscale(.7);
+    opacity: .6;
+}
+
+.library-icon {
+    border-radius: var(--op-radius);
+    border: 1px solid var(--op-border);
+    margin: .3rem;
+    cursor: pointer;
+    transition: transform var(--op-dur) var(--op-ease), border-color var(--op-dur) var(--op-ease);
+}
+
+.library-icon:hover {
+    border-color: rgba(var(--op-nav-rgb), .6);
+    transform: translateY(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .library-card:hover,
+    .library-icon:hover {
+        transform: none;
+    }
+}
+
 .pill-row {
     display: flex;
     flex-wrap: wrap;

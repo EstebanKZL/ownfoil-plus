@@ -520,78 +520,79 @@ function cardModel(app) {
     };
 }
 
+/** "Publisher · 2021" (either part may be missing), from the catalogue's metadata. */
+function cardMetaLine(meta) {
+    const year = String(meta.releaseDate || '').match(/\d{4}/);
+    return [meta.publisher, year && year[0]].filter(Boolean).join(' · ');
+}
+
+function statusBadge(tone, icon, label) {
+    const badge = $('<span class="status-badge">').addClass(tone ? `status-badge--${tone}` : '');
+    if (icon) badge.append($('<i aria-hidden="true">').addClass(`bi ${icon}`));
+    return badge.append($('<span>').text(label));
+}
+
 function renderCardView(games) {
     const gameGrid = $('#gameGrid');
     gameGrid.empty(); // Clear existing games
 
     games.forEach(function (game) {
         const gameCol = $('<div class="col game-col"></div>').addClass(cardColumnClasses());
+        const isDlc = game.app_type === 'DLC';
 
-        const card = $('<div class="card game-surface game-card"></div>');
+        const card = $('<div class="card game-surface game-card library-card"></div>')
+            .toggleClass('is-missing', game.owned === false);
 
-        const img = $('<img class="card-img"></img>').attr('src', game.bannerUrl);
-        img.css('cursor', 'pointer').attr('title', I18N.detailsTooltip);
-        img.on('click', () => openMetadata(game.meta));
-        card.append(img);
+        const coverWrap = $('<div class="library-cover-wrap">');
+        const img = $('<img class="library-cover" loading="lazy" alt="">').attr('src', game.bannerUrl);
+        img.attr('title', I18N.detailsTooltip).on('click', () => openMetadata(game.meta));
+        coverWrap.append(img);
 
-        const cardOverlay = $('<div class="card-img-overlay game-info"></div>');
-
-        const title = $('<h5 class="card-title game-title"></h5>').text(game.title_id_name || game.name);
-        cardOverlay.append(title);
-
-        const description = $('<p class="card-text game-description"></p>');
-        if (game.app_type === 'DLC') {
-            const small = $('<small></small>').text(`${game.name} | `);
-            description.append(small);
+        // State badges, one fixed color per meaning (design tokens).
+        const badges = $('<div class="library-badges">');
+        if (isDlc) badges.append(statusBadge('', 'bi-puzzle', I18N.badgeDlc));
+        if (game.owned === false) {
+            badges.append(statusBadge('wait', 'bi-dash-circle', I18N.missing));
+        } else {
+            const outdated = game.has_latest_version === false;
+            const missingDlc = game.has_all_dlcs === false;
+            if (outdated) badges.append(statusBadge('wait', 'bi-arrow-up-circle', I18N.badgeUpdate));
+            if (missingDlc) badges.append(statusBadge('dlc', 'bi-puzzle', I18N.badgeMissingDlc));
+            if (!outdated && !missingDlc) badges.append(statusBadge('ok', 'bi-check-circle', I18N.badgeComplete));
         }
-        const small = $('<small></small>').text(game.id);
-        description.append(small);
-        cardOverlay.append(description);
+        coverWrap.append(badges);
+        card.append(coverWrap);
 
-        const tagsContainer = $('<div class="tags-container"></div>');
+        const body = $('<div class="library-card-body">');
+        // A DLC card is named after the DLC, with its game underneath; a game card
+        // after the game.
+        const name = isDlc ? game.name : (game.title_id_name || game.name);
+        body.append($('<h5 class="game-title library-card-title">').text(name).attr('title', name));
+        const metaLine = isDlc ? game.title_id_name : cardMetaLine(game.meta);
+        if (metaLine) body.append($('<p class="library-card-meta">').text(metaLine));
 
-        const typeBadgeClass = (game.owned === false) ? 'text-bg-warning' : 'text-bg-info';
-        const typeBadge = $(`<span class="badge rounded-pill ${typeBadgeClass} game-tag"></span>`).text(game.app_type);
-        tagsContainer.append(typeBadge);
-
-        if (game.has_latest_version !== undefined) {
-            const versionBadge = $(`<span class="badge rounded-pill game-tag version-tag" title="${I18N.updatesTooltip.replace('{name}', game.name)}"></span>`)
-                .addClass(`text-bg-${game.has_latest_version ? 'success' : 'warning'}`)
-                .html(`<i class="bi ${game.has_latest_version ? 'bi-check-circle-fill' : 'bi-arrow-down-circle'}"></i>`);
-            if (game.version !== undefined && game.version.length && Array.isArray(game.version)) {
-                // Built via .text() per line, not string-interpolated into HTML
-                // directly - version.release_date and the version number are real
-                // (untrusted) catalogue data, and this keeps them escaped even
-                // though the final content is rendered as HTML for the line breaks.
-                const list = $('<div class="version-popover-list"></div>');
-                game.version.forEach(version => {
-                    list.append($('<div></div>').text(
-                        `${version.release_date}: v${version.version} — ${version.owned ? I18N.owned : I18N.missing}`
-                    ));
-                });
-                versionBadge.popover({
-                    content: list.html(),
-                    html: true,
-                    trigger: 'click',
-                    placement: 'top',
-                });
-                versionBadge.css('cursor', 'pointer');
-            } else {
-                // version tooltip on hover
-                versionBadge.attr("data-bs-toggle", "tooltip")
-                versionBadge.attr("data-bs-placement", "top")
-                versionBadge.attr("data-bs-title", I18N.versionV0)
-            }
-            tagsContainer.append(versionBadge);
+        const foot = $('<div class="library-card-foot">');
+        foot.append($('<small class="library-card-id">').text(game.id));
+        if (Array.isArray(game.version) && game.version.length) {
+            // Built via .text() per line, not string-interpolated into HTML directly -
+            // release dates and version numbers are real (untrusted) catalogue data,
+            // and this keeps them escaped even though the popover renders HTML for
+            // the line breaks.
+            const list = $('<div class="version-popover-list"></div>');
+            game.version.forEach(version => {
+                list.append($('<div></div>').text(
+                    `${version.release_date}: v${version.version} — ${version.owned ? I18N.owned : I18N.missing}`
+                ));
+            });
+            const versions = $('<button type="button" class="icon-btn library-versions">')
+                .attr({title: I18N.versions, 'aria-label': I18N.versions})
+                .append('<i class="bi bi-clock-history"></i>');
+            versions.popover({content: list.html(), html: true, trigger: 'click', placement: 'top'});
+            foot.append(versions);
         }
+        body.append(foot);
 
-        if (game.has_all_dlcs !== undefined) {
-            const dlcBadge = $('<span class="badge rounded-pill game-tag"></span>').addClass(`text-bg-${game.has_all_dlcs ? 'success' : 'warning'}`).html('<i class="bi bi-box-seam-fill"></i>');
-            tagsContainer.append(dlcBadge);
-        }
-
-        cardOverlay.append(tagsContainer);
-        card.append(cardOverlay);
+        card.append(body);
         gameCol.append(card);
         gameGrid.append(gameCol);
     });
@@ -614,7 +615,7 @@ function renderIconView(apps) {
     gameGrid.empty(); // Clear existing games
 
     apps.map(iconModel).forEach(icon => {
-        const img = $('<img class="game-icon">').attr('src', icon.iconUrl);
+        const img = $('<img class="game-icon library-icon" loading="lazy" alt="">').attr('src', icon.iconUrl);
         img.css('cursor', 'pointer').attr('title', I18N.detailsTooltip);
         img.on('click', () => openMetadata(icon.meta));
         gameGrid.append(img);
@@ -1183,7 +1184,8 @@ function renderListView(titles) {
  *  grows an overlay taller than the banner it sits on. */
 function cardColumnClasses() {
     const columns = getColumnsForCardSize(cardSize);
-    return `col-${12 / Math.min(columns, 2)} col-md-${12 / columns}`;
+    // Phones always get two columns: one card per row is a lot of scrolling.
+    return `col-6 col-md-${12 / columns}`;
 }
 
 function getColumnsForCardSize(size) {
