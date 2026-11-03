@@ -140,3 +140,53 @@ def test_stats_strings_are_translated():
     for key in ("stats.subtitle_overview", "stats.space_by_format", "stats.space_by_library",
                 "stats.verified_ok", "stats.content_by_type", "stats.largest_files", "stats.total"):
         assert {"en", "es"} <= set(i18n.TRANSLATIONS[key]), key
+
+
+# --- dashboard ----------------------------------------------------------------------------
+
+def test_storage_tone_thresholds():
+    body = _function_body(_js("dashboard.js"), "storageTone")
+    assert "15" in body and "5" in body
+    assert "'danger'" in body and "'wait'" in body and "'ok'" in body
+
+
+def test_alerts_are_toned_notices():
+    body = _function_body(_js("dashboard.js"), "renderAlerts")
+    assert "dash-notice" in body and "list-group-item-" not in body
+
+
+def test_storage_handles_offline_and_unknown_totals():
+    body = _function_body(_js("dashboard.js"), "renderStorage")
+    assert "!s.online" in body and "!s.total" in body
+    assert "percentBar(" in body and "storageTone(" in body
+
+
+def test_recent_rows_link_to_the_game_and_icons_come_in_one_request():
+    js = _js("dashboard.js")
+    rows = _function_body(js, "renderList")
+    assert "`/game/${" in rows
+    icons = _function_body(js, "loadIcons")
+    assert icons.count("fetch(") + icons.count("gqlFetch(") == 1
+    assert "[0-9A-F]{16}" in icons      # ids are validated before going into the query
+
+
+def test_recent_downloads_carry_their_title_id(admin_client, shop_app):
+    import datetime
+    from db import DownloadEvent, db
+    with shop_app.app.app_context():
+        db.session.add(DownloadEvent(filename="g.nsp", client="web", title_id="0100000000010000",
+                                     downloaded_at=datetime.datetime.utcnow()))
+        db.session.commit()
+    data = admin_client.get("/api/dashboard").get_json()
+    assert data["recent_downloads"][0]["title_id"] == "0100000000010000"
+
+
+def test_status_chips_are_status_badges():
+    body = _function_body(_js("dashboard.js"), "renderStatus")
+    assert "status-badge" in body and "text-bg-" not in body
+
+
+def test_dashboard_strings_are_translated():
+    import i18n
+    for key in ("dash.storage_used",):
+        assert {"en", "es"} <= set(i18n.TRANSLATIONS[key]), key

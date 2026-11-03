@@ -13,7 +13,7 @@
         </div>
     </header>
 
-    <div class="list-group mb-4" id="dashAlerts"></div>
+    <div class="dash-notices mb-4" id="dashAlerts"></div>
 
     <div class="stat-grid mb-4" id="dashTiles"></div>
 
@@ -34,14 +34,14 @@
                 <h4 class="mb-0">{{ t('dash.recent_files') }}</h4>
                 <a class="small" href="/admin/files">{{ t('dash.see_all') }}</a>
             </div>
-            <ul class="list-group list-group-flush" id="dashRecentFiles"></ul>
+            <ul class="dash-list" id="dashRecentFiles"></ul>
         </section>
         <section class="mb-4">
             <div class="d-flex justify-content-between align-items-baseline mb-2">
                 <h4 class="mb-0">{{ t('dash.recent_downloads') }}</h4>
                 <a class="small" href="/admin/stats#downloadsSection">{{ t('dash.see_all') }}</a>
             </div>
-            <ul class="list-group list-group-flush" id="dashRecentDownloads"></ul>
+            <ul class="dash-list" id="dashRecentDownloads"></ul>
         </section>
     </div>
 
@@ -74,7 +74,7 @@
         tileDownloadsNote: {{ t('dash.tile.downloads_note') | tojson }},
         tileTasks: {{ t('dash.tile.tasks') | tojson }},
         tileTasksNote: {{ t('dash.tile.tasks_note') | tojson }},
-        storageLine: {{ t('dash.storage_line') | tojson }},
+        storageUsed: {{ t('dash.storage_used') | tojson }},
         offline: {{ t('dash.offline') | tojson }},
         nothingYet: {{ t('dash.nothing_yet') | tojson }},
         anonymous: {{ t('dl.anonymous') | tojson }},

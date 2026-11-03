@@ -90,7 +90,7 @@ TRANSLATIONS = {
     'dash.tile.tasks_note': {'en': '{running} running · {pending} queued',
                              'es': '{running} en curso · {pending} en cola'},
     'dash.storage': {'en': 'Storage', 'es': 'Almacenamiento'},
-    'dash.storage_line': {'en': '{free} free of {total}', 'es': '{free} libres de {total}'},
+    'dash.storage_used': {'en': '{used} used of {total} · {free} free', 'es': '{used} usados de {total} · {free} libres'},
     'dash.offline': {'en': 'not reachable', 'es': 'no accesible'},
     'dash.recent_files': {'en': 'Recently added', 'es': 'Agregados recientemente'},
     'dash.recent_downloads': {'en': 'Latest downloads', 'es': 'Últimas descargas'},

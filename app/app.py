@@ -657,6 +657,7 @@ def dashboard_api():
     recent_downloads = [{
         'name': name_of(e.title_id) or e.filename, 'filename': e.filename, 'user': e.user,
         'client': e.client, 'downloaded_at': (e.downloaded_at + offset).isoformat(timespec='minutes'),
+        'title_id': e.title_id,   # the Dashboard links each row to its game page
     } for e in DownloadEvent.query.order_by(DownloadEvent.downloaded_at.desc()).limit(30)]
 
     settings = get_settings()
