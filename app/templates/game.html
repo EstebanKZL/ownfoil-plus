@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% include 'nav.html' %}
+{# One game's page. The markup is the frame; static/js/game.js fills it from one
+   GraphQL query (the title, its updates, DLC and files). #}
+<div class="container-fluid game-page">
+
+    <nav class="game-breadcrumb" id="gameBreadcrumb" aria-label="{{ t('game.breadcrumb') }}">
+        <a href="/" id="gameBackLink"><i class="bi bi-grid" aria-hidden="true"></i> {{ t('nav.library') }}</a>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span id="gameBreadcrumbName" aria-current="page"></span>
+    </nav>
+
+    <div class="game-loading" id="gameLoading"{% if not game_title_id %} hidden{% endif %} aria-busy="true">
+        <div class="game-skeleton game-skeleton--hero"></div>
+        <div class="game-skeleton-row">
+            <div class="game-skeleton"></div><div class="game-skeleton"></div><div class="game-skeleton"></div>
+        </div>
+    </div>
+
+    <div class="surface empty-state game-state" id="gameNotFound"{% if game_title_id %} hidden{% endif %}>
+        <i class="bi bi-question-circle" aria-hidden="true"></i>
+        <h3>{{ t('game.not_found_title') }}</h3>
+        <p class="mb-2">{{ t('game.not_found_body') }}</p>
+        <a class="btn btn-primary" href="/"><i class="bi bi-grid"></i> {{ t('game.back_to_library') }}</a>
+    </div>
+
+    <div class="surface empty-state game-state" id="gameError" hidden role="alert">
+        <i class="bi bi-wifi-off" aria-hidden="true"></i>
+        <h3>{{ t('game.error_title') }}</h3>
+        <p class="mb-2">{{ t('library.error_body') }}</p>
+        <button type="button" class="btn btn-primary" id="gameRetryBtn"><i class="bi bi-arrow-clockwise"></i> {{ t('library.retry') }}</button>
+    </div>
+
+    <section class="game-hero" id="gameHero" hidden></section>
+    <section class="game-facts" id="gameFacts" hidden aria-label="{{ t('game.facts') }}"></section>
+    <div class="game-sections" id="gameSections" hidden></div>
+</div>
+
+<script>
+    // Fed by the server: the same viewer rules as the Library (app.py's
+    // library_page_context), so buttons only show where the routes behind them work.
+    const TITLE_ID = {{ game_title_id | tojson }};
+    const IS_ADMIN = {{ is_admin | tojson }};
+    const IS_SHOP = {{ is_shop | tojson }};
+    const WEB_DOWNLOADS_ENABLED = {{ web_downloads_enabled | tojson }};
+
+    const I18N = {
+        library: {{ t('nav.library') | tojson }},
+        unrecognized: {{ t('library.unrecognized') | tojson }},
+    };
+</script>
+<script src="{{ url_for('static', filename='js/format.js') }}"></script>
+<script src="{{ url_for('static', filename='js/library-common.js') }}"></script>
+<script src="{{ url_for('static', filename='js/game.js') }}"></script>
+{% endblock %}

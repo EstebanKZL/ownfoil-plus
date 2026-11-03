@@ -50,3 +50,58 @@ def test_shared_helpers_live_in_library_common(shop_app):
     assert "const VERIFICATION_BADGES" in common and "const VERIFICATION_BADGES" not in library
     html = _login(shop_app.client, "shopper").get("/").get_data(as_text=True)
     assert html.index("js/library-common.js") < html.index("js/library.js")
+
+
+# --- route, access and skeleton ------------------------------------------------------
+
+def _page(client, title_id=OWNED):
+    return client.get(f"/game/{title_id}")
+
+
+def test_a_shopper_gets_the_page_for_a_game(shop_app):
+    client = _login(shop_app.client, "shopper")
+    for tid in (OWNED, OWNED.lower()):
+        resp = _page(client, tid)
+        assert resp.status_code == 200, tid
+        html = resp.get_data(as_text=True)
+        assert f'const TITLE_ID = "{OWNED}";' in html
+        assert "const IS_ADMIN = false;" in html
+        assert html.index("js/library-common.js") < html.index("js/game.js")
+        assert len(re.findall(r"<script>", html)) == 1
+
+
+def test_an_admin_gets_admin_values(shop_app):
+    html = _page(_login(shop_app.client, "admin")).get_data(as_text=True)
+    assert "const IS_ADMIN = true;" in html
+
+
+@pytest.mark.parametrize("bad", ["xyz", "0100000000010", "010000000001000G", "0100000000010000a"])
+def test_a_malformed_id_is_a_404_not_found_state(shop_app, bad):
+    resp = _page(_login(shop_app.client, "shopper"), bad)
+    assert resp.status_code == 404
+    html = resp.get_data(as_text=True)
+    assert "const TITLE_ID = null;" in html
+    assert re.search(r'id="gameNotFound"(?![^>]*hidden)', html)
+
+
+def test_a_private_shop_sends_anonymous_visitors_to_login(shop_app):
+    admin = _login(shop_app.client, "admin")
+    admin.post("/api/settings/shop", json={"public": False})
+    anonymous = shop_app.app.test_client()
+    resp = _page(anonymous)
+    assert resp.status_code in (302, 401)
+    if resp.status_code == 302:
+        assert "/login" in resp.headers["Location"]
+
+
+def test_a_public_shop_shows_the_page_to_anyone(shop_app):
+    admin = _login(shop_app.client, "admin")
+    admin.post("/api/settings/shop", json={"public": True})
+    assert _page(shop_app.app.test_client()).status_code == 200
+
+
+def test_skeleton_has_every_region(shop_app):
+    html = _page(_login(shop_app.client, "shopper")).get_data(as_text=True)
+    for region in ("gameBreadcrumb", "gameHero", "gameFacts", "gameSections", "gameLoading",
+                   "gameNotFound", "gameError", "gameRetryBtn"):
+        assert f'id="{region}"' in html, region

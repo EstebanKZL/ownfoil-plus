@@ -282,7 +282,9 @@ def file_access(f):
         return f(*args, **kwargs)
     return _file_access
 
-def access_shop():
+def library_page_context():
+    """What the Library and the game page tell their JS about the viewer: the same
+    rules the routes they call enforce, so buttons only show where they work."""
     settings = get_settings()
     # Mirrors access_required's own rule: with no admin account created yet, auth is
     # effectively off and everyone is treated as an admin - the List view's download
@@ -296,17 +298,42 @@ def access_shop():
     # thing server-side, so this only controls whether the button is worth showing.
     is_shop = is_admin or (
         current_user.is_authenticated and current_user.has_access('shop'))
-    return render_template(
-        'index.html', title='Library', admin_account_created=admin_account_created(),
-        is_admin=is_admin, is_shop=is_shop,
+    return dict(
+        admin_account_created=admin_account_created(), is_admin=is_admin, is_shop=is_shop,
         web_downloads_enabled=settings['library']['management'].get('web_downloads', {}).get('enabled', False),
         show_game_background_image=settings['library']['management'].get('organizer', {})
             .get('show_background_image', True),
     )
 
+def access_shop():
+    return render_template('index.html', title='Library', **library_page_context())
+
 @access_required('shop')
 def access_shop_auth():
     return access_shop()
+
+_TITLE_ID_RE = re.compile(r'[0-9A-F]{16}')
+
+def render_game_page(title_id):
+    title_id = title_id.upper()
+    valid = bool(_TITLE_ID_RE.fullmatch(title_id))
+    html = render_template('game.html', title='Game', game_title_id=title_id if valid else None,
+                           **library_page_context())
+    return html, (200 if valid else 404)
+
+@access_required('shop')
+def game_page_auth(title_id):
+    return render_game_page(title_id)
+
+@app.route('/game/<title_id>')
+def game_page(title_id):
+    """One game's page (templates/game.html). Same access as the Library: anyone on a
+    public shop, otherwise a signed-in user with shop access. A malformed id renders
+    the page's not-found state with a 404; a well-formed but unknown one is found out
+    by the page's own GraphQL query."""
+    if not get_settings()['shop']['public']:
+        return game_page_auth(title_id)
+    return render_game_page(title_id)
 
 def shop_handshake():
     """Server identity and per-caller capabilities: the OPTIONS handshake of the
