@@ -18,53 +18,78 @@ function count(n) {
     return Number(n || 0).toLocaleString();
 }
 
-// (label, value, note under it)
+// (label, value, note under it, icon, tone, link or null) - the four figures that
+// matter; the rest of the numbers live in their sections below.
 function tiles(s) {
     return [
-        [I18N_FILES_LABEL, count(s.totalFiles), I18N.tileFilesNote.replace('{n}', count(s.identifiedFiles))],
-        [I18N.tileTotalSize, formatBytes(s.totalSize), I18N.tileTotalSizeNote],
-        [I18N.tileUnidentified, count(s.unidentifiedFiles), I18N.tileUnidentifiedNote],
-        [I18N.tileOwnedTitles, count(s.ownedTitles), I18N.tileOwnedTitlesNote.replace('{n}', count(s.totalTitles))],
-        [I18N.tileComplete, count(s.completeTitles), I18N.tileCompleteNote],
-        [I18N.tileUpToDate, count(s.upToDateTitles), I18N.tileUpToDateNote],
-        [I18N.tileOwnedApps, count(s.ownedApps), I18N.tileOwnedAppsNote.replace('{n}', count(s.totalApps))],
+        [I18N.tileOwnedTitles, count(s.ownedTitles),
+         I18N.tileGamesNote.replace('{complete}', count(s.completeTitles)).replace('{uptodate}', count(s.upToDateTitles)),
+         'bi-controller', 'ok', '/'],
+        [I18N_FILES_LABEL, count(s.totalFiles), I18N.tileFilesNote.replace('{n}', count(s.identifiedFiles)),
+         'bi-file-earmark', 'nav', '/admin/files'],
+        [I18N.tileTotalSize, formatBytes(s.totalSize), I18N.tileTotalSizeNote, 'bi-hdd-stack', 'action', null],
+        [I18N.tileUnidentified, count(s.unidentifiedFiles), I18N.tileUnidentifiedNote,
+         'bi-question-circle', 'wait', '/admin/files'],
     ];
 }
 
 function renderTiles(s) {
     const container = document.getElementById('statTiles');
     container.innerHTML = '';
-    // Every tile value is a formatted number and every label a literal, so these
-    // interpolate directly. The tables below hold library paths and go through
-    // textContent instead.
-    tiles(s).forEach(([label, value, note]) => {
-        const tile = document.createElement('div');
-        tile.innerHTML = `<div class="stat-value">${value}</div>
-            <div class="stat-label">${label}</div>
-            <div class="stat-note">${note}</div>`;
+    tiles(s).forEach(([label, value, note, icon, tone, href]) => {
+        const tile = document.createElement(href ? 'a' : 'div');
+        tile.className = `stat-tile stat-tile--${tone}`;
+        if (href) tile.href = href;
+        const iconBox = document.createElement('span');
+        iconBox.className = 'stat-tile__icon';
+        iconBox.innerHTML = `<i class="bi ${icon}" aria-hidden="true"></i>`;
+        tile.append(iconBox, textEl('div', 'stat-tile__value', value), textEl('div', 'stat-tile__label', label),
+                    textEl('div', 'stat-tile__note', note));
         container.appendChild(tile);
     });
 }
 
-/** Fill a table body with rows of cells: first column left, the figures right. */
-function renderTable(id, rows) {
-    const tbody = document.getElementById(id);
-    tbody.innerHTML = '';
-    if (!rows.length) {
-        const columns = tbody.closest('table').querySelectorAll('thead th').length;
-        tbody.innerHTML = `<tr><td colspan="${columns}"
-            class="text-secondary fst-italic">${I18N.nothingToReport}</td></tr>`;
-        return;
+/** An element with a class and plain text - paths and names are never HTML. */
+function textEl(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined && text !== null) node.textContent = text;
+    return node;
+}
+
+/** The "nothing here" line every section shows when its data is empty. */
+function emptyRow(list) {
+    list.innerHTML = '';
+    list.appendChild(textEl('li', 'chart-empty', I18N.nothingToReport));
+}
+
+/** One row: label on the left, figures on the right, an optional bar under them. */
+function chartRow({label, sub, figures, pct, tone, swatch, onClick}) {
+    const li = document.createElement('li');
+    li.className = 'chart-row';
+    const head = document.createElement('div');
+    head.className = 'chart-row__head';
+    const name = document.createElement('div');
+    name.className = 'chart-row__label';
+    if (swatch) {
+        const dot = document.createElement('span');
+        dot.className = 'chart-swatch';
+        dot.style.background = swatch;
+        name.appendChild(dot);
     }
-    rows.forEach(cells => {
-        const tr = document.createElement('tr');
-        cells.forEach(cell => {
-            const td = document.createElement('td');
-            td.textContent = cell;
-            tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
-    });
+    name.appendChild(textEl('span', 'chart-row__text', label));
+    if (sub) name.appendChild(textEl('span', 'chart-row__sub', sub));
+    head.append(name, textEl('div', 'chart-row__figures', figures));
+    li.appendChild(head);
+    if (pct !== undefined) li.appendChild(percentBar(pct, tone));
+    if (onClick) {
+        li.classList.add('is-clickable');
+        li.tabIndex = 0;
+        li.setAttribute('role', 'button');
+        li.addEventListener('click', onClick);
+        li.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } });
+    }
+    return li;
 }
 
 /** VERIFICATION_FAILED -> its translated label, falling back to a humanized
@@ -74,6 +99,128 @@ function humanize(key) {
     if (I18N.statusLabels[key]) return I18N.statusLabels[key];
     const words = key.replace(/_/g, ' ').toLowerCase();
     return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** Space by format: a donut of sizes, with the legend carrying count, size and share. */
+function renderFormats(data) {
+    const buckets = (data.filesByExtension || []).slice().sort((a, b) => (b.size || 0) - (a.size || 0));
+    const total = buckets.reduce((sum, b) => sum + (b.size || 0), 0);
+    document.getElementById('formatDonut').style.background = donutGradient(buckets.map(b => b.size));
+    document.getElementById('formatDonutTotal').textContent = formatBytes(total);
+    const list = document.getElementById('byExtension');
+    if (!buckets.length) return emptyRow(list);
+    list.innerHTML = '';
+    buckets.forEach((b, i) => {
+        list.appendChild(chartRow({
+            label: (b.key || '(none)').toUpperCase(), sub: `(${count(b.count)})`,
+            figures: `${formatBytes(b.size)} · ${percent(b.size, total)}%`,
+            swatch: CHART_COLORS[Math.min(i, CHART_COLORS.length - 1)],
+        }));
+    });
+}
+
+/** Space by library: one bar each; a click opens the library's detail, as before. */
+function renderLibraries(data) {
+    const buckets = data.filesByLibrary || [];
+    const total = buckets.reduce((sum, b) => sum + (b.size || 0), 0);
+    const list = document.getElementById('byLibrary');
+    if (!buckets.length) return emptyRow(list);
+    list.innerHTML = '';
+    buckets.forEach(b => list.appendChild(chartRow({
+        label: b.key, sub: `(${count(b.count)})`,
+        figures: `${formatBytes(b.size)} · ${percent(b.size, total)}%`,
+        pct: percent(b.size, total), onClick: () => openLibraryDetail(b.key),
+    })));
+}
+
+// One meaning per color: fine, waits for a look, broken, not checked yet.
+const VERIFICATION_TONES = {
+    VALID: 'ok', SIGNATURE_OK: 'ok', REPACK: 'wait', MODIFIED: 'wait',
+    CORRUPT: 'danger', SIGNATURE_FAILED: 'danger', UNVERIFIED: '',
+};
+
+/** Verification: a ring with the share of files verified fine (VALID or
+ *  SIGNATURE_OK), and a row per status that opens its files, as before. */
+function renderVerification(data) {
+    const buckets = data.filesByVerificationStatus || [];
+    const total = buckets.reduce((sum, b) => sum + (b.count || 0), 0);
+    const fine = buckets.filter(b => b.status === 'VALID' || b.status === 'SIGNATURE_OK')
+        .reduce((sum, b) => sum + (b.count || 0), 0);
+    const pct = percent(fine, total);
+    document.getElementById('verificationRing').style.background = ringGradient(pct, 'var(--op-ok)');
+    document.getElementById('verificationRingPct').textContent = total ? `${Math.round(pct)}%` : '–';
+    const list = document.getElementById('byVerification');
+    if (!buckets.length) return emptyRow(list);
+    list.innerHTML = '';
+    buckets.forEach(b => {
+        const tone = VERIFICATION_TONES[b.status];
+        list.appendChild(chartRow({
+            label: humanize(b.status), sub: `(${count(b.count)})`, figures: formatBytes(b.size),
+            pct: percent(b.count, total), tone: tone || undefined,
+            onClick: () => openVerificationFiles(b.status, humanize(b.status)),
+        }));
+        list.lastChild.dataset.status = b.status;
+    });
+}
+
+/** Content by type: owned out of tracked; a click lists what is missing, when
+ *  something is. App types stay as the schema spells them (DLC, not "Dlc"). */
+function renderTypes(data) {
+    const buckets = data.appsByType || [];
+    const list = document.getElementById('byAppType');
+    if (!buckets.length) return emptyRow(list);
+    list.innerHTML = '';
+    buckets.forEach(b => list.appendChild(chartRow({
+        label: b.key, figures: `${count(b.owned)} / ${count(b.count)}`,
+        pct: percent(b.owned, b.count), tone: b.owned >= b.count ? 'ok' : 'action',
+        onClick: b.count > b.owned ? () => openMissingAppType(b.key) : null,
+    })));
+}
+
+// The ten largest files (admin page, admin query): each one leads to its game.
+const LARGEST_FILES_QUERY = `
+    query LargestFiles {
+        files(orderBy: {field: SIZE, direction: DESC}, page: 1, pageSize: 10) {
+            items { id filename size apps { appType titleId title { name } } }
+        }
+    }`;
+
+async function loadLargestFiles() {
+    try {
+        const data = await gqlFetchStats(LARGEST_FILES_QUERY, {});
+        renderLargestFiles(data.files.items || []);
+    } catch (e) {
+        console.error(e);
+        emptyRow(document.getElementById('largestFiles'));
+    }
+}
+
+function renderLargestFiles(files) {
+    const list = document.getElementById('largestFiles');
+    if (!files.length) return emptyRow(list);
+    list.innerHTML = '';
+    files.forEach(f => {
+        const app = (f.apps || [])[0] || {};
+        const name = (app.title && app.title.name) || '';
+        const li = document.createElement('li');
+        li.className = 'chart-row';
+        const head = document.createElement('div');
+        head.className = 'chart-row__head';
+        const label = document.createElement('div');
+        label.className = 'chart-row__label';
+        // An identified file links to its game; an unidentified one is just its name.
+        if (app.titleId) {
+            const a = textEl('a', 'chart-row__text', name || f.filename);
+            a.href = `/game/${app.titleId}`;
+            label.appendChild(a);
+        } else {
+            label.appendChild(textEl('span', 'chart-row__text', f.filename));
+        }
+        if (name) label.appendChild(textEl('span', 'chart-row__sub', f.filename));
+        head.append(label, textEl('div', 'chart-row__figures', formatBytes(f.size)));
+        li.appendChild(head);
+        list.appendChild(li);
+    });
 }
 
 async function loadStats() {
@@ -101,45 +248,14 @@ async function loadStats() {
     }
 
     renderTiles(data);
-    renderTable('byExtension', (data.filesByExtension || []).map(
-        b => [b.key || '(none)', count(b.count), formatBytes(b.size)]));
-    renderTable('byLibrary', (data.filesByLibrary || []).map(
-        b => [b.key, count(b.count), formatBytes(b.size)]));
-    // Every library row opens the same detail view - unlike byAppType/byVerification,
-    // there's no "only when there's something to explain" condition here.
-    [...document.querySelectorAll('#byLibrary tr')].forEach((tr, i) => {
-        const bucket = (data.filesByLibrary || [])[i];
-        if (!bucket) return;
-        tr.style.cursor = 'pointer';
-        tr.addEventListener('click', () => openLibraryDetail(bucket.key));
-    });
-    renderTable('byVerification', (data.filesByVerificationStatus || []).map(
-        b => [humanize(b.status), count(b.count), formatBytes(b.size)]));
-    // Keep the raw enum value on each row so a click knows what to filter by,
-    // without re-deriving it from the humanized label text.
-    [...document.querySelectorAll('#byVerification tr')].forEach((tr, i) => {
-        const bucket = (data.filesByVerificationStatus || [])[i];
-        if (!bucket) return;
-        tr.dataset.status = bucket.status;
-        tr.style.cursor = 'pointer';
-        tr.addEventListener('click', () => openVerificationFiles(bucket.status, humanize(bucket.status)));
-    });
-    // App types stay as the schema spells them: humanizing BASE/UPDATE/DLC would
-    // turn the last one into "Dlc".
-    renderTable('byAppType', (data.appsByType || []).map(
-        b => [b.key, count(b.count), count(b.owned)]));
-    // Only clickable when there's actually a gap to explain (registered >
-    // owned) - clicking a row where every registered app is owned would just
-    // open an empty modal.
-    [...document.querySelectorAll('#byAppType tr')].forEach((tr, i) => {
-        const bucket = (data.appsByType || [])[i];
-        if (!bucket || bucket.count <= bucket.owned) return;
-        tr.style.cursor = 'pointer';
-        tr.addEventListener('click', () => openMissingAppType(bucket.key));
-    });
+    renderFormats(data);
+    renderLibraries(data);
+    renderVerification(data);
+    renderTypes(data);
 }
 
 loadStats();
+loadLargestFiles();
 
 // --- Duplicate files: more than one physical file for the same content -------
 

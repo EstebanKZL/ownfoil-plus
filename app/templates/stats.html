@@ -1,59 +1,68 @@
 {% extends "settings_layout.html" %}
 {% block panel %}
-<div class="settings-container container mt-3">
+<div class="settings-container container-fluid stats-page mt-3">
 
-    <div class="task-section-head">
-        <h2 class="mb-0">{{ t('stats.title') }}</h2>
-        <button type="button" id="refreshStats" class="icon-btn ms-auto" onClick="loadStats(); loadDuplicateGroups();"
-                title="{{ t('stats.refresh') }}">
-            <i class="bi bi-arrow-clockwise"></i>
-        </button>
-    </div>
-    <p class="text-secondary">{{ t('stats.subtitle') }}</p>
+    <header class="page-head">
+        <span class="page-head__icon"><i class="bi bi-bar-chart" aria-hidden="true"></i></span>
+        <h2 class="page-head__title">{{ t('stats.title') }}</h2>
+        <p class="page-head__desc">{{ t('stats.subtitle_overview') }}</p>
+        <div class="page-head__actions">
+            <button type="button" id="refreshStats" class="icon-btn" onClick="loadStats(); loadDuplicateGroups(); loadLargestFiles();"
+                    title="{{ t('stats.refresh') }}">
+                <i class="bi bi-arrow-clockwise"></i>
+            </button>
+        </div>
+    </header>
 
-    <div id="statTiles" class="stat-grid"></div>
+    <div id="statTiles" class="stat-grid library-tiles mb-3"></div>
 
-    <div class="stat-sections mt-4">
-        <section>
-            <h4 class="mb-3">{{ t('stats.extensions') }}</h4>
-            <table class="table table-sm stat-table">
-                <thead><tr><th>{{ t('common.extension') }}</th><th>{{ t('common.files') }}</th><th>{{ t('common.size') }}</th></tr></thead>
-                <tbody id="byExtension"></tbody>
-            </table>
+    <div class="stats-grid">
+        <section class="surface stats-section" id="statsFormats">
+            <h3 class="stats-section__title"><i class="bi bi-pie-chart" aria-hidden="true"></i> {{ t('stats.space_by_format') }}</h3>
+            <div class="donut-wrap">
+                <div class="donut" id="formatDonut" role="img" aria-label="{{ t('stats.space_by_format') }}">
+                    <div class="donut__center"><strong id="formatDonutTotal"></strong><span>{{ t('stats.total') }}</span></div>
+                </div>
+                <ul class="chart-legend" id="byExtension"></ul>
+            </div>
+            <p class="visually-hidden">{{ t('stats.extensions') }}</p>
         </section>
 
-        <section>
-            <h4 class="mb-3">{{ t('stats.libraries') }}</h4>
-            <table class="table table-sm stat-table">
-                <thead><tr><th>{{ t('common.path') }}</th><th>{{ t('common.files') }}</th><th>{{ t('common.size') }}</th></tr></thead>
-                <tbody id="byLibrary"></tbody>
-            </table>
+        <section class="surface stats-section" id="statsLibraries">
+            <h3 class="stats-section__title"><i class="bi bi-hdd-stack" aria-hidden="true"></i> {{ t('stats.space_by_library') }}</h3>
+            <ul class="chart-rows" id="byLibrary"></ul>
+            <p class="text-secondary small mb-0">{{ t('stats.click_library_hint') }}</p>
         </section>
 
-        <section>
+        <section class="surface stats-section" id="statsVerification">
             <div class="d-flex justify-content-between align-items-center mb-3 stat-section-head">
-                <h4 class="mb-0">{{ t('stats.verification_status') }}</h4>
+                <h3 class="stats-section__title mb-0"><i class="bi bi-shield-check" aria-hidden="true"></i> {{ t('stats.verification_status') }}</h3>
                 <button type="button" id="verifyNowBtn" class="btn btn-sm btn-outline-info">
                     <i class="bi bi-shield-check"></i> {{ t('stats.verify_now') }}
                 </button>
             </div>
-            <table class="table table-sm stat-table">
-                <thead><tr><th>{{ t('common.status') }}</th><th>{{ t('common.files') }}</th><th>{{ t('common.size') }}</th></tr></thead>
-                <tbody id="byVerification"></tbody>
-            </table>
+            <div class="ring-wrap">
+                <div class="ring" id="verificationRing" role="img" aria-label="{{ t('stats.verified_ok') }}">
+                    <div class="ring__center"><strong id="verificationRingPct"></strong><span>{{ t('stats.verified_ok') }}</span></div>
+                </div>
+                <ul class="chart-rows" id="byVerification"></ul>
+            </div>
             <p class="text-secondary small mb-0">{{ t('stats.click_row_hint') }}</p>
         </section>
 
-        <section>
-            <h4 class="mb-3">{{ t('stats.app_types') }}</h4>
-            <table class="table table-sm stat-table">
-                <thead><tr><th>{{ t('common.type') }}</th><th>{{ t('common.tracked') }}</th><th>{{ t('common.owned') }}</th></tr></thead>
-                <tbody id="byAppType"></tbody>
-            </table>
+        <section class="surface stats-section" id="statsTypes">
+            <h3 class="stats-section__title"><i class="bi bi-collection" aria-hidden="true"></i> {{ t('stats.content_by_type') }}</h3>
+            <ul class="chart-rows" id="byAppType"></ul>
+            <p class="visually-hidden">{{ t('stats.app_types') }}</p>
+        </section>
+
+        <section class="surface stats-section stats-section--wide" id="statsLargest">
+            <h3 class="stats-section__title"><i class="bi bi-trophy" aria-hidden="true"></i> {{ t('stats.largest_files') }}</h3>
+            <ol class="chart-rows largest-files" id="largestFiles"></ol>
         </section>
     </div>
 
-    <div class="mt-4" id="downloadsSection">
+    <section class="surface stats-section mt-3" id="downloadsSection">
         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
             <h4 class="mb-0">{{ t('dl.heading') }}</h4>
             <div class="d-flex align-items-center gap-2">
@@ -104,10 +113,10 @@
                 <tbody id="downloadRecent"></tbody>
             </table>
         </div>
-        <p class="text-secondary small">{{ t('dl.hint') }}</p>
-    </div>
+        <p class="text-secondary small mb-0">{{ t('dl.hint') }}</p>
+    </section>
 
-    <div class="mt-4" id="duplicatesSection">
+    <section class="surface stats-section mt-3" id="duplicatesSection">
         <div class="d-flex justify-content-between align-items-start mb-1 flex-wrap gap-2">
             <h4 class="mb-0">{{ t('stats.duplicate_files') }}</h4>
             <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -123,7 +132,7 @@
         </div>
         <p class="text-secondary small mb-3">{{ t('stats.duplicate_files_hint') }} {{ t('stats.duplicate_bulk_pref_hint') }}</p>
         <div id="duplicateGroups"></div>
-    </div>
+    </section>
 
 </div>
 
@@ -233,13 +242,7 @@
         tileUnidentified: {{ t('stats.tile.unidentified') | tojson }},
         tileUnidentifiedNote: {{ t('stats.tile.unidentified_note') | tojson }},
         tileOwnedTitles: {{ t('stats.tile.owned_titles') | tojson }},
-        tileOwnedTitlesNote: {{ t('stats.tile.owned_titles_note') | tojson }},
-        tileComplete: {{ t('stats.tile.complete') | tojson }},
-        tileCompleteNote: {{ t('stats.tile.complete_note') | tojson }},
-        tileUpToDate: {{ t('stats.tile.up_to_date') | tojson }},
-        tileUpToDateNote: {{ t('stats.tile.up_to_date_note') | tojson }},
-        tileOwnedApps: {{ t('stats.tile.owned_apps') | tojson }},
-        tileOwnedAppsNote: {{ t('stats.tile.owned_apps_note') | tojson }},
+        tileGamesNote: {{ t('stats.tile.games_note') | tojson }},
         statusLabels: {
             VALID: {{ t('status.valid') | tojson }},
             REPACK: {{ t('status.repack') | tojson }},

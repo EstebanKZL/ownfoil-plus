@@ -39,7 +39,7 @@ def admin_client(shop_app):
 # --- the JS lives in static/js -----------------------------------------------------------
 
 @pytest.mark.parametrize("url,script,moved", [
-    ("/admin/stats", "stats.js", ("function loadStats", "function renderTable", "function loadDownloads")),
+    ("/admin/stats", "stats.js", ("function loadStats", "function renderVerification", "function loadDownloads")),
     ("/admin", "dashboard.js", ("function renderTiles", "function renderStorage", "function renderAlerts")),
 ])
 def test_page_logic_lives_in_its_own_script(admin_client, url, script, moved):
@@ -73,3 +73,70 @@ def test_pages_load_the_chart_helpers_first(admin_client, url):
     html = admin_client.get(url).get_data(as_text=True)
     own = "stats.js" if url.endswith("stats") else "dashboard.js"
     assert html.index("js/charts.js") < html.index(f"js/{own}")
+
+
+# --- statistics page ---------------------------------------------------------------------
+
+def _extract_query(js_source, const_name):
+    m = re.search(rf"const {const_name} = `(.*?)`;", js_source, re.DOTALL)
+    assert m, f"{const_name} not found"
+    return m.group(1)
+
+
+def test_stats_page_has_the_overview_sections(admin_client):
+    html = admin_client.get("/admin/stats").get_data(as_text=True)
+    assert 'class="page-head' in html
+    for section in ("statsFormats", "statsLibraries", "statsVerification", "statsTypes", "statsLargest",
+                    "downloadsSection", "duplicatesSection"):
+        assert re.search(rf'id="{section}"[^>]*>|class="[^"]*surface[^"]*"[^>]*id="{section}"', html), section
+    for chart in ("formatDonut", "verificationRing", "largestFiles"):
+        assert f'id="{chart}"' in html, chart
+
+
+def test_main_tiles_are_four(admin_client):
+    body = _function_body(_js("stats.js"), "tiles")
+    assert body.count("I18N.") >= 4
+    assert "unidentifiedFiles" in body and "ownedTitles" in body and "totalSize" in body
+
+
+def test_charts_render_from_the_stats_query():
+    js = _js("stats.js")
+    assert "donutGradient(" in _function_body(js, "renderFormats")
+    verification = _function_body(js, "renderVerification")
+    assert "ringGradient(" in verification and "SIGNATURE_OK" in verification and "VALID" in verification
+    assert "openVerificationFiles(" in verification
+    assert "openLibraryDetail(" in _function_body(js, "renderLibraries")
+    assert "openMissingAppType(" in _function_body(js, "renderTypes")
+    for fn in ("renderFormats", "renderLibraries", "renderVerification", "renderTypes", "renderLargestFiles"):
+        body = _function_body(js, fn)
+        assert "innerHTML = `" not in body, fn   # paths and names go through textContent
+
+
+def test_largest_files_query_runs_and_is_ordered(admin_client):
+    query = _extract_query(_js("stats.js"), "LARGEST_FILES_QUERY")
+    resp = admin_client.get("/api/graphql", query_string={"query": query})
+    body = resp.get_json()
+    assert "errors" not in body, body.get("errors")
+    sizes = [f["size"] for f in body["data"]["files"]["items"]]
+    assert sizes == sorted(sizes, reverse=True)
+    assert len(sizes) <= 10
+
+
+def test_largest_files_link_to_their_game_when_known():
+    body = _function_body(_js("stats.js"), "renderLargestFiles")
+    assert "`/game/${" in body
+    # An unidentified file (no title) is shown without a link.
+    assert "titleId" in body and "if (" in body
+
+
+def test_empty_sections_show_a_message():
+    js = _js("stats.js")
+    for fn in ("renderFormats", "renderLibraries", "renderVerification", "renderTypes", "renderLargestFiles"):
+        assert "emptyRow(" in _function_body(js, fn) or "nothingToReport" in _function_body(js, fn), fn
+
+
+def test_stats_strings_are_translated():
+    import i18n
+    for key in ("stats.subtitle_overview", "stats.space_by_format", "stats.space_by_library",
+                "stats.verified_ok", "stats.content_by_type", "stats.largest_files", "stats.total"):
+        assert {"en", "es"} <= set(i18n.TRANSLATIONS[key]), key

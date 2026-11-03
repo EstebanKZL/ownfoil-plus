@@ -2670,3 +2670,196 @@ button.stat-tile:hover {
 .chart-bar--wait .chart-bar__fill { background-color: var(--op-wait); }
 .chart-bar--danger .chart-bar__fill { background-color: var(--op-danger); }
 .chart-bar--action .chart-bar__fill { background-color: var(--op-action); }
+
+/* Statistics: sections in a two-column grid from lg. */
+.stats-page {
+    max-width: 1400px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+}
+
+@media (min-width: 992px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .stats-section--wide {
+        grid-column: 1 / -1;
+    }
+}
+
+.stats-section__title {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin: 0 0 .9rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.stats-section__title .bi {
+    color: var(--op-nav);
+}
+
+/* Donut and ring: a conic-gradient circle (charts.js) with a hole and a centre label. */
+.donut-wrap,
+.ring-wrap {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 1.25rem;
+    align-items: center;
+}
+
+.donut,
+.ring {
+    position: relative;
+    width: 9.5rem;
+    height: 9.5rem;
+    border-radius: 50%;
+    background: conic-gradient(var(--op-surface-2) 0deg 360deg);
+}
+
+.ring {
+    width: 8rem;
+    height: 8rem;
+}
+
+.donut__center,
+.ring__center {
+    position: absolute;
+    inset: 22%;
+    border-radius: 50%;
+    background-color: var(--op-surface-1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1.15;
+}
+
+.ring__center {
+    inset: 14%;
+}
+
+.donut__center strong,
+.ring__center strong {
+    font-size: 1.05rem;
+    font-weight: 800;
+}
+
+.donut__center span,
+.ring__center span {
+    font-size: .72rem;
+    color: var(--op-text-muted);
+}
+
+/* Rows of a chart: label left, figures right, an optional bar under them. */
+.chart-rows,
+.chart-legend {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: .55rem;
+}
+
+.chart-row__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: .75rem;
+    margin-bottom: .25rem;
+}
+
+.chart-row__label {
+    display: flex;
+    align-items: baseline;
+    gap: .4rem;
+    min-width: 0;
+}
+
+.chart-row__text {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+a.chart-row__text {
+    color: var(--op-text);
+    text-decoration: none;
+}
+
+a.chart-row__text:hover {
+    color: var(--op-nav);
+}
+
+.chart-row__sub {
+    font-size: .8rem;
+    color: var(--op-text-muted);
+    overflow-wrap: anywhere;
+}
+
+.chart-row__figures {
+    flex: 0 0 auto;
+    font-size: .88rem;
+    color: var(--op-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.chart-row.is-clickable {
+    cursor: pointer;
+    border-radius: var(--op-radius-sm);
+    margin: -.2rem -.35rem;
+    padding: .2rem .35rem;
+}
+
+.chart-row.is-clickable:hover,
+.chart-row.is-clickable:focus-visible {
+    background-color: rgba(var(--op-nav-rgb), .08);
+    outline: none;
+}
+
+.chart-swatch {
+    flex: 0 0 auto;
+    width: .7rem;
+    height: .7rem;
+    border-radius: 3px;
+    align-self: center;
+}
+
+.chart-empty {
+    color: var(--op-text-muted);
+    font-style: italic;
+}
+
+.largest-files {
+    counter-reset: largest;
+}
+
+.largest-files .chart-row {
+    counter-increment: largest;
+}
+
+.largest-files .chart-row__label::before {
+    content: counter(largest) ".";
+    color: var(--op-text-muted);
+    font-variant-numeric: tabular-nums;
+    min-width: 1.4rem;
+}
+
+@media (max-width: 575.98px) {
+    .donut-wrap,
+    .ring-wrap {
+        grid-template-columns: 1fr;
+        justify-items: center;
+    }
+
+    .donut-wrap .chart-legend,
+    .ring-wrap .chart-rows {
+        width: 100%;
+    }
+}
