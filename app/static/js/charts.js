@@ -20,7 +20,7 @@ function donutGradient(values, colors) {
     const palette = colors || CHART_COLORS;
     const nums = (values || []).map(v => Math.max(0, Number(v) || 0));
     const total = nums.reduce((a, b) => a + b, 0);
-    if (!total) return 'conic-gradient(var(--op-surface-2) 0deg 360deg)';
+    if (!total) return 'conic-gradient(var(--op-chart-track) 0deg 360deg)';
     let acc = 0;
     const stops = nums.map((v, i) => {
         const from = acc;
@@ -35,7 +35,7 @@ function donutGradient(values, colors) {
 /** A conic-gradient for a progress ring at `pct` percent, in `color`. */
 function ringGradient(pct, color) {
     const deg = Math.max(0, Math.min(100, Number(pct) || 0)) * 3.6;
-    return `conic-gradient(${color || 'var(--op-ok)'} 0deg ${deg.toFixed(2)}deg, var(--op-surface-2) ${deg.toFixed(2)}deg 360deg)`;
+    return `conic-gradient(${color || 'var(--op-ok)'} 0deg ${deg.toFixed(2)}deg, var(--op-chart-track) ${deg.toFixed(2)}deg 360deg)`;
 }
 
 /** A labelled bar: a track with a filled part, sized by percent. */

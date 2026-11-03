@@ -61,7 +61,7 @@ def test_chart_helpers_guard_empty_data():
     assert "!total" in pct or "total <= 0" in pct
     donut = _function_body(js, "donutGradient")
     # Nothing to draw (no segments, or all zero): one neutral ring, never NaN degrees.
-    assert "var(--op-surface-2) 0deg 360deg" in donut
+    assert "var(--op-chart-track) 0deg 360deg" in donut
     assert "acc" in donut and "360" in donut
     ring = _function_body(js, "ringGradient")
     assert "conic-gradient(" in ring
@@ -218,3 +218,25 @@ def test_dashboard_columns_and_storage_rows_fit_a_phone():
     css = _read("app", "static", "style.css")
     assert re.search(r"\.stat-sections > \* \{[^}]*min-width: 0", css)
     assert re.search(r"\.dash-storage__head \{[^}]*flex-wrap: wrap", css)
+
+
+# --- final review fixes --------------------------------------------------------------------
+
+def test_unidentified_tile_opens_the_unidentified_tab():
+    assert "'/admin/files#unidentified'" in _function_body(_js("stats.js"), "tiles")
+
+
+def test_chart_tracks_show_on_light_cards():
+    """The tracks used --op-surface-2, ~1:1 against a light card: empty charts vanished."""
+    css = _read("app", "static", "style.css")
+    charts = _js("charts.js")
+    assert "--op-chart-track" in _read("app", "static", "css", "tokens.css")
+    assert re.search(r"\.chart-bar \{[^}]*background-color: var\(--op-chart-track\)", css)
+    assert "var(--op-chart-track)" in charts and "var(--op-surface-2)" not in charts
+
+
+def test_clickable_chart_rows_keep_a_visible_focus():
+    css = _read("app", "static", "style.css")
+    # The rule of its own, not the one shared with :hover.
+    rules = re.findall(r"(?m)^\.chart-row\.is-clickable:focus-visible \{([^}]*)\}", css)
+    assert any("outline: 2px solid var(--op-nav)" in r for r in rules)

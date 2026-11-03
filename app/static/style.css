@@ -2656,7 +2656,7 @@ button.stat-tile:hover {
 .chart-bar {
     height: .5rem;
     border-radius: 1rem;
-    background-color: var(--op-surface-2);
+    background-color: var(--op-chart-track);
     overflow: hidden;
 }
 
@@ -2720,7 +2720,7 @@ button.stat-tile:hover {
     width: 9.5rem;
     height: 9.5rem;
     border-radius: 50%;
-    background: conic-gradient(var(--op-surface-2) 0deg 360deg);
+    background: conic-gradient(var(--op-chart-track) 0deg 360deg);
 }
 
 .ring {
@@ -2833,7 +2833,11 @@ a.chart-row__text:hover {
 .chart-row.is-clickable:hover,
 .chart-row.is-clickable:focus-visible {
     background-color: rgba(var(--op-nav-rgb), .08);
-    outline: none;
+}
+
+.chart-row.is-clickable:focus-visible {
+    outline: 2px solid var(--op-nav);
+    outline-offset: 2px;
 }
 
 .chart-swatch {

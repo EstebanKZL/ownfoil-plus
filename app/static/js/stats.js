@@ -29,7 +29,7 @@ function tiles(s) {
          'bi-file-earmark', 'nav', '/admin/files'],
         [I18N.tileTotalSize, formatBytes(s.totalSize), I18N.tileTotalSizeNote, 'bi-hdd-stack', 'action', null],
         [I18N.tileUnidentified, count(s.unidentifiedFiles), I18N.tileUnidentifiedNote,
-         'bi-question-circle', 'wait', '/admin/files'],
+         'bi-question-circle', 'wait', '/admin/files#unidentified'],
     ];
 }
 

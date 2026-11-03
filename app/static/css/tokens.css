@@ -47,6 +47,7 @@
     --op-text-muted: #8b949e;
     --op-border: #2a313c;
     --op-border-strong: #3a4250;
+    --op-chart-track: #2a313c;   /* empty part of bars, donuts and rings */
     --op-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .25);
     --op-ok: #3fb950;
     --op-ok-rgb: 63, 185, 80;
@@ -70,6 +71,7 @@
     --op-text-muted: #5d6268;
     --op-border: #d5d1c7;
     --op-border-strong: #bfbab0;
+    --op-chart-track: #dcd8ce;
     --op-shadow: 0 1px 2px rgba(60, 50, 30, .08), 0 8px 24px rgba(60, 50, 30, .08);
     --op-ok: #1a7f37;
     --op-ok-rgb: 26, 127, 55;
