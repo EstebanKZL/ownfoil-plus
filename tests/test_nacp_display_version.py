@@ -396,7 +396,7 @@ def test_app_display_version_is_null_for_a_dlc(library):
 
 def test_files_template_requests_and_prefers_display_version():
     import os
-    path = os.path.join(os.path.dirname(__file__), "..", "app", "templates", "files.html")
+    path = os.path.join(os.path.dirname(__file__), "..", "app", "static", "js", "files.js")  # JS moved in stage 5a
     html = open(path, encoding="utf-8").read()
     assert "apps { appId appType appVersion displayVersion titleId" in html
     assert "return a.displayVersion || `v${a.appVersion}`;" in html

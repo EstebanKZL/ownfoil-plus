@@ -95,7 +95,8 @@ def test_clearing_history_is_admin_only(shop_app):
 
 
 def test_tasks_page_caps_history_to_five_and_offers_clearing(admin_client):
-    html = admin_client.get("/admin/tasks").get_data(as_text=True)
+    html = (admin_client.get("/admin/tasks").get_data(as_text=True)
+            + admin_client.get("/static/js/tasks.js").get_data(as_text=True))  # JS moved in stage 5a
     assert 'id="clearHistory"' in html
     assert "limitVisibleRows(document.getElementById('historyScroll'), '.task-row', 5)" in html
 

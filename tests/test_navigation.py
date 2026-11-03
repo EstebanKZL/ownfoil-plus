@@ -94,7 +94,8 @@ def test_active_item_is_marked(admin_client):
 
 
 def test_tasks_page_keeps_the_nav_count_live():
-    html = open(os.path.join(ROOT, "app", "templates", "tasks.html"), encoding="utf-8").read()
+    # The tasks page logic lives in static/js/tasks.js since stage 5a.
+    html = open(os.path.join(ROOT, "app", "static", "js", "tasks.js"), encoding="utf-8").read()
     assert "navCountTasks" in html
 
 

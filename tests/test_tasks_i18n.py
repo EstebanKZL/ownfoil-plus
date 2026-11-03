@@ -50,8 +50,8 @@ def test_the_inline_script_is_not_split_by_a_stray_closing_tag(client):
     script_blocks = re.findall(r"<script>(.*?)</script>", html, re.DOTALL)
     assert len(script_blocks) == 1, (
         f"Expected exactly one inline <script>...</script> block, found {len(script_blocks)}")
-    body = script_blocks[0]
-    assert "const I18N = {" in body
+    assert "const I18N = {" in script_blocks[0]
+    body = client.get("/static/js/tasks.js").get_data(as_text=True)  # the logic, since stage 5a
     assert "const CANCEL_MUTATION" in body
     assert "function renderWorkers" in body
     assert "live.start()" in body

@@ -65,7 +65,8 @@ def test_files_page_has_the_search_box_and_filter_dropdown_from_the_real_shop(cl
 
 
 def test_files_page_wires_the_outdated_and_pending_queries_and_the_four_file_actions(client):
-    html = client.get("/admin/files").get_data(as_text=True)
+    html = (client.get("/admin/files").get_data(as_text=True)
+            + client.get("/static/js/files.js").get_data(as_text=True))  # JS moved in stage 5a
     assert "outdatedUpdateGroups" in html
     assert "pendingFiles" in html
     for mutation in ("retryIdentification", "verifyFile", "compressFile", "decompressFile", "deleteFileRecord"):
@@ -140,7 +141,8 @@ def test_files_filter_by_content_empty_list_is_no_constraint(client):
 # never uses).
 
 def test_files_page_ships_the_comparison_table_and_bulk_delete_bar(client):
-    html = client.get("/admin/files").get_data(as_text=True)
+    html = (client.get("/admin/files").get_data(as_text=True)
+            + client.get("/static/js/files.js").get_data(as_text=True))  # JS moved in stage 5a
     # The per-file column header (Keep/Delete pill + reason + "..." actions) and the
     # attribute-row table upstream's own duplicates view uses, ported as-is.
     assert "function copyHeader" in html
