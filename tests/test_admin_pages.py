@@ -124,3 +124,18 @@ def test_worker_cards_are_surfaces_with_a_status_dot():
     css = _css()
     for state, token in (("busy", "--op-nav"), ("idle", "--op-ok"), ("offline", "--op-text-muted")):
         assert re.search(rf"\.worker-dot--{state} \{{[^}}]*var\({token}\)", css), state
+
+
+# --- every element the moved JS looks up still exists --------------------------------------
+
+@pytest.mark.parametrize("url,script", [("/admin/files", "files.js"), ("/admin/tasks", "tasks.js"),
+                                        ("/admin/stats", "stats.js"), ("/admin", "dashboard.js")])
+def test_every_id_the_script_queries_exists(admin_client, url, script):
+    js = _js(script)
+    queried = set(re.findall(r"getElementById\('([A-Za-z][\w-]*)'\)", js))
+    queried |= set(re.findall(r"""\$\(['"]#([A-Za-z][\w-]*)['"]\)""", js))
+    queried |= set(re.findall(r"""querySelector\(['"]#([A-Za-z][\w-]*)['"]\)""", js))
+    html = admin_client.get(url).get_data(as_text=True)
+    created = set(re.findall(r"""id[:=]\s*['"`]([A-Za-z][\w-]*)""", js))
+    missing = sorted(i for i in queried if f'id="{i}"' not in html and i not in created)
+    assert not missing, missing

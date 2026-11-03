@@ -100,6 +100,19 @@ Stage 4, **Statistics and the Dashboard**:
   `dashboard.js`, with shared chart helpers in `charts.js`) - the Statistics template
   went from 1,300 lines to under 300.
 
+Stage 5a, the **Files, Tasks and Services** pages:
+
+- **The same look as the rest of the admin**: a page header, sections as cards. Files'
+  state tiles carry one color per state, and the page's own pastel palette now comes
+  from the design tokens, so it follows the chosen style in both modes.
+- **A file leads to its game**: the title links in the file details pointed at a page
+  that never existed (they ended up on the Library); they open the game page now.
+- **Tasks read at a glance**: the running task's bar in the accent color, failed tasks
+  marked red and scheduled ones amber, and each worker a card with a dot for its state
+  (working, waiting, stopped). Worker cards no longer build HTML from task names.
+- The Files and Tasks JavaScript moved to `static/js/files.js` and `tasks.js`, and a
+  test now checks that every element the admin pages' scripts look up exists.
+
 ## [6.2.5.45]
 
 Image vulnerabilities, from a Docker Scout report of 5 critical / 30 high.
