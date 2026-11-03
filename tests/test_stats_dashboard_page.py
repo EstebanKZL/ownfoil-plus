@@ -201,3 +201,12 @@ def test_long_labels_wrap_and_the_verify_button_reaches_the_edge():
     label = re.search(r"\.chart-row__label \{([^}]*)\}", css).group(1)
     assert "flex-wrap: wrap" in label
     assert re.search(r"\.stats-section \.stat-section-head \{[^}]*max-width: none", css)
+
+
+def test_long_file_names_never_widen_the_phone_page():
+    """Found at 375px: a largest-files row's file name (the secondary text) was set not to
+    shrink and pushed the page to 465px wide."""
+    css = _read("app", "static", "style.css")
+    subs = " ".join(m.group(1) for m in re.finditer(r"\.chart-row__sub \{([^}]*)\}", css))
+    assert "flex: 0 0 auto" not in subs
+    assert "overflow-wrap: anywhere" in subs and "min-width: 0" in subs

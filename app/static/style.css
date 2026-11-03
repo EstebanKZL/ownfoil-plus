@@ -2784,8 +2784,11 @@ button.stat-tile:hover {
     min-width: 0;
 }
 
+/* Short counts like "(6)" sit after the label; a long file name wraps instead of
+   widening the page. */
 .chart-row__sub {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
+    min-width: 0;
 }
 
 /* The verification header spans its card: the 30rem cap was sized for the old tables. */
