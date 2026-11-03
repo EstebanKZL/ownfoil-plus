@@ -108,7 +108,7 @@ def test_admin_pages_load_the_row_limiter(admin_client):
 
 
 def test_dashboard_lists_show_ten_and_return_up_to_thirty(admin_client):
-    html = admin_client.get("/admin").get_data(as_text=True)
+    html = admin_client.get("/static/js/dashboard.js").get_data(as_text=True)  # since stage 4
     assert "limitVisibleRows(document.getElementById('dashRecentFiles'), 'li', 10)" in html
     assert "limitVisibleRows(document.getElementById('dashRecentDownloads'), 'li', 10)" in html
     with admin_client.application.app_context():
@@ -124,7 +124,8 @@ def test_stats_download_tables_show_ten(admin_client):
     html = admin_client.get("/admin/stats").get_data(as_text=True)
     for table in ("downloadTopTitles", "downloadByUser", "downloadByClient", "downloadRecent"):
         assert f'id="{table}Scroll"' in html, table
-    assert "limitVisibleRows(document.getElementById(id + 'Scroll'), 'tbody tr', 10)" in html
+    js = admin_client.get("/static/js/stats.js").get_data(as_text=True)  # since stage 4
+    assert "limitVisibleRows(document.getElementById(id + 'Scroll'), 'tbody tr', 10)" in js
 
 
 def test_stats_top_titles_go_beyond_ten(admin_client):

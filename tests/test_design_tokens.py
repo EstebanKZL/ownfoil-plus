@@ -108,7 +108,8 @@ def test_game_cards_share_the_surface_look():
 
 def test_dashboard_uses_page_head_and_stat_tiles(admin_client):
     html = admin_client.get("/admin").get_data(as_text=True)
-    assert 'class="page-head' in html and "stat-tile" in html
+    js = admin_client.get("/static/js/dashboard.js").get_data(as_text=True)  # since stage 4
+    assert 'class="page-head' in html and "stat-tile" in js
     assert 'id="dashTiles"' in html
 
 

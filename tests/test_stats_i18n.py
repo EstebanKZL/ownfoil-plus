@@ -10,6 +10,12 @@ import fixture
 import pytest
 
 
+
+def _page_and_js(client):
+    """The Statistics page plus static/js/stats.js, where its logic lives since stage 4."""
+    return (client.get("/admin/stats").get_data(as_text=True)
+            + client.get("/static/js/stats.js").get_data(as_text=True))
+
 @pytest.fixture
 def client(shop_app):
     resp = shop_app.client.post("/login", data={"user": "admin", "password": fixture.PASSWORDS["admin"]},
@@ -19,10 +25,9 @@ def client(shop_app):
 
 
 def test_stats_page_renders_in_english_by_default(client):
-    resp = client.get("/admin/stats")
-    html = resp.get_data(as_text=True)
+    html = _page_and_js(client)
 
-    assert resp.status_code == 200
+    assert client.get("/admin/stats").status_code == 200
     assert "Verification status" in html
     assert "Verify pending files" in html
     assert "Extensions" in html
@@ -31,10 +36,9 @@ def test_stats_page_renders_in_english_by_default(client):
 
 def test_stats_page_renders_in_spanish(client):
     client.set_cookie("ownfoil_lang", "es")
-    resp = client.get("/admin/stats")
-    html = resp.get_data(as_text=True)
+    html = _page_and_js(client)
 
-    assert resp.status_code == 200
+    assert client.get("/admin/stats").status_code == 200
     assert "Estado de verificación" in html
     assert "Verificar faltantes" in html
     assert "Extensiones" in html
@@ -53,14 +57,14 @@ def test_the_inline_script_is_not_split_by_a_stray_closing_tag(client):
     continuous <script> block. An extra </script> after the I18N object once silently
     orphaned everything after it outside any script tag - broken, but with no visible
     symptom short of opening the browser console."""
-    resp = client.get("/admin/stats")
-    html = resp.get_data(as_text=True)
+    html = _page_and_js(client)
 
-    script_blocks = re.findall(r"<script>(.*?)</script>", html, re.DOTALL)
+    page = client.get("/admin/stats").get_data(as_text=True)
+    script_blocks = re.findall(r"<script>(.*?)</script>", page, re.DOTALL)
     assert len(script_blocks) == 1, (
         f"Expected exactly one inline <script>...</script> block, found {len(script_blocks)}")
-    body = script_blocks[0]
-    assert "const I18N = {" in body
+    assert "const I18N = {" in script_blocks[0]
+    body = client.get("/static/js/stats.js").get_data(as_text=True)  # the logic, since stage 4
     assert "const STATS_QUERY" in body
     assert "function loadStats" in body
     assert "verifyNowBtn" in body
@@ -71,8 +75,7 @@ def test_verify_now_button_is_aligned_with_the_table_not_the_heading(client):
     (ms-auto on the button, but competing for space with that span) - now the header
     row is a plain two-item flex (heading left, button right) and the hint moved below
     the table entirely."""
-    resp = client.get("/admin/stats")
-    html = resp.get_data(as_text=True)
+    html = _page_and_js(client)
 
     header_start = html.index("stats.verification_status") if "stats.verification_status" in html \
         else html.index("Verification status")
@@ -92,8 +95,7 @@ def test_verify_now_header_row_is_capped_to_the_table_width(client):
     table's actual right edge if the header row is capped to the same max-width as
     .stat-table - otherwise it right-aligns against the wider section column and
     visibly overshoots past "Size", which is exactly what was reported."""
-    resp = client.get("/admin/stats")
-    html = resp.get_data(as_text=True)
+    html = _page_and_js(client)
 
     assert "stat-section-head" in html
 
@@ -118,8 +120,7 @@ def test_verification_modal_table_css_overrides_the_dashboard_width_cap():
 
 
 def test_missing_app_type_modal_is_present_and_translated(client):
-    resp = client.get("/admin/stats")
-    html = resp.get_data(as_text=True)
+    html = _page_and_js(client)
     assert 'id="missingAppTypeModal"' in html
     assert 'id="missingAppTypeBody"' in html
     assert 'id="missingAppTypePrev"' in html
@@ -129,8 +130,7 @@ def test_missing_app_type_modal_is_present_and_translated(client):
     assert "missingAppType:" in html
 
     client.set_cookie("ownfoil_lang", "es")
-    resp = client.get("/admin/stats")
-    html = resp.get_data(as_text=True)
+    html = _page_and_js(client)
     assert "T\\u00edtulos" in html or "Títulos" in html
 
 
@@ -140,8 +140,7 @@ def test_missing_app_type_modal_is_not_nested_inside_the_verification_files_moda
     instead of a sibling - Bootstrap doesn't handle a modal nested inside another
     modal correctly (the reported symptom: the backdrop darkened but nothing showed,
     and there was no way to dismiss it short of reloading the page)."""
-    resp = client.get("/admin/stats")
-    html = resp.get_data(as_text=True)
+    html = _page_and_js(client)
 
     verif_start = html.index('id="verificationFilesModal"')
     missing_start = html.index('id="missingAppTypeModal"')
@@ -174,8 +173,7 @@ def test_missing_app_type_modal_is_not_nested_inside_the_verification_files_moda
 
 
 def test_library_detail_modal_is_present_and_translated(client):
-    resp = client.get("/admin/stats")
-    html = resp.get_data(as_text=True)
+    html = _page_and_js(client)
     assert 'id="libraryDetailModal"' in html
     assert 'id="libraryDetailBody"' in html
     assert 'id="libraryDetailPrev"' in html
@@ -189,16 +187,14 @@ def test_library_detail_modal_is_present_and_translated(client):
     assert "cleanTitleRecord" in html
 
     client.set_cookie("ownfoil_lang", "es")
-    resp = client.get("/admin/stats")
-    html = resp.get_data(as_text=True)
+    html = _page_and_js(client)
     assert "Limpiar solo el registro" in html
 
 
 def test_library_detail_modal_is_not_nested_inside_another_modal(client):
     """Same regression class as missingAppTypeModal's own guard above - confirmed
     fresh this time, up front, rather than after the fact."""
-    resp = client.get("/admin/stats")
-    html = resp.get_data(as_text=True)
+    html = _page_and_js(client)
 
     missing_start = html.index('id="missingAppTypeModal"')
     detail_start = html.index('id="libraryDetailModal"')
@@ -230,8 +226,7 @@ def test_library_detail_modal_groups_updates_and_dlc_into_collapsible_sections(c
     """The base game stays directly visible, but Updates/DLC group behind the same
     collapsible section style the List view uses, rather than a flat list of every
     app - requested after the first version rendered everything flat."""
-    resp = client.get("/admin/stats")
-    html = resp.get_data(as_text=True)
+    html = _page_and_js(client)
     assert "function buildLibraryDetailSection" in html
     assert "list-section-trigger" in html
     assert "list-chevron" in html
@@ -243,8 +238,7 @@ def test_all_three_drill_down_modals_have_a_debounced_search_box(client):
     list down - each gets its own search input, wired into the query's existing
     search/filter capability (titles already had `search`; files got `filename:
     {contains:}`), debounced the same 250ms the List view's own search box uses."""
-    resp = client.get("/admin/stats")
-    html = resp.get_data(as_text=True)
+    html = _page_and_js(client)
 
     assert 'id="libraryDetailSearch"' in html
     assert 'id="missingAppTypeSearch"' in html
@@ -265,8 +259,7 @@ def test_both_clean_and_delete_actions_are_always_available_no_settings_toggle(c
     whole page requires it) is the only gate. Two distinct icons for two distinct
     actions: bi-database-x for the database-only clean, bi-trash for the real,
     irreversible delete-from-disk."""
-    resp = client.get("/admin/stats")
-    html = resp.get_data(as_text=True)
+    html = _page_and_js(client)
     assert "CLEAN_RECORD_ENABLED" not in html
     assert "webCleanRecordEnabledCheck" not in html
     assert "bi-database-x" in html
@@ -286,8 +279,7 @@ def test_duplicate_files_ui_is_always_visible_not_only_when_a_duplicate_exists(c
     content area (an empty-state message vs. the actual cards) toggles at runtime,
     handled entirely in JS since the server doesn't know at render time whether any
     duplicates exist."""
-    resp = client.get("/admin/stats")
-    html = resp.get_data(as_text=True)
+    html = _page_and_js(client)
 
     assert 'id="duplicatesSection"' in html
     section_tag = [line for line in html.splitlines() if 'id="duplicatesSection"' in line][0]
@@ -305,8 +297,7 @@ def test_duplicate_files_ui_is_always_visible_not_only_when_a_duplicate_exists(c
 
 def test_duplicate_files_ui_is_translated_in_spanish(client):
     client.set_cookie("ownfoil_lang", "es")
-    resp = client.get("/admin/stats")
-    html = resp.get_data(as_text=True)
+    html = _page_and_js(client)
 
     assert "Archivos duplicados" in html
     assert "Conservar este" in html
@@ -322,13 +313,13 @@ def test_stats_script_still_one_block_with_the_duplicates_ui_added(client):
     """Same regression class as the earlier script-split bug: this round added a
     second, much larger chunk of JS (loadDuplicateGroups, resolveDuplicate, the two
     card-building helpers) to the same script tag."""
-    resp = client.get("/admin/stats")
-    html = resp.get_data(as_text=True)
+    html = _page_and_js(client)
 
-    script_blocks = re.findall(r"<script>(.*?)</script>", html, re.DOTALL)
+    page = client.get("/admin/stats").get_data(as_text=True)
+    script_blocks = re.findall(r"<script>(.*?)</script>", page, re.DOTALL)
     assert len(script_blocks) == 1, (
         f"Expected exactly one inline <script>...</script> block, found {len(script_blocks)}")
-    body = script_blocks[0]
+    body = client.get("/static/js/stats.js").get_data(as_text=True)  # the logic, since stage 4
     assert "function loadDuplicateGroups" in body
     assert "function resolveDuplicate" in body
     assert "function buildDuplicateGroupCard" in body
