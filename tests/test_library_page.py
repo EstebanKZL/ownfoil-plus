@@ -296,3 +296,15 @@ def test_a_card_without_artwork_uses_a_local_placeholder():
     assert "placehold.it" not in js
     body = _function_body(js, "renderCardView")
     assert "library-cover--empty" in body
+
+
+@pytest.mark.parametrize("grouped", [True, False])
+def test_cards_sort_by_the_catalogue_release_date(grouped):
+    """Found in the browser check: `apps` sorted RELEASE_DATE by the app row's own date,
+    empty for base games, so the cards came back unsorted. The schema promises the
+    catalogue's date - the game's, as NAME uses the game's name, so a DLC sorts with
+    its game - the same column `titles` sorts on."""
+    from gql.filters import APP_ORDER, APP_ORDER_GROUPED, OrderBy, OrderDirection, OrderField, order_sql
+    order = OrderBy(field=OrderField.RELEASE_DATE, direction=OrderDirection.DESC)
+    sql = order_sql(order, APP_ORDER_GROUPED if grouped else APP_ORDER, "a.app_id")
+    assert sql.startswith("td.release_date IS NULL, td.release_date DESC")

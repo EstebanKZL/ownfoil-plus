@@ -575,7 +575,9 @@ TITLE_ORDER = {
 
 APP_ORDER = {
     "name": "td.name IS NULL, td.name COLLATE NOCASE",
-    "release_date": "a.release_date IS NULL, a.release_date",
+    # The catalogue's date, as RELEASE_DATE documents and TITLE_ORDER does: the app
+    # row's own release_date is empty for base games, which left them unsorted.
+    "release_date": "td.release_date IS NULL, td.release_date",
     "version": "CAST(a.app_version AS INTEGER)",
 }
 
