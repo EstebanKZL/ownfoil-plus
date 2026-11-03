@@ -65,6 +65,25 @@ Stage 2, the **Library**, the page people open the most:
   the template), and remembered preferences are now validated, so a stale or broken
   value can't break the page.
 
+Stage 3, **a page per game** (`/game/<title ID>`), instead of the Library's details
+pop-up:
+
+- **Everything about a game in one place**, with its own address - to bookmark, share,
+  open in a new tab or come back to with the browser's back button. What the pop-up
+  showed and what was only in the list view (updates, DLC, files, downloads) are
+  together now.
+- **A header over the game's own artwork** with its state (in your library, update
+  available, missing DLC, complete), *Download all*, *Edit metadata* and *Copy title
+  ID*; detail tiles; the description; a screenshot gallery; the updates with a notice
+  when the latest is missing; the DLC you have and the ones missing; and, for admins,
+  every file with its verification.
+- **Every way to a game leads there**: the Library's cards and icons are real links
+  (middle-click works), a DLC card opens its game's page scrolled to that DLC, the
+  list view's names link to it, and `Ctrl+K` opens a game's page directly instead of a
+  filtered Library.
+- Downloads keep the rule the server enforces (shop access plus Settings > web
+  downloads), and metadata edits use the same overrides as before.
+
 ## [6.2.5.45]
 
 Image vulnerabilities, from a Docker Scout report of 5 critical / 30 high.

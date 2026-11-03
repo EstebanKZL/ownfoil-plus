@@ -61,9 +61,19 @@ The landing page: your whole library as cards, icons or a list.
 - **At the top**, how the library is doing: the number of games, how many have an update pending, how many are missing DLC, the total size (admins only), and a bar with the share of games up to date. Clicking *Pending updates* or *Missing DLC* shows those games.
 - **The toolbar**: search (by name or title ID), sort by **name** or **release date** in either direction, the view (cards, icons, list), the **View** menu (games per page, card size) and the **Filters** menu (type, ownership, update, DLC; in the list view, the state of the files). A dot on *Filters* means some filter is on.
 - **The pills** under it are one-click filters, each with how many results it gives: *All*, *Update pending*, *Missing DLC*, *Up to date* (in the list view: *Complete*, *Incomplete*, *With errors*, *Repacks*). The counts follow the search and the Filters menu.
-- **Each card** shows the cover, the name, the publisher and year, and badges for its state: update available, missing DLC, or complete. Games you don't have are dimmed. The clock button lists every known version of the title with its release date and whether you own it; clicking the cover opens the details.
+- **Each card** shows the cover, the name, the publisher and year, and badges for its state: update available, missing DLC, or complete. Games you don't have are dimmed. The clock button lists every known version of the title with its release date and whether you own it; the cover or the name opens the game's page.
 
 Search, sort, view, filters and page size are remembered per browser. When nothing matches, *Clear filters* resets them.
+
+## Game page
+
+Every game has its own page, `/game/<title ID>`, opened from its card in the Library, its name in the list view, or a search with `Ctrl+K`. A DLC opens its game's page, scrolled to that DLC.
+
+- **At the top**, the cover over the game's own artwork, whether you have it (and whether it's up to date and complete), the publisher and year, and the actions: *Download all* (when web downloads are on in Settings, for users with shop access), *Edit metadata* (admins) and *Copy title ID*.
+- **The details**: title ID, release date, region, languages, genre, players, rating, size, the version you have and the latest one. Details the catalogue doesn't have aren't shown.
+- **The sections**: the description; the screenshots (click one to see it full size); the updates, with a notice when you don't have the latest; the DLC, the ones you have and the ones missing; and, for admins, every file of the game with its verification and download.
+
+*Edit metadata* corrects the name, developer, publisher, release date or description for this shop; an empty field keeps the catalogue's value, and *Back to the catalogue data* undoes your changes. The *Library* link at the top goes back to the Library as you left it.
 
 ## Setup page
 
