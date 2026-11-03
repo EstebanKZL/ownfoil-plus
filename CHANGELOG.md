@@ -84,6 +84,22 @@ pop-up:
 - Downloads keep the rule the server enforces (shop access plus Settings > web
   downloads), and metadata edits use the same overrides as before.
 
+Stage 4, **Statistics and the Dashboard**:
+
+- **Statistics read at a glance instead of as tables**: four main tiles, a donut of
+  the space each format takes, a bar per library, a ring with how much of the library
+  is verified (each status still opens its files), what you own of each content type,
+  and the ten largest files, linked to their game. Downloads and duplicates keep every
+  action, in the same cards as the rest. The charts are drawn with CSS, no chart
+  library, so the page still works with no internet.
+- **The Dashboard's alerts read as notices** in the color of what they mean, storage
+  as a bar per library that turns amber and then red as space runs out, and the
+  latest files and downloads show the game's icon and open its page. Recent downloads
+  now carry their title id for that.
+- Both pages' JavaScript moved out of the templates (`static/js/stats.js`,
+  `dashboard.js`, with shared chart helpers in `charts.js`) - the Statistics template
+  went from 1,300 lines to under 300.
+
 ## [6.2.5.45]
 
 Image vulnerabilities, from a Docker Scout report of 5 critical / 30 high.

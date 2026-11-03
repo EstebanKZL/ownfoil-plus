@@ -50,7 +50,7 @@ Browsers only allow this over **HTTPS** (see [Remote access and HTTPS](./Install
 
 ## Dashboard
 
-The landing page of `Admin`. At the top, what needs attention, each linking to where to fix it: missing console keys, an unreachable library, low disk space, corrupt or unidentified files, duplicates, failed tasks, no backups yet. Then the figures that matter (games and how many are complete and up to date, files and total size, downloads this week, running and queued tasks), free space per library, the latest added files and downloads, and the state of maintenance, backups, notifications and shop access.
+The landing page of `Admin`. At the top, what needs attention, each linking to where to fix it: missing console keys, an unreachable library, low disk space, corrupt or unidentified files, duplicates, failed tasks, no backups yet. Then the figures that matter (games and how many are complete and up to date, files and total size, downloads this week, running and queued tasks), a bar per library with the space used and free (amber below 15 % free, red below 5 %), the latest added files and downloads - each opens its game's page - and the state of maintenance, backups, notifications and shop access.
 
 `Upload files`, on the dashboard next to `Storage`, adds games from the browser: pick the destination library, then drop `nsp`, `nsz`, `xci` or `xcz` files (or click to choose them). They go up in chunks, one file at a time, with progress and speed, and can be paused, resumed or cancelled. If the connection drops, the tab is closed or the server restarts, choosing the same file again continues from where it stopped; unfinished uploads are listed in the same window and removed after 7 days without activity. While uploading, the file is a hidden `.part` file in the library folder that scans ignore; once complete it's renamed into place and identified like any other new file. A file whose name is already in the library is refused.
 
@@ -94,7 +94,7 @@ The worker section shows what each worker process is doing right now. How many t
 
 ## Stats page
 
-Admin only. Library-wide figures (files, sizes, verification status, duplicates) and, under `Downloads`, the download history: how many downloads and how much data over the last 7, 30, 90 or 365 days, a per-day chart, the most downloaded titles, counts per user and per client (Tinfoil, Sphaira, CyberFoil or the web UI), and the 50 latest downloads with who took them and from which address.
+Admin only. An overview of the library: games, files, total size and unidentified files; the space each format takes (a donut) and each library (bars - click one for its titles); how much of the library is verified (a ring, with a row per status that lists its files); how much you own of each kind of content (base, updates, DLC); the ten largest files, each linking to its game; the duplicates; and, under `Downloads`, the download history: how many downloads and how much data over the last 7, 30, 90 or 365 days, a per-day chart, the most downloaded titles, counts per user and per client (Tinfoil, Sphaira, CyberFoil or the web UI), and the 50 latest downloads with who took them and from which address.
 
 A file taken again by the same address within a minute counts once, so a console resuming or probing a download isn't counted twice. The history is kept for a year, survives deleting the file it refers to, and can be cleared from the same section (the per-file download counters are kept).
 
