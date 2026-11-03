@@ -56,6 +56,16 @@
                     <p class="page-head__desc">{{ t('settings.page_desc') }}</p>
                 </header>
 
+                <div class="settings-layout">
+                <nav class="settings-index" id="settingsIndex" aria-label="{{ t('settings.index_label') }}">
+                    {%- for id, key, icon in SETTINGS_SECTIONS %}
+                    <a class="settings-index__link" href="#{{ id }}" data-section="{{ id }}">
+                        <i class="bi {{ icon }}" aria-hidden="true"></i><span>{{ t(key) }}</span>
+                    </a>
+                    {%- endfor %}
+                </nav>
+                <div class="settings-sections">
+
                 <section class="surface admin-section settings-section" id="Authentication">
                     {{ section_title('Authentication') }}
 
@@ -974,6 +984,9 @@
                 </div>
 
                 </section>
+
+                </div>{# .settings-sections #}
+                </div>{# .settings-layout #}
 
             </div>
 {% endblock %}

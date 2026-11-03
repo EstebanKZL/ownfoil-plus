@@ -262,3 +262,35 @@ def test_links_into_settings_still_land(admin_client):
     assert targets >= {"Authentication", "Library", "Maintenance", "Notifications"}
     missing = sorted(t for t in targets if f'id="{t}"' not in html)
     assert not missing, missing
+
+
+SETTINGS_ICONS = ["bi-people", "bi-folder", "bi-translate", "bi-image", "bi-shop", "bi-clock", "bi-archive",
+                  "bi-bell", "bi-cpu", "bi-palette", "bi-box-arrow-down", "bi-exclamation-triangle"]
+
+
+def test_settings_index_lists_every_section(admin_client):
+    html = admin_client.get("/admin/settings").get_data(as_text=True)
+    nav = re.search(r'<nav class="settings-index" id="settingsIndex" aria-label="([^"]+)">(.*?)</nav>', html, re.S)
+    assert nav and nav.group(1) == "On this page"
+    links = re.findall(r'<a class="settings-index__link" href="#(\w+)" data-section="(\w+)">\s*<i class="bi ([\w-]+)"',
+                       nav.group(2))
+    assert [l[0] for l in links] == SETTINGS_IDS
+    assert all(href == section for href, section, _ in links)
+    assert [l[2] for l in links] == SETTINGS_ICONS
+    # The index sits beside the sections, both inside the layout.
+    assert html.index('class="settings-layout"') < html.index('id="settingsIndex"') < html.index('class="settings-sections"')
+
+
+def test_settings_index_is_sticky_and_becomes_chips():
+    css = _css()
+    assert re.search(r"(?m)^\.settings-index \{[^}]*position: sticky", css)
+    phone = re.search(r"@media \(max-width: 991\.98px\) \{(.*?)\n\}", css, re.S)
+    phone_blocks = [b for b in re.findall(r"@media \(max-width: 991\.98px\) \{(.*?)\n\}", css, re.S)
+                    if ".settings-index" in b]
+    assert phone_blocks and "overflow-x: auto" in phone_blocks[0]
+    assert re.search(r"@media \(min-width: 992px\) \{\s*\.settings-layout \{[^}]*display: grid", css)
+
+
+def test_anchor_targets_clear_the_sticky_bars():
+    css = _css()
+    assert re.search(r"\.settings-section,\s*\.settings-section \[id\] \{[^}]*scroll-margin-top", css)

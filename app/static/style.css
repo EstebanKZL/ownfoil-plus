@@ -3193,3 +3193,105 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
 .settings-section--danger .admin-section__title {
     color: var(--op-danger);
 }
+
+/* The index: a sticky column beside the sections on desktop, a sticky row of chips
+   under the top bar below 992px. --settings-top is the top bar's height. */
+.settings-page {
+    --settings-top: 4.25rem;
+}
+
+.settings-index {
+    position: sticky;
+    top: var(--settings-top);
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+}
+
+.settings-index__link {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .45rem .75rem;
+    border-radius: var(--op-radius);
+    color: var(--op-text-muted);
+    text-decoration: none;
+    font-size: .9rem;
+    font-weight: 500;
+    transition: background-color var(--op-dur) var(--op-ease), color var(--op-dur) var(--op-ease);
+}
+
+.settings-index__link:hover {
+    color: var(--op-text);
+    background-color: var(--op-surface-2);
+}
+
+.settings-index__link.active {
+    color: var(--op-nav);
+    background-color: rgba(var(--op-nav-rgb), .12);
+    font-weight: 600;
+}
+
+.settings-sections {
+    min-width: 0;
+}
+
+/* A link to a section or to a control inside one lands below the sticky bars. */
+.settings-section,
+.settings-section [id] {
+    scroll-margin-top: calc(var(--settings-top) + 1rem);
+}
+
+@media (min-width: 992px) {
+    .settings-layout {
+        display: grid;
+        grid-template-columns: 14rem minmax(0, 1fr);
+        gap: 1.5rem;
+        align-items: start;
+    }
+
+    .settings-index {
+        max-height: calc(100vh - var(--settings-top) - 1rem);
+        overflow-y: auto;
+    }
+}
+
+@media (max-width: 991.98px) {
+    .settings-index {
+        flex-direction: row;
+        gap: .4rem;
+        overflow-x: auto;
+        scrollbar-width: none;
+        margin: 0 -.75rem 1rem;
+        padding: .5rem .75rem;
+        background-color: rgba(var(--op-surface-0-rgb), .92);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--op-border);
+    }
+
+    .settings-index::-webkit-scrollbar {
+        display: none;
+    }
+
+    .settings-index__link {
+        flex: none;
+        white-space: nowrap;
+        padding: .35rem .8rem;
+        border: 1px solid var(--op-border);
+        border-radius: 999px;
+        background-color: var(--op-surface-1);
+    }
+
+    /* The chip row sits under the top bar too. */
+    .settings-section,
+    .settings-section [id] {
+        scroll-margin-top: calc(var(--settings-top) + 4rem);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .settings-index__link {
+        transition: none;
+    }
+}
