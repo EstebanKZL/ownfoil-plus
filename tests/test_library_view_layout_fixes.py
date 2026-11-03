@@ -81,7 +81,7 @@ def test_filter_group_item_hover_and_focus_have_no_background(client):
 # --- 2. List view: the base-game row always gets its divider line ------------------
 
 def test_the_outer_list_group_is_tagged_list_top_group_but_nested_sections_are_not(client):
-    html = client.get("/").get_data(as_text=True)
+    html = client.get("/static/js/library.js").get_data(as_text=True)  # the page logic, since stage 2
     assert 'list-group list-group-flush list-top-group mt-3' in html
     # The nested Updates/DLC/"older versions" sub-lists must NOT carry the new class -
     # they keep Bootstrap's normal border-between-items behavior.

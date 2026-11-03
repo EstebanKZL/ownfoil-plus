@@ -9,6 +9,13 @@ import fixture
 import pytest
 
 
+def _page_and_js(client):
+    """The page plus static/js/library.js, where its logic lives since stage 2: tests of
+    JS-built content look at both."""
+    return (client.get("/").get_data(as_text=True)
+            + client.get("/static/js/library.js").get_data(as_text=True))
+
+
 @pytest.fixture
 def client(shop_app):
     resp = shop_app.client.post("/login", data={"user": "shopper", "password": fixture.PASSWORDS["shopper"]},
@@ -65,8 +72,7 @@ def test_metadata_edit_ui_is_present(client):
     """The editable-metadata form (backed by the existing setTitleOverride /
     deleteTitleOverride mutations) built for the Fantasy Life i / titledb-incomplete
     scenario - present in the DOM, hidden until an admin opens edit mode."""
-    resp = client.get("/")
-    html = resp.get_data(as_text=True)
+    html = _page_and_js(client)
 
     assert 'id="metadataEditBtn"' in html
     assert 'id="metadataEditFooter"' in html
@@ -147,8 +153,7 @@ def test_metadata_modal_dialog_is_the_larger_size(client):
 
 def test_metadata_modal_html_helpers_are_present(client):
     """The rendering functions and screenshot carousel markup this feature added."""
-    resp = client.get("/")
-    html = resp.get_data(as_text=True)
+    html = _page_and_js(client)
     assert "function metadataDetailRows" in html
     assert "metadataScreenshotCarousel" in html
     assert "carousel-item" in html
@@ -158,8 +163,7 @@ def test_metadata_modal_html_helpers_are_present(client):
 def test_pagination_controls_exist_at_both_top_and_bottom(client):
     """Two identical pagination bars - top one right under the stats line, bottom one
     below the grid - both driven by the same updatePaginationControls() function."""
-    resp = client.get("/")
-    html = resp.get_data(as_text=True)
+    html = _page_and_js(client)
     assert 'id="paginationControlsTop"' in html
     assert 'id="paginationControlsBottom"' in html
     assert "function updatePaginationControls" in html
@@ -176,17 +180,18 @@ def test_library_page_script_is_not_split_by_a_stray_closing_tag(client):
         f"Expected exactly one inline <script>...</script> block, found {len(script_blocks)}")
     body = script_blocks[0]
     assert "const I18N = {" in body
-    assert "function renderListView" in body
-    assert "function renderCardView" in body
-    assert "function openMetadata" in body
+    # The page logic itself lives in static/js/library.js since stage 2.
+    js = client.get("/static/js/library.js").get_data(as_text=True)
+    assert "function renderListView" in js
+    assert "function renderCardView" in js
+    assert "function openMetadata" in js
 
 
 def test_internal_filter_state_identifiers_are_not_accidentally_translated(client):
     """activeOwnershipFilter etc. compare against literal English strings ('Owned',
     'Missing', 'DLC', ...) that are never displayed - only the <label> text wrapping
     them should have changed. Confirm the JS-side comparisons survived untouched."""
-    resp = client.get("/")
-    html = resp.get_data(as_text=True)
+    html = _page_and_js(client)
 
     assert "activeOwnershipFilter === 'Owned'" in html
     assert "activeOwnershipFilter = 'Owned';" in html

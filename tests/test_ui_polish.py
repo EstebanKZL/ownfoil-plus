@@ -46,7 +46,7 @@ def test_narrow_card_info_fills_the_card_and_pins_the_badges():
 
 
 def test_game_cards_are_no_longer_forced_dark():
-    html = _read("app", "templates", "index.html")
+    html = _read("app", "static", "js", "library.js")  # the cards are built there since stage 2
     assert "text-bg-dark game-card" not in html and "text-bg-dark list-game-card" not in html
     assert html.count("card game-surface") == 2
 

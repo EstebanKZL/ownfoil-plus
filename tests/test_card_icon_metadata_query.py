@@ -192,7 +192,7 @@ def test_icons_query_fetches_titledbs_resolved_icon_url(library):
 def _extract_query(js_source, const_name):
     import re
     m = re.search(rf"const {const_name} = `(.*?)`;", js_source, re.DOTALL)
-    assert m, f"{const_name} not found in index.html - the template's own definition may have moved"
+    assert m, f"{const_name} not found in library.js - its own definition may have moved"
     return m.group(1)
 
 
@@ -205,8 +205,8 @@ def test_the_real_template_file_has_syntactically_valid_cards_and_icons_queries(
     *actual* query strings from app/templates/index.html and sends them to the real
     schema, so that specific class of bug can't slip through silently again."""
     import os
-    template_path = os.path.join(os.path.dirname(__file__), "..", "app", "templates", "index.html")
-    with open(template_path) as f:
+    template_path = os.path.join(os.path.dirname(__file__), "..", "app", "static", "js", "library.js")
+    with open(template_path, encoding="utf-8") as f:
         source = f.read()
 
     real_cards_query = _extract_query(source, "CARDS_QUERY")

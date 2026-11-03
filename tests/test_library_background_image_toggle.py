@@ -65,7 +65,7 @@ def test_the_list_view_skips_the_banner_strip_only_when_the_setting_reads_false(
     """Confirms the gate sits on .list-banner-strip specifically, and that .list-cover
     (the icon) has no such gate at all - string-level check on the template's own JS
     source, the same pattern this fork's other template tests already use."""
-    html = client.get("/").get_data(as_text=True)
+    html = client.get("/static/js/library.js").get_data(as_text=True)  # the page logic, since stage 2
     assert "if (t.titleId && t.bannerUrl && SHOW_GAME_BACKGROUND_IMAGE) {" in html
     assert "if (t.titleId && t.iconUrl) {" in html  # .list-cover: no SHOW_GAME_BACKGROUND_IMAGE check
 
@@ -75,7 +75,7 @@ def test_the_list_view_js_toggles_the_no_banner_shadow_class_with_the_same_flag(
     for the heavy text-shadow to fight for contrast against, so renderListView also
     toggles a .no-banner class (lightened in style.css) using the exact same flag -
     never out of sync with whether the banner itself is drawn."""
-    html = client.get("/").get_data(as_text=True)
+    html = client.get("/static/js/library.js").get_data(as_text=True)  # the page logic, since stage 2
     assert ".toggleClass('no-banner', !SHOW_GAME_BACKGROUND_IMAGE)" in html
 
 
