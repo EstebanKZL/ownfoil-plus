@@ -210,3 +210,11 @@ def test_long_file_names_never_widen_the_phone_page():
     subs = " ".join(m.group(1) for m in re.finditer(r"\.chart-row__sub \{([^}]*)\}", css))
     assert "flex: 0 0 auto" not in subs
     assert "overflow-wrap: anywhere" in subs and "min-width: 0" in subs
+
+
+def test_dashboard_columns_and_storage_rows_fit_a_phone():
+    """Found at 375px: the recent lists' unbreakable lines grew their grid column to
+    520px, and the storage figures left the library path 53px wide."""
+    css = _read("app", "static", "style.css")
+    assert re.search(r"\.stat-sections > \* \{[^}]*min-width: 0", css)
+    assert re.search(r"\.dash-storage__head \{[^}]*flex-wrap: wrap", css)

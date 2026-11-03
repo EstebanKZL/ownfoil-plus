@@ -2921,10 +2921,17 @@ a.dash-notice:hover {
     margin-bottom: .9rem;
 }
 
+/* Grid columns shrink below their content's width: a long unbroken line ellipsizes
+   instead of widening a phone page. */
+.stat-sections > * {
+    min-width: 0;
+}
+
 .dash-storage__head {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
-    gap: .75rem;
+    column-gap: .75rem;
     margin-bottom: .3rem;
     font-size: .9rem;
 }
