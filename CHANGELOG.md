@@ -4,6 +4,15 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.48]
+
+- **The weekly image rebuild no longer publishes unreleased work.** Every Monday the
+  Docker workflow rebuilds `latest` to pick up Alpine and Python security patches - but
+  it built whatever was on `main`, so anything merged and not yet released went out as
+  `latest` without a version. It now rebuilds the newest version tag (and runs the tests
+  on that same code); a release still publishes its own tag and `latest` as before. A
+  manual run of the workflow does the same as the schedule.
+
 ## [6.2.5.47]
 
 Housekeeping after the redesign: what it left behind, and the name where people see it.
