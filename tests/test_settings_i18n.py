@@ -213,9 +213,9 @@ def test_compression_preference_select_is_present_and_translated(client):
     assert "Preferir la sin comprimir (nsp/xci)" in html
 
 
-def test_workers_and_backup_sections_both_have_a_leading_divider(client):
-    """Backup previously lacked the <hr class="hr-settings"> every other top-level
-    section uses, making it look stuck onto Workers instead of its own section."""
+def test_workers_and_backup_are_separate_sections(client):
+    """Backup once lacked the divider every other top-level section had, making it look
+    stuck onto Workers. Since stage 5b each section is its own card."""
     client.set_cookie("ownfoil_lang", "es")
     resp = client.get("/admin/settings")
     html = resp.get_data(as_text=True)
@@ -226,8 +226,7 @@ def test_workers_and_backup_sections_both_have_a_leading_divider(client):
     backup_idx = html.index('id="Backup"')
     assert workers_idx < backup_idx
     between = html[workers_idx:backup_idx]
-    assert '<hr class="hr-settings">' in between, (
-        "Expected a divider between Workers and Backup sections")
+    assert "</section>" in between, "Expected Workers' card to close before Backup's"
 
 
 def test_web_clean_record_checkbox_no_longer_exists(client):

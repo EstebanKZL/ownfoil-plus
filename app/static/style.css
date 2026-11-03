@@ -196,11 +196,6 @@ p.game-description {
     color: var(--bs-code-color);
 }
 
-/* hr */
-.hr-settings {
-    margin-top: 2rem !important;
-}
-
 /* ============== Top bar ============== */
 
 .op-topbar {
@@ -3154,4 +3149,47 @@ a.dash-list__row:hover {
 
 .admin-section__title .bi {
     color: var(--op-nav);
+}
+
+/* ============== Settings (stage 5b) ============== */
+
+.settings-section + .settings-section {
+    margin-top: 1rem;
+}
+
+.settings-subhead {
+    margin: 1.5rem 0 .75rem;
+    font-weight: 700;
+    color: var(--op-text);
+}
+
+h3.settings-subhead { font-size: 1.05rem; }
+h4.settings-subhead,
+h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
+
+/* A sub-heading that opens its card needs no space above it. */
+.admin-section__title + .settings-subhead {
+    margin-top: .25rem;
+}
+
+/* Notification channels: cards inside the section card. */
+.settings-inner {
+    padding: 1rem;
+    border-radius: var(--op-radius);
+    border: 1px solid var(--op-border);
+    background-color: var(--op-surface-2);
+}
+
+.settings-inner__title {
+    font-size: .95rem;
+    font-weight: 700;
+    margin-bottom: .75rem;
+}
+
+.settings-section--danger {
+    border-color: var(--op-danger);
+}
+
+.settings-section--danger .admin-section__title {
+    color: var(--op-danger);
 }

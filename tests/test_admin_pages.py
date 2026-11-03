@@ -129,7 +129,8 @@ def test_worker_cards_are_surfaces_with_a_status_dot():
 # --- every element the moved JS looks up still exists --------------------------------------
 
 @pytest.mark.parametrize("url,script", [("/admin/files", "files.js"), ("/admin/tasks", "tasks.js"),
-                                        ("/admin/stats", "stats.js"), ("/admin", "dashboard.js")])
+                                        ("/admin/stats", "stats.js"), ("/admin", "dashboard.js"),
+                                        ("/admin/settings", "settings.js")])
 def test_every_id_the_script_queries_exists(admin_client, url, script):
     js = _js(script)
     queried = set(re.findall(r"getElementById\('([A-Za-z][\w-]*)'\)", js))
@@ -222,3 +223,42 @@ def test_no_admin_yet_forces_the_new_user_access_boxes():
     block = block[:block.index("}")]
     for box in ("checkboxNewUserAdminAccess", "checkboxNewUserShopAccess", "checkboxNewUserBackupAccess"):
         assert box in block, box
+
+
+SETTINGS_IDS = ["Authentication", "Library", "Titles", "Media", "Shop", "Scheduler", "Maintenance",
+                "Notifications", "Workers", "Appearance", "Backup", "Danger"]
+
+
+def test_settings_has_a_page_head(admin_client):
+    html = admin_client.get("/admin/settings").get_data(as_text=True)
+    head = re.search(r'<header class="page-head">(.*?)</header>', html, re.S)
+    assert head and "bi-gear" in head.group(1) and "page-head__title" in head.group(1)
+
+
+def test_settings_sections_are_cards_in_order(admin_client):
+    html = admin_client.get("/admin/settings").get_data(as_text=True)
+    ids = re.findall(r'<section class="surface admin-section settings-section[^"]*" id="(\w+)"', html)
+    assert ids == SETTINGS_IDS
+
+
+def test_settings_has_no_hr_separators(admin_client):
+    assert "hr-settings" not in admin_client.get("/admin/settings").get_data(as_text=True)
+
+
+def test_danger_zone_is_marked(admin_client):
+    html = admin_client.get("/admin/settings").get_data(as_text=True)
+    assert re.search(r'<section class="[^"]*settings-section--danger[^"]*" id="Danger"', html)
+    assert re.search(r"\.settings-section--danger \{[^}]*var\(--op-danger\)", _css())
+
+
+def test_links_into_settings_still_land(admin_client):
+    html = admin_client.get("/admin/settings").get_data(as_text=True)
+    targets = set()
+    for folder in (("app", "templates"), ("app", "static", "js")):
+        path = os.path.join(ROOT, *folder)
+        for name in os.listdir(path):
+            if name.endswith((".html", ".js")):
+                targets |= set(re.findall(r"/admin/settings#([A-Za-z]\w*)", _read(*folder, name)))
+    assert targets >= {"Authentication", "Library", "Maintenance", "Notifications"}
+    missing = sorted(t for t in targets if f'id="{t}"' not in html)
+    assert not missing, missing

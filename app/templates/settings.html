@@ -1,6 +1,26 @@
 {% extends "settings_layout.html" %}
 {% block panel %}
-            <div class="settings-container container mt-3">
+{#- One list drives the index and every section heading, so the two can't drift. -#}
+{%- set SETTINGS_SECTIONS = [
+    ('Authentication', 'auth.heading', 'bi-people'),
+    ('Library', 'sections.library', 'bi-folder'),
+    ('Titles', 'sections.titles', 'bi-translate'),
+    ('Media', 'sections.media', 'bi-image'),
+    ('Shop', 'sections.shop', 'bi-shop'),
+    ('Scheduler', 'sections.scheduler', 'bi-clock'),
+    ('Maintenance', 'sections.maintenance', 'bi-archive'),
+    ('Notifications', 'sections.notifications', 'bi-bell'),
+    ('Workers', 'sections.workers', 'bi-cpu'),
+    ('Appearance', 'sections.appearance', 'bi-palette'),
+    ('Backup', 'backup.heading', 'bi-box-arrow-down'),
+    ('Danger', 'danger.heading', 'bi-exclamation-triangle'),
+] %}
+{%- macro section_title(section_id) -%}
+{%- for id, key, icon in SETTINGS_SECTIONS if id == section_id -%}
+<h2 class="admin-section__title"><i class="bi {{ icon }}" aria-hidden="true"></i> <span>{{ t(key) }}</span></h2>
+{%- endfor -%}
+{%- endmacro %}
+            <div class="settings-container container-fluid admin-page settings-page mt-3">
 
                 {% if admin_account_created == false %}
                 <div class="alert alert-danger" role="alert">
@@ -30,7 +50,14 @@
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
 
-                <h2 id="Authentication">{{ t('auth.heading') }}</h2>
+                <header class="page-head">
+                    <span class="page-head__icon"><i class="bi bi-gear" aria-hidden="true"></i></span>
+                    <h2 class="page-head__title">{{ t('settings_nav.settings') }}</h2>
+                    <p class="page-head__desc">{{ t('settings.page_desc') }}</p>
+                </header>
+
+                <section class="surface admin-section settings-section" id="Authentication">
+                    {{ section_title('Authentication') }}
 
                 <div class="table-responsive">
                     <table class="table table-hover caption-top" id="userTable">
@@ -153,11 +180,12 @@
                     </div>
                 </div>
 
-                <hr class="hr-settings">
+                </section>
 
-                <h2 id="Library">{{ t('sections.library') }}</h2>
+                <section class="surface admin-section settings-section" id="Library">
+                    {{ section_title('Library') }}
 
-                <h3 class="pt-3 pb-2">{{ t('lib.paths_heading') }}</h3>
+                <h3 class="settings-subhead">{{ t('lib.paths_heading') }}</h3>
                 <p class="mb-2">{{ t('lib.paths_desc') }}</p>
                 <div class="table-responsive">
                     <table class="table table-hover caption-top" id="pathsTable">
@@ -224,7 +252,7 @@
                     </div>
                 </div>
 
-                <h3 class="pt-4 pb-2">{{ t('lib.watcher_heading') }}</h3>
+                <h3 class="settings-subhead">{{ t('lib.watcher_heading') }}</h3>
                 <p>{{ t('lib.watcher_desc') }}</p>
                 <div class="row g-3 align-items-center mb-3">
                     <div class="col-auto">
@@ -247,7 +275,7 @@
                 <button type="button" id="submitWatcherSettingsBtn" class="btn btn-primary mb-3"
                     onClick='submitWatcherSettings()'>{{ t('lib.save') }}</button>
 
-                <h3 class="pt-4 pb-2">{{ t('lib.management_heading') }}</h3>
+                <h3 class="settings-subhead">{{ t('lib.management_heading') }}</h3>
                 <p>{{ t('lib.management_desc') }}</p>
                 <div class="mb-3 form-check form-switch">
                     <input type="checkbox" class="form-check-input" id="deleteOlderUpdatesCheck">
@@ -284,7 +312,7 @@
                     <div class="form-text">{{ t('lib.compression_preference_help') }}</div>
                 </div>
 
-                <h4 class="py-2">{{ t('sections.compression') }}</h4>
+                <h4 class="settings-subhead">{{ t('sections.compression') }}</h4>
                 <p>{{ t('compression.desc') }}</p>
                 <div class="row">
                     <div class="col-7">
@@ -345,7 +373,7 @@
                     </div>
                 </div>
 
-                <h4 class="py-2">{{ t('sections.verification') }}</h4>
+                <h4 class="settings-subhead">{{ t('sections.verification') }}</h4>
                 <p>{{ t('verification.desc') }}</p>
                 <div class="row">
                     <div class="col-7">
@@ -374,7 +402,7 @@
                     </div>
                 </div>
 
-                <h4 class="py-2">{{ t('sections.organizer') }}</h4>
+                <h4 class="settings-subhead">{{ t('sections.organizer') }}</h4>
                 <p>{{ t('organizer.desc') }}</p>
                 <div class="row">
                     <div class="col-7">
@@ -420,7 +448,7 @@
                     </div>
                 </div>
 
-                <h5 class="pb-3 pt-2">{{ t('templates.heading') }}</h5>
+                <h5 class="settings-subhead">{{ t('templates.heading') }}</h5>
                 <p>{{ t('templates.desc') }}</p>
                 <div class="row">
                     <div class="col-7">
@@ -466,8 +494,10 @@
                         onClick='submitLibraryManagementSettings()'>{{ t('lib.submit') }}</button>
                 </div>
 
-                <hr class="hr-settings">
-                <h2 class="pb-2" id="Titles">{{ t('sections.titles') }}</h2>
+                </section>
+
+                <section class="surface admin-section settings-section" id="Titles">
+                    {{ section_title('Titles') }}
                 <p>{{ t('titles.desc') }}</p>
                 <div class="row mb-4">
                     <div class="col">
@@ -508,9 +538,10 @@
                         onClick='submitTitlesSettings()'>{{ t('lib.submit') }}</button>
                 </div>
                 </form>
-                <hr class="hr-settings">
+                </section>
 
-                <h2 class="pb-2" id="Media">{{ t('sections.media') }}</h2>
+                <section class="surface admin-section settings-section" id="Media">
+                    {{ section_title('Media') }}
                 <p>{{ t('media.desc') }}</p>
                 <div class="mb-3 form-check form-switch">
                     <input type="checkbox" class="form-check-input" id="localMediaEnabledCheck">
@@ -543,9 +574,10 @@
                     <button type="button" id="submitLocalMediaSettingsBtn" class="btn btn-primary"
                         onClick='submitLocalMediaSettings()'>{{ t('media.submit') }}</button>
                 </div>
-                <hr class="hr-settings">
+                </section>
 
-                <h2 class="pb-2" id="Shop">{{ t('sections.shop') }}</h2>
+                <section class="surface admin-section settings-section" id="Shop">
+                    {{ section_title('Shop') }}
                 <p>{{ t('shop.desc') }}</p>
                 <!-- Shop name -->
                 <div class="mb-3">
@@ -574,8 +606,8 @@
                     <div id="shopMotdTextAreaHelp" class="form-text">{{ t('shop.motd_help') }}</div>
                 </div>
 
-                <h4 class="pt-3 pb-2">{{ t('sections.clients') }}</h4>
-                <h5 class="pb-2">{{ t('clients.tinfoil') }}</h5>
+                <h4 class="settings-subhead">{{ t('sections.clients') }}</h4>
+                <h5 class="settings-subhead">{{ t('clients.tinfoil') }}</h5>
                 <div class="mb-3 form-check form-switch">
                     <input type="checkbox" class="form-check-input" id="tinfoilEnabledCheck"
                         aria-describedby="tinfoilEnabledCheckHelp">
@@ -589,7 +621,7 @@
                     <div id="tinfoilEncryptShopCheckHelp" class="form-text">{{ t('clients.encrypt_shop_help') }}</div>
                 </div>
 
-                <h5 class="pb-2">{{ t('clients.sphaira') }}</h5>
+                <h5 class="settings-subhead">{{ t('clients.sphaira') }}</h5>
                 <div class="mb-3 form-check form-switch">
                     <input type="checkbox" class="form-check-input" id="sphairaEnabledCheck"
                         aria-describedby="sphairaEnabledCheckHelp">
@@ -597,7 +629,7 @@
                     <div id="sphairaEnabledCheckHelp" class="form-text">{{ t('clients.sphaira_enabled_help') }}</div>
                 </div>
 
-                <h5 class="pb-2">{{ t('clients.cyberfoil') }}</h5>
+                <h5 class="settings-subhead">{{ t('clients.cyberfoil') }}</h5>
                 <div class="mb-3 form-check form-switch">
                     <input type="checkbox" class="form-check-input" id="cyberfoilEnabledCheck"
                         aria-describedby="cyberfoilEnabledCheckHelp">
@@ -611,8 +643,10 @@
                 </div>
 
                 
-                <hr class="hr-settings">
-                <h2 class="pb-2" id="Scheduler">{{ t('sections.scheduler') }}</h2>
+                </section>
+
+                <section class="surface admin-section settings-section" id="Scheduler">
+                    {{ section_title('Scheduler') }}
                 <p>{{ t('scheduler.desc') | safe }}</p>
                 <div class="row mb-3">
                     <div class="col-12 col-md-6">
@@ -628,8 +662,10 @@
                         onClick='submitSchedulerSettings()'>{{ t('lib.submit') }}</button>
                 </div>
 
-                <hr class="hr-settings">
-                <h2 class="pb-2" id="Maintenance">{{ t('sections.maintenance') }}</h2>
+                </section>
+
+                <section class="surface admin-section settings-section" id="Maintenance">
+                    {{ section_title('Maintenance') }}
                 <p>{{ t('maint.desc') }}</p>
                 <div class="row g-3 mb-3 align-items-center">
                     <div class="col-auto">
@@ -647,7 +683,7 @@
                     <div class="col-auto small text-secondary" id="maintNextRun"></div>
                 </div>
 
-                <h3 class="h5 pt-2">{{ t('maint.actions_heading') }}</h3>
+                <h3 class="settings-subhead">{{ t('maint.actions_heading') }}</h3>
                 <div class="mb-2 d-flex flex-wrap align-items-center gap-2">
                     <div class="form-check mb-0">
                         <input class="form-check-input" type="checkbox" id="maintBackupCheck">
@@ -679,7 +715,7 @@
                     <span id="maintFeedback" class="small"></span>
                 </div>
 
-                <h3 class="h5 pt-2">{{ t('maint.backups_heading') }}</h3>
+                <h3 class="settings-subhead">{{ t('maint.backups_heading') }}</h3>
                 <div class="mb-2">
                     <button type="button" id="backupNowBtn" class="btn btn-outline-secondary btn-sm"><i class="bi bi-archive"></i> {{ t('maint.backup_now') }}</button>
                     <span id="backupFeedback" class="small ms-2"></span>
@@ -698,8 +734,10 @@
                 </div>
                 <p class="form-text">{{ t('maint.restore_hint') | safe }}</p>
 
-                <hr class="hr-settings">
-                <h2 class="pb-2" id="Notifications">{{ t('sections.notifications') }}</h2>
+                </section>
+
+                <section class="surface admin-section settings-section" id="Notifications">
+                    {{ section_title('Notifications') }}
                 <p>{{ t('notif.desc') }}</p>
                 <div class="row g-3 mb-3 align-items-center">
                     <div class="col-auto">
@@ -719,7 +757,7 @@
                     </div>
                 </div>
 
-                <h3 class="h5 pt-2">{{ t('notif.events_heading') }}</h3>
+                <h3 class="settings-subhead">{{ t('notif.events_heading') }}</h3>
                 <div class="mb-3">
                     {% for event in ['file_added', 'update_available', 'file_corrupt', 'task_failed'] %}
                     <div class="form-check">
@@ -729,27 +767,27 @@
                     {% endfor %}
                 </div>
 
-                <h3 class="h5 pt-2">{{ t('notif.channels_heading') }}</h3>
+                <h3 class="settings-subhead">{{ t('notif.channels_heading') }}</h3>
                 <div class="row g-3 mb-3">
                     <div class="col-12 col-xl-6">
-                        <div class="card h-100"><div class="card-body">
+                        <div class="settings-inner h-100"><div>
                             <div class="form-check form-switch float-end">
                                 <input class="form-check-input notif-provider" type="checkbox" role="switch" id="notifDiscordEnabled" data-provider="discord">
                                 <label class="form-check-label" for="notifDiscordEnabled">{{ t('notif.provider_enabled') }}</label>
                             </div>
-                            <h4 class="h6 card-title"><i class="bi bi-discord"></i> Discord</h4>
+                            <h4 class="settings-inner__title"><i class="bi bi-discord"></i> Discord</h4>
                             <label for="notifDiscordWebhook" class="form-label">{{ t('notif.discord_webhook') }}</label>
                             <input type="password" class="form-control" id="notifDiscordWebhook" autocomplete="off" placeholder="https://discord.com/api/webhooks/...">
                             <div class="form-text">{{ t('notif.discord_help') }}</div>
                         </div></div>
                     </div>
                     <div class="col-12 col-xl-6">
-                        <div class="card h-100"><div class="card-body">
+                        <div class="settings-inner h-100"><div>
                             <div class="form-check form-switch float-end">
                                 <input class="form-check-input notif-provider" type="checkbox" role="switch" id="notifTelegramEnabled" data-provider="telegram">
                                 <label class="form-check-label" for="notifTelegramEnabled">{{ t('notif.provider_enabled') }}</label>
                             </div>
-                            <h4 class="h6 card-title"><i class="bi bi-telegram"></i> Telegram</h4>
+                            <h4 class="settings-inner__title"><i class="bi bi-telegram"></i> Telegram</h4>
                             <div class="row g-2">
                                 <div class="col-7">
                                     <label for="notifTelegramToken" class="form-label">{{ t('notif.telegram_token') }}</label>
@@ -764,12 +802,12 @@
                         </div></div>
                     </div>
                     <div class="col-12 col-xl-6">
-                        <div class="card h-100"><div class="card-body">
+                        <div class="settings-inner h-100"><div>
                             <div class="form-check form-switch float-end">
                                 <input class="form-check-input notif-provider" type="checkbox" role="switch" id="notifNtfyEnabled" data-provider="ntfy">
                                 <label class="form-check-label" for="notifNtfyEnabled">{{ t('notif.provider_enabled') }}</label>
                             </div>
-                            <h4 class="h6 card-title"><i class="bi bi-bell"></i> ntfy</h4>
+                            <h4 class="settings-inner__title"><i class="bi bi-bell"></i> ntfy</h4>
                             <div class="row g-2">
                                 <div class="col-7">
                                     <label for="notifNtfyServer" class="form-label">{{ t('notif.ntfy_server') }}</label>
@@ -788,12 +826,12 @@
                         </div></div>
                     </div>
                     <div class="col-12 col-xl-6">
-                        <div class="card h-100"><div class="card-body">
+                        <div class="settings-inner h-100"><div>
                             <div class="form-check form-switch float-end">
                                 <input class="form-check-input notif-provider" type="checkbox" role="switch" id="notifWebhookEnabled" data-provider="webhook">
                                 <label class="form-check-label" for="notifWebhookEnabled">{{ t('notif.provider_enabled') }}</label>
                             </div>
-                            <h4 class="h6 card-title"><i class="bi bi-braces"></i> Webhook</h4>
+                            <h4 class="settings-inner__title"><i class="bi bi-braces"></i> Webhook</h4>
                             <label for="notifWebhookUrl" class="form-label">{{ t('notif.webhook_url') }}</label>
                             <input type="password" class="form-control" id="notifWebhookUrl" autocomplete="off" placeholder="https://...">
                             <div class="form-text">{{ t('notif.webhook_help') }}</div>
@@ -807,8 +845,10 @@
                     <span id="notifFeedback" class="small"></span>
                 </div>
 
-                <hr class="hr-settings">
-                <h2 class="pb-2" id="Workers">{{ t('sections.workers') }}</h2>
+                </section>
+
+                <section class="surface admin-section settings-section" id="Workers">
+                    {{ section_title('Workers') }}
                 <p>{{ t('workers.desc') }}</p>
                 <div class="row mb-3">
                     <div class="col-12 col-md-6">
@@ -849,8 +889,10 @@
                         onClick='submitWorkerSettings()'>{{ t('lib.submit') }}</button>
                 </div>
 
-                <hr class="hr-settings">
-                <h2 class="pb-2" id="Appearance">{{ t('sections.appearance') }}</h2>
+                </section>
+
+                <section class="surface admin-section settings-section" id="Appearance">
+                    {{ section_title('Appearance') }}
                 <p class="text-secondary">{{ t('appearance.desc') }}</p>
                 <fieldset class="style-picker mb-2">
                     <legend class="form-label fs-6">{{ t('appearance.default_style') }}</legend>
@@ -864,8 +906,10 @@
                 </fieldset>
                 <p class="small mb-3" id="appearanceFeedback" role="status"></p>
 
-                <hr class="hr-settings">
-                <h2 class="pb-2" id="Backup">{{ t('backup.heading') }}</h2>
+                </section>
+
+                <section class="surface admin-section settings-section" id="Backup">
+                    {{ section_title('Backup') }}
                 <p class="text-secondary">{{ t('backup.description') }}</p>
                 <div class="row g-3 align-items-end">
                     <div class="col-auto">
@@ -891,9 +935,11 @@
                     </div>
                 </div>
 
-                <hr class="hr-settings">
-                <h2 class="pb-2">{{ t('danger.heading') }}</h2>
-                <div class="border border-danger rounded p-3">
+                </section>
+
+                <section class="surface admin-section settings-section settings-section--danger" id="Danger">
+                    {{ section_title('Danger') }}
+                <div>
                     <p class="text-secondary mb-2">{{ t('danger.reset_description') }}</p>
                     <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#resetLibraryModal">
                         <i class="bi bi-exclamation-triangle"></i> {{ t('danger.reset_button') }}
@@ -926,6 +972,8 @@
                         </div>
                     </div>
                 </div>
+
+                </section>
 
             </div>
 {% endblock %}

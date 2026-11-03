@@ -344,6 +344,8 @@ TRANSLATIONS = {
         'es': 'Listo — se olvidaron {n} archivo(s). Corré un escaneo para redescubrir tu biblioteca.'},
     'danger.reset_failed': {'en': 'Could not reset.', 'es': 'No se pudo resetear.'},
 
+    'settings.page_desc': {'en': 'Everything your server does, section by section.', 'es': 'Todo lo que hace tu servidor, sección por sección.'},
+    'settings.index_label': {'en': 'On this page', 'es': 'En esta página'},
     'settings.missing_admin_heading': {'en': 'Missing admin account!', 'es': '¡Falta la cuenta de administrador!'},
     'settings.missing_admin_body': {
         'en': 'Ownfoil-Plus requires an admin account to enable authentication. Until an account with admin rights is created, authentication is disabled, anyone can access and change the configuration of your shop!',
