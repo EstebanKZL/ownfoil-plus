@@ -4,6 +4,31 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.47]
+
+Housekeeping after the redesign: what it left behind, and the name where people see it.
+
+- **The Ownfoil-Plus name everywhere it shows.** The Statistics page still said
+  "files *ownfoil* could not match"; the Helm chart was still called `ownfoil` and
+  pointed at the upstream repository, and its install command used `Ownfoil-Plus` as
+  the release name - which Helm rejects, release names are lowercase - so it's
+  `ownfoil-plus` now. The Compose service, the dev container and the container's start
+  message say Ownfoil-Plus too. Names that existing installs depend on stay as they
+  were: the `OWNFOIL_*` variables, `ownfoil.db` and the backup file names, the
+  `ownfoil_*` Prometheus metrics, the LAN discovery handshake Sphaira answers to, the
+  style id saved in settings and the `ownfoil` command.
+- **A broken link fixed**: `Install.md` sent "First steps" to `Usage.md#using-ownfoil`,
+  a heading that had become "Using Ownfoil-Plus". A test now checks every link into
+  `Usage.md`.
+- **Dead code out**: the styles of the old Library card overlay and of the old details
+  modal (replaced by the game page), a leftover Files suggestion menu, and 24
+  translations nothing used anymore. Tests now fail if a style or a translation is left
+  unused like that again.
+- **The redesign's planning notes** (`docs/superpowers/`) are no longer shipped; they
+  stay in the git history, and the changelog explains each stage.
+- The branches of merged pull requests were deleted from GitHub; `main` and Dependabot's
+  open ones remain.
+
 ## [6.2.5.46]
 
 A new design for the web UI, built in five stages, inspired by

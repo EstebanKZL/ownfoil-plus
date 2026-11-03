@@ -37,14 +37,6 @@ def admin_client(shop_app):
 
 # --- game cards ----------------------------------------------------------------------
 
-def test_narrow_card_info_fills_the_card_and_pins_the_badges():
-    block = _block(_read("app", "static", "style.css"), "@container game-card (max-width: 340px)")
-    info = re.search(r"\.game-info \{([^}]*)\}", block).group(1)
-    assert "flex: 1 1 auto" in info and "position: static" in info
-    tags = re.search(r"\.tags-container \{([^}]*)\}", block).group(1)
-    assert "margin-top: auto" in tags
-
-
 def test_game_cards_are_no_longer_forced_dark():
     html = _read("app", "static", "js", "library.js")  # the cards are built there since stage 2
     assert "text-bg-dark game-card" not in html and "text-bg-dark list-game-card" not in html
@@ -65,7 +57,7 @@ def test_light_theme_is_soft_not_stark_white():
 
 def test_light_theme_covers_the_game_cards():
     css = _read("app", "static", "style.css")
-    for selector in ("[data-bs-theme=light] .game-surface", "[data-bs-theme=light] .game-info",
+    for selector in ("[data-bs-theme=light] .game-surface",
                      "[data-bs-theme=light] .game-title", "[data-bs-theme=light] .list-card-body"):
         assert selector + " {" in css, selector
 

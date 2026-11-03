@@ -17,7 +17,7 @@ if ! command -v uv >/dev/null 2>&1; then
 fi
 uv --version
 
-# 2. Install the Python version used by the Ownfoil image (see Dockerfile)
+# 2. Install the Python version used by the Ownfoil-Plus image (see Dockerfile)
 echo "Installing Python ${PYTHON_VERSION}..."
 uv python install "${PYTHON_VERSION}"
 
@@ -33,7 +33,7 @@ uv pip install --python "${VENV_DIR}/bin/python" --requirement "${REPO_DIR}/requ
 for rc in "${HOME}/.bashrc" "${HOME}/.zshrc"; do
     [ -f "${rc}" ] || continue
     grep -qxF "source ${VENV_DIR}/bin/activate" "${rc}" || {
-        printf '\n# Activate the Ownfoil virtualenv\nsource %s/bin/activate\n' "${VENV_DIR}" >> "${rc}"
+        printf '\n# Activate the Ownfoil-Plus virtualenv\nsource %s/bin/activate\n' "${VENV_DIR}" >> "${rc}"
     }
 done
 

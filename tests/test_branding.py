@@ -133,4 +133,4 @@ def test_notice_credits_upstream_and_the_design_inspiration():
         assert "NOTICE.md" in f.read()
     with open(os.path.join(root, "CHANGELOG.md"), encoding="utf-8") as f:
         changelog = f.read()
-    assert changelog.index("## [6.2.5.46]") < changelog.index("## [6.2.5.45]")
+    assert changelog.index("## [6.2.5.47]") < changelog.index("## [6.2.5.46]") < changelog.index("## [6.2.5.45]")

@@ -134,7 +134,7 @@ package - `tests/conftest.py` puts `app/` on `sys.path`.
 
 ## Status and pending work
 
-Done through 6.2.5.46: security hardening, CI, health check, offline UI, notifications,
+Done through 6.2.5.47: security hardening, CI, health check, offline UI, notifications,
 daily maintenance + backups, download history, resumable web uploads, dashboard, PWA,
 light/dark theme, Ctrl+K search, mobile layout, DB indexes, Prometheus metrics, UI
 polish, dependency/image vulnerability fixes, Dependabot, the SLMW-inspired redesign

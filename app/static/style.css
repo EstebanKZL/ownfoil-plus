@@ -1,52 +1,13 @@
-/* body {
-    font-family: Arial, sans-serif;
-    background-color: #2a3a4f;
-    color: #8d97ad;
-} */
-
 .grid-container {
     padding: 20px;
 }
 
-/* Lets the @container rule below react to this card's own rendered width, not the
-   viewport's - the card-size slider can put 6 or 8 of these in a row, so a card can
-   be phone-narrow on a wide desktop window just as easily as on a phone. */
-.game-card {
-    container-type: inline-size;
-    container-name: game-card;
-}
-
-.game-info {
-    bottom: 0;
-    left: 0;
-    text-align: left !important;
-    /* background-image: linear-gradient(to top, rgba(7, 0, 91, 0.49), #003aa800); */
-    background-image: linear-gradient(to top, rgba(7, 0, 91, 0.71), #001233a1);
-    padding: 10px;
-    border-radius: 0 0 8px 8px;
-    border-top: 1px solid #d5d5d5bd;
-    top: unset;
-}
-
-.game-tag {
-    font-size: 1em;
-    margin-right: 5px;
-}
-
 .card {
     border-radius: 8px !important;
-    /* linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent 50%), */
-}
-
-.card-img {
-    mask-image: linear-gradient(to top, rgba(7, 0, 91, 0.71), #001233ed);
-    border-bottom-right-radius: 8px;
-    border-bottom-left-radius: 8px;
 }
 
 .game-title {
     font-size: 1.1rem;
-    /* font-size: 18px; */
     font-weight: bold;
     margin-bottom: 5px;
     color: white;
@@ -57,61 +18,11 @@ p.game-description {
     font-size: 0.875rem;
 }
 
-.tags-container {
-    position: absolute;
-    bottom: 10px;
-    right: 10px;
-    margin-top: 10px;
-}
-
-/* A title id is one unbreakable 16-character token: without this it pushes the
-   overlay wider than the card and hangs off its edge. */
+/* A title id is one unbreakable 16-character token: without this it pushes its
+   box wider than the card and hangs off its edge. */
 .game-title,
 p.game-description {
     overflow-wrap: break-word;
-}
-
-/* The metadata can only be an overlay while the card is wide enough to hold it. Below
-   that width the title wraps to several lines, the overlay outgrows the image it is
-   anchored to, and the badges - placed from the card's own corner - land on top of
-   that text. Below the threshold it stops being an overlay and becomes a block under
-   the banner, where growing costs nothing.
-
-   This keys off the card's own rendered width (via the @container on .game-card
-   above), not the viewport's: the card-size slider can pack 6-8 cards per row, so an
-   individual card goes just as narrow on a wide desktop window as it does on a phone
-   - a plain viewport media query only ever caught the phone case. */
-@container game-card (max-width: 340px) {
-    /* Cards in a row stretch to the tallest one (.col-* > .card { flex: 1 }); without
-       growing too, the info block stopped where its own text did and left a bare strip
-       of card under it - the "cut off" look. It now fills the card, badges at the
-       bottom. */
-    .game-info {
-        position: static;
-        flex: 1 1 auto;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .card-img {
-        /* The fade was there to keep text legible over the banner; nothing sits on it
-           once the metadata is below. */
-        mask-image: none;
-        border-bottom-right-radius: 0;
-        border-bottom-left-radius: 0;
-    }
-
-    .tags-container {
-        position: static;
-        display: flex;
-        justify-content: flex-end;
-        margin-top: auto;
-        padding-top: .5rem;
-    }
-
-    .game-tag:last-child {
-        margin-right: 0;
-    }
 }
 
 .btn-outline-info {
@@ -151,41 +62,6 @@ p.game-description {
 }
 .version-popover-list > div:last-child {
     border-bottom: none;
-}
-
-/* Metadata modal: icon + label + value detail rows, and the screenshot carousel */
-.metadata-detail-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-    padding: 0.4rem 0;
-    border-bottom: 1px solid var(--bs-border-color-translucent);
-}
-.metadata-detail-row:last-child {
-    border-bottom: none;
-}
-.metadata-detail-icon {
-    color: var(--bs-primary);
-    font-size: 1.05rem;
-    margin-top: 0.15rem;
-    flex-shrink: 0;
-    width: 1.25rem;
-    text-align: center;
-}
-.metadata-detail-text {
-    min-width: 0;
-}
-.metadata-detail-label {
-    line-height: 1.1;
-}
-.metadata-detail-value {
-    word-break: break-word;
-}
-#metadataScreenshotCarousel .carousel-item img {
-    border-radius: var(--bs-border-radius);
-    max-height: 320px;
-    object-fit: cover;
-    width: 100%;
 }
 
 /* Input code form */
@@ -1782,17 +1658,6 @@ button.stat-tile:hover {
     white-space: nowrap;
 }
 
-.files-suggest {
-    position: fixed;
-    max-width: 28rem;
-    font-size: .8rem;
-}
-
-.files-suggest .dropdown-item {
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
 .files-sortable {
     cursor: pointer;
     user-select: none;
@@ -2220,11 +2085,6 @@ button.stat-tile:hover {
     background-color: var(--op-surface-1);
     color: var(--op-text);
     border-color: var(--op-border);
-}
-
-[data-bs-theme=light] .game-info {
-    background-image: linear-gradient(to top, rgba(247, 245, 240, .98), rgba(247, 245, 240, .9));
-    border-top-color: #d5d1c7;
 }
 
 [data-bs-theme=light] .game-title {
