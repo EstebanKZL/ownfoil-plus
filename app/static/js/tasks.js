@@ -312,7 +312,7 @@ function renderWorkers() {
         const head = textNode('div', 'worker-card__head');
         const name = textNode('span', 'worker-card__name');
         name.append(textNode('span', `worker-dot worker-dot--${state}`), I18N.workerN.replace('{n}', worker.id));
-        head.append(name, textNode('span', 'worker-card__state', worker.alive ? I18N.alive : I18N.stopped));
+        head.append(name, textNode('span', worker.alive ? 'worker-card__state' : 'worker-card__state worker-card__state--stopped', worker.alive ? I18N.alive : I18N.stopped));
         card.append(head, textNode('div', 'worker-card__pid', I18N.pid.replace('{pid}', worker.pid ?? '—')));
         const slot = textNode('div', 'worker-task');
         if (task) {

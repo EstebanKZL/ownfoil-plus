@@ -110,8 +110,8 @@ def test_task_states_have_their_tones():
     css = _css()
     assert re.search(r"\.task-progress \{[^}]*background-color: var\(--op-chart-track\)", css)
     assert re.search(r"\.task-progress \.progress-bar \{[^}]*background-color: var\(--op-nav\)", css)
-    assert re.search(r"\.task-list--failed \.task-row \{[^}]*var\(--op-danger", css)
-    assert re.search(r"\.task-list--scheduled \.task-row \{[^}]*var\(--op-wait", css)
+    assert re.search(r"\.task-list--failed > \.task-row \{[^}]*var\(--op-danger", css)
+    assert re.search(r"\.task-list--scheduled > \.task-row \{[^}]*var\(--op-wait", css)
 
 
 def test_worker_cards_are_surfaces_with_a_status_dot():
@@ -122,7 +122,7 @@ def test_worker_cards_are_surfaces_with_a_status_dot():
     # Task names and worker data go in as text, not HTML.
     assert "innerHTML = `" not in body
     css = _css()
-    for state, token in (("busy", "--op-nav"), ("idle", "--op-ok"), ("offline", "--op-text-muted")):
+    for state, token in (("busy", "--op-nav"), ("idle", "--op-ok"), ("offline", "--op-danger")):
         assert re.search(rf"\.worker-dot--{state} \{{[^}}]*var\({token}\)", css), state
 
 
@@ -155,3 +155,39 @@ def test_a_long_task_error_ellipsizes_and_keeps_the_full_text_in_a_tooltip():
     assert re.search(r"\.task-meta \{[^}]*min-width: 0[^}]*text-overflow: ellipsis", css)
     js = _read("app", "static", "js", "tasks.js")
     assert "meta.title = meta.textContent" in js
+
+
+# --- Final review fixes -----------------------------------------------------------------
+
+def test_files_info_tone_is_its_own_token_not_the_style_accent():
+    """Neon's accent is red: an info pill ("Signature ok") built from it read as an error."""
+    tokens = _read("app", "static", "css", "tokens.css")
+    assert len(re.findall(r"--op-info: #[0-9a-f]{6};", tokens)) == 2      # dark and light
+    assert len(re.findall(r"--op-info-rgb: \d+, \d+, \d+;", tokens)) == 2
+    css = _css()
+    assert "--files-info: var(--op-info);" in css
+    assert "--files-info-bg: rgba(var(--op-info-rgb), .12);" in css
+
+
+def test_state_edges_only_paint_top_level_task_rows():
+    """Sub-tasks nest inside a failed parent's row; they keep their own look."""
+    css = _css()
+    assert ".task-list--failed > .task-row" in css
+    assert ".task-list--scheduled > .task-row" in css
+    assert not re.search(r"\.task-list--(failed|scheduled) \.task-row", css)
+
+
+def test_a_stopped_worker_is_shown_in_the_danger_color():
+    css = _css()
+    assert ".worker-dot--offline { background-color: var(--op-danger); }" in css
+    assert re.search(r"\.worker-card__state--stopped \{[^}]*color: var\(--op-danger\)", css)
+    js = _read("app", "static", "js", "tasks.js")
+    assert "worker-card__state--stopped" in js
+
+
+def test_a_tile_with_broken_files_glows_in_the_danger_color():
+    """The Dashboard's "N corrupt" alert lands on the verification tile: it was green."""
+    js = _read("app", "static", "js", "files.js")
+    assert "tile.dataset.tone = alert ? tone : '';" in js
+    css = _css()
+    assert re.search(r'\.files-tile\[data-tone="danger"\] \{ --tile: var\(--op-danger\); --tile-rgb: var\(--op-danger-rgb\); \}', css)

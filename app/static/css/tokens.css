@@ -11,6 +11,7 @@
  *   --op-wait    amber  something waits for you: an update, missing DLC, a step to do
  *   --op-fav     gold   favorites
  *   --op-danger  red    errors, destructive actions
+ *   --op-info    blue   neutral facts: a check that passed, work being processed
  * A style only changes the navigation accent (active page, filters, focus), the action
  * color (primary buttons) and the soft glows behind page headers.
  *
@@ -58,6 +59,8 @@
     --op-fav-rgb: 242, 181, 29;
     --op-danger: #f85149;
     --op-danger-rgb: 248, 81, 73;
+    --op-info: #58a6ff;
+    --op-info-rgb: 88, 166, 255;
 }
 
 /* The soft warm light theme Ownfoil-Plus already had, now as tokens. */
@@ -82,6 +85,8 @@
     --op-fav-rgb: 154, 112, 0;
     --op-danger: #cf222e;
     --op-danger-rgb: 207, 34, 46;
+    --op-info: #0969da;
+    --op-info-rgb: 9, 105, 218;
 }
 
 /* --- Styles ----------------------------------------------------------------------- */

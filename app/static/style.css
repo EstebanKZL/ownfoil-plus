@@ -494,17 +494,18 @@ p.game-description {
 }
 
 /* Failed and scheduled rows carry their state's color on the edge. */
-.task-list--failed .task-row,
-.task-list--scheduled .task-row {
+/* Top-level rows only: a failed parent's finished sub-tasks keep their own look. */
+.task-list--failed > .task-row,
+.task-list--scheduled > .task-row {
     padding-left: .6rem;
     border-left: 3px solid var(--op-border);
 }
 
-.task-list--failed .task-row {
+.task-list--failed > .task-row {
     border-left-color: var(--op-danger);
 }
 
-.task-list--scheduled .task-row {
+.task-list--scheduled > .task-row {
     border-left-color: var(--op-wait);
 }
 
@@ -547,7 +548,13 @@ p.game-description {
 
 .worker-dot--busy { background-color: var(--op-nav); box-shadow: 0 0 0 3px rgba(var(--op-nav-rgb), .25); }
 .worker-dot--idle { background-color: var(--op-ok); }
-.worker-dot--offline { background-color: var(--op-text-muted); }
+.worker-dot--offline { background-color: var(--op-danger); }
+
+/* A stopped worker is a crash to look at, not quiet text. */
+.worker-card__state--stopped {
+    color: var(--op-danger);
+    font-weight: 600;
+}
 
 .task-children {
     list-style: none;
@@ -1452,8 +1459,8 @@ button.stat-tile:hover {
 .files-page {
     --files-success: var(--op-ok);
     --files-success-bg: rgba(var(--op-ok-rgb), .14);
-    --files-info: var(--op-nav);
-    --files-info-bg: rgba(var(--op-nav-rgb), .12);
+    --files-info: var(--op-info);
+    --files-info-bg: rgba(var(--op-info-rgb), .12);
     --files-warning: var(--op-wait);
     --files-warning-bg: rgba(var(--op-wait-rgb), .14);
     --files-danger: var(--op-danger);
@@ -1554,6 +1561,8 @@ button.stat-tile:hover {
 .files-tile[data-tile="duplicates"] { --tile: var(--op-wait); --tile-rgb: var(--op-wait-rgb); }
 .files-tile[data-tile="outdated"] { --tile: var(--op-wait); --tile-rgb: var(--op-wait-rgb); }
 .files-tile[data-tile="pending"] { --tile: var(--op-nav); --tile-rgb: var(--op-nav-rgb); }
+/* Broken files (corrupt, modified) turn the tile red, whatever its usual tone. */
+.files-tile[data-tone="danger"] { --tile: var(--op-danger); --tile-rgb: var(--op-danger-rgb); }
 
 .files-tile:hover {
     color: var(--op-text);

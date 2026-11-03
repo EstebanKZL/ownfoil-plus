@@ -571,6 +571,7 @@ function paintTiles() {
         const dot = tile.querySelector('.files-tile-dot');
         dot.classList.toggle('d-none', !alert);
         dot.style.background = alert ? `var(--files-${tone})` : '';
+        tile.dataset.tone = alert ? tone : '';
     });
 }
 
