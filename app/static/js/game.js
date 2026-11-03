@@ -61,6 +61,8 @@ async function loadGame() {
     game = data.title;
     renderGame(game);
     gameState('game');
+    // Only now: a hidden row can't be scrolled to.
+    highlightDlcFromUrl();
 }
 
 function renderGame(t) {
@@ -194,7 +196,6 @@ function renderSections(t) {
     const box = $('#gameSections').empty();
     [renderDescription(t), renderScreenshots(t), renderUpdates(t), renderDlc(t), renderFiles(t)]
         .filter(Boolean).forEach(s => box.append(s));
-    highlightDlcFromUrl();
 }
 
 function renderDescription(t) {

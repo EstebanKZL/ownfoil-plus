@@ -282,3 +282,12 @@ def test_hero_dlc_state_agrees_with_the_dlc_section():
     assert "missingDlcCount(t)" in hero
     body = _function_body(_js("game.js"), "missingDlcCount")
     assert "availableDlc" in body and "ownedDlcIds(t)" in body
+
+
+def test_the_dlc_highlight_runs_once_the_sections_are_visible():
+    """Found in the browser: the row was marked but never scrolled to - scrollIntoView ran
+    while the sections were still hidden."""
+    js = _js("game.js")
+    load = _function_body(js, "loadGame")
+    assert load.index("gameState('game')") < load.index("highlightDlcFromUrl()")
+    assert "highlightDlcFromUrl()" not in _function_body(js, "renderSections")
