@@ -11,7 +11,7 @@ GROUP=$(getent group "${gid}" | cut -d ":" -f 1)
 chown -R ${uid}:${gid} /app
 chown -R ${uid}:${gid} /root
 
-echo "Starting ownfoil"
+echo "Starting Ownfoil-Plus"
 
 # su-exec (not sudo - see the Dockerfile's own comment on why) drops root and execs
 # the real process in one step, no lingering shell.

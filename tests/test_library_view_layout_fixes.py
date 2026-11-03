@@ -1,4 +1,4 @@
-"""Coverage for three Library-page layout fixes, all requested directly from
+"""Coverage for Library-page layout fixes, all requested directly from
 screenshots of the filter dropdown, the List view, and the Card view:
 
 1. Hovering a single button inside the filter dropdown (Tipo/Posesión/Actualización/
@@ -13,13 +13,8 @@ screenshots of the filter dropdown, the List view, and the Card view:
    list-group-flush border *between* items, never visible with just one row. Fixed by
    restoring the first row's top border specifically on the outer list
    (.list-top-group), not the nested Updates/DLC sub-lists.
-3. In the Card view, the type/version/DLC badges (.tags-container, absolutely
-   positioned over the bottom-right corner) overlapped the game title once a card got
-   narrow - which happens on a phone-width viewport, but just as easily on a wide
-   desktop window once the card-size slider packs 6-8 cards into a row. The existing
-   fix only keyed off viewport width (a plain @media query), so it never caught the
-   second case. Fixed by switching to a @container query keyed off the card's own
-   rendered width (via container-type on .game-card).
+3. (Removed in 6.2.5.47.) The Card view's badge overlay and its @container fix went
+   away with the stage 2 cards, which keep their badges outside the artwork.
 """
 import os
 import re
@@ -101,29 +96,3 @@ def test_css_rule_only_targets_the_top_level_list_not_every_list_group_flush(cli
     # Making sure this doesn't regress into the broader (and wrong) selector that
     # would also restore the border on every nested Updates/DLC section.
     assert ".list-game-card .list-group-flush > .list-group-item:first-child {" not in css
-
-
-# --- 3. Card view: badges must not overlap the title on a narrow card --------------
-
-def test_game_card_establishes_an_inline_size_container(client):
-    css = _read_css()
-    m = re.search(r"\.game-card\s*\{(.*?)\}", css, re.DOTALL)
-    assert m, ".game-card rule not found in style.css"
-    rule = m.group(1)
-    assert "container-type: inline-size" in rule
-    assert "container-name: game-card" in rule
-
-
-def test_the_overlap_fix_is_a_container_query_not_only_a_viewport_media_query(client):
-    """The old @media(max-width: 767.98px) rule only ever caught a phone-width
-    *viewport* - it never helped a narrow *card* inside a wide desktop window (e.g.
-    6-8 columns via the card-size slider), which is exactly the case from the
-    screenshot. The fix must react to the card's own width via @container."""
-    css = _read_css()
-    assert "@container game-card (max-width: 340px)" in css
-    m = re.search(r"@container game-card \(max-width: 340px\)\s*\{(.*?)\n\}", css, re.DOTALL)
-    assert m, "expected the full @container game-card block"
-    block = m.group(1)
-    assert ".tags-container" in block and "position: static" in block
-    assert ".game-info" in block
-    assert ".card-img" in block

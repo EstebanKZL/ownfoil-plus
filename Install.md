@@ -114,7 +114,7 @@ It needs an admin account (Basic Auth) or, if you'd rather not put a password in
 scrape_configs:
   - job_name: ownfoil-plus
     static_configs:
-      - targets: ['ownfoil:8465']
+      - targets: ['ownfoil-plus:8465']
     # either an admin account...
     basic_auth:
       username: admin
@@ -140,7 +140,7 @@ On the first start Ownfoil-Plus creates the `config` and `data` directories, dow
 > [!CAUTION]
 > Until an admin account is created, __authentication is disabled and anyone who can reach the Web UI can change the configuration of your shop__. Creating that account is the first thing to do.
 
-Head over to [First steps](./Usage.md#using-ownfoil) to configure your shop.
+Head over to [First steps](./Usage.md#using-ownfoil-plus) to configure your shop.
 
 # Updating
 

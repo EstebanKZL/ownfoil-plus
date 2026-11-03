@@ -1,5 +1,5 @@
 {
-    "name": "Ownfoil",
+    "name": "Ownfoil-Plus",
     "image": "mcr.microsoft.com/devcontainers/base:bookworm",
 
     // Install uv, Python and the virtualenv once, when the container is created.
@@ -10,11 +10,11 @@
         "PATH": "${containerWorkspaceFolder}/.venv/bin:${containerEnv:PATH}"
     },
 
-    // Ownfoil web UI
+    // Ownfoil-Plus web UI
     "forwardPorts": [8465],
     "portsAttributes": {
         "8465": {
-            "label": "Ownfoil",
+            "label": "Ownfoil-Plus",
             "onAutoForward": "notify"
         }
     },

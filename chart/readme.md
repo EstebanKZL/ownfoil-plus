@@ -1,2 +1,2 @@
 # installation 
-helm upgrade --install Ownfoil-Plus ./ -n namespace -f values.yaml
+helm upgrade --install ownfoil-plus ./ -n namespace -f values.yaml

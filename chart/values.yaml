@@ -37,7 +37,7 @@ persistence:
 ingress:
   enabled: true
   tls: true
-  host: ownfoil.example.org
+  host: ownfoil-plus.example.org
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt
     nginx.ingress.kubernetes.io/proxy-body-size: 15G
