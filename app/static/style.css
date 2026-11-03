@@ -420,9 +420,13 @@ p.game-description {
     display: flex;
     align-items: center;
     gap: .5rem;
+    min-width: 0;
 }
 
+/* Shrinks below its text: a long error message ellipsizes instead of scrolling the
+   list sideways in the narrower two-column layout. */
 .task-name {
+    min-width: 0;
     font-weight: 500;
     overflow: hidden;
     text-overflow: ellipsis;

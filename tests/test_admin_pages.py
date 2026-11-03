@@ -139,3 +139,11 @@ def test_every_id_the_script_queries_exists(admin_client, url, script):
     created = set(re.findall(r"""id[:=]\s*['"`]([A-Za-z][\w-]*)""", js))
     missing = sorted(i for i in queried if f'id="{i}"' not in html and i not in created)
     assert not missing, missing
+
+
+def test_long_task_names_ellipsize_inside_the_narrower_columns():
+    """Found in the browser: in the two-column layout a failed task's long error text
+    scrolled the list sideways - the name couldn't shrink below its text."""
+    css = _css()
+    assert re.search(r"\.task-name \{[^}]*min-width: 0", css)
+    assert re.search(r"\.task-head \{[^}]*min-width: 0", css)
