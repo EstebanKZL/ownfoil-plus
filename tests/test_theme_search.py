@@ -121,4 +121,6 @@ def test_library_and_files_pages_accept_a_search_from_the_url(admin_client):
     # The library's logic lives in static/js/library.js since stage 2.
     assert "/static/js/library.js" in admin_client.get("/").get_data(as_text=True)
     assert "new URLSearchParams(location.search).get('q')" in admin_client.get("/static/js/library.js").get_data(as_text=True)
-    assert "TABS.all.search = urlSearch" in admin_client.get("/admin/files").get_data(as_text=True)
+    # And the Files page's in static/js/files.js since stage 5a.
+    assert "/static/js/files.js" in admin_client.get("/admin/files").get_data(as_text=True)
+    assert "TABS.all.search = urlSearch" in admin_client.get("/static/js/files.js").get_data(as_text=True)
