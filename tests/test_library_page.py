@@ -308,3 +308,36 @@ def test_cards_sort_by_the_catalogue_release_date(grouped):
     order = OrderBy(field=OrderField.RELEASE_DATE, direction=OrderDirection.DESC)
     sql = order_sql(order, APP_ORDER_GROUPED if grouped else APP_ORDER, "a.app_id")
     assert sql.startswith("td.release_date IS NULL, td.release_date DESC")
+
+
+# --- final review fixes --------------------------------------------------------------
+
+def test_state_pills_and_tiles_only_cover_owned_games(library):
+    """The header tiles count owned games; the pills they apply must too, or "Games with
+    a pending update: 12" opens a grid of every unowned DLC ("Update pending 340")."""
+    js = _library_js()
+    for name in ("outdated", "missingDlc", "upToDate"):
+        assert re.search(rf"{name}: \{{[^}}]*ownership: 'Owned'", js), name
+    assert re.search(r"all: \{[^}]*ownership: ''", js)
+    counts = _extract_query(js, "CARD_COUNTS_QUERY")
+    for alias in ("outdated", "missingDlc", "upToDate"):
+        line = next(l for l in counts.splitlines() if l.strip().startswith(alias + ":"))
+        assert "owned: true" in line, alias
+    # ...and the counts still equal the grid for what each pill sets.
+    data = _gql(library, counts, appType=["BASE", "DLC"], search=None, owned=None)
+    for alias, extra in CARD_PILL_FILTERS[1:]:
+        grid = _gql(library, _extract_query(js, "CARDS_QUERY"), page=1, pageSize=1,
+                    appType=["BASE", "DLC"], search=None, owned=True,
+                    upToDate=extra.get("upToDate"), complete=extra.get("complete"),
+                    orderBy={"field": "NAME", "direction": "ASC"})
+        assert data[alias]["total"] == grid["apps"]["total"], alias
+
+
+def test_custom_page_size_is_a_whole_number_within_the_server_limit(client):
+    html = client.get("/").get_data(as_text=True)
+    assert re.search(r'id="customItemsPerPage"[^>]*min="1"[^>]*max="500"[^>]*step="1"', html)
+    js = _library_js()
+    assert "function clampPageSize" in js
+    body = _function_body(js, "clampPageSize")
+    assert "Math.floor" in body and "500" in body
+    assert "clampPageSize(" in _function_body(js, "loadPage") or "clampPageSize($('#customItemsPerPage')" in js

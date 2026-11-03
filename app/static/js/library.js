@@ -343,12 +343,15 @@ function renderLibraryStats(stats) {
     $('#libraryProgress').prop('hidden', false);
 }
 
-// What each card/icon pill sets: the update and completion filter groups.
+// What each card/icon pill sets: the update, completion and ownership filter groups.
+// The state pills cover owned games only, like the header tiles that apply them: an
+// unowned DLC or game is never "up to date", so without it "Update pending" would
+// list the whole catalogue of missing content.
 const CARD_PILLS = {
-    all: {update: '', completion: ''},
-    outdated: {update: 'Outdated', completion: ''},
-    missingDlc: {update: '', completion: 'Missing DLC'},
-    upToDate: {update: 'Up to date', completion: ''},
+    all: {update: '', completion: '', ownership: ''},
+    outdated: {update: 'Outdated', completion: '', ownership: 'Owned'},
+    missingDlc: {update: '', completion: 'Missing DLC', ownership: 'Owned'},
+    upToDate: {update: 'Up to date', completion: '', ownership: 'Owned'},
 };
 
 // What each list-view pill sets: the list's own health filter.
@@ -359,9 +362,9 @@ const LIST_PILLS = {all: '', complete: 'COMPLETE', incomplete: 'INCOMPLETE', cor
 const CARD_COUNTS_QUERY = `
     query CardCounts($appType: [AppType!], $search: String, $owned: Boolean) {
         all: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, page: 1, pageSize: 1) { total }
-        outdated: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, upToDate: false, page: 1, pageSize: 1) { total }
-        missingDlc: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, complete: false, page: 1, pageSize: 1) { total }
-        upToDate: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, upToDate: true, page: 1, pageSize: 1) { total }
+        outdated: apps(groupByAppId: true, appType: $appType, search: $search, owned: true, upToDate: false, page: 1, pageSize: 1) { total }
+        missingDlc: apps(groupByAppId: true, appType: $appType, search: $search, owned: true, complete: false, page: 1, pageSize: 1) { total }
+        upToDate: apps(groupByAppId: true, appType: $appType, search: $search, owned: true, upToDate: true, page: 1, pageSize: 1) { total }
     }`;
 
 const LIST_COUNTS_QUERY = `
@@ -406,7 +409,8 @@ function activePill() {
         return Object.keys(LIST_PILLS).find(k => LIST_PILLS[k] === activeHealthFilter) || null;
     }
     return Object.keys(CARD_PILLS).find(k =>
-        CARD_PILLS[k].update === activeUpdateFilter && CARD_PILLS[k].completion === activeCompletionFilter) || null;
+        CARD_PILLS[k].update === activeUpdateFilter && CARD_PILLS[k].completion === activeCompletionFilter
+        && CARD_PILLS[k].ownership === activeOwnershipFilter) || null;
 }
 
 function renderPills() {
@@ -448,6 +452,9 @@ function applyPill(name) {
     $('#completionAll').prop('checked', !pill.completion);
     $('#completionComplete').prop('checked', pill.completion === 'Complete');
     $('#completionMissingDlc').prop('checked', pill.completion === 'Missing DLC');
+    $('#ownershipAll').prop('checked', !pill.ownership);
+    $('#ownershipOwned').prop('checked', pill.ownership === 'Owned');
+    $('#ownershipMissing').prop('checked', false);
     onFilterChange();
 }
 
@@ -1432,6 +1439,15 @@ function clearAllFilters() {
     resetToFirstPage();
 }
 
+/** A typed page size as a whole number from 1 to 500 - the most the server returns
+ *  for a list page - or null when it isn't a number. Larger values would page past
+ *  rows the server never sends; fractions would make zero-sized pages. */
+function clampPageSize(value) {
+    const n = Math.floor(Number(value));
+    if (!Number.isFinite(n) || n < 1) return null;
+    return Math.min(500, n);
+}
+
 function onFilterChange() {
     updateFilter();
     saveFiltersToStorage();
@@ -1496,9 +1512,10 @@ $(document).ready(function () {
     });
 
     $('#applyCustomItemsPerPage').click(function () {
-        const customValue = $('#customItemsPerPage').val();
-        if (customValue && customValue > 0) {
-            itemsPerPage = parseInt(customValue);
+        const size = clampPageSize($('#customItemsPerPage').val());
+        if (size) {
+            itemsPerPage = size;
+            $('#customItemsPerPage').val(size);
             storageSet('itemsPerPage', itemsPerPage);
             resetToFirstPage();
         }

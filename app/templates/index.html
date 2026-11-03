@@ -60,7 +60,7 @@
                 <li><button class="dropdown-item items-per-page" data-value="27">27</button></li>
                 <li>
                     <div class="dropdown-item">
-                        <input type="number" id="customItemsPerPage" class="form-control" placeholder="{{ t('library.custom_placeholder') }}">
+                        <input type="number" id="customItemsPerPage" class="form-control" min="1" max="500" step="1" placeholder="{{ t('library.custom_placeholder') }}">
                         <button id="applyCustomItemsPerPage" class="btn btn-primary mt-2">{{ t('library.apply') }}</button>
                     </div>
                 </li>
