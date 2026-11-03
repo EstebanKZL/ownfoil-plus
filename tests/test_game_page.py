@@ -235,3 +235,37 @@ def test_action_strings_are_translated():
     for key in ("game.download_all", "game.edit_metadata", "game.copy_title_id", "game.copied",
                 "game.save", "game.reset", "game.edit_hint", "game.save_failed"):
         assert {"en", "es"} <= set(i18n.TRANSLATIONS[key]), key
+
+
+# --- the Library and Ctrl+K open the game page --------------------------------------------
+
+def test_game_url_covers_games_dlc_and_orphan_dlc():
+    body = _function_body(_js("library.js"), "gameUrl")
+    assert "`/game/${" in body and "?dlc=" in body
+    # A DLC whose game the library doesn't know links to its own id, never "undefined".
+    assert "titleId ?" in body or "title.titleId ?" in body or "parentId ?" in body
+
+
+def test_cards_icons_and_list_rows_are_links():
+    js = _js("library.js")
+    card = _function_body(js, "renderCardView")
+    assert "<a" in card and "attr('href', game.url)" in card
+    icons = _function_body(js, "renderIconView")
+    assert "<a" in icons and "href" in icons
+    details = _function_body(js, "metadataButton")
+    assert "<a" in details and "href" in details
+    assert "?dlc=" in _function_body(js, "renderListView")
+
+
+def test_the_metadata_modal_is_gone_from_the_library(shop_app):
+    html = _login(shop_app.client, "shopper").get("/").get_data(as_text=True)
+    assert "metadataModal" not in html
+    js = _js("library.js")
+    for gone in ("function openMetadata", "function renderMetadataView", "function renderMetadataEditForm",
+                 "SET_TITLE_OVERRIDE_MUTATION"):
+        assert gone not in js, gone
+
+
+def test_ctrl_k_opens_the_game_page():
+    js = _js("search.js")
+    assert "'/game/' + encodeURIComponent(g.title_id)" in js

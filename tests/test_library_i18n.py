@@ -35,7 +35,6 @@ def test_library_page_renders_in_english_by_default(client):
     assert ">Missing<" in html
     assert "Missing Update" in html
     assert "Missing DLC" in html
-    assert ">Details<" in html
 
 
 def test_library_page_renders_in_spanish(client):
@@ -50,7 +49,6 @@ def test_library_page_renders_in_spanish(client):
     assert ">Faltante<" in html
     assert "Falta update" in html
     assert "Falta DLC" in html
-    assert ">Detalles<" in html
 
 
 def test_the_i18n_object_carries_spanish_values_for_the_list_view(client):
@@ -63,24 +61,7 @@ def test_the_i18n_object_carries_spanish_values_for_the_list_view(client):
 
     assert "const I18N = {" in html
     assert '"Juego base"' in html      # baseGame
-    assert '"Desarrollador"' in html   # developer
-    assert '"Editor"' in html          # publisher
     assert '"No reconocido"' in html   # unrecognized
-
-
-def test_metadata_edit_ui_is_present(client):
-    """The editable-metadata form (backed by the existing setTitleOverride /
-    deleteTitleOverride mutations) built for the Fantasy Life i / titledb-incomplete
-    scenario - present in the DOM, hidden until an admin opens edit mode."""
-    html = _page_and_js(client)
-
-    assert 'id="metadataEditBtn"' in html
-    assert 'id="metadataEditFooter"' in html
-    assert 'id="metadataResetBtn"' in html
-    assert 'id="metadataSaveBtn"' in html
-    assert "function renderMetadataEditForm" in html
-    assert "setTitleOverride" in html
-    assert "deleteTitleOverride" in html
 
 
 def test_list_view_health_filter_dropdown_is_present_and_hidden_by_default(client):
@@ -115,50 +96,22 @@ def test_list_view_health_filter_labels_are_translated(client):
     assert "Corruptos" in html
 
 
-def test_metadata_modal_new_detail_fields_are_translated(client):
-    """The enriched metadata modal's new icon rows - Players/Genre/Rating/File
-    size/Languages/Title ID/Type - all render with translated labels, both languages."""
-    resp = client.get("/")
-    html = resp.get_data(as_text=True)
-    assert "Players" in html
-    assert "Genre" in html
-    assert "Rating" in html
-    assert "File size" in html
-    assert "Languages" in html
-    assert "Title ID" in html
-    assert "Type" in html
+def test_game_detail_fields_are_translated(client):
+    """The game's detail tiles - Players/Genre/Rating/File size/Languages/Title ID - live
+    on its own page since stage 3 (the Library's modal is gone), in both languages."""
+    html = client.get("/game/0100000000010000").get_data(as_text=True)
+    for label in ("Players", "Genre", "Rating", "File size", "Languages", "Title ID"):
+        assert label in html, label
 
     client.set_cookie("ownfoil_lang", "es")
-    resp = client.get("/")
-    html = resp.get_data(as_text=True)
+    html = client.get("/game/0100000000010000").get_data(as_text=True)
     assert "Jugadores" in html
-    # These live inside a JS string literal (I18N object, rendered through |tojson) -
-    # accented characters there appear \uXXXX-escaped in the raw HTML, which a browser
-    # decodes normally at parse time.
+    # Inside a JS string literal (rendered through |tojson), accented characters appear
+    # \uXXXX-escaped in the raw HTML; a browser decodes them at parse time.
     assert "G\\u00e9nero" in html          # Género
     assert "Clasificaci\\u00f3n" in html   # Clasificación
     assert "Tama\\u00f1o" in html          # Tamaño
     assert "Idiomas" in html
-
-
-def test_metadata_modal_dialog_is_the_larger_size(client):
-    """Wide enough for the two-column banner+details layout and the screenshot
-    carousel - the plain default modal size was too cramped for it."""
-    resp = client.get("/")
-    html = resp.get_data(as_text=True)
-    assert 'id="metadataModal"' in html
-    modal_section = html[html.index('id="metadataModal"'):][:400]
-    assert "modal-lg" in modal_section
-
-
-def test_metadata_modal_html_helpers_are_present(client):
-    """The rendering functions and screenshot carousel markup this feature added."""
-    html = _page_and_js(client)
-    assert "function metadataDetailRows" in html
-    assert "metadataScreenshotCarousel" in html
-    assert "carousel-item" in html
-    assert "new bootstrap.Carousel" in html
-
 
 def test_pagination_controls_exist_at_both_top_and_bottom(client):
     """Two identical pagination bars - top one right under the stats line, bottom one
@@ -184,7 +137,6 @@ def test_library_page_script_is_not_split_by_a_stray_closing_tag(client):
     js = client.get("/static/js/library.js").get_data(as_text=True)
     assert "function renderListView" in js
     assert "function renderCardView" in js
-    assert "function openMetadata" in js
 
 
 def test_internal_filter_state_identifiers_are_not_accidentally_translated(client):

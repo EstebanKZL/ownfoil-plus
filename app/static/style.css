@@ -2609,3 +2609,43 @@ button.stat-tile:hover {
         padding-left: 3.2rem;
     }
 }
+
+/* Library links to the game page (stage 3): the whole card is the link (the title's
+   stretched-link); the versions button stays clickable above it. */
+.library-card-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.library-card-link:focus-visible {
+    outline: 2px solid var(--op-nav);
+    outline-offset: 2px;
+}
+
+.library-card .library-versions {
+    position: relative;
+    z-index: 2;
+}
+
+.library-cover-link {
+    display: block;
+    height: 100%;
+}
+
+.library-icon-link {
+    display: inline-block;
+}
+
+.library-icon-link .library-icon {
+    width: 100%;
+    margin: 0;
+}
+
+.list-title-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.list-title-link:hover {
+    color: var(--op-nav);
+}

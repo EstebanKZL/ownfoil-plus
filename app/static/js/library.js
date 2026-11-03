@@ -475,6 +475,14 @@ function metaFromApp(app, name) {
  * the one owned.
  */
 
+/** The game page for an app: a game's own page, a DLC's game's page scrolled to that
+ *  DLC, or - for a DLC whose game the library doesn't know - the DLC's own id. */
+function gameUrl(app) {
+    const title = app.title || {};
+    if (app.appType === 'BASE') return `/game/${title.titleId || app.appId}`;
+    return title.titleId ? `/game/${title.titleId}?dlc=${app.appId}` : `/game/${app.appId}`;
+}
+
 function cardModel(app) {
     const meta = app.titledb || {};
     const title = app.title || {};
@@ -506,6 +514,7 @@ function cardModel(app) {
             has_all_dlcs: ownership.complete,
             version: versions,
             meta: metaFromApp(app, title.name || I18N.unrecognized),
+            url: gameUrl(app),
         };
     }
 
@@ -522,6 +531,7 @@ function cardModel(app) {
         has_latest_version: ownedVersions.length > 0 && Math.max(...ownedVersions) >= highest,
         version: versions,
         meta: metaFromApp(app, meta.name || I18N.unrecognized),
+        url: gameUrl(app),
     };
 }
 
@@ -548,11 +558,11 @@ function renderCardView(games) {
             : $('<div class="library-cover library-cover--empty"><i class="bi bi-controller" aria-hidden="true"></i></div>');
         // An artwork URL that fails to load shows the same placeholder.
         cover.filter('img').on('error', function () {
-            $(this).replaceWith($('<div class="library-cover library-cover--empty"><i class="bi bi-controller" aria-hidden="true"></i></div>')
-                .attr('title', I18N.detailsTooltip).on('click', () => openMetadata(game.meta)));
+            $(this).replaceWith($('<div class="library-cover library-cover--empty"><i class="bi bi-controller" aria-hidden="true"></i></div>'));
         });
-        cover.attr('title', I18N.detailsTooltip).on('click', () => openMetadata(game.meta));
-        coverWrap.append(cover);
+        // The cover is a real link: middle-click and "open in a new tab" work.
+        coverWrap.append($('<a class="library-cover-link" tabindex="-1" aria-hidden="true">')
+            .attr('href', game.url).append(cover));
 
         // State badges, one fixed color per meaning (design tokens).
         const badges = $('<div class="library-badges">');
@@ -573,7 +583,8 @@ function renderCardView(games) {
         // A DLC card is named after the DLC, with its game underneath; a game card
         // after the game.
         const name = isDlc ? game.name : (game.title_id_name || game.name);
-        body.append($('<h5 class="game-title library-card-title">').text(name).attr('title', name));
+        body.append($('<h5 class="game-title library-card-title">').append(
+            $('<a class="stretched-link library-card-link">').attr('href', game.url).text(name).attr('title', name)));
         const metaLine = isDlc ? game.title_id_name : cardMetaLine(game.meta);
         if (metaLine) body.append($('<p class="library-card-meta">').text(metaLine));
 
@@ -612,7 +623,8 @@ function iconModel(app) {
     const name = app.appType === 'BASE' ? (title.name || I18N.unrecognized) : (meta.name || I18N.unrecognized);
     return {
         iconUrl: meta.iconUrl || '',
-        meta: metaFromApp(app, name),
+        name: name,
+        url: gameUrl(app),
     };
 }
 
@@ -622,9 +634,8 @@ function renderIconView(apps) {
 
     apps.map(iconModel).forEach(icon => {
         const img = $('<img class="game-icon library-icon" loading="lazy" alt="">').attr('src', icon.iconUrl);
-        img.css('cursor', 'pointer').attr('title', I18N.detailsTooltip);
-        img.on('click', () => openMetadata(icon.meta));
-        gameGrid.append(img);
+        gameGrid.append($('<a class="library-icon-link">').attr({href: icon.url, title: icon.name, 'aria-label': icon.name})
+            .append(img));
     });
 
     // Adjust icon sizes based on the slider value
@@ -660,196 +671,13 @@ function appFileId(app) {
 
 // --- Metadata modal: one shared modal, populated per click --------------------
 
-// The title/DLC currently shown in the metadata modal - set by openMetadata,
-// read by the edit/save/reset handlers below so they don't need meta re-passed
-// through every button's own click handler.
-let currentMetadata = null;
-
-/** Opens the shared metadata modal with whatever fields a title/DLC record has.
- *  Every value goes through .text(), since it's real (untrusted) catalogue data. */
-function openMetadata(meta) {
-    currentMetadata = meta;
-    renderMetadataView(meta);
-    $('#metadataEditFooter').addClass('d-none');
-    $('#metadataEditBtn').toggleClass('d-none', !(IS_ADMIN && meta.id));
-    new bootstrap.Modal(document.getElementById('metadataModal')).show();
-}
-
-function metadataDetailRows(meta) {
-    const typeLabel = meta.appType === 'DLC' ? I18N.dlcSection : I18N.baseGame;
-    return [
-        ['bi-calendar-event', I18N.releaseDate, formatTitledbDate(meta.releaseDate)],
-        ['bi-people-fill', I18N.numberOfPlayers, meta.numberOfPlayers],
-        ['bi-tags-fill', I18N.genre, Array.isArray(meta.category) ? meta.category.join(', ') : meta.category],
-        ['bi-building', I18N.publisher, meta.publisher],
-        ['bi-code-slash', I18N.developer, meta.developer],
-        ['bi-shield-check', I18N.rating, meta.rating],
-        ['bi-hdd-fill', I18N.fileSize, formatTitledbSize(meta.size)],
-        ['bi-globe', I18N.languages, Array.isArray(meta.languages) ? meta.languages.join(', ') : meta.languages],
-        ['bi-upc-scan', I18N.titleIdLabel, meta.id],
-        ['bi-box-seam', I18N.typeLabel, meta.appType ? typeLabel : null],
-    ];
-}
-
-function renderMetadataView(meta) {
-    $('#metadataModalLabel').text(meta.name || I18N.unrecognized);
-    const body = $('#metadataModalBody').empty();
-
-    const top = $('<div class="row g-3"></div>');
-
-    const bannerSrc = meta.bannerUrl;
-    if (bannerSrc) {
-        top.append($('<div class="col-12 col-sm-5"></div>').append(
-            $('<img class="img-fluid rounded w-100">').attr('src', bannerSrc).attr('alt', '')));
-    }
-
-    const rows = metadataDetailRows(meta).filter(([, , value]) => !!value);
-    const detailCol = $(`<div class="col-12 ${bannerSrc ? 'col-sm-7' : ''}"></div>`);
-    if (rows.length) {
-        const list = $('<div class="metadata-detail-list"></div>');
-        rows.forEach(([icon, label, value]) => {
-            const row = $('<div class="metadata-detail-row"></div>');
-            row.append($(`<i class="bi ${icon} metadata-detail-icon"></i>`));
-            const text = $('<div class="metadata-detail-text"></div>');
-            text.append($('<div class="metadata-detail-label text-secondary small"></div>').text(label));
-            text.append($('<div class="metadata-detail-value"></div>').text(value));
-            row.append(text);
-            list.append(row);
-        });
-        detailCol.append(list);
-    } else if (!bannerSrc) {
-        detailCol.append($('<p class="text-secondary mb-0"></p>').text(I18N.noMoreMetadata));
-    }
-    top.append(detailCol);
-    body.append(top);
-
-    if (meta.description) {
-        body.append($('<p class="mt-3 mb-0"></p>').text(meta.description));
-    }
-
-    const screenshots = Array.isArray(meta.screenshots) ? meta.screenshots : [];
-    if (screenshots.length) {
-        const carouselId = 'metadataScreenshotCarousel';
-        const carousel = $(`<div id="${carouselId}" class="carousel slide mt-3"></div>`);
-        const inner = $('<div class="carousel-inner rounded"></div>');
-        screenshots.forEach((img, i) => {
-            inner.append($(`<div class="carousel-item ${i === 0 ? 'active' : ''}"></div>`)
-                .append($('<img class="d-block w-100">').attr('src', img.url).attr('alt', '')));
-        });
-        carousel.append(inner);
-        if (screenshots.length > 1) {
-            carousel.append($(`
-                <button class="carousel-control-prev" type="button" data-bs-target="#${carouselId}" data-bs-slide="prev">
-                    <span class="carousel-control-prev-icon"></span>
-                </button>
-                <button class="carousel-control-next" type="button" data-bs-target="#${carouselId}" data-bs-slide="next">
-                    <span class="carousel-control-next-icon"></span>
-                </button>
-            `));
-        }
-        body.append(carousel);
-        new bootstrap.Carousel(carousel.get(0), {ride: false});
-    }
-
-    if (!rows.length && !bannerSrc && !meta.description && !screenshots.length) {
-        body.append($('<p class="text-secondary mb-0"></p>').text(I18N.noMoreMetadata));
-    }
-}
-
-/** Swaps the modal into edit mode: a small form (name/developer/publisher/release
- *  date/description) pre-filled with the currently-shown values, backed by the
- *  existing setTitleOverride/deleteTitleOverride mutations - admin only, and only
- *  for an entry that actually has an id to attach the override to. A blank field
- *  is sent as omitted, not as an empty string, so it defers to whatever titledb
- *  (or a lower-priority override) already has for it rather than blanking it out. */
-function renderMetadataEditForm(meta) {
-    const body = $('#metadataModalBody').empty();
-    const field = (id, label, value, multiline) => {
-        const group = $('<div class="mb-3"></div>');
-        group.append($('<label class="form-label"></label>').attr('for', id).text(label));
-        const input = multiline
-            ? $('<textarea class="form-control" rows="3"></textarea>')
-            : $('<input type="text" class="form-control">');
-        input.attr('id', id).val(value || '');
-        group.append(input);
-        body.append(group);
-    };
-    field('metadataFieldName', I18N.metadataNameLabel, meta.name);
-    field('metadataFieldDeveloper', I18N.metadataDeveloperLabel, meta.developer);
-    field('metadataFieldPublisher', I18N.metadataPublisherLabel, meta.publisher);
-    field('metadataFieldReleaseDate', I18N.metadataReleaseDateLabel, meta.releaseDate);
-    field('metadataFieldDescription', I18N.metadataDescriptionLabel, meta.description, true);
-    body.append($('<p class="text-secondary small mb-0"></p>').text(I18N.metadataEditHint));
-    $('#metadataEditFooter').removeClass('d-none');
-}
-
-const SET_TITLE_OVERRIDE_MUTATION = `
-    mutation SetOverride($id: ID!, $record: String!) {
-        setTitleOverride(titleId: $id, record: $record) { titleId }
-    }`;
-const DELETE_TITLE_OVERRIDE_MUTATION = `
-    mutation DeleteOverride($id: ID!) {
-        deleteTitleOverride(titleId: $id)
-    }`;
-
-$('#metadataEditBtn').on('click', () => {
-    if (currentMetadata) renderMetadataEditForm(currentMetadata);
-});
-
-$('#metadataCancelEditBtn').on('click', () => {
-    if (currentMetadata) renderMetadataView(currentMetadata);
-    $('#metadataEditFooter').addClass('d-none');
-});
-
-$('#metadataSaveBtn').on('click', async function () {
-    if (!currentMetadata || !currentMetadata.id) return;
-    const btn = $(this).prop('disabled', true);
-    const record = {};
-    const maybeSet = (key, inputId) => {
-        const value = $(`#${inputId}`).val().trim();
-        if (value) record[key] = value;
-    };
-    maybeSet('name', 'metadataFieldName');
-    maybeSet('developer', 'metadataFieldDeveloper');
-    maybeSet('publisher', 'metadataFieldPublisher');
-    maybeSet('releaseDate', 'metadataFieldReleaseDate');
-    maybeSet('description', 'metadataFieldDescription');
-    try {
-        await gqlMutate(SET_TITLE_OVERRIDE_MUTATION,
-            {id: currentMetadata.id, record: JSON.stringify(record)});
-        bootstrap.Modal.getOrCreateInstance(document.getElementById('metadataModal')).hide();
-        loadPage();
-    } catch (e) {
-        console.error(e);
-        alert(I18N.metadataSaveFailed);
-    } finally {
-        btn.prop('disabled', false);
-    }
-});
-
-$('#metadataResetBtn').on('click', async function () {
-    if (!currentMetadata || !currentMetadata.id) return;
-    const btn = $(this).prop('disabled', true);
-    try {
-        await gqlMutate(DELETE_TITLE_OVERRIDE_MUTATION, {id: currentMetadata.id});
-        bootstrap.Modal.getOrCreateInstance(document.getElementById('metadataModal')).hide();
-        loadPage();
-    } catch (e) {
-        console.error(e);
-        alert(I18N.metadataResetFailed);
-    } finally {
-        btn.prop('disabled', false);
-    }
-});
-
-/** A small info-circle icon-button that opens the metadata modal - distinct from
- *  the verification icon, which uses a question mark for a different meaning
- *  (unverified) and would be confusing reused here. */
+/** A small info-circle link to the game page (`meta.url`) - distinct from the
+ *  verification icon, which uses a question mark for a different meaning
+ *  (unverified). */
 function metadataButton(meta) {
-    if (!meta) return null;
-    const btn = $(`<button type="button" class="btn btn-sm icon-btn p-0" data-bs-toggle="tooltip" data-bs-placement="top" title="${I18N.detailsTooltip}"><i class="bi bi-info-circle"></i></button>`);
-    btn.on('click', () => openMetadata(meta));
-    return btn;
+    if (!meta || !meta.url) return null;
+    return $('<a class="btn btn-sm icon-btn p-0"><i class="bi bi-info-circle"></i></a>')
+        .attr({href: meta.url, title: I18N.detailsTooltip, 'aria-label': I18N.detailsTooltip});
 }
 
 /** One row inside a Base Game / Updates / DLC group: a label on the left, an
@@ -988,13 +816,10 @@ function renderListView(titles) {
 
         const headerText = $('<div class="flex-grow-1 min-w-0 list-header-text"></div>');
         const titleLine = $('<h5 class="card-title mb-1 d-flex align-items-center gap-2"></h5>');
-        titleLine.append($('<span></span>').text(t.name || I18N.unrecognized));
+        titleLine.append($('<a class="list-title-link"></a>').attr('href', `/game/${t.titleId}`)
+            .text(t.name || I18N.unrecognized));
         const titleMetaBtn = metadataButton({
-            id: t.titleId, name: t.name, developer: t.developer, publisher: t.publisher,
-            releaseDate: t.releaseDate, description: t.description, appType: 'BASE',
-            category: t.category, numberOfPlayers: t.numberOfPlayers, rating: t.rating,
-            languages: t.languages, size: t.size, screenshots: t.screenshots,
-            bannerUrl: t.bannerUrl, iconUrl: t.iconUrl,
+            id: t.titleId, url: `/game/${t.titleId}`,
         });
         if (titleMetaBtn) titleLine.append(titleMetaBtn);
         headerText.append(titleLine);
@@ -1032,13 +857,7 @@ function renderListView(titles) {
             size: appSize(baseApp),
             verification: appVerification(baseApp),
             fileId: appFileId(baseApp),
-            meta: {
-                id: t.titleId, name: t.name, developer: t.developer, publisher: t.publisher,
-                releaseDate: t.releaseDate, description: t.description, appType: 'BASE',
-                category: t.category, numberOfPlayers: t.numberOfPlayers, rating: t.rating,
-                languages: t.languages, size: t.size, screenshots: t.screenshots,
-                bannerUrl: t.bannerUrl, iconUrl: t.iconUrl,
-            },
+            meta: {id: t.titleId, url: `/game/${t.titleId}`},
         }));
 
         if (updateApps.length) {
@@ -1095,16 +914,7 @@ function renderListView(titles) {
                         size: appSize(ownedApp),
                         verification: appVerification(ownedApp),
                         fileId: appFileId(ownedApp),
-                        meta: {
-                            id: d.appId, name: dlcMeta.name, developer: dlcMeta.developer,
-                            publisher: dlcMeta.publisher, releaseDate: dlcMeta.releaseDate,
-                            description: dlcMeta.description, appType: 'DLC',
-                            category: dlcMeta.category, numberOfPlayers: dlcMeta.numberOfPlayers,
-                            rating: dlcMeta.rating, languages: dlcMeta.languages,
-                            size: dlcMeta.size, screenshots: dlcMeta.screenshots,
-                            bannerUrl: dlcMeta.bannerUrl, iconUrl: dlcMeta.iconUrl,
-                            version: d.version,
-                        },
+                        meta: {id: d.appId, url: `/game/${t.titleId}?dlc=${d.appId}`},
                     });
                 })));
         }
@@ -1224,7 +1034,7 @@ function adjustIconSizes() {
     const iconSize = 100 / (cardSize + 3); // Assuming 100 is the maximum size
 
     // Update the CSS of the game icons
-    $('.game-icon').css('width', `${iconSize}%`);
+    $('.library-icon-link').css('width', `${iconSize}%`);
 }
 
 function saveFiltersToStorage() {

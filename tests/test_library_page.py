@@ -218,7 +218,7 @@ def test_cards_use_the_surface_look_and_status_badges():
     body = _function_body(_library_js(), "renderCardView")
     for needle in ("library-card", "library-cover", "library-card-body", "library-card-meta",
                    "library-badges", "statusBadge('wait'", "statusBadge('dlc'", "statusBadge('ok'",
-                   "is-missing", "openMetadata(game.meta)", ".popover("):
+                   "is-missing", "attr('href', game.url)", ".popover("):
         assert needle in body, needle
     # Catalogue text goes through .text(), never into HTML strings.
     assert "${game.name}" not in body and "${game.meta" not in body

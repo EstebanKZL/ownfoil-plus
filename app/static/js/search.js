@@ -87,7 +87,7 @@
                 .then(result => {
                     if (id !== requestId) return;   // a newer keystroke already searched
                     const games = result.titles.map(g => ({
-                        title: g.name, url: '/?q=' + encodeURIComponent(g.name), icon: 'bi-controller', detail: g.title_id}));
+                        title: g.name, url: '/game/' + encodeURIComponent(g.title_id), icon: 'bi-controller', detail: g.title_id}));
                     const files = result.files.map(f => ({
                         title: f.filename, url: '/admin/files?q=' + encodeURIComponent(f.filename),
                         icon: 'bi-file-earmark', detail: typeof formatBytes === 'function' ? formatBytes(f.size) : ''}));

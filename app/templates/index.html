@@ -222,25 +222,6 @@
     </nav>
 
     <!-- Metadata for a base game, update or DLC, opened from the List view. -->
-    <div class="modal fade" id="metadataModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-scrollable modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="metadataModalLabel">{{ t('library.details') }}</h5>
-                    <div class="d-flex align-items-center gap-2">
-                        <button type="button" id="metadataEditBtn" class="btn btn-sm icon-btn p-0 d-none" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ t('library.metadata_edit') }}"><i class="bi bi-pencil"></i></button>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                </div>
-                <div class="modal-body" id="metadataModalBody"></div>
-                <div class="modal-footer d-none" id="metadataEditFooter">
-                    <button type="button" class="btn btn-sm btn-outline-danger me-auto" id="metadataResetBtn">{{ t('library.metadata_reset') }}</button>
-                    <button type="button" class="btn btn-sm btn-secondary" id="metadataCancelEditBtn">{{ t('library.metadata_cancel') }}</button>
-                    <button type="button" class="btn btn-sm btn-primary" id="metadataSaveBtn">{{ t('library.metadata_save') }}</button>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 <script src="{{ url_for('static', filename='js/format.js') }}"></script>
@@ -278,33 +259,10 @@
         olderVersionsOne: {{ t('library.older_versions_one') | tojson }},
         olderVersionsMany: {{ t('library.older_versions_many') | tojson }},
         latestVersion: {{ t('library.latest_version') | tojson }},
-        developer: {{ t('library.developer') | tojson }},
-        publisher: {{ t('library.publisher') | tojson }},
-        releaseDate: {{ t('library.release_date') | tojson }},
-        numberOfPlayers: {{ t('library.number_of_players') | tojson }},
-        genre: {{ t('library.genre') | tojson }},
-        rating: {{ t('library.rating') | tojson }},
-        fileSize: {{ t('library.file_size') | tojson }},
-        languages: {{ t('library.languages') | tojson }},
-        titleIdLabel: {{ t('library.title_id_label') | tojson }},
-        typeLabel: {{ t('library.type_label') | tojson }},
-        versionLabel: {{ t('library.version_label') | tojson }},
-        noMoreMetadata: {{ t('library.no_more_metadata') | tojson }},
         dlcFallbackName: {{ t('library.dlc_fallback_name') | tojson }},
         detailsTooltip: {{ t('library.details_tooltip') | tojson }},
         downloadTooltip: {{ t('library.download_tooltip') | tojson }},
         downloadAria: {{ t('library.download_aria') | tojson }},
-        metadataEdit: {{ t('library.metadata_edit') | tojson }},
-        metadataNameLabel: {{ t('library.metadata_name_label') | tojson }},
-        metadataDeveloperLabel: {{ t('library.metadata_developer_label') | tojson }},
-        metadataPublisherLabel: {{ t('library.metadata_publisher_label') | tojson }},
-        metadataReleaseDateLabel: {{ t('library.metadata_release_date_label') | tojson }},
-        metadataDescriptionLabel: {{ t('library.metadata_description_label') | tojson }},
-        metadataEditHint: {{ t('library.metadata_edit_hint') | tojson }},
-        metadataSaved: {{ t('library.metadata_saved') | tojson }},
-        metadataSaveFailed: {{ t('library.metadata_save_failed') | tojson }},
-        metadataResetDone: {{ t('library.metadata_reset_done') | tojson }},
-        metadataResetFailed: {{ t('library.metadata_reset_failed') | tojson }},
         pills: {
             all: {{ t('library.pill_all') | tojson }},
             outdated: {{ t('library.pill_outdated') | tojson }},
