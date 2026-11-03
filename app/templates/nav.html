@@ -121,6 +121,9 @@
     </div>
     <div class="offcanvas-body">
         <ul class="list-unstyled more-sheet-list">
+            {# Below 768px admins have no hamburger menu, so the install button lives here too
+               (pwa.js shows every .install-app-btn once the browser offers it). #}
+            <li><button type="button" class="dropdown-item install-app-btn d-none" onclick="installApp()"><i class="bi bi-download me-2"></i>{{ t('nav.install_app') }}</button></li>
             <li><a class="dropdown-item{% if nav_active == 'setup' %} active{% endif %}" href="/setup"><i class="bi bi-joystick me-2"></i>{{ t('nav.setup') }}</a></li>
             <li><a class="dropdown-item{% if p == '/admin' %} active{% endif %}" href="/admin"><i class="bi bi-speedometer2 me-2"></i>{{ t('settings_nav.dashboard') }}</a></li>
             <li><a class="dropdown-item{% if p == '/admin/settings' %} active{% endif %}" href="/admin/settings"><i class="bi bi-gear me-2"></i>{{ t('settings_nav.settings') }}</a></li>

@@ -144,3 +144,41 @@ def test_appearance_picker_marks_the_chosen_style():
 def test_range_inputs_follow_the_style():
     css = _read("app/static/css/tokens.css")
     assert "var(--op-nav)" in _rule(css, ".form-range::-webkit-slider-thumb")
+
+
+def test_offline_page_assets_are_precached(shop_app):
+    js = shop_app.client.get("/sw.js").get_data(as_text=True)
+    assert "css/tokens.css" in js and "vendor/inter/InterVariable.woff2" in js
+
+
+def _lum(hex_color):
+    def chan(c):
+        c = int(c, 16) / 255
+        return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+    h = hex_color.lstrip("#")
+    r, g, b = (chan(h[i:i + 2]) for i in (0, 2, 4))
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def _contrast(a, b):
+    la, lb = sorted((_lum(a), _lum(b)), reverse=True)
+    return (la + 0.05) / (lb + 0.05)
+
+
+def _var(block, name):
+    return re.search(re.escape(name) + r":\s*(#[0-9a-fA-F]{6})", block).group(1)
+
+
+def test_text_on_accent_colors_is_at_least_4_5_to_1():
+    # The CHANGELOG promises AA contrast for text on the accents in all six combinations,
+    # hover included; and the amber count badge carries text too.
+    css = _read("app/static/css/tokens.css")
+    for style in STYLES:
+        for mode in ("dark", "light"):
+            block = _rule(css, f'[data-style="{style}"][data-bs-theme="{mode}"]')
+            on = _var(block, "--op-on-action")
+            for name in ("--op-action", "--op-action-hover"):
+                assert _contrast(on, _var(block, name)) >= 4.5, (style, mode, name)
+    for mode in ("dark", "light"):
+        block = _rule(css, f'[data-bs-theme="{mode}"]')
+        assert _contrast(_var(block, "--op-on-wait"), _var(block, "--op-wait")) >= 4.5, mode

@@ -163,3 +163,28 @@ def test_top_bar_links_have_tooltips(admin_client):
     html = admin_client.get("/admin").get_data(as_text=True)
     assert re.search(r'data-nav="files" href="/admin/files" title="[^"]+"', html)
     assert re.search(r'id="adminDropdown" title="[^"]+"', html)
+
+
+# --- final review fixes --------------------------------------------------------------
+
+def test_install_app_is_reachable_from_the_more_sheet(admin_client):
+    # Below 768px admins have no hamburger menu: the install button must be in the sheet.
+    html = admin_client.get("/").get_data(as_text=True)
+    sheet = html.split('id="moreSheet"', 1)[1].split("</ul>", 1)[0]
+    assert "install-app-btn" in sheet
+
+
+def test_nav_survives_a_failing_count_query(shop_app, admin_client, monkeypatch):
+    # A locked database during a heavy scan must not turn every admin page into a 500.
+    import nav_counts
+
+    class LockedTask:
+        @property
+        def query(self):
+            raise RuntimeError("database is locked")
+
+    nav_counts.clear_cache()
+    monkeypatch.setattr(nav_counts, "Task", LockedTask())
+    resp = admin_client.get("/admin")
+    assert resp.status_code == 200
+    assert 'href="/admin/tasks"' in resp.get_data(as_text=True)

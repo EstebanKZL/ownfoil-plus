@@ -52,6 +52,7 @@
     --op-ok-rgb: 63, 185, 80;
     --op-wait: #f59a23;
     --op-wait-rgb: 245, 154, 35;
+    --op-on-wait: #0d1117;
     --op-fav: #f2b51d;
     --op-fav-rgb: 242, 181, 29;
     --op-danger: #f85149;
@@ -74,6 +75,7 @@
     --op-ok-rgb: 26, 127, 55;
     --op-wait: #9a6512;
     --op-wait-rgb: 154, 101, 18;
+    --op-on-wait: #ffffff;
     --op-fav: #9a7000;
     --op-fav-rgb: 154, 112, 0;
     --op-danger: #cf222e;
@@ -81,7 +83,8 @@
 }
 
 /* --- Styles ----------------------------------------------------------------------- */
-/* Text on --op-action is --op-on-action; every pair below is at least 4.5:1. */
+/* Text on --op-action and --op-action-hover is --op-on-action, and text on --op-wait is
+   --op-on-wait: every such pair is at least 4.5:1 (checked by tests/test_design_tokens.py). */
 
 [data-style="ownfoil"][data-bs-theme="dark"] {
     --op-nav: #00e5d0;
@@ -110,7 +113,7 @@
     --op-nav-rgb: 255, 92, 108;
     --op-action: #d62839;
     --op-action-rgb: 214, 40, 57;
-    --op-action-hover: #e53446;
+    --op-action-hover: #b81f30;
     --op-on-action: #ffffff;
     --op-glow-1: rgba(214, 40, 57, .20);
     --op-glow-2: rgba(15, 181, 216, .12);
@@ -132,7 +135,7 @@
     --op-nav-rgb: 0, 229, 208;
     --op-action: #d62839;
     --op-action-rgb: 214, 40, 57;
-    --op-action-hover: #e53446;
+    --op-action-hover: #b81f30;
     --op-on-action: #ffffff;
     --op-glow-1: rgba(0, 229, 208, .14);
     --op-glow-2: rgba(255, 69, 84, .14);

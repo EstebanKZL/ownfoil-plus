@@ -434,6 +434,7 @@ def service_worker():
                              'vendor/jquery/jquery-3.6.0.min.js',
                              'vendor/bootstrap-icons/bootstrap-icons.min.css',
                              'vendor/bootstrap-icons/fonts/bootstrap-icons.woff2',
+                             'css/tokens.css', 'vendor/inter/InterVariable.woff2',
                              'style.css', 'js/pwa.js', 'logo/logo.svg', 'favicon/favicon.ico',
                          )] + ['/offline'])
     response = Response(js, mimetype='application/javascript')
