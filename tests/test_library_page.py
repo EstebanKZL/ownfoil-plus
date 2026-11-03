@@ -153,3 +153,54 @@ def test_filters_dot_follows_the_view():
     body = _function_body(_library_js(), "updateFiltersDot")
     assert "activeHealthFilter" in body and "activeCompletionFilter" in body
     assert "currentView === 'list'" in body
+
+
+# --- filter pills with exact counts ---------------------------------------------------
+
+CARD_PILL_FILTERS = (("all", {}), ("outdated", {"upToDate": False}),
+                     ("missingDlc", {"complete": False}), ("upToDate", {"upToDate": True}))
+HEALTH = (("all", None), ("complete", "COMPLETE"), ("incomplete", "INCOMPLETE"),
+          ("corrupt", "CORRUPT"), ("repack", "REPACK"))
+
+
+@pytest.mark.parametrize("app_type,search", [(["BASE", "DLC"], None), (["BASE"], None),
+                                             (["BASE", "DLC"], "alpha"), (["DLC"], "nothing-matches")])
+def test_card_pill_counts_equal_the_grid_totals(library, app_type, search):
+    js = _library_js()
+    counts = _gql(library, _extract_query(js, "CARD_COUNTS_QUERY"),
+                  appType=app_type, search=search, owned=None)
+    for alias, extra in CARD_PILL_FILTERS:
+        grid = _gql(library, _extract_query(js, "CARDS_QUERY"), page=1, pageSize=1,
+                    appType=app_type, search=search, owned=None,
+                    upToDate=extra.get("upToDate"), complete=extra.get("complete"),
+                    orderBy={"field": "NAME", "direction": "ASC"})
+        assert counts[alias]["total"] == grid["apps"]["total"], alias
+
+
+@pytest.mark.parametrize("search", [None, "alpha"])
+def test_list_pill_counts_equal_the_list_totals(library, search):
+    js = _library_js()
+    counts = _gql(library, _extract_query(js, "LIST_COUNTS_QUERY"), search=search)
+    for alias, health in HEALTH:
+        listed = _gql(library, _extract_query(js, "LIST_QUERY"), page=1, pageSize=1, search=search,
+                      libraryHealth=health, orderBy={"field": "NAME", "direction": "ASC"})
+        assert counts[alias]["total"] == listed["titles"]["total"], alias
+
+
+def test_pills_are_one_request_and_follow_the_grid_variables(client):
+    html = client.get("/").get_data(as_text=True)
+    assert 'id="libraryPills"' in html
+    js = _library_js()
+    body = _function_body(js, "loadPillCounts")
+    assert body.count("gqlFetch(") == 1
+    assert "queryVariables()" in body and "listQueryVariables()" in body
+    assert "function applyPill" in js and "function renderPills" in js
+    assert "LIST_PILLS" in js
+
+
+def test_pill_strings_are_translated():
+    import i18n
+    for key in ("library.pill_all", "library.pill_outdated", "library.pill_missing_dlc",
+                "library.pill_up_to_date", "library.pill_complete", "library.pill_incomplete",
+                "library.pill_corrupt", "library.pill_repack"):
+        assert {"en", "es"} <= set(i18n.TRANSLATIONS[key]), key

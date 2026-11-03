@@ -1026,6 +1026,16 @@ button.stat-tile:hover {
     box-shadow: 0 0 0 2px var(--op-surface-1);
 }
 
+.pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+}
+
+.pill-row:empty {
+    display: none;
+}
+
 .library-tiles {
     grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
     gap: .75rem;
@@ -1043,6 +1053,22 @@ button.stat-tile:hover {
 }
 
 @media (max-width: 575.98px) {
+    /* One row of pills that scrolls sideways instead of wrapping into a block. */
+    .pill-row {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+        padding-bottom: .15rem;
+    }
+
+    .pill-row::-webkit-scrollbar {
+        display: none;
+    }
+
+    .pill-row .filter-pill {
+        flex: 0 0 auto;
+    }
+
     .library-tiles {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: .5rem;

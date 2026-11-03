@@ -305,7 +305,11 @@ function renderLibraryStats(stats) {
                     $('<div class="stat-tile__value">').text(value),
                     $('<div class="stat-tile__label">').text(label));
         if (pill) {
-            tile.attr('data-pill', pill).on('click', () => applyPill(pill));
+            tile.attr('data-pill', pill).on('click', () => {
+                // These filters belong to the cards and icons: leave the list view first.
+                if (currentView === 'list') $('#view-toggle-btn-card').trigger('click');
+                applyPill(pill);
+            });
         }
         box.append(tile);
     });
@@ -320,8 +324,103 @@ function renderLibraryStats(stats) {
     $('#libraryProgress').prop('hidden', false);
 }
 
-/** Set the filters a pill (or a tile) stands for; filled in by the pills. */
+// What each card/icon pill sets: the update and completion filter groups.
+const CARD_PILLS = {
+    all: {update: '', completion: ''},
+    outdated: {update: 'Outdated', completion: ''},
+    missingDlc: {update: '', completion: 'Missing DLC'},
+    upToDate: {update: 'Up to date', completion: ''},
+};
+
+// What each list-view pill sets: the list's own health filter.
+const LIST_PILLS = {all: '', complete: 'COMPLETE', incomplete: 'INCOMPLETE', corrupt: 'CORRUPT', repack: 'REPACK'};
+
+// One request for every pill's count, with the grid's own variables minus the filter
+// the pills set - so each count is exactly what clicking that pill returns.
+const CARD_COUNTS_QUERY = `
+    query CardCounts($appType: [AppType!], $search: String, $owned: Boolean) {
+        all: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, page: 1, pageSize: 1) { total }
+        outdated: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, upToDate: false, page: 1, pageSize: 1) { total }
+        missingDlc: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, complete: false, page: 1, pageSize: 1) { total }
+        upToDate: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, upToDate: true, page: 1, pageSize: 1) { total }
+    }`;
+
+const LIST_COUNTS_QUERY = `
+    query ListCounts($search: String) {
+        all: titles(owned: true, search: $search, page: 1, pageSize: 1) { total }
+        complete: titles(owned: true, search: $search, libraryHealth: COMPLETE, page: 1, pageSize: 1) { total }
+        incomplete: titles(owned: true, search: $search, libraryHealth: INCOMPLETE, page: 1, pageSize: 1) { total }
+        corrupt: titles(owned: true, search: $search, libraryHealth: CORRUPT, page: 1, pageSize: 1) { total }
+        repack: titles(owned: true, search: $search, libraryHealth: REPACK, page: 1, pageSize: 1) { total }
+    }`;
+
+let pillSeq = 0;      // like fetchSeq: an older count request never overwrites a newer one
+let pillCounts = {};
+
+async function loadPillCounts() {
+    const seq = ++pillSeq;
+    const list = currentView === 'list';
+    let vars;
+    if (list) {
+        vars = {search: listQueryVariables().search};
+    } else {
+        const grid = queryVariables();
+        vars = {appType: grid.appType, search: grid.search, owned: grid.owned};
+    }
+    let data;
+    try {
+        data = await gqlFetch(list ? LIST_COUNTS_QUERY : CARD_COUNTS_QUERY, vars);
+    } catch (e) {
+        console.error(e);
+        data = null;
+    }
+    if (seq !== pillSeq) return;
+    pillCounts = {};
+    if (data) Object.keys(data).forEach(k => { pillCounts[k] = data[k].total; });
+    renderPills();
+}
+
+/** The pill matching the current filters, or null when the Filters menu holds a
+ *  combination no pill stands for (e.g. "Complete"). */
+function activePill() {
+    if (currentView === 'list') {
+        return Object.keys(LIST_PILLS).find(k => LIST_PILLS[k] === activeHealthFilter) || null;
+    }
+    return Object.keys(CARD_PILLS).find(k =>
+        CARD_PILLS[k].update === activeUpdateFilter && CARD_PILLS[k].completion === activeCompletionFilter) || null;
+}
+
+function renderPills() {
+    const names = currentView === 'list' ? Object.keys(LIST_PILLS) : Object.keys(CARD_PILLS);
+    const active = activePill();
+    const row = $('#libraryPills').empty();
+    names.forEach(name => {
+        const pill = $('<button type="button" class="filter-pill">')
+            .toggleClass('active', name === active)
+            .attr('aria-pressed', name === active ? 'true' : 'false')
+            .append($('<span>').text(I18N.pills[name]));
+        if (pillCounts[name] !== undefined) {
+            pill.append($('<span class="filter-pill__count">').text(pillCounts[name].toLocaleString()));
+        }
+        pill.on('click', () => applyPill(name));
+        row.append(pill);
+    });
+}
+
+/** Set the filters a pill (or a header tile) stands for, through the same radios the
+ *  Filters menu uses, so both always agree. */
 function applyPill(name) {
+    if (currentView === 'list') {
+        if (!(name in LIST_PILLS)) return;
+        const health = LIST_PILLS[name];
+        $('#healthAll').prop('checked', !health);
+        $('#healthComplete').prop('checked', health === 'COMPLETE');
+        $('#healthIncomplete').prop('checked', health === 'INCOMPLETE');
+        $('#healthCorrupt').prop('checked', health === 'CORRUPT');
+        $('#healthRepack').prop('checked', health === 'REPACK');
+        onFilterChange();
+        return;
+    }
     const pill = CARD_PILLS[name];
     if (!pill) return;
     $('#updateAll').prop('checked', !pill.update);
@@ -333,22 +432,17 @@ function applyPill(name) {
     onFilterChange();
 }
 
-// What each card/icon pill sets: the update and completion filter groups.
-const CARD_PILLS = {
-    all: {update: '', completion: ''},
-    outdated: {update: 'Outdated', completion: ''},
-    missingDlc: {update: '', completion: 'Missing DLC'},
-    upToDate: {update: 'Up to date', completion: ''},
-};
-
 function goToPage(page) {
     currentPage = page;
     loadPage();
 }
 
+/** Search, filters, view, sort or page size changed: back to page 1, and the pill
+ *  counts follow (paging alone never changes them). */
 function resetToFirstPage() {
     currentPage = 1;
     loadPage();
+    loadPillCounts();
 }
 
 /** The metadata-modal object for one app - shared by cardModel (Card view) and
@@ -1333,6 +1427,7 @@ $(document).ready(function () {
     $('#sortDirection').on('click', () => setSort(librarySort.field, librarySort.direction === 'ASC' ? 'DESC' : 'ASC'));
     loadPage();
     loadLibraryStats();
+    loadPillCounts();
 
     // Event listeners for items per page dropdown
     $('.items-per-page').click(function () {
