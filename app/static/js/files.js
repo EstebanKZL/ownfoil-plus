@@ -861,7 +861,9 @@ function section(title, ...children) {
 }
 
 function titleLink(titleId, content, className) {
-    return el('a', {href: `/title/${titleId}`, className: `files-title-link ${className || ''}`}, content);
+    // The game's page (stage 3). It used to point at a "title" route that never
+    // existed, so the link only ever landed on the Library.
+    return el('a', {href: `/game/${titleId}`, className: `files-title-link ${className || ''}`}, content);
 }
 
 function pathParts(f) {

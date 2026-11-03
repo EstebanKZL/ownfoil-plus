@@ -1378,43 +1378,26 @@ button.stat-tile:hover {
 
 /* ============== Files admin page (ported from upstream Ownfoil 2.5.0) ============== */
 
-/* Admin Files page. Its own soft palette, one tone per state: `--files-<tone>` for text and
-   icons, `-bg` for the tint behind them. Named after Bootstrap's tones so a tone reads the
-   same in the template and the script. */
+/* Admin Files page. One tone per state: `--files-<tone>` for text and icons, `-bg` for
+   the tint behind them, named after Bootstrap's tones so a tone reads the same in the
+   template and the script. Built from the design tokens (stage 5a), so it follows the
+   style and the mode like every other page. */
 .files-page {
-    --files-success: #1a7f4b;
-    --files-success-bg: #e1f3e8;
-    --files-info: #0b6f91;
-    --files-info-bg: #dff1f7;
-    --files-warning: #9a6512;
-    --files-warning-bg: #fcf0d6;
-    --files-danger: #b83434;
-    --files-danger-bg: #fae4e4;
+    --files-success: var(--op-ok);
+    --files-success-bg: rgba(var(--op-ok-rgb), .14);
+    --files-info: var(--op-nav);
+    --files-info-bg: rgba(var(--op-nav-rgb), .12);
+    --files-warning: var(--op-wait);
+    --files-warning-bg: rgba(var(--op-wait-rgb), .14);
+    --files-danger: var(--op-danger);
+    --files-danger-bg: rgba(var(--op-danger-rgb), .12);
     --files-primary: var(--op-nav);
     --files-primary-bg: rgba(var(--op-nav-rgb), .12);
-    --files-secondary: #68707a;
-    --files-secondary-bg: #eceef1;
-    --files-off: #c3c8ce;
-    --files-surface: #f1f3f5;
-    --files-surface-hover: #e7eaee;
-}
-
-[data-bs-theme=dark] .files-page {
-    --files-success: #75b798;
-    --files-success-bg: #16301f;
-    --files-info: #6edff6;
-    --files-info-bg: #0f2c34;
-    --files-warning: #f2c95c;
-    --files-warning-bg: #362b0e;
-    --files-danger: #ea868f;
-    --files-danger-bg: #3a1a1d;
-    --files-primary: var(--op-nav);
-    --files-primary-bg: rgba(var(--op-nav-rgb), .14);
-    --files-secondary: #9aa3ad;
-    --files-secondary-bg: #2f343a;
-    --files-off: #525a63;
-    --files-surface: #2b3035;
-    --files-surface-hover: #2f343a;
+    --files-secondary: var(--op-text-muted);
+    --files-secondary-bg: var(--op-surface-2);
+    --files-off: var(--op-border-strong);
+    --files-surface: var(--op-surface-1);
+    --files-surface-hover: var(--op-surface-2);
 }
 
 .files-fg-success { color: var(--files-success); }
@@ -1479,28 +1462,47 @@ button.stat-tile:hover {
 
 /* Label at the top, subtitle at the bottom, the count between them. */
 .files-tile {
+    --tile: var(--op-nav);
+    --tile-rgb: var(--op-nav-rgb);
     position: relative;
     display: grid;
     grid-template-rows: auto 1fr auto;
     align-items: center;
     min-height: 8.5rem;
     padding: .9rem 1rem;
-    border-radius: .75rem;
-    background: var(--files-surface);
-    color: var(--bs-body-color);
+    border-radius: var(--op-radius-lg);
+    border: 1px solid rgba(var(--tile-rgb), .25);
+    background:
+        radial-gradient(closest-side at 85% 50%, rgba(var(--tile-rgb), .12), transparent),
+        var(--op-surface-1);
+    color: var(--op-text);
     text-decoration: none;
+    transition: border-color var(--op-dur) var(--op-ease), transform var(--op-dur) var(--op-ease);
 }
+
+/* One color per state, as on the Dashboard and the Library. */
+.files-tile[data-tile="all"] { --tile: var(--op-nav); --tile-rgb: var(--op-nav-rgb); }
+.files-tile[data-tile="unidentified"] { --tile: var(--op-wait); --tile-rgb: var(--op-wait-rgb); }
+.files-tile[data-tile="verification"] { --tile: var(--op-ok); --tile-rgb: var(--op-ok-rgb); }
+.files-tile[data-tile="duplicates"] { --tile: var(--op-wait); --tile-rgb: var(--op-wait-rgb); }
+.files-tile[data-tile="outdated"] { --tile: var(--op-wait); --tile-rgb: var(--op-wait-rgb); }
+.files-tile[data-tile="pending"] { --tile: var(--op-nav); --tile-rgb: var(--op-nav-rgb); }
 
 .files-tile:hover {
-    background: var(--files-surface-hover);
+    color: var(--op-text);
+    border-color: rgba(var(--tile-rgb), .55);
+    transform: translateY(-2px);
 }
 
 .files-tile.active {
-    background: var(--files-primary-bg);
+    border-color: var(--op-nav);
+    box-shadow: inset 0 0 0 1px var(--op-nav);
 }
 
-.files-tile.active {
-    box-shadow: inset 0 0 0 1.5px var(--files-primary);
+@media (prefers-reduced-motion: reduce) {
+    .files-tile:hover {
+        transform: none;
+    }
 }
 
 /* Nothing to report: a check mark takes the tile's free side. */

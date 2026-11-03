@@ -71,3 +71,34 @@ def test_services_section_is_a_surface(admin_client):
     html = admin_client.get("/admin/services").get_data(as_text=True)
     assert re.search(r'<section class="surface[^"]*" id="servicesDiscovery"', html)
     assert 'id="discoveryEnabledCheck"' in html and 'id="submitServicesSettingsBtn"' in html
+
+
+# --- Files: tokens, tile tones, game link ---------------------------------------------------
+
+def _css():
+    return _read("app", "static", "style.css")
+
+
+def test_files_palette_is_built_from_the_tokens():
+    css = _css()
+    blocks = re.findall(r"(?m)^(?:\[data-bs-theme=\w+\] )?\.files-page \{([^}]*)\}", css)
+    assert blocks
+    palette = "".join(blocks)
+    assert "--files-success: var(--op-ok)" in palette and "--files-danger: var(--op-danger)" in palette
+    assert not re.search(r"--files-[a-z-]+: #[0-9a-fA-F]{3,8}", palette)
+
+
+def test_files_tiles_take_a_tone_per_state():
+    css = _css()
+    for key, token in (("unidentified", "--op-wait"), ("duplicates", "--op-wait"), ("outdated", "--op-wait"),
+                       ("all", "--op-nav"), ("pending", "--op-nav"), ("verification", "--op-ok")):
+        assert re.search(rf'\.files-tile\[data-tile="{key}"\] \{{[^}}]*var\({token}', css), key
+    tile = re.search(r"(?m)^\.files-tile \{([^}]*)\}", css).group(1)
+    assert "var(--op-radius-lg)" in tile and "#" not in tile
+
+
+def test_identified_files_link_to_their_game_page():
+    body = _function_body(_js("files.js"), "titleLink")
+    assert "`/game/${titleId}`" in body and "/title/" not in body
+    # Only identified files get the link: the drawer builds it from a title it found.
+    assert "titles.length ? titleLink(" in _function_body(_js("files.js"), "renderDrawer")
