@@ -118,7 +118,7 @@ def test_stats_download_tables_show_ten(admin_client):
     for table in ("downloadTopTitles", "downloadByUser", "downloadByClient", "downloadRecent"):
         assert f'id="{table}Scroll"' in html, table
     js = admin_client.get("/static/js/stats.js").get_data(as_text=True)  # since stage 4
-    assert "limitVisibleRows(document.getElementById(id + 'Scroll'), 'tbody tr', 10)" in js
+    assert "limitVisibleRows(document.getElementById(id + 'Scroll'), 'li', 10)" in js
 
 
 def test_stats_top_titles_go_beyond_ten(admin_client):

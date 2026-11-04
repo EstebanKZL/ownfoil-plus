@@ -276,7 +276,6 @@ p.game-description {
    The gutter and padding keep the scrollbar off the cancel button, which sits flush
    right and is otherwise covered by an overlay scrollbar the moment the list overflows. */
 .task-scroll {
-    max-height: 26rem;
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
@@ -297,6 +296,9 @@ p.game-description {
 /* Shrinks below its text: a long error message ellipsizes instead of scrolling the
    list sideways in the narrower two-column layout. */
 .task-name {
+    /* Keeps its width: a long error beside it shrinks instead (up to 60% of the row). */
+    flex: 0 0 auto;
+    max-width: 60%;
     min-width: 0;
     font-weight: 500;
     overflow: hidden;
@@ -305,7 +307,9 @@ p.game-description {
 }
 
 .task-meta {
+    flex: 1 1 auto;
     margin-left: auto;
+    text-align: right;
     font-size: .875rem;
     white-space: nowrap;
     min-width: 0;
@@ -828,11 +832,17 @@ a.stat-tile:hover {
     height: 7rem;
     padding-bottom: 1px;
     border-bottom: 1px solid var(--bs-border-color);
+    overflow: hidden;
+}
+
+/* A year of days: no gaps, and bars as thin as the width allows. */
+.download-chart.is-dense {
+    gap: 0;
 }
 
 .download-bar {
     flex: 1 1 0;
-    min-width: 2px;
+    min-width: 0;
     background: var(--bs-info);
     border-radius: 2px 2px 0 0;
 }
@@ -853,57 +863,12 @@ a.stat-tile:hover {
     }
 }
 
-/* Three short columns: left to itself the table would stretch across its half of the
-   panel and strand the figures a screen away from their labels. */
-.stat-table {
-    max-width: 30rem;
-}
-
 /* The verify-now header row sits right above the verification table and needs to
    match its width exactly - otherwise `justify-content-between` right-aligns the
    button against the wider section column instead of the table's own edge, leaving
    it floating past where "Size" actually ends. */
 .stat-section-head {
     max-width: 30rem;
-}
-
-.stat-table th:not(:first-child),
-.stat-table td:not(:first-child) {
-    text-align: right;
-    white-space: nowrap;
-}
-
-/* A library root is a full path, and it now shares the row with a second table:
-   wrapping keeps the figures beside it rather than pushed out of the column. */
-.stat-table td:first-child {
-    overflow-wrap: anywhere;
-}
-
-/* The verification-files modal reuses .stat-table's look but needs the full width of
-   its own (much wider) modal dialog, not the narrow cap the small dashboard tables
-   above use - that cap squeezed the Title column down to a single word per line. */
-#verificationFilesModal .stat-table {
-    max-width: none;
-    width: 100%;
-    table-layout: fixed;
-}
-
-#verificationFilesModal .stat-table th:first-child,
-#verificationFilesModal .stat-table td:first-child {
-    width: 35%;
-}
-
-#verificationFilesModal .stat-table th:nth-child(2),
-#verificationFilesModal .stat-table td:nth-child(2) {
-    width: 50%;
-    text-align: left;
-    white-space: normal;
-    overflow-wrap: anywhere;
-}
-
-#verificationFilesModal .stat-table th:last-child,
-#verificationFilesModal .stat-table td:last-child {
-    width: 15%;
 }
 
 /* ============== Library page (stage 2) ============== */
@@ -1059,7 +1024,7 @@ button.stat-tile:hover {
 
 /* Not in the library: the card stays, dimmed. */
 .library-card.is-missing .library-cover {
-    filter: grayscale(.7);
+    filter: grayscale(1);
     opacity: .6;
 }
 
@@ -2125,8 +2090,18 @@ button.stat-tile:hover {
     margin-bottom: 1rem;
 }
 
-.dl-scroll > .table {
-    margin-bottom: 0;
+/* Latest downloads takes the section's whole width; the short lists above keep theirs. */
+#downloadRecentScroll {
+    max-width: none;
+}
+
+/* A game in the library-detail modal: its icon before its name. */
+.library-detail-title {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    margin-bottom: .5rem !important;
+    font-weight: 700;
 }
 
 /* The Library's stand-ins for an empty or failed grid. */
@@ -2531,6 +2506,39 @@ button.stat-tile:hover {
     color: var(--op-text-muted);
 }
 
+/* A row that folds out its details (a DLC's description) underneath. */
+.game-row:has(.game-row__details) {
+    flex-wrap: wrap;
+}
+
+.game-row__more .bi {
+    transition: transform var(--op-dur) var(--op-ease);
+}
+
+.game-row__more.is-open .bi {
+    transform: rotate(180deg);
+}
+
+.game-row__details {
+    flex: 0 0 100%;
+    min-width: 0;
+    margin: .1rem 0 .25rem;
+    padding-left: 3.2rem;     /* under the name, inside the row's width */
+    overflow-wrap: anywhere;
+    font-size: .9rem;
+    color: var(--op-text-muted);
+    white-space: pre-line;
+}
+
+/* A game whose base game the library doesn't hold: its cover in gray. */
+.game-hero__cover.is-missing img {
+    filter: grayscale(1);
+}
+
+.game-notice--base {
+    margin-top: .75rem;
+}
+
 @media (max-width: 575.98px) {
     .game-row {
         flex-wrap: wrap;
@@ -2636,6 +2644,11 @@ button.stat-tile:hover {
 
 .stats-section__title .bi {
     color: var(--op-nav);
+}
+
+/* "Click a row..." under a chart: apart from the last row. */
+.stats-hint {
+    margin-top: .9rem;
 }
 
 /* Donut and ring: a conic-gradient circle (charts.js) with a hole and a centre label. */
@@ -3011,6 +3024,19 @@ a.dash-list__row:hover {
     color: var(--op-nav);
 }
 
+/* The global `h1..h6 { margin: 0 !important }` above wins over a plain margin, which
+   left the content glued to every section title. A title that shares a row with its
+   buttons (.mb-0) gets its space from that row instead. */
+.admin-section__title:not(.mb-0),
+.stats-section__title:not(.mb-0) {
+    margin-bottom: .9rem !important;
+}
+
+/* .row.g-3 pulls itself up by its gutter, onto the Processes title. */
+#workerCards {
+    margin-top: 0;
+}
+
 /* ============== Settings (stage 5b) ============== */
 
 .settings-section + .settings-section {
@@ -3169,5 +3195,673 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
 @media (prefers-reduced-motion: reduce) {
     .settings-index__link {
         transition: none;
+    }
+}
+
+/* ============== Console firmware (My account) ============== */
+
+/* A game or update the user's console is too old for: amber, "something waits for you". */
+.game-fact--warn {
+    border-color: rgba(var(--op-wait-rgb), .6);
+}
+
+.game-fact--warn .game-fact__value {
+    color: var(--op-wait);
+}
+
+.game-fact__note {
+    margin-top: .25rem;
+    font-size: .78rem;
+    color: var(--op-wait);
+}
+
+.game-row--firmware {
+    box-shadow: inset 3px 0 0 var(--op-wait);
+}
+
+.account-page {
+    max-width: 60rem;
+}
+
+.account-firmware {
+    max-width: 12rem;
+}
+
+.account-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+}
+
+/* ============== Upcoming releases and sagas ============== */
+
+.discover-page {
+    max-width: 1600px;
+    padding-bottom: 1.5rem;
+}
+
+.discover-section + .discover-section {
+    margin-top: 1rem;
+}
+
+.discover-toolbar {
+    margin-bottom: 1rem;
+}
+
+.discover-search {
+    position: relative;
+    max-width: 26rem;
+}
+
+.discover-search .bi {
+    position: absolute;
+    left: .75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--op-text-muted);
+}
+
+.discover-search .form-control {
+    padding-left: 2.25rem;
+}
+
+.discover-back {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    margin-bottom: 1rem;
+    color: var(--op-nav);
+    text-decoration: none;
+}
+
+.release-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+    gap: .9rem;
+}
+
+.release-month + .release-month {
+    margin-top: 1.5rem;
+}
+
+.release-month__title {
+    margin-bottom: .75rem !important;
+    font-size: 1rem;
+    font-weight: 700;
+    text-transform: capitalize;
+    color: var(--op-text-muted);
+}
+
+.release-card {
+    position: relative;
+    min-width: 0;
+}
+
+.release-card__link {
+    display: block;
+    color: var(--op-text);
+    text-decoration: none;
+}
+
+.release-card__cover {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1;
+    border-radius: var(--op-radius);
+    overflow: hidden;
+    background-color: var(--op-surface-2);
+    color: var(--op-nav);
+    font-size: 2rem;
+    border: 1px solid var(--op-border);
+    transition: transform var(--op-dur) var(--op-ease), border-color var(--op-dur) var(--op-ease);
+}
+
+.release-card__cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.release-card__link:hover .release-card__cover {
+    border-color: var(--op-nav);
+    transform: translateY(-2px);
+}
+
+/* The next game of a saga you have: a gold edge, like favourites. */
+.release-card.is-sequel .release-card__cover {
+    border-color: rgba(var(--op-fav-rgb), .7);
+}
+
+.release-card__name {
+    margin-top: .45rem;
+    font-weight: 600;
+    font-size: .9rem;
+    line-height: 1.25;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.release-card__date {
+    font-size: .8rem;
+    color: var(--op-text-muted);
+}
+
+.release-card__sagas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .25rem;
+    margin-top: .3rem;
+}
+
+.release-chip {
+    max-width: 100%;
+    padding: .05rem .45rem;
+    border-radius: 999px;
+    font-size: .7rem;
+    color: var(--op-fav);
+    background-color: rgba(var(--op-fav-rgb), .14);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.release-card__heart {
+    position: absolute;
+    top: .4rem;
+    right: .4rem;
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border: 0;
+    border-radius: 50%;
+    color: #fff;
+    background-color: rgba(0, 0, 0, .45);
+    backdrop-filter: blur(4px);
+}
+
+.release-card__heart.is-on {
+    color: var(--op-danger);
+    background-color: rgba(255, 255, 255, .9);
+}
+
+/* A saga's games you don't have: there, but faded. */
+.release-card.is-missing .release-card__cover img {
+    filter: grayscale(1);
+    opacity: .55;
+}
+
+.release-card.is-upcoming .release-card__date {
+    color: var(--op-fav);
+}
+
+.saga-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: 1rem;
+}
+
+.saga-card {
+    display: flex;
+    flex-direction: column;
+    gap: .6rem;
+    color: var(--op-text);
+    text-decoration: none;
+    transition: border-color var(--op-dur) var(--op-ease);
+}
+
+.saga-card:hover {
+    color: var(--op-text);
+    border-color: var(--op-nav);
+}
+
+.saga-card__collage {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: .35rem;
+}
+
+.saga-card__collage .release-card__cover {
+    font-size: 1.1rem;
+}
+
+.saga-card__name {
+    font-weight: 700;
+}
+
+.saga-progress__label {
+    display: flex;
+    justify-content: space-between;
+    gap: .5rem;
+    margin-bottom: .3rem;
+    font-size: .85rem;
+}
+
+.saga-progress__coming {
+    color: var(--op-fav);
+}
+
+.saga-progress__bar {
+    height: .5rem;
+    border-radius: 999px;
+    background-color: var(--op-chart-track);
+    overflow: hidden;
+}
+
+.saga-progress__fill {
+    height: 100%;
+    border-radius: 999px;
+    background-color: var(--op-nav);
+}
+
+.saga-summary {
+    max-width: 26rem;
+    margin-bottom: 1.25rem;
+}
+
+.game-saga-link {
+    color: var(--op-nav);
+}
+
+.game-saga-count {
+    font-weight: 400;
+    color: var(--op-text-muted);
+}
+
+@media (max-width: 575.98px) {
+    .release-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: .7rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .release-card__cover {
+        transition: none;
+    }
+
+    .release-card__link:hover .release-card__cover {
+        transform: none;
+    }
+}
+
+/* ============== Save vault ============== */
+
+.vault-origin {
+    flex: 1 1 18rem;
+    max-width: 26rem;
+}
+
+.saves-games {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.saves-game__head .dash-list__row {
+    padding-left: 0;
+}
+
+.saves-backups {
+    list-style: none;
+    margin: .5rem 0 0;
+    padding: 0;
+    border-top: 1px solid var(--op-border);
+}
+
+.saves-backup {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .55rem 0;
+    border-bottom: 1px solid var(--op-border);
+}
+
+.saves-backup:last-child {
+    border-bottom: 0;
+}
+
+.saves-backup__text {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.saves-backup__when {
+    font-weight: 600;
+}
+
+.saves-backup__file {
+    font-size: .8rem;
+    color: var(--op-text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.icon-btn--danger {
+    color: var(--op-danger);
+}
+
+/* ============== Accounts: sign up, links, Google ============== */
+
+.auth-text {
+    color: var(--op-text-muted);
+    text-align: center;
+}
+
+.auth-links {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: .5rem 1.25rem;
+    margin: 1rem 0 0;
+    font-size: .9rem;
+}
+
+.auth-links a,
+.auth-text a {
+    color: var(--op-nav);
+}
+
+.auth-divider {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    margin: 1rem 0;
+    color: var(--op-text-muted);
+    font-size: .85rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+    content: '';
+    flex: 1;
+    border-top: 1px solid var(--op-border);
+}
+
+.auth-google .bi {
+    margin-right: .35rem;
+}
+
+.registration-status {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    gap: .35rem;
+}
+
+.registration-status li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+}
+
+/* Services (/admin/services): one card per service, its state and its switch. */
+.services-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+    gap: 1rem;
+}
+
+.service-card {
+    display: flex;
+    flex-direction: column;
+    gap: .6rem;
+    padding: 1.1rem 1.2rem;
+    border-left: 3px solid var(--op-border);
+}
+
+.service-card.is-on {
+    border-left-color: var(--op-ok);
+}
+
+.service-card__head {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+}
+
+.service-card__icon {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 2.2rem;
+    height: 2.2rem;
+    border-radius: var(--op-radius-sm);
+    background-color: var(--op-surface-2);
+    color: var(--op-nav);
+    font-size: 1.1rem;
+}
+
+.service-card__name {
+    flex: 1 1 auto;
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.service-card__desc {
+    flex: 1 1 auto;
+    margin: 0;
+    font-size: .88rem;
+    color: var(--op-text-muted);
+}
+
+.service-card__foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding-top: .6rem;
+    border-top: 1px solid var(--op-border);
+}
+
+.service-card__link {
+    font-size: .88rem;
+    text-decoration: none;
+}
+
+/* Profile pictures (avatars.py): in the top bar, the users table and My account. */
+.nav-avatar,
+.user-avatar,
+.avatar-preview img,
+.avatar-choice img {
+    border-radius: 50%;
+    object-fit: cover;
+    background-color: var(--op-surface-2);
+}
+
+.nav-avatar {
+    width: 1.75rem;
+    height: 1.75rem;
+    vertical-align: middle;
+}
+
+.user-name {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+.user-avatar {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+.avatar-current {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: .5rem;
+}
+
+.avatar-preview {
+    display: grid;
+    place-items: center;
+    width: 4.5rem;
+    height: 4.5rem;
+    border-radius: 50%;
+    background-color: var(--op-surface-2);
+    color: var(--op-text-muted);
+    font-size: 2.6rem;
+}
+
+.avatar-preview img {
+    width: 100%;
+    height: 100%;
+}
+
+.avatar-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(3.5rem, 1fr));
+    gap: .5rem;
+    max-width: 30rem;
+}
+
+.avatar-choice {
+    padding: 2px;
+    border: 2px solid transparent;
+    border-radius: 50%;
+    background: none;
+    transition: border-color var(--op-dur) var(--op-ease), transform var(--op-dur) var(--op-ease);
+}
+
+.avatar-choice img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.avatar-choice:hover {
+    transform: scale(1.06);
+}
+
+.avatar-choice.is-selected {
+    border-color: var(--op-nav);
+}
+
+/* Statistics > Downloads: a card per view, as the rest of the page; the lists are the
+   shared .dash-list rows with ranks, share bars, pictures and chips (title-list.js). */
+.dl-card {
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--op-border);
+    border-radius: var(--op-radius);
+    background-color: var(--op-surface-2);
+}
+
+.dl-card__title {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin: 0 0 .75rem;
+    font-size: .95rem;
+    font-weight: 700;
+}
+
+.dl-card__title .bi {
+    color: var(--op-nav);
+}
+
+.dl-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.dl-card--wide {
+    grid-row: span 2;
+}
+
+@media (max-width: 767.98px) {
+    .dl-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .dl-card--wide {
+        grid-row: auto;
+    }
+}
+
+.dash-list__rank {
+    flex: 0 0 1.6rem;
+    text-align: center;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--op-text-muted);
+}
+
+.dash-list__rank.is-top {
+    color: var(--op-fav);
+}
+
+.dash-list__icon--person,
+.dash-list__icon--person img {
+    border-radius: 50%;
+}
+
+.dash-list__bar {
+    display: block;
+    height: .3rem;
+    margin-top: .35rem;
+    border-radius: 999px;
+    background-color: var(--op-border);
+    overflow: hidden;
+}
+
+.dash-list__bar-fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background-color: var(--op-nav);
+}
+
+.dash-list__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+    margin-top: .3rem;
+}
+
+.dash-list__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    padding: .05rem .5rem .05rem .2rem;
+    border-radius: 999px;
+    background-color: var(--op-surface-1);
+    border: 1px solid var(--op-border);
+    font-size: .75rem;
+    color: var(--op-text-muted);
+}
+
+.dash-list__chip img {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+}
+
+.dash-list__chip .bi {
+    padding-left: .2rem;
+}
+
+/* On a phone the latest downloads' time goes under the name, which keeps the width. */
+@media (max-width: 575.98px) {
+    .dl-list--recent .dash-list__row {
+        flex-wrap: wrap;
+    }
+
+    .dl-list--recent .dash-list__text {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    .dl-list--recent .dash-list__when {
+        flex-basis: 100%;
+        text-align: left;
+        padding-left: 2.95rem;     /* under the name: past the icon and its gap */
     }
 }

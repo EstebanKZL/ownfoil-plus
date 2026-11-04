@@ -381,3 +381,49 @@ def test_delete_title_record_mutation_deletes_every_real_file(env):
         assert db.session.get(Apps, env.ids.alpha_update_row_id) is None
         assert not os.path.exists(env.ids.alpha_base_filepath)
         assert not os.path.exists(env.ids.alpha_update_filepath)
+
+
+# --- cleanFileRecord: the Files page's "Clean DB", same action per file -------------
+
+CLEAN_FILE_MUTATION = """
+    mutation($id: ID!) { cleanFileRecord(fileId: $id) }"""
+
+
+def test_clean_file_record_cleans_each_app_the_file_holds_like_clean_app_record(env):
+    with env.app.app_context():
+        assert db_mod.clean_file_record(env.ids.alpha_update_file_id) is True
+        assert db.session.get(Apps, env.ids.alpha_update_row_id) is None
+        assert db.session.get(Files, env.ids.alpha_update_file_id) is None
+        # The other app of the same title, and its file, stay.
+        assert db.session.get(Apps, env.ids.alpha_base_row_id) is not None
+        assert db.session.get(Files, env.ids.alpha_base_file_id) is not None
+        assert os.path.exists(env.ids.alpha_update_filepath)  # database only
+
+
+def test_clean_file_record_forgets_an_unidentified_file_without_touching_disk(env, tmp_path):
+    with env.app.app_context():
+        path = tmp_path / "games_a" / "Mystery.nsp"
+        path.write_bytes(b"X")
+        lib = Libraries.query.filter_by(path=env.lib_a_path).one()
+        f = Files(library_id=lib.id, filepath=str(path), filename="Mystery.nsp",
+                  extension="nsp", size=1, identified=False)
+        db.session.add(f)
+        db.session.commit()
+
+        assert db_mod.clean_file_record(f.id) is True
+        assert db.session.get(Files, f.id) is None
+        assert path.exists()
+
+
+def test_clean_file_record_returns_false_for_an_unknown_file(env):
+    with env.app.app_context():
+        assert db_mod.clean_file_record(999999) is False
+
+
+def test_clean_file_record_mutation(env):
+    body = _mutate(env, CLEAN_FILE_MUTATION, id=str(env.ids.alpha_base_file_id))
+    assert "errors" not in body, body.get("errors")
+    assert body["data"]["cleanFileRecord"] is True
+    with env.app.app_context():
+        assert db.session.get(Files, env.ids.alpha_base_file_id) is None
+        assert os.path.exists(env.ids.alpha_base_filepath)

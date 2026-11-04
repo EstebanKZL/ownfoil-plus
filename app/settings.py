@@ -473,6 +473,24 @@ def set_appearance_settings(data):
     with settings_transaction() as settings:
         settings.setdefault('appearance', {}).update(data)
 
+def set_registration_settings(data):
+    """Already-validated values (see the /api/settings/registration route)."""
+    with settings_transaction() as settings:
+        settings.setdefault('registration', {}).update(data)
+
+def set_service_enabled(path, enabled):
+    """One service's on/off switch (app.py's SERVICES), e.g. ('shop', 'enabled')."""
+    with settings_transaction() as settings:
+        section = settings
+        for key in path[:-1]:
+            section = section.setdefault(key, {})
+        section[path[-1]] = bool(enabled)
+
+def set_vault_settings(data):
+    """Already-validated values (see the /api/settings/vault route)."""
+    with settings_transaction() as settings:
+        settings.setdefault('vault', {}).update(data)
+
 def set_scheduler_settings(data):
     with settings_transaction() as settings:
         settings['scheduler'].update(data)

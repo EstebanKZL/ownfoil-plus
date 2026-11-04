@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% include 'nav.html' %}
+{# Upcoming releases: the catalogue's games still to come (discover.py), "for you" first. #}
+<div class="container-fluid discover-page mt-3">
+    <header class="page-head">
+        <span class="page-head__icon"><i class="bi bi-calendar-event" aria-hidden="true"></i></span>
+        <h1 class="page-head__title">{{ t('upcoming.title') }}</h1>
+        <p class="page-head__desc">{{ t('upcoming.desc') }}</p>
+    </header>
+
+    <div class="discover-toolbar">
+        <div class="discover-search">
+            <i class="bi bi-search" aria-hidden="true"></i>
+            <input type="search" class="form-control" id="upcomingSearch" placeholder="{{ t('upcoming.search') }}"
+                   aria-label="{{ t('upcoming.search') }}">
+        </div>
+    </div>
+
+    <p id="upcomingLoading" class="text-secondary fst-italic">{{ t('common.loading') }}</p>
+    <p id="upcomingError" class="text-danger" hidden>{{ t('upcoming.load_failed') }}</p>
+
+    <section class="surface admin-section discover-section" id="upcomingForYou" hidden>
+        <h2 class="admin-section__title"><i class="bi bi-heart" aria-hidden="true"></i> {{ t('upcoming.for_you') }}</h2>
+        <div class="release-grid" id="upcomingForYouGrid"></div>
+        <p class="text-secondary small mb-0" id="upcomingForYouEmpty" hidden>{{ t('upcoming.for_you_empty') }}</p>
+    </section>
+
+    <section class="surface admin-section discover-section" id="upcomingCalendar" hidden>
+        <h2 class="admin-section__title"><i class="bi bi-calendar3" aria-hidden="true"></i> {{ t('upcoming.calendar') }}</h2>
+        <div id="upcomingMonths"></div>
+        <p class="text-secondary fst-italic mb-0" id="upcomingNone" hidden>{{ t('upcoming.none') }}</p>
+        <p class="text-secondary fst-italic mb-0" id="upcomingNoMatch" hidden>{{ t('upcoming.no_match') }}</p>
+    </section>
+</div>
+
+<script>
+    const CAN_WISHLIST = {{ can_wishlist | tojson }};
+    const I18N = {
+        wishlistAdd: {{ t('upcoming.wishlist_add') | tojson }},
+        wishlistRemove: {{ t('upcoming.wishlist_remove') | tojson }},
+        sequel: {{ t('upcoming.sequel') | tojson }},
+    };
+</script>
+<script src="{{ url_for('static', filename='js/upcoming.js') }}"></script>
+{% endblock %}

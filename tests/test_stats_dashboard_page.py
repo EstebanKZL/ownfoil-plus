@@ -163,10 +163,13 @@ def test_storage_handles_offline_and_unknown_totals():
 
 def test_recent_rows_link_to_the_game_and_icons_come_in_one_request():
     js = _js("dashboard.js")
-    rows = _function_body(js, "renderList")
-    assert "`/game/${" in rows
-    icons = _function_body(js, "loadIcons")
-    assert icons.count("fetch(") + icons.count("gqlFetch(") == 1
+    # The rows and the icon request are shared with Statistics since 6.2.5.49
+    # (static/js/title-list.js; tests/test_admin_polish.py covers the single request).
+    assert "titleListRow(" in _function_body(js, "renderList")
+    shared = _js("title-list.js")
+    assert "`/game/${titleId}`" in shared
+    icons = _function_body(shared, "fillTitleIcons")
+    assert icons.count("fetch(") == 1
     assert "[0-9A-F]{16}" in icons      # ids are validated before going into the query
 
 

@@ -82,7 +82,7 @@ def test_services_page_requires_admin(shop_app):
 
 def test_services_page_renders_for_admin_with_discovery_toggle(client):
     html = client.get("/admin/services").get_data(as_text=True)
-    assert "discoveryEnabledCheck" in html
+    assert "serviceSwitch-discovery" in html
     assert "8465" in html  # the UDP port is shown in the help text
 
 

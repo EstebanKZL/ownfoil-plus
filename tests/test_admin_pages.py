@@ -70,7 +70,8 @@ def test_tasks_sections_are_surfaces(admin_client):
 def test_services_section_is_a_surface(admin_client):
     html = admin_client.get("/admin/services").get_data(as_text=True)
     assert re.search(r'<section class="surface[^"]*" id="servicesDiscovery"', html)
-    assert 'id="discoveryEnabledCheck"' in html and 'id="submitServicesSettingsBtn"' in html
+    # Discovery's switch is a card of the Services panel, saved as it's flipped.
+    assert 'id="serviceSwitch-discovery"' in html and 'id="servicesPanel"' in html
 
 
 # --- Files: tokens, tile tones, game link ---------------------------------------------------
@@ -225,8 +226,8 @@ def test_no_admin_yet_forces_the_new_user_access_boxes():
         assert box in block, box
 
 
-SETTINGS_IDS = ["Authentication", "Library", "Titles", "Media", "Shop", "Scheduler", "Maintenance",
-                "Notifications", "Workers", "Appearance", "Backup", "Danger"]
+SETTINGS_IDS = ["Authentication", "Registration", "Library", "Titles", "Media", "Shop", "Scheduler", "Maintenance",
+                "Vault", "Notifications", "Workers", "Appearance", "Backup", "Danger"]
 
 
 def test_settings_has_a_page_head(admin_client):
@@ -264,8 +265,8 @@ def test_links_into_settings_still_land(admin_client):
     assert not missing, missing
 
 
-SETTINGS_ICONS = ["bi-people", "bi-folder", "bi-translate", "bi-image", "bi-shop", "bi-clock", "bi-archive",
-                  "bi-bell", "bi-cpu", "bi-palette", "bi-box-arrow-down", "bi-exclamation-triangle"]
+SETTINGS_ICONS = ["bi-people", "bi-person-plus", "bi-folder", "bi-translate", "bi-image", "bi-shop", "bi-clock", "bi-archive",
+                  "bi-safe", "bi-bell", "bi-cpu", "bi-palette", "bi-box-arrow-down", "bi-exclamation-triangle"]
 
 
 def test_settings_index_lists_every_section(admin_client):
@@ -358,7 +359,7 @@ def test_every_settings_section_is_in_the_search_palette():
 
 def test_index_click_moves_keyboard_focus_into_the_section(admin_client):
     html = admin_client.get("/admin/settings").get_data(as_text=True)
-    assert len(re.findall(r'<section class="surface admin-section settings-section[^"]*" id="\w+" tabindex="-1"', html)) == 12
+    assert len(re.findall(r'<section class="surface admin-section settings-section[^"]*" id="\w+" tabindex="-1"', html)) == len(SETTINGS_IDS)
     body = _function_body(_js("settings.js"), "initSettingsIndex")
     assert "target.focus({preventScroll: true})" in body
 

@@ -305,6 +305,15 @@ class Apps(db.Model):
 
     __table_args__ = (db.UniqueConstraint('app_id', 'app_version', name='uq_apps_app_version'),)
 
+class Wishlist(db.Model):
+    """A game a user wants: one row per user and title, shown first in Upcoming releases."""
+    __tablename__ = 'wishlist'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False, index=True)
+    title_id = db.Column(db.String(16), nullable=False)
+    added_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    __table_args__ = (db.UniqueConstraint('user_id', 'title_id', name='uq_wishlist_user_title'),)
+
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user = db.Column(db.String(100), unique=True)
@@ -312,6 +321,23 @@ class User(UserMixin, db.Model):
     admin_access = db.Column(db.Boolean)
     shop_access = db.Column(db.Boolean)
     backup_access = db.Column(db.Boolean)
+    # Set by the user in My account (/account). Empty = not set / as the server says.
+    console_firmware = db.Column(db.String(16), nullable=True)
+    show_background_image = db.Column(db.Boolean, nullable=True)
+    # Accounts people make themselves (accounts.py). `email` holds only a verified
+    # address; one waiting for its link is `pending_email`, a claim that blocks nobody.
+    # `pending`: registered and waiting for that link - it can't sign in yet. `password`
+    # is empty for an account made with Google until its owner sets one in My account.
+    email = db.Column(db.String(254), nullable=True, unique=True)
+    email_verified = db.Column(db.Boolean, nullable=False, default=False, server_default='0')
+    pending_email = db.Column(db.String(254), nullable=True)
+    # The user's own password for the save vault (vault.py), hashed; JKSV signs in with
+    # the web user name and this. And their profile picture (My account): a gallery
+    # avatar's id or an uploaded image's file name.
+    vault_password = db.Column(db.String(200), nullable=True)
+    avatar = db.Column(db.String(64), nullable=True)
+    google_id = db.Column(db.String(64), nullable=True, unique=True)
+    pending = db.Column(db.Boolean, nullable=False, default=False, server_default='0')
 
     @property
     def is_admin(self):
@@ -1130,6 +1156,30 @@ def delete_file_record(file_id):
     db.session.delete(f)
     db.session.commit()
     logger.warning(f"Deleted file '{filepath}' (row {file_id}) from disk, admin-requested.")
+    return True
+
+
+def clean_file_record(file_id):
+    """Forget one Files row *without* touching the disk - the Files page's "Clean DB",
+    the same action Statistics offers per item (clean_app_record): each app the file
+    holds is cleaned the same way, and an unidentified file (no apps) loses only its own
+    row. A later scan picks the file back up as if it were new.
+
+    Returns True if the row was found and cleaned, False if file_id doesn't exist.
+    """
+    f = db.session.get(Files, file_id)
+    if f is None:
+        return False
+    filepath = f.filepath
+    app_row_ids = [app.id for app in f.apps]
+    for app_row_id in app_row_ids:
+        clean_app_record(app_row_id)
+    f = db.session.get(Files, file_id)
+    if f is not None:
+        remove_file_from_apps(f.id)
+        db.session.delete(f)
+        db.session.commit()
+    logger.warning(f"Cleaned tracked record for '{filepath}' (row {file_id}), admin-requested.")
     return True
 
 

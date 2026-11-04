@@ -106,23 +106,10 @@ def test_verify_now_header_row_is_capped_to_the_table_width(client):
     assert "max-width: 30rem" in css
 
 
-def test_verification_modal_table_css_overrides_the_dashboard_width_cap():
-    """Regression guard for the cramped-Title-column bug: the modal table reuses
-    .stat-table's styling, but the small dashboard tables' max-width (30rem) once
-    applied to it too, squeezing long titles into a near-unreadable single-word-per-line
-    wrap. style.css must scope an override to the modal specifically."""
-    css_path = os.path.join(os.path.dirname(__file__), "..", "app", "static", "style.css")
-    with open(css_path) as f:
-        css = f.read()
-
-    assert "#verificationFilesModal .stat-table" in css
-    assert "max-width: none" in css
-
-
 def test_missing_app_type_modal_is_present_and_translated(client):
     html = _page_and_js(client)
     assert 'id="missingAppTypeModal"' in html
-    assert 'id="missingAppTypeBody"' in html
+    assert 'id="missingAppTypeList"' in html
     assert 'id="missingAppTypePrev"' in html
     assert 'id="missingAppTypeNext"' in html
     assert "function openMissingAppType" in html

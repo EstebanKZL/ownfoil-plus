@@ -1,4 +1,5 @@
 """Query resolvers for the GraphQL API."""
+import firmware
 import json
 from typing import Dict, List, Optional
 
@@ -481,12 +482,20 @@ def _hydrate_titledb_versions(titles: List[Title]) -> None:
         return
     params = {f"v_{i}": x for i, x in enumerate(ids)}
     placeholders = ",".join(f":v_{i}" for i in range(len(ids)))
+    # The firmware each version needs is the cnmt's requiredSystemVersion: the base
+    # game's own cnmt for version 0, the update's (title id ending 800) for the rest.
+    # cnmts keeps the JSON's lowercase ids.
     rows = db.session.execute(text(f"""
-    SELECT td.id AS key, 0 AS version, {_ISO_RELEASE_DATE} AS release_date
+    SELECT td.id AS key, 0 AS version, {_ISO_RELEASE_DATE} AS release_date,
+           (SELECT MAX(c.required_system_version) FROM titledb.cnmts c
+            WHERE c.app_id = lower(td.id) AND c.version = 0) AS required_system_version
     FROM {_TITLEDB} td
     WHERE td.id IN ({placeholders}) AND td.release_date IS NOT NULL
     UNION ALL
-    SELECT v.title_id AS key, v.version AS version, v.release_date AS release_date
+    SELECT v.title_id AS key, v.version AS version, v.release_date AS release_date,
+           (SELECT MAX(c.required_system_version) FROM titledb.cnmts c
+            WHERE c.app_id = lower(substr(v.title_id, 1, 13) || '800')
+              AND c.version = v.version) AS required_system_version
     FROM titledb.versions v
     WHERE v.title_id IN ({placeholders})
     ORDER BY key, version
@@ -494,7 +503,8 @@ def _hydrate_titledb_versions(titles: List[Title]) -> None:
     by_id: Dict[str, List[TitledbVersion]] = {}
     for r in rows:
         by_id.setdefault((r.key or "").upper(), []).append(
-            TitledbVersion(version=int(r.version), release_date=r.release_date))
+            TitledbVersion(version=int(r.version), release_date=r.release_date,
+                           required_firmware=firmware.format_system_version(r.required_system_version)))
     for t in titles:
         t.available_versions_loaded = by_id.get(t.title_id, [])
 
@@ -680,7 +690,7 @@ def resolve_title(title_id: str, ctx: GraphQLContext, info) -> Optional[Title]:
     want_apps_versions = want_apps and apps_sel.has("versions")
     want_apps_latest = want_apps and apps_sel.has("latestOwnedVersion")
     want_apps_files_apps = want_apps_files and files_sel.has("apps")
-    want_available_versions = sel.has("availableVersions")
+    want_available_versions = sel.has("availableVersions") or sel.has("requiredFirmware")
     want_available_dlc = sel.has("availableDlc")
 
     # Drive from main.titles when this title is owned (so unrecognized titles surface),
@@ -782,7 +792,8 @@ def resolve_titles(*, owned: Optional[bool], filter: Optional[TitleFilter],
     want_apps_versions = want_apps and apps_sel.has("versions")
     want_apps_latest = want_apps and apps_sel.has("latestOwnedVersion")
     want_apps_files_apps = want_apps_files and files_sel.has("apps")
-    want_available_versions = want_items and items_sel.has("availableVersions")
+    want_available_versions = want_items and (
+        items_sel.has("availableVersions") or items_sel.has("requiredFirmware"))
     want_available_dlc = want_items and items_sel.has("availableDlc")
     want_total = sel.has("total")
 

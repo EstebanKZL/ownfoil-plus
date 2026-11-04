@@ -19,13 +19,12 @@ function storageRemove(key) {
 let itemsPerPage = 12;
 let currentPage = 1;
 let totalItems = 0;
-let cardSize = 3; // Default card size
+let cardSize = 3; // The current view's card size; Cards and Icons each remember their own
 let currentView = 'card'; // Default view is 'card'
 let fetchSeq = 0;    // guards against an older request answering after a newer one
 let searchDebounce;
 
 // Active filters
-let activeTypeFilter = "";
 let activeOwnershipFilter = "";
 let activeUpdateFilter = "";
 let activeCompletionFilter = "";
@@ -91,7 +90,6 @@ const CARDS_QUERY = `
                     screenshots { url }
                 }
                 title { titleId name ownership { haveBase upToDate complete } }
-                versions { version owned releaseDate }
             }
         }
     }`;
@@ -147,6 +145,7 @@ const LIST_QUERY = `
             items {
                 titleId name intro description developer publisher releaseDate
                 bannerUrl iconUrl size category numberOfPlayers rating languages
+                requiredFirmware
                 screenshots { url }
                 ownership { haveBase upToDate complete }
                 apps(owned: true) {
@@ -170,14 +169,10 @@ const LIST_QUERY = `
     }`;
 
 function queryVariables() {
-    let appType = null;
-    if (activeTypeFilter) {
-        appType = [activeTypeFilter];
-    } else if (currentView === 'icon') {
-        appType = ['BASE'];  // the icon wall is one icon per game, as it has always been
-    } else {
-        appType = ['BASE', 'DLC'];
-    }
+    // Cards and Icons are one per game: the base game speaks for its updates and DLC
+    // (the game page lists them). A game known only by its DLC or an update still
+    // shows, through its base game - missing, in gray.
+    const appType = ['BASE'];
     const search = ($('#textFilter').val() || '').trim();
     return {
         page: currentPage,
@@ -506,13 +501,6 @@ function metaFromApp(app, name) {
     };
 }
 
-/**
- * One card from one app. A BASE app speaks for its title: ownership and the update
- * history come from the title, since a Switch update ships under its own app id.
- * A DLC app speaks for itself, and is up to date when its highest known version is
- * the one owned.
- */
-
 /** The game page for an app: a game's own page, a DLC's game's page scrolled to that
  *  DLC, or - for a DLC whose game the library doesn't know - the DLC's own id. */
 function gameUrl(app) {
@@ -521,54 +509,24 @@ function gameUrl(app) {
     return title.titleId ? `/game/${title.titleId}?dlc=${app.appId}` : `/game/${app.appId}`;
 }
 
+/** One card: a base game, speaking for its title (ownership comes from the title, since
+ *  an update ships under its own app id). */
 function cardModel(app) {
     const meta = app.titledb || {};
     const title = app.title || {};
-    const ownership = title.ownership || {haveBase: false, upToDate: false, complete: false};
-    const versions = (app.versions || []).map(v => ({
-        version: v.version,
-        owned: v.owned,
-        release_date: v.releaseDate || 'Unknown',
-    }));
-    const isBase = app.appType === 'BASE';
-    const recognized = isBase ? !!title.name : !!meta.name;
+    const ownership = title.ownership || {haveBase: false};
+    const recognized = !!title.name;
     // Straight off `titledb.bannerUrl`/`iconUrl` - already resolved server-side
     // to /api/media/... or the titledb hotlink (see gql/resolvers.py's
     // _local_media_urls). Empty when titledb has nothing for this app at all: the
     // card then draws its own placeholder (no external image service).
-    const bannerUrl = meta.bannerUrl || '';
-    const iconUrl = meta.iconUrl || '';
-
-    if (isBase) {
-        return {
-            id: recognized ? title.titleId : title.titleId + ' ' + I18N.notFoundInTitledb,
-            title_id_name: title.name || I18N.unrecognized,
-            name: title.name || I18N.unrecognized,
-            bannerUrl: bannerUrl,
-            iconUrl: iconUrl,
-            app_type: 'BASE',
-            owned: ownership.haveBase,
-            has_latest_version: ownership.haveBase && ownership.upToDate,
-            has_all_dlcs: ownership.complete,
-            version: versions,
-            meta: metaFromApp(app, title.name || I18N.unrecognized),
-            url: gameUrl(app),
-        };
-    }
-
-    const ownedVersions = versions.filter(v => v.owned).map(v => v.version);
-    const highest = versions.length ? Math.max(...versions.map(v => v.version)) : 0;
     return {
-        id: recognized ? app.appId : app.appId + ' ' + I18N.notFoundInTitledb,
-        title_id_name: title.name || I18N.unrecognized,
-        name: meta.name || I18N.unrecognized,
-        bannerUrl: bannerUrl,
-        iconUrl: iconUrl,
-        app_type: app.appType,
-        owned: app.owned,
-        has_latest_version: ownedVersions.length > 0 && Math.max(...ownedVersions) >= highest,
-        version: versions,
-        meta: metaFromApp(app, meta.name || I18N.unrecognized),
+        id: recognized ? title.titleId : title.titleId + ' ' + I18N.notFoundInTitledb,
+        name: title.name || I18N.unrecognized,
+        bannerUrl: meta.bannerUrl || '',
+        owned: ownership.haveBase,
+        title_id: recognized ? title.titleId : null,
+        meta: metaFromApp(app, title.name || I18N.unrecognized),
         url: gameUrl(app),
     };
 }
@@ -585,10 +543,10 @@ function renderCardView(games) {
 
     games.forEach(function (game) {
         const gameCol = $('<div class="col game-col"></div>').addClass(cardColumnClasses());
-        const isDlc = game.app_type === 'DLC';
 
         const card = $('<div class="card game-surface game-card library-card"></div>')
             .toggleClass('is-missing', game.owned === false);
+        if (game.title_id) card.attr('data-firmware-title', game.title_id);
 
         const coverWrap = $('<div class="library-cover-wrap">');
         const cover = game.bannerUrl
@@ -602,54 +560,56 @@ function renderCardView(games) {
         coverWrap.append($('<a class="library-cover-link" tabindex="-1" aria-hidden="true">')
             .attr('href', game.url).append(cover));
 
-        // State badges, one fixed color per meaning (design tokens).
+        // The card is the game alone: its updates and DLC are on its page. The one
+        // state shown is a base game the library doesn't hold (only its DLC or an
+        // update), in gray like a missing game in Sagas.
         const badges = $('<div class="library-badges">');
-        if (isDlc) badges.append(statusBadge('', 'bi-puzzle', I18N.badgeDlc));
-        if (game.owned === false) {
-            badges.append(statusBadge('wait', 'bi-dash-circle', I18N.missing));
-        } else {
-            const outdated = game.has_latest_version === false;
-            const missingDlc = game.has_all_dlcs === false;
-            if (outdated) badges.append(statusBadge('wait', 'bi-arrow-up-circle', I18N.badgeUpdate));
-            if (missingDlc) badges.append(statusBadge('dlc', 'bi-puzzle', I18N.badgeMissingDlc));
-            if (!outdated && !missingDlc) badges.append(statusBadge('ok', 'bi-check-circle', I18N.badgeComplete));
-        }
+        if (game.owned === false) badges.append(statusBadge('wait', 'bi-dash-circle', I18N.baseMissing));
         coverWrap.append(badges);
         card.append(coverWrap);
 
         const body = $('<div class="library-card-body">');
-        // A DLC card is named after the DLC, with its game underneath; a game card
-        // after the game.
-        const name = isDlc ? game.name : (game.title_id_name || game.name);
+        const name = game.name;
         body.append($('<h5 class="game-title library-card-title">').append(
             $('<a class="stretched-link library-card-link">').attr('href', game.url).text(name).attr('title', name)));
-        const metaLine = isDlc ? game.title_id_name : cardMetaLine(game.meta);
+        const metaLine = cardMetaLine(game.meta);
         if (metaLine) body.append($('<p class="library-card-meta">').text(metaLine));
 
         const foot = $('<div class="library-card-foot">');
         foot.append($('<small class="library-card-id">').text(game.id));
-        if (Array.isArray(game.version) && game.version.length) {
-            // Built via .text() per line, not string-interpolated into HTML directly -
-            // release dates and version numbers are real (untrusted) catalogue data,
-            // and this keeps them escaped even though the popover renders HTML for
-            // the line breaks.
-            const list = $('<div class="version-popover-list"></div>');
-            game.version.forEach(version => {
-                list.append($('<div></div>').text(
-                    `${version.release_date}: v${version.version} — ${version.owned ? I18N.owned : I18N.missing}`
-                ));
-            });
-            const versions = $('<button type="button" class="icon-btn library-versions">')
-                .attr({title: I18N.versions, 'aria-label': I18N.versions})
-                .append('<i class="bi bi-clock-history"></i>');
-            versions.popover({content: list.html(), html: true, trigger: 'click', placement: 'top'});
-            foot.append(versions);
-        }
         body.append(foot);
 
         card.append(body);
         gameCol.append(card);
         gameGrid.append(gameCol);
+    });
+    markCardFirmware();
+}
+
+/** "Needs firmware X": a game the user's console (My account) is too old for. */
+function firmwareBadge(needed) {
+    return statusBadge('wait', 'bi-cpu', I18N.needsNewerFirmware.replace('{needed}', needed));
+}
+
+/** Cards come from a grouped apps query without the firmware: once they are drawn, one
+ *  request asks for it for every game on screen. Only when the user set theirs. */
+async function markCardFirmware() {
+    if (!CONSOLE_FIRMWARE) return;
+    const cards = [...document.querySelectorAll('#gameGrid [data-firmware-title]')];
+    const ids = [...new Set(cards.map(c => c.dataset.firmwareTitle.toUpperCase()))]
+        .filter(id => /^[0-9A-F]{16}$/.test(id)).slice(0, 200);
+    if (!ids.length) return;
+    let data;
+    try {
+        data = await gqlFetch('{ ' + ids.map((id, i) => `t${i}: title(titleId: "${id}") { titleId requiredFirmware }`).join(' ') + ' }');
+    } catch (e) {
+        return;   // no badge rather than a broken page
+    }
+    const needs = {};
+    Object.values(data || {}).forEach(t => { if (t && t.requiredFirmware) needs[t.titleId.toUpperCase()] = t.requiredFirmware; });
+    cards.forEach(card => {
+        const needed = needs[card.dataset.firmwareTitle.toUpperCase()];
+        if (firmwareTooOld(needed, CONSOLE_FIRMWARE)) $(card).find('.library-badges').append(firmwareBadge(needed));
     });
 }
 
@@ -860,6 +820,7 @@ function renderListView(titles) {
             id: t.titleId, url: `/game/${t.titleId}`,
         });
         if (titleMetaBtn) titleLine.append(titleMetaBtn);
+        if (firmwareTooOld(t.requiredFirmware, CONSOLE_FIRMWARE)) titleLine.append(firmwareBadge(t.requiredFirmware));
         headerText.append(titleLine);
         if (t.intro) {
             headerText.append($('<p class="card-text small text-secondary mb-1"></p>').text(t.intro));
@@ -1075,9 +1036,15 @@ function adjustIconSizes() {
     $('.library-icon-link').css('width', `${iconSize}%`);
 }
 
+/** The card size Cards or Icons last used: each view keeps its own (the one size both
+ *  shared before is where they start from). */
+function savedSizeFor(view) {
+    const savedCardSize = parseInt(storageGet('cardSize.' + view) || storageGet('cardSize'));
+    return savedCardSize >= 1 && savedCardSize <= 5 ? savedCardSize : 3;
+}
+
 function saveFiltersToStorage() {
     storageSet('activeFilters', JSON.stringify({
-        type: activeTypeFilter,
         ownership: activeOwnershipFilter,
         update: activeUpdateFilter,
         completion: activeCompletionFilter,
@@ -1089,9 +1056,6 @@ function loadFiltersFromStorage() {
     let filters = null;
     try { filters = JSON.parse(storageGet('activeFilters') || 'null'); } catch (e) { /* unreadable: no filters */ }
     if (filters && typeof filters === 'object') {
-
-        $('#typeBase').prop('checked', filters.type === 'BASE');
-        $('#typeDlc').prop('checked', filters.type === 'DLC');
 
         $('#ownershipOwned').prop('checked', filters.ownership === 'Owned');
         $('#ownershipMissing').prop('checked', filters.ownership === 'Missing');
@@ -1123,13 +1087,6 @@ function loadFiltersFromStorage() {
 
 /** Read the filter controls into the active* variables the query is built from. */
 function updateFilter() {
-    if ($('#typeBase').is(":checked")) {
-        activeTypeFilter = 'BASE';
-    } else if ($('#typeDlc').is(":checked")) {
-        activeTypeFilter = 'DLC';
-    } else {
-        activeTypeFilter = '';
-    }
     if ($('#ownershipOwned').is(":checked")) {
         activeOwnershipFilter = 'Owned';
     } else if ($('#ownershipMissing').is(":checked")) {
@@ -1176,13 +1133,13 @@ function showLibraryState(id) {
 function anyFilterOrSearch() {
     const search = ($('#textFilter').val() || '').trim();
     if (currentView === 'list') return !!(search || activeHealthFilter);
-    return !!(search || activeTypeFilter || activeOwnershipFilter || activeUpdateFilter || activeCompletionFilter);
+    return !!(search || activeOwnershipFilter || activeUpdateFilter || activeCompletionFilter);
 }
 
 /** "Clear filters": every filter group back to All, the search emptied - both
  *  remembered that way - and back to page 1. */
 function clearAllFilters() {
-    ['#typeAll', '#ownershipAll', '#updateAll', '#completionAll', '#healthAll'].forEach(id => $(id).prop('checked', true));
+    ['#ownershipAll', '#updateAll', '#completionAll', '#healthAll'].forEach(id => $(id).prop('checked', true));
     $('#textFilter').val('');
     storageRemove('searchTerm');
     updateFilter();
@@ -1211,7 +1168,7 @@ function onFilterChange() {
 function updateFiltersDot() {
     const active = currentView === 'list'
         ? !!activeHealthFilter
-        : !!(activeTypeFilter || activeOwnershipFilter || activeUpdateFilter || activeCompletionFilter);
+        : !!(activeOwnershipFilter || activeUpdateFilter || activeCompletionFilter);
     $('#filtersActiveDot').prop('hidden', !active);
 }
 
@@ -1240,10 +1197,7 @@ $(document).ready(function () {
         applyViewToToolbar();
     }
 
-    const savedCardSize = parseInt(storageGet('cardSize'));
-    if (savedCardSize >= 1 && savedCardSize <= 5) {
-        cardSize = savedCardSize;
-    }
+    cardSize = savedSizeFor(currentView);
 
     loadFiltersFromStorage();
     updateFiltersDot();
@@ -1276,7 +1230,7 @@ $(document).ready(function () {
     // Event listener for card size slider
     $('#cardSizeRange').on('input', function () {
         cardSize = parseInt($(this).val());
-        storageSet('cardSize', cardSize);
+        storageSet('cardSize.' + currentView, cardSize);
         if (currentView === 'icon') {
             adjustIconSizes(cardSize);
         } else {
@@ -1290,13 +1244,14 @@ $(document).ready(function () {
         $(this).addClass("active");
         currentView = $(this).data('view');
         storageSet('currentView', currentView);
+        cardSize = savedSizeFor(currentView);
         applyViewToToolbar();
         // The views page different things (every card vs one icon per game), so the
         // page number from the previous view means nothing here.
         resetToFirstPage();
     });
 
-    $('.type-toggle, .ownership-toggle, .update-toggle, .completion-toggle, .health-toggle').change(onFilterChange);
+    $('.ownership-toggle, .update-toggle, .completion-toggle, .health-toggle').change(onFilterChange);
 
     // Listen to input changes in the text filter input
     $("#textFilter").on("input", function () {

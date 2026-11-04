@@ -18,21 +18,34 @@
         <p class="page-head__desc">{{ t('services.desc') }}</p>
     </header>
 
-    <section class="surface admin-section" id="servicesDiscovery">
+    {# One card per service: its state, a switch, and where it's set up (app.py's SERVICES). #}
+    <div class="services-grid" id="servicesPanel">
+        {% for service in services %}
+        <section class="surface service-card{% if service.enabled %} is-on{% endif %}" id="service-{{ service.id }}" data-service="{{ service.id }}">
+            <div class="service-card__head">
+                <span class="service-card__icon"><i class="bi {{ service.icon }}" aria-hidden="true"></i></span>
+                <h3 class="service-card__name">{{ service.name }}</h3>
+                <span class="status-badge service-card__state{% if service.enabled %} status-badge--ok{% endif %}" role="status">{{ t('services.on') if service.enabled else t('services.off') }}</span>
+            </div>
+            <p class="service-card__desc">{{ service.desc }}</p>
+            <div class="service-card__foot">
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input service-switch" type="checkbox" role="switch" id="serviceSwitch-{{ service.id }}"{% if service.enabled %} checked{% endif %}>
+                    <label class="form-check-label visually-hidden" for="serviceSwitch-{{ service.id }}">{{ t('services.switch', name=service.name) }}</label>
+                </div>
+                <a class="service-card__link" href="{{ service.settings }}">{{ t('services.settings') }} <i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+            </div>
+        </section>
+        {% endfor %}
+    </div>
+
+    <section class="surface admin-section mt-3" id="servicesDiscovery">
         <h3 class="admin-section__title"><i class="bi bi-wifi" aria-hidden="true"></i> {{ t('sections.discovery') }}</h3>
-        <p>{{ t('services.discovery_desc') }}</p>
-        <div class="alert alert-warning" role="alert">
+        <p>{{ t('services.discovery_desc') }} {{ t('services.discovery_enabled_help', port=discovery_port) }}</p>
+        <div class="alert alert-warning mb-0" role="alert">
             <i class="bi bi-exclamation-triangle-fill"></i>
             {{ t('services.discovery_docker_note') | safe }}
         </div>
-        <div class="mb-3 form-check">
-            <input type="checkbox" class="form-check-input" id="discoveryEnabledCheck"
-                aria-describedby="discoveryEnabledCheckHelp">
-            <label class="form-check-label" for="discoveryEnabledCheck">{{ t('services.discovery_enabled_label') }}</label>
-            <div id="discoveryEnabledCheckHelp" class="form-text">{{ t('services.discovery_enabled_help', port=discovery_port) }}</div>
-        </div>
-        <button type="button" id="submitServicesSettingsBtn" class="btn btn-primary"
-            onClick='submitServicesSettings()'>{{ t('services.submit') }}</button>
     </section>
 
 </div>
@@ -40,37 +53,12 @@
 
 {% block panel_scripts %}
 <script>
-    function getCheckboxStatus(checkboxId) {
-        return $('#' + checkboxId).is(':checked');
-    }
-
-    function loadServicesSettings() {
-        $.get('/api/settings', function (result) {
-            const discovery = (result['services'] || {})['discovery'] || {};
-            $('#discoveryEnabledCheck').prop('checked', !!discovery['enabled']);
-        });
-    }
-
-    function submitServicesSettings() {
-        $('#submitServicesSettingsBtn').prop('disabled', true);
-        const data = {
-            discovery: {
-                enabled: getCheckboxStatus('discoveryEnabledCheck'),
-            }
-        };
-        $.ajax({
-            url: '/api/settings/services',
-            type: 'POST',
-            data: JSON.stringify(data),
-            contentType: 'application/json',
-            complete: function () {
-                $('#submitServicesSettingsBtn').prop('disabled', false);
-            }
-        });
-    }
-
-    $(document).ready(function () {
-        loadServicesSettings();
-    });
+    const I18N = {
+        serviceOn: {{ t('services.on') | tojson }},
+        serviceOff: {{ t('services.off') | tojson }},
+        serviceSettings: {{ t('services.settings') | tojson }},
+        serviceFailed: {{ t('services.failed') | tojson }},
+    };
 </script>
+<script src="{{ url_for('static', filename='js/services.js') }}"></script>
 {% endblock %}

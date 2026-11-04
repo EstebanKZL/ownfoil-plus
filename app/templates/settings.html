@@ -3,12 +3,14 @@
 {#- One list drives the index and every section heading, so the two can't drift. -#}
 {%- set SETTINGS_SECTIONS = [
     ('Authentication', 'auth.heading', 'bi-people'),
+    ('Registration', 'sections.registration', 'bi-person-plus'),
     ('Library', 'sections.library', 'bi-folder'),
     ('Titles', 'sections.titles', 'bi-translate'),
     ('Media', 'sections.media', 'bi-image'),
     ('Shop', 'sections.shop', 'bi-shop'),
     ('Scheduler', 'sections.scheduler', 'bi-clock'),
     ('Maintenance', 'sections.maintenance', 'bi-archive'),
+    ('Vault', 'sections.vault', 'bi-safe'),
     ('Notifications', 'sections.notifications', 'bi-bell'),
     ('Workers', 'sections.workers', 'bi-cpu'),
     ('Appearance', 'sections.appearance', 'bi-palette'),
@@ -190,6 +192,36 @@
                     </div>
                 </div>
 
+                </section>
+
+                <section class="surface admin-section settings-section" id="Registration" tabindex="-1">
+                    {{ section_title('Registration') }}
+                <p>{{ t('registration.desc') }}</p>
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" role="switch" id="registrationEnabled">
+                    <label class="form-check-label" for="registrationEnabled">{{ t('registration.enabled') }}</label>
+                </div>
+                <div class="mb-3">
+                    <label for="registrationPublicUrl" class="form-label">{{ t('registration.public_url') }}</label>
+                    <input type="url" class="form-control vault-origin" id="registrationPublicUrl" placeholder="https://shop.example.com" autocomplete="off">
+                    <div class="form-text">{{ t('registration.public_url_help') }}</div>
+                </div>
+                <ul class="registration-status mb-3">
+                    <li><span>{{ t('registration.status_email') }}</span> <strong id="registrationStatusEmail">-</strong></li>
+                    <li><span>{{ t('registration.status_google') }}</span> <strong id="registrationStatusGoogle">-</strong></li>
+                </ul>
+                <div class="settings-inner mb-3" id="registrationTestBox">
+                    <label for="registrationTestTo" class="form-label">{{ t('registration.test_to') }}</label>
+                    <div class="d-flex flex-wrap gap-2">
+                        <input type="email" class="form-control vault-origin" id="registrationTestTo" autocomplete="email">
+                        <button type="button" class="btn btn-outline-primary" id="registrationTestEmail">{{ t('registration.test_send') }}</button>
+                    </div>
+                    <div class="form-text" id="registrationTestFeedback" role="status"></div>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <button type="button" class="btn btn-primary" id="registrationSave">{{ t('registration.save') }}</button>
+                    <span class="small" id="registrationFeedback" role="status"></span>
+                </div>
                 </section>
 
                 <section class="surface admin-section settings-section" id="Library" tabindex="-1">
@@ -746,6 +778,29 @@
 
                 </section>
 
+                <section class="surface admin-section settings-section" id="Vault" tabindex="-1">
+                    {{ section_title('Vault') }}
+                <p>{{ t('vault.desc') }}</p>
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" role="switch" id="vaultEnabled">
+                    <label class="form-check-label" for="vaultEnabled">{{ t('vault.enabled') }}</label>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label for="vaultKeep" class="form-label">{{ t('vault.keep') }}</label>
+                        <select class="form-select" id="vaultKeep">
+                            <option value="0">{{ t('vault.keep_all') }}</option>
+                            {% for n in [5, 10, 20, 50] %}<option value="{{ n }}">{{ n }}</option>{% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <p class="form-text mb-3"><i class="bi bi-person-circle" aria-hidden="true"></i> {{ t('vault.users_hint') }}</p>
+                <div class="d-flex align-items-center gap-3">
+                    <button type="button" class="btn btn-primary" id="vaultSave" onClick="submitVaultSettings()">{{ t('vault.save') }}</button>
+                    <span class="small" id="vaultFeedback" role="status"></span>
+                </div>
+                </section>
+
                 <section class="surface admin-section settings-section" id="Notifications" tabindex="-1">
                     {{ section_title('Notifications') }}
                 <p>{{ t('notif.desc') }}</p>
@@ -769,7 +824,7 @@
 
                 <h3 class="settings-subhead">{{ t('notif.events_heading') }}</h3>
                 <div class="mb-3">
-                    {% for event in ['file_added', 'update_available', 'file_corrupt', 'task_failed'] %}
+                    {% for event in ['file_added', 'update_available', 'file_corrupt', 'task_failed', 'save_backup'] %}
                     <div class="form-check">
                         <input class="form-check-input notif-event" type="checkbox" id="notifEvent_{{ event }}" data-event="{{ event }}">
                         <label class="form-check-label" for="notifEvent_{{ event }}">{{ t('notif.event.' ~ event) }}</label>
@@ -1022,6 +1077,17 @@
         importNoFile: {{ t('backup.import_no_file') | tojson }},
         importSuccess: {{ t('backup.import_success') | tojson }},
         importFailed: {{ t('backup.import_failed') | tojson }},
+        vaultSaved: {{ t('vault.saved') | tojson }},
+        registrationSaved: {{ t('registration.saved') | tojson }},
+        userPending: {{ t('users.pending') | tojson }},
+        userVerified: {{ t('account.email_verified') | tojson }},
+        userUnverified: {{ t('account.email_unverified') | tojson }},
+        registrationInvalid: {{ t('registration.invalid') | tojson }},
+        registrationConfigured: {{ t('registration.configured') | tojson }},
+        registrationNotConfigured: {{ t('registration.not_configured') | tojson }},
+        registrationTestOk: {{ t('registration.test_ok') | tojson }},
+        registrationTestFailed: {{ t('registration.test_failed') | tojson }},
+        vaultInvalid: {{ t('vault.invalid') | tojson }},
     };
     const ADMIN_ACCOUNT_CREATED = {{ (admin_account_created != false) | tojson }};
 </script>

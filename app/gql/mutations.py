@@ -233,6 +233,22 @@ class Mutation:
         return db_mod.clean_title_apps(title_id)
 
     @described_mutation
+    def clean_file_record(
+        self, info: Info,
+        file_id: Annotated[strawberry.ID, strawberry.argument(
+            description="Primary key of the file row to clean - File.id, as the "
+                        "Files admin page's own file listing returns it.")],
+    ) -> bool:
+        """The Files page's "Clean DB": forgets one file's record *without* touching
+        the disk - cleanAppRecord for each app the file holds, or just the file row
+        for an unidentified one. A later scan picks the file back up as new.
+        Admin only. Returns whether the row was found and cleaned.
+        """
+        import db as db_mod
+        _require_admin(info.context)
+        return db_mod.clean_file_record(int(file_id))
+
+    @described_mutation
     def delete_app_record(
         self, info: Info,
         app_row_id: Annotated[strawberry.ID, strawberry.argument(

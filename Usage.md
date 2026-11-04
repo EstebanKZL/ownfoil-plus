@@ -98,6 +98,22 @@ Admin only. An overview of the library: games, files, total size and unidentifie
 
 A file taken again by the same address within a minute counts once, so a console resuming or probing a download isn't counted twice. The history is kept for a year, survives deleting the file it refers to, and can be cleared from the same section (the per-file download counters are kept).
 
+## My account
+
+Every signed-in user has `My account` (the person icon at the top right): your console's firmware, so games and updates that need a newer one are marked in the Library and on their pages, and whether the Library's List view shows each game's background image for you (or follows the server's setting). Also your profile picture, shown in the top bar and in the users table: one of the gallery's avatars, or a picture you upload (PNG, JPEG, WebP or GIF up to 5 MB, cropped square and shrunk on the server, kept in `data/avatars/`).
+
+## Upcoming releases and Sagas
+
+`Upcoming` lists the games still to come to the eShop, by month, from TitleDB. The heart adds one to your wishlist (each user has their own); `For you` gathers your wishlist and the next games of the sagas you already have. `Sagas` lists the series you have games of, as "4 of 6", and opens each one with the games you have, the ones you're missing and the ones still to come. The series come from [Wikidata](https://www.wikidata.org): the server asks for them after a TitleDB refresh, at most once a week, and keeps them in `data/series.json`. Both pages follow the Library's access: anyone on a public shop, otherwise users with shop access.
+
+## Saves page
+
+Users with the `Backup` permission see their own backups JKSV uploaded to the save vault (see [Save vault](#save-vault)), by game, to download or delete, and the library's games without any. Admins see everyone's, each card saying whose.
+
+## Services
+
+`Admin > Services` shows each service with its state, `Active` or `Inactive`, a switch that turns it on or off at once, and a link to where it's set up: user registration, the store, maintenance and backups, notifications, the save vault and LAN discovery. The store's switch closes the shop to consoles: Tinfoil, Sphaira and CyberFoil are told the shop is closed, and the web library keeps working for whoever may see it.
+
 ## Settings page
 
 Admin only, and a single scrolling page with its twelve sections as cards. An index beside them (a row of chips under the top bar on phones) marks the section you're reading and takes you to any of them; the address follows, so `/admin/settings#Notifications` - or any other section's name - opens the page right there.
@@ -360,6 +376,36 @@ A daily window, off by default, that runs at the chosen time (the server's local
 `Back up now` makes a backup on demand, and the list below it downloads or deletes any of them.
 
 To restore a backup: stop Ownfoil-Plus, extract the zip into your `config/` folder (it replaces `ownfoil.db`, `settings.yaml` and `keys.txt`), then start it again. TitleDB and artwork aren't in the backup; they're downloaded again automatically.
+
+## User registration
+
+People can make their own accounts when an admin turns on `Allow public registration`. New accounts browse and download games and set up Tinfoil and Sphaira (shop access) - never the administration or the saves.
+
+- **With the form** (`Create an account` on the sign-in page): user name, email and password. The account works once its email is verified from the link we send (it lasts a day, once); until then it can't sign in, on the web or from the console. An email nobody verified blocks no one: whoever owns it can still sign up with it. Signing up with an email that an account already uses answers the same and emails that account's owner. Needs email set up (`SMTP_*`, see Install.md).
+- **With Google** (`Sign in with Google`): makes the account with the Google email, already verified, and a user name taken from it. It also signs into an existing account with that same **verified** email. An account made with Google sets a password in My account to use Tinfoil and Sphaira.
+- **Forgot your password?** sends a link that works for an hour, once.
+
+| Setting | Default | What it does |
+|---|---|---|
+| `Allow public registration` | Off | Off: nobody makes accounts, with the form or with Google. |
+| `Server's public address` | - | Where links in emails point, such as `https://shop.example.com`. Needed for account emails: empty, signing up with the form and password resets are off (never the address a request came in on, which anyone can forge). |
+
+The section also shows whether email and Google are set up, and sends a test email. Existing accounts don't change: they can add an email in My account to use Google and password resets.
+
+## Save vault
+
+JKSV, the console's save manager, can upload its save backups to Ownfoil-Plus over WebDAV, at `/dav/` on the same address and port as the web UI. Off by default: an admin turns it on in Services (or here).
+
+Each user has their own space: nobody sees or downloads anyone else's backups, from the console or the web; admins see everyone's on the Saves page, each with whose it is. The vault is for users with the `Backup` permission and admins.
+
+| Setting | Default | What it does |
+|---|---|---|
+| `Turn on the save vault` | Off | Lets JKSV in, for everyone. |
+| `Backups kept per game` | All | 5, 10, 20 or 50 delete the oldest backups of a game beyond that. |
+
+To set up a console, each user goes to **My account > Save vault**: saves a vault password (at least 10 characters, kept hashed; not the web password), checks the server's address (the one the console reaches on your network, not `localhost`), downloads `webdav.json` and copies it to the SD card as `sdmc:/config/JKSV/webdav.json`. JKSV signs in with the web user name and that vault password, and then says WebDAV is ready.
+
+The backups are kept in `data/saves/users/<user id>/JKSV/<game>/`. Backups from before 6.2.5.49 (one shared space, `data/saves/JKSV/`) move to the first admin's space. The vault only takes ZIP backups inside the JKSV folder: nothing else can be uploaded, moved or deleted there, an upload must leave 512 MB free on the disk, and wrong passwords are locked out like the web login. A new backup can be notified, with whose it is (Notifications > `JKSV uploads a save backup to the vault`).
 
 ## Notifications
 

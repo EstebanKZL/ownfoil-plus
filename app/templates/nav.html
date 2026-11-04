@@ -2,6 +2,8 @@
    need attention. nav_admin / nav_shop / nav_counts come from app.py's inject_nav. #}
 {% set p = request.path %}
 {% set nav_active = 'library' if title == 'Library' else 'setup' if title == 'Setup'
+    else 'upcoming' if p.startswith('/upcoming') else 'sagas' if p.startswith('/sagas')
+    else 'saves' if p.startswith('/saves')
     else 'files' if p.startswith('/admin/files') else 'tasks' if p.startswith('/admin/tasks')
     else 'stats' if p.startswith('/admin/stats') else 'admin' if p.startswith('/admin') else '' %}
 {% macro nav_item(key, href, icon, label, count_id=None, count=0, tone='nav') %}
@@ -28,6 +30,11 @@
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav op-nav">
                 {{ nav_item('library', '/', 'bi-grid', t('nav.library')) }}
+                {{ nav_item('upcoming', '/upcoming', 'bi-calendar-event', t('nav.upcoming')) }}
+                {{ nav_item('sagas', '/sagas', 'bi-collection', t('nav.sagas')) }}
+                {% if current_user.is_authenticated and (current_user.is_admin or current_user.has_access('backup')) %}
+                {{ nav_item('saves', '/saves', 'bi-safe', t('nav.saves')) }}
+                {% endif %}
                 {% if nav_shop %}
                 {{ nav_item('setup', '/setup', 'bi-joystick', t('nav.setup')) }}
                 {% endif %}
@@ -82,6 +89,10 @@
                 </li>
                 {% if current_user.is_authenticated %}
                 <li class="nav-item">
+                    <a class="nav-link op-account-link{% if p == '/account' %} active{% endif %}" href="/account"
+                       title="{{ t('nav.account') }}">{% set my_avatar = avatar_url(current_user) %}{% if my_avatar %}<img class="nav-avatar" src="{{ my_avatar }}" alt="" width="28" height="28">{% else %}<i class="bi bi-person-circle" aria-hidden="true"></i>{% endif %}<span class="d-lg-none ms-2">{{ t('nav.account') }}</span><span class="visually-hidden d-none d-lg-inline">{{ t('nav.account') }}</span></a>
+                </li>
+                <li class="nav-item">
                     <a class="btn btn-sm btn-outline-secondary" href="/logout" role="button">{{ t('nav.logout') }}</a>
                 </li>
                 {% else %}
@@ -109,7 +120,7 @@
         {% if count_id %}<span class="op-count op-count--{{ tone }}" id="{{ count_id }}"{% if not count %} hidden{% endif %}>{{ count }}</span>{% endif %}
     </a>
     {% endfor %}
-    <button type="button" class="bottom-nav-item{% if nav_active in ('admin', 'setup') %} active{% endif %}" data-bs-toggle="offcanvas" data-bs-target="#moreSheet" aria-controls="moreSheet">
+    <button type="button" class="bottom-nav-item{% if nav_active in ('admin', 'setup', 'upcoming', 'sagas', 'saves') %} active{% endif %}" data-bs-toggle="offcanvas" data-bs-target="#moreSheet" aria-controls="moreSheet">
         <i class="bi bi-three-dots" aria-hidden="true"></i>
         <span>{{ t('nav.more') }}</span>
     </button>
@@ -124,6 +135,9 @@
             {# Below 768px admins have no hamburger menu, so the install button lives here too
                (pwa.js shows every .install-app-btn once the browser offers it). #}
             <li><button type="button" class="dropdown-item install-app-btn d-none" onclick="installApp()"><i class="bi bi-download me-2"></i>{{ t('nav.install_app') }}</button></li>
+            <li><a class="dropdown-item{% if nav_active == 'upcoming' %} active{% endif %}" href="/upcoming"><i class="bi bi-calendar-event me-2"></i>{{ t('nav.upcoming') }}</a></li>
+            <li><a class="dropdown-item{% if nav_active == 'sagas' %} active{% endif %}" href="/sagas"><i class="bi bi-collection me-2"></i>{{ t('nav.sagas') }}</a></li>
+            <li><a class="dropdown-item{% if nav_active == 'saves' %} active{% endif %}" href="/saves"><i class="bi bi-safe me-2"></i>{{ t('nav.saves') }}</a></li>
             <li><a class="dropdown-item{% if nav_active == 'setup' %} active{% endif %}" href="/setup"><i class="bi bi-joystick me-2"></i>{{ t('nav.setup') }}</a></li>
             <li><a class="dropdown-item{% if p == '/admin' %} active{% endif %}" href="/admin"><i class="bi bi-speedometer2 me-2"></i>{{ t('settings_nav.dashboard') }}</a></li>
             <li><a class="dropdown-item{% if p == '/admin/settings' %} active{% endif %}" href="/admin/settings"><i class="bi bi-gear me-2"></i>{{ t('settings_nav.settings') }}</a></li>
@@ -137,6 +151,7 @@
             {% endfor %}
             {% if current_user.is_authenticated %}
             <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item{% if p == '/account' %} active{% endif %}" href="/account"><i class="bi bi-person-circle me-2"></i>{{ t('nav.account') }}</a></li>
             <li><a class="dropdown-item" href="/logout"><i class="bi bi-box-arrow-right me-2"></i>{{ t('nav.logout') }}</a></li>
             {% endif %}
         </ul>
@@ -156,12 +171,14 @@
     (t('settings_nav.dashboard'), '/admin', 'bi-speedometer2', 'dashboard panel inicio home upload subir archivos'),
     (t('settings_nav.settings'), '/admin/settings', 'bi-gear', 'settings ajustes'),
     (t('settings_nav.settings') ~ ' › ' ~ t('auth.heading'), '/admin/settings#Authentication', 'bi-people', 'users usuarios password contrasena'),
+    (t('settings_nav.settings') ~ ' › ' ~ t('sections.registration'), '/admin/settings#Registration', 'bi-person-plus', 'registration registro signup google smtp email correo'),
     (t('settings_nav.settings') ~ ' › ' ~ t('sections.library'), '/admin/settings#Library', 'bi-folder', 'paths rutas carpetas organizer compression verification'),
     (t('settings_nav.settings') ~ ' › ' ~ t('sections.titles'), '/admin/settings#Titles', 'bi-translate', 'keys claves region language idioma'),
     (t('settings_nav.settings') ~ ' › ' ~ t('sections.media'), '/admin/settings#Media', 'bi-image', 'media artworks artes icons iconos banners screenshots capturas'),
     (t('settings_nav.settings') ~ ' › ' ~ t('sections.shop'), '/admin/settings#Shop', 'bi-shop', 'shop tienda clients public privada host'),
     (t('settings_nav.settings') ~ ' › ' ~ t('sections.scheduler'), '/admin/settings#Scheduler', 'bi-clock', 'scheduler programacion programación scan escaneo interval intervalo'),
     (t('settings_nav.settings') ~ ' › ' ~ t('sections.maintenance'), '/admin/settings#Maintenance', 'bi-archive', 'maintenance mantenimiento backup schedule'),
+    (t('settings_nav.settings') ~ ' › ' ~ t('sections.vault'), '/admin/settings#Vault', 'bi-safe', 'vault boveda bóveda saves partidas jksv webdav'),
     (t('settings_nav.settings') ~ ' › ' ~ t('sections.notifications'), '/admin/settings#Notifications', 'bi-bell', 'notifications discord telegram ntfy webhook'),
     (t('settings_nav.settings') ~ ' › ' ~ t('sections.workers'), '/admin/settings#Workers', 'bi-cpu', 'workers procesos'),
     (t('settings_nav.settings') ~ ' › ' ~ t('sections.appearance'), '/admin/settings#Appearance', 'bi-palette', 'appearance apariencia theme tema style estilo colors colores'),

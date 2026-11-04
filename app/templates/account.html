@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% include 'nav.html' %}
+{# My account: each user's own preferences, kept on their user row. #}
+<div class="container admin-page account-page mt-3">
+    <header class="page-head">
+        <span class="page-head__icon"><i class="bi bi-person-circle" aria-hidden="true"></i></span>
+        <h1 class="page-head__title">{{ t('account.title') }}</h1>
+        <p class="page-head__desc">{{ t('account.desc', user=current_user.user) }}</p>
+    </header>
+
+    <form id="accountForm" class="admin-grid" novalidate>
+        <section class="surface admin-section account-avatar" id="accountAvatar">
+            <h2 class="admin-section__title"><i class="bi bi-person-badge" aria-hidden="true"></i> {{ t('avatar.heading') }}</h2>
+            {% set my_avatar = avatar_url(current_user) %}
+            <div class="avatar-current">
+                <span class="avatar-preview" id="avatarPreview">{% if my_avatar %}<img src="{{ my_avatar }}" alt="" width="72" height="72">{% else %}<i class="bi bi-person-circle" aria-hidden="true"></i>{% endif %}</span>
+                <div class="d-flex flex-wrap gap-2">
+                    <label class="btn btn-outline-primary btn-sm mb-0" for="avatarFile"><i class="bi bi-upload" aria-hidden="true"></i> {{ t('avatar.upload') }}</label>
+                    <input type="file" id="avatarFile" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="avatarRemove"{% if not my_avatar %} hidden{% endif %}>{{ t('avatar.remove') }}</button>
+                </div>
+            </div>
+            <div class="form-text mb-2">{{ t('avatar.upload_help') }}</div>
+            <p class="small mb-2">{{ t('avatar.gallery') }}</p>
+            <div class="avatar-gallery" role="group" aria-label="{{ t('avatar.gallery') }}">{% for id in avatar_gallery %}<button type="button" class="avatar-choice{% if current_user.avatar == 'g:' ~ id %} is-selected{% endif %}" data-avatar="{{ id }}" aria-pressed="{{ 'true' if current_user.avatar == 'g:' ~ id else 'false' }}" aria-label="{{ t('avatar.choose', n=loop.index) }}"><img src="/static/img/avatars/{{ id }}.svg" alt="" width="56" height="56"></button>{% endfor %}</div>
+            <div class="small mt-2" id="avatarFeedback" role="status"></div>
+        </section>
+
+        <section class="surface admin-section" id="accountConsole">
+            <h2 class="admin-section__title"><i class="bi bi-nintendo-switch" aria-hidden="true"></i> {{ t('account.console_heading') }}</h2>
+            <label for="accountFirmware" class="form-label">{{ t('account.firmware_label') }}</label>
+            <input type="text" class="form-control account-firmware" id="accountFirmware" inputmode="decimal"
+                   autocomplete="off" placeholder="23.0.1" value="{{ current_user.console_firmware or '' }}"
+                   aria-describedby="accountFirmwareHelp">
+            <div id="accountFirmwareHelp" class="form-text">{{ t('account.firmware_help') }}</div>
+        </section>
+
+        <section class="surface admin-section" id="accountLibrary">
+            <h2 class="admin-section__title"><i class="bi bi-grid" aria-hidden="true"></i> {{ t('account.library_heading') }}</h2>
+            <label for="accountBackground" class="form-label">{{ t('account.background_label') }}</label>
+            {% set bg = current_user.show_background_image %}
+            <select class="form-select" id="accountBackground" aria-describedby="accountBackgroundHelp">
+                <option value="default"{% if bg is none %} selected{% endif %}>{{ t('account.background_default', state=t('account.on') if server_background else t('account.off')) }}</option>
+                <option value="on"{% if bg is true %} selected{% endif %}>{{ t('account.background_on') }}</option>
+                <option value="off"{% if bg is false %} selected{% endif %}>{{ t('account.background_off') }}</option>
+            </select>
+            <div id="accountBackgroundHelp" class="form-text">{{ t('account.background_help') }}</div>
+        </section>
+
+        <section class="surface admin-section" id="accountEmail">
+            <h2 class="admin-section__title"><i class="bi bi-envelope" aria-hidden="true"></i> {{ t('account.email_heading') }}</h2>
+            <label for="accountEmailInput" class="form-label">{{ t('account.email_label') }}
+                {% if current_user.email %}<span class="status-badge {{ 'status-badge--ok' if current_user.email_verified else 'status-badge--wait' }} ms-2">{{ t('account.email_verified') if current_user.email_verified else t('account.email_unverified') }}</span>{% endif %}
+            </label>
+            {% if current_user.pending_email %}<p class="small text-secondary mb-2">{{ t('account.email_waiting', email=current_user.pending_email) }}</p>{% endif %}
+            <div class="d-flex flex-wrap gap-2">
+                <input type="email" class="form-control vault-origin" id="accountEmailInput" autocomplete="email" value="{{ current_user.pending_email or current_user.email or '' }}">
+                <button type="button" class="btn btn-outline-primary" id="accountEmailSend"{% if not auth_options.email %} disabled{% endif %}>{{ t('account.email_send') }}</button>
+            </div>
+            <div class="form-text">{{ t('account.email_help') if auth_options.email else t('account.email_unavailable') }}</div>
+            <div class="small mt-1" id="accountEmailFeedback" role="status"></div>
+        </section>
+
+        {% if can_use_vault %}
+        <section class="surface admin-section" id="accountVault">
+            <h2 class="admin-section__title"><i class="bi bi-safe" aria-hidden="true"></i> {{ t('vault.account_heading') }}</h2>
+            <p class="small">{{ t('vault.account_desc', user=current_user.user) }}</p>
+            {% if not vault_on %}<p class="small text-warning"><i class="bi bi-exclamation-circle" aria-hidden="true"></i> {{ t('vault.account_off') }}</p>{% endif %}
+            <label for="vaultPassword" class="form-label">{{ t('vault.password') }}
+                {% if current_user.vault_password %}<span class="status-badge status-badge--ok ms-2" id="vaultPasswordSet">{{ t('vault.password_is_set') }}</span>{% endif %}
+            </label>
+            <div class="d-flex flex-wrap gap-2">
+                <input type="password" class="form-control vault-origin" id="vaultPassword" autocomplete="new-password">
+                <button type="button" class="btn btn-outline-primary" id="vaultPasswordSave">{{ t('vault.password_save') }}</button>
+            </div>
+            <div class="form-text">{{ t('vault.password_help') }}</div>
+            <div class="small mt-1" id="vaultPasswordFeedback" role="status"></div>
+            <h3 class="settings-subhead mt-3"><i class="bi bi-nintendo-switch" aria-hidden="true"></i> {{ t('vault.setup_heading') }}</h3>
+            <ol class="small mb-2">
+                <li>{{ t('vault.setup_1') }}</li>
+                <li>{{ t('vault.setup_2') }}</li>
+                <li>{{ t('vault.setup_3') }}</li>
+            </ol>
+            <label for="vaultOrigin" class="form-label">{{ t('vault.origin') }}</label>
+            <div class="d-flex flex-wrap gap-2 align-items-start">
+                <input type="text" class="form-control vault-origin" id="vaultOrigin" autocomplete="off">
+                <button type="button" class="btn btn-outline-primary" id="vaultDownloadWebdav">
+                    <i class="bi bi-download"></i> {{ t('vault.download') }}
+                </button>
+            </div>
+            <div class="form-text">{{ t('vault.origin_help') }}</div>
+            <div class="form-text text-warning d-none" id="vaultNeedsPassword">{{ t('vault.needs_password') }}</div>
+        </section>
+        {% endif %}
+
+        <section class="surface admin-section" id="accountPassword">
+            <h2 class="admin-section__title"><i class="bi bi-key" aria-hidden="true"></i> {{ t('account.password_heading') }}</h2>
+            {% if current_user.password %}
+            <label for="accountPasswordCurrent" class="form-label">{{ t('account.password_current') }}</label>
+            <input type="password" class="form-control mb-2" id="accountPasswordCurrent" autocomplete="current-password">
+            {% else %}
+            <p class="text-secondary small">{{ t('account.password_none') }}</p>
+            {% endif %}
+            <label for="accountPasswordNew" class="form-label">{{ t('account.password_new') }}</label>
+            <input type="password" class="form-control" id="accountPasswordNew" autocomplete="new-password">
+            <div class="form-text">{{ t('signup.password_help') }}</div>
+            <button type="button" class="btn btn-outline-primary mt-2" id="accountPasswordSave">{{ t('account.password_save') }}</button>
+            <div class="small mt-1" id="accountPasswordFeedback" role="status"></div>
+        </section>
+
+        <div class="account-actions">
+            <button type="submit" class="btn btn-primary" id="accountSave">{{ t('account.save') }}</button>
+            <span id="accountFeedback" class="small" role="status"></span>
+        </div>
+    </form>
+</div>
+
+<script>
+    // JKSV signs in to the save vault with the web user name.
+    const VAULT_USER = {{ current_user.user | tojson }};
+    const I18N = {
+        saved: {{ t('account.saved') | tojson }},
+        saveFailed: {{ t('account.save_failed') | tojson }},
+        firmwareInvalid: {{ t('account.firmware_invalid') | tojson }},
+        emailSent: {{ t('account.email_sent') | tojson }},
+        emailFailed: {{ t('account.email_failed') | tojson }},
+        passwordSaved: {{ t('account.password_saved') | tojson }},
+        passwordWrong: {{ t('account.password_wrong') | tojson }},
+        tooMany: {{ t('account.too_many') | tojson }},
+        vaultSaved: {{ t('vault.password_saved') | tojson }},
+        avatarSaved: {{ t('avatar.saved') | tojson }},
+        avatarFailed: {{ t('avatar.failed') | tojson }},
+        avatarTooLarge: {{ t('avatar.too_large') | tojson }},
+        vaultShort: {{ t('vault.password_help') | tojson }},
+        emailSendFailed: {{ t('account.email_send_failed') | tojson }},
+    };
+</script>
+<script src="{{ url_for('static', filename='js/account.js') }}"></script>
+{% endblock %}

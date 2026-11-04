@@ -288,6 +288,20 @@ async function deleteOneCopy(file) {
     } catch (e) { notice(e.message); return false; }
 }
 
+// "Clean DB": forgets the file's record, never the file on disk - Statistics' per-item
+// clean, for one file. The next scan finds it again as new.
+async function cleanOneFile(file) {
+    if (!confirm(I18N.confirmCleanDbTemplate.replace('{name}', file.filename))) return false;
+    try {
+        await gql('mutation ($id: ID!) { cleanFileRecord(fileId: $id) }', {id: file.id}, true);
+        notice('');
+        TABS.duplicates.rows = null;
+        TABS.outdated.rows = null;
+        loadStats();
+        return true;
+    } catch (e) { notice(e.message); return false; }
+}
+
 // Offered whatever the settings say: an action asked for by hand runs even with
 // the matching automatic step off. `blocked` explains an action that cannot run.
 const ACTIONS = {
@@ -299,6 +313,8 @@ const ACTIONS = {
                applies: f => !f.compressed && COMPRESS_EXT.includes(f.extension)},
     decompress: {icon: 'bi-file-earmark-arrow-up', title: I18N.actionDecompressTitle, run: f => act('decompressFile', f, I18N.busyDecompressing),
                  applies: f => f.compressed},
+    cleanDb: {icon: 'bi-database-x', title: I18N.actionCleanDbTitle,
+              run: f => cleanOneFile(f).then(ok => { if (ok) loadTab(true); })},
     delete: {icon: 'bi-trash', title: I18N.actionDeleteTitle, danger: true,
              run: f => deleteOneCopy(f).then(ok => { if (ok) loadTab(true); })},
 };

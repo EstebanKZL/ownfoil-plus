@@ -151,9 +151,14 @@ def basic_auth(request):
         success = False
         error = f'Unknown user {username}.'
     
-    elif not check_password_hash(user.password, password):
+    elif not user.password or not check_password_hash(user.password, password):
         success = False
         error = f'Incorrect password for user {username}.'
+
+    elif user.pending:
+        # Registered, email not verified yet: the shop clients wait too.
+        success = False
+        error = f'User {username} has not verified their email yet.'
 
     return success, error, user
 
@@ -294,6 +299,18 @@ def record_login_failure(username):
     with _login_failures_lock:
         _login_failures[key] = _recent_failures(key, now) + [now]
 
+def over_limit(key, limit, window):
+    """Counts a try under `key` (any tuple not shaped like a login key) and says whether
+    it went over `limit` tries per `window` seconds. For the account email forms."""
+    now = time.monotonic()
+    with _login_failures_lock:
+        recent = [t for t in _login_failures.get(key, []) if now - t < window]
+        if len(recent) >= limit:
+            _login_failures[key] = recent
+            return True
+        _login_failures[key] = recent + [now]
+        return False
+
 def clear_login_failures(username):
     with _login_failures_lock:
         _login_failures.pop(_login_key(username), None)
@@ -321,11 +338,16 @@ def login():
 
     # check if the user actually exists
     # take the user-supplied password, hash it, and compare it to the hashed password in the database
-    if not user or not check_password_hash(user.password, password):
+    if not user or not user.password or not check_password_hash(user.password, password):
         logger.warning(f'Incorrect login for user {username} from {request.remote_addr}')
         record_login_failure(username)
         return render_template('login.html', title='Login', next_url=next_url, username=username,
                                error=t('login.invalid_credentials')), 401
+
+    if user.pending:
+        # Right password, but the email of this registration isn't verified yet.
+        return render_template('login.html', title='Login', next_url=next_url, username=username,
+                               error=t('login.pending'), show_resend=True), 403
 
     # if the above check passes, then we know the user has the right credentials
     logger.info(f'Sucessfull login for user {username}')
@@ -343,10 +365,15 @@ def profile():
 @auth_blueprint.route('/api/users')
 @access_required('admin')
 def get_users():
+    from avatars import avatar_url
     all_users = [
-        dict(db_user._mapping)
-        for db_user in db.session.query(User.id, User.user, User.admin_access, User.shop_access, User.backup_access).all()
+        {**dict(db_user._mapping), 'avatar_url': avatar_url(db_user)}
+        for db_user in db.session.query(User.id, User.user, User.admin_access, User.shop_access, User.backup_access,
+                                        User.email, User.email_verified, User.pending_email, User.pending,
+                                        User.google_id, User.avatar).all()
     ]
+    for user in all_users:
+        user.pop('avatar')
     return jsonify(all_users)
 
 @auth_blueprint.route('/api/user', methods=['DELETE'])

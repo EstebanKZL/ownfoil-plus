@@ -126,6 +126,7 @@ def _file_label(file_id=None, **kwargs):
 TASK_DISPLAY = {
     'startup': lambda **kw: 'Startup',
     'update_titledb': lambda **kw: 'Update TitleDB',
+    'update_series': lambda **kw: 'Update sagas',
     'scheduled_maintenance': lambda **kw: 'Daily maintenance',
     'download_media': lambda **kw: 'Download title artwork',
     'download_title_media': lambda title_id=None, **kw: (
@@ -677,6 +678,8 @@ def update_titledb_task(**kwargs):
         # Artwork URLs are per region/language, so this is the one place that runs
         # after a locale-driven rebuild as well as after a plain refresh.
         enqueue_task('download_media')
+        # The sagas (series.py) at most once a week, from Wikidata.
+        enqueue_task('update_series')
     except Exception:
         # Without this the chain simply stops: nothing re-enqueues a failed task, so a single
         # network blip would leave titledb frozen until the next restart.
@@ -687,6 +690,14 @@ def update_titledb_task(**kwargs):
     delta = interval_string_to_timedelta(interval_str)
     if delta:
         update_scheduled_task('update_titledb', datetime.datetime.utcnow() + delta)
+
+
+@register_task('update_series', group='net')
+def update_series_task(**kwargs):
+    """Refresh data/series.json from Wikidata when it is a week old. Never fails the
+    chain: without Wikidata the last copy stays."""
+    import series
+    series.refresh()
 
 
 # --- Daily maintenance (Settings > Maintenance) ---

@@ -74,6 +74,10 @@ This is usefull if you don't want to remember the `docker run` command and have 
 | `/app/config` | The config directory. Back this one up. |
 | `/app/data` | The titledb cache. |
 
+### Behind a reverse proxy: the save vault
+
+JKSV uploads save backups to `/dav/` (see Usage > Save vault). If a reverse proxy sits in front, let it pass the WebDAV methods (`PROPFIND`, `MKCOL`, `MOVE`, `PUT`, `DELETE`) and large request bodies to that path - for nginx, `client_max_body_size 4g;` - and keep it on your LAN or behind a VPN.
+
 ## Environment variables
 
 | Variable | Description |
@@ -81,7 +85,9 @@ This is usefull if you don't want to remember the `docker run` command and have 
 | `PUID` / `PGID` | UID and GID of the user running the app in the container, `1000:1000` by default. |
 | `USER_ADMIN_NAME` / `USER_ADMIN_PASSWORD` | Creates (or updates) an admin user at every startup. |
 | `USER_GUEST_NAME` / `USER_GUEST_PASSWORD` | Creates (or updates) a regular user with shop access at every startup. |
-| `OWNFOIL_SECRET_KEY` | Optional. The key that signs login cookies. When unset, a random one is generated on first start and kept in `config/.secret_key` - keep that file private. |
+| `OWNFOIL_SECRET_KEY` (or `SECRET_KEY`) | Optional. The key that signs login cookies and the links in account emails. When unset, a random one is generated on first start and kept in `config/.secret_key` - keep that file private. `OWNFOIL_SECRET_KEY` wins when both are set. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURITY`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | Optional. The mail server for account emails (verifying a registration, resetting a password). `SMTP_SECURITY` is `TLS` (STARTTLS, port 587 by default), `SSL` (port 465) or `NONE`. Needed for public registration with the form and for password resets. See [User registration](./Usage.md#user-registration). |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` | Optional. "Sign in with Google". Create an OAuth client (web application) in the Google Cloud console and add `GOOGLE_REDIRECT_URI` - your server's public address followed by `/login/google/callback` - as an authorized redirect URI. |
 | `OWNFOIL_METRICS_TOKEN` | Optional. A token Prometheus can send as `Authorization: Bearer <token>` to read `/metrics`, instead of an admin username and password. See [Monitoring with Prometheus](#monitoring-with-prometheus). |
 
 > [!TIP]

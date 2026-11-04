@@ -10,6 +10,8 @@ const GAME_QUERY = `
         title(titleId: $titleId) {
             titleId name intro description developer publisher releaseDate
             bannerUrl iconUrl size category numberOfPlayers rating languages region
+            requiredFirmware
+            availableVersions { version requiredFirmware }
             screenshots { url }
             ownership { haveBase upToDate complete }
             apps(owned: true) {
@@ -23,7 +25,7 @@ const GAME_QUERY = `
             }
             availableDlc {
                 appId version
-                titledb { name iconUrl bannerUrl releaseDate }
+                titledb { name description iconUrl bannerUrl releaseDate size }
             }
         }
     }`;
@@ -71,6 +73,8 @@ function renderGame(t) {
     $('#gameBreadcrumbName').text(name);
     renderHero(t);
     renderFacts(t);
+    loadSagas(t);
+    loadSaves(t);
     renderSections(t);
 }
 
@@ -93,6 +97,13 @@ function ownedDlcIds(t) {
     return new Set((t.apps || []).filter(a => a.appType === 'DLC').map(a => a.appId));
 }
 
+/** What the library holds of a game besides its base: the DLC owned and the newest
+ *  owned update, for a game whose base game is missing. */
+function ownedExtras(t) {
+    const updates = (t.apps || []).filter(a => a.appType === 'UPDATE').map(a => Number(a.appVersion) || 0);
+    return {dlc: ownedDlcIds(t).size, update: updates.length ? Math.max(...updates) : null};
+}
+
 function missingDlcCount(t) {
     const owned = ownedDlcIds(t);
     return (t.availableDlc || []).filter(d => !owned.has(d.appId)).length;
@@ -110,7 +121,9 @@ function renderHero(t) {
     if (t.bannerUrl) backdrop.css('background-image', `url(${JSON.stringify(t.bannerUrl)})`);
     hero.append(backdrop);
 
-    const cover = $('<div class="game-hero__cover">');
+    // A base game the library doesn't hold is drawn in gray, like a missing game in
+    // Sagas or on its Library card.
+    const cover = $('<div class="game-hero__cover">').toggleClass('is-missing', !(own && own.haveBase));
     const art = t.bannerUrl || t.iconUrl;
     cover.append(art
         ? $('<img alt="">').attr('src', art)
@@ -135,6 +148,16 @@ function renderHero(t) {
     const year = String(t.releaseDate || '').match(/\d{4}/);
     const meta = [t.publisher, year && year[0]].filter(Boolean).join(' · ');
     if (meta) body.append($('<p class="game-hero__meta">').text(meta));
+    // Its DLC or an update without the game: say what's there and what's missing.
+    const extras = ownedExtras(t);
+    if (!(own && own.haveBase) && (extras.dlc || extras.update !== null)) {
+        const have = [extras.dlc && I18N.ownedDlcCount.replace('{n}', extras.dlc),
+                      extras.update !== null && I18N.ownedUpdate.replace('{version}', `v${extras.update}`)]
+            .filter(Boolean).join(' · ');
+        body.append($('<div class="game-notice game-notice--base" role="status">').append(
+            $('<i class="bi bi-exclamation-circle" aria-hidden="true"></i>'),
+            $('<span>').text(I18N.baseMissingNotice.replace('{have}', have))));
+    }
     body.append($('<div class="game-hero__actions" id="gameActions">'));
     hero.append(body);
     renderActions(t);
@@ -158,6 +181,9 @@ function renderFacts(t) {
         ['bi-hdd', I18N.size, formatTitledbSize(t.size)],
         ['bi-box-seam', I18N.installedVersion, installed !== null ? `v${installed}` : null],
         ['bi-arrow-up-circle', I18N.latestVersion, (owned || latest) ? `v${latest}` : null],
+        // The newest version's; a console older than that can't run it up to date.
+        ['bi-cpu', I18N.requiredFirmware, t.requiredFirmware,
+         firmwareTooOld(t.requiredFirmware, CONSOLE_FIRMWARE) ? 'game-fact--warn' : ''],
     ].filter(([, , value]) => value !== null && value !== undefined && value !== '');
 
     const box = $('#gameFacts').empty();
@@ -166,8 +192,66 @@ function renderFacts(t) {
         fact.append($('<div class="game-fact__label">')
             .append($('<i aria-hidden="true">').addClass(`bi ${icon}`), $('<span>').text(label)));
         fact.append($('<div class="game-fact__value">').text(value));
+        if (extra === 'game-fact--warn') {
+            fact.append($('<div class="game-fact__note">').text(I18N.firmwareTooOld
+                .replace('{mine}', CONSOLE_FIRMWARE).replace('{needed}', t.requiredFirmware)));
+        }
         box.append(fact);
     });
+}
+
+/** "Saga: The Legend of Zelda (4 of 6)" among the facts, each saga linking to its page.
+ *  Asked apart: the facts don't wait for it, and a game without a saga adds nothing. */
+async function loadSagas(t) {
+    let sagas;
+    try {
+        const r = await fetch(`/api/sagas/of/${t.titleId}`, {credentials: 'same-origin'});
+        if (!r.ok) return;
+        sagas = (await r.json()).sagas || [];
+    } catch (e) {
+        return;
+    }
+    if (!sagas.length) return;
+    const fact = $('<div class="game-fact game-fact--saga">');
+    fact.append($('<div class="game-fact__label">')
+        .append($('<i class="bi bi-collection" aria-hidden="true">'), $('<span>').text(I18N.sagaOf)));
+    const value = $('<div class="game-fact__value">');
+    sagas.forEach((s, i) => {
+        if (i) value.append(document.createTextNode(', '));
+        value.append($('<a class="game-saga-link">').attr('href', `/sagas/${s.id}`).text(s.name),
+                     $('<span class="game-saga-count">')
+                         .text(` (${I18N.sagaCount.replace('{owned}', s.owned).replace('{total}', s.total)})`));
+    });
+    $('#gameFacts').append(fact.append(value));
+}
+
+/** "Saved games: 3 backups, the latest 2 Nov 2026" among the facts, linking to /saves. */
+async function loadSaves(t) {
+    if (!CAN_SEE_SAVES) return;
+    let saves;
+    try {
+        const r = await fetch(`/api/saves/of/${t.titleId}`, {credentials: 'same-origin'});
+        if (!r.ok) return;
+        saves = await r.json();
+    } catch (e) {
+        return;
+    }
+    if (!saves.count) return;
+    const latest = new Date(saves.latest).toLocaleDateString(document.documentElement.lang || undefined,
+                                                             {day: 'numeric', month: 'short', year: 'numeric'});
+    const fact = $('<div class="game-fact">');
+    fact.append($('<div class="game-fact__label">')
+        .append($('<i class="bi bi-safe" aria-hidden="true">'), $('<span>').text(I18N.saves)));
+    fact.append($('<div class="game-fact__value">').append($('<a class="game-saga-link" href="/saves">')
+        .text((saves.count === 1 ? I18N.savesValueOne : I18N.savesValue)
+            .replace('{count}', saves.count).replace('{when}', latest))));
+    $('#gameFacts').append(fact);
+}
+
+/** The firmware a given update version needs, from the catalogue's versions. */
+function versionFirmware(t, version) {
+    const v = (t.availableVersions || []).find(x => Number(x.version) === Number(version));
+    return v ? v.requiredFirmware : null;
 }
 
 // --- sections -------------------------------------------------------------------------
@@ -227,7 +311,7 @@ function renderScreenshots(t) {
 /** One row: what it is, when, and whether it's in the library - plus, for an owned
  *  file, its size, verification and (when allowed) a download button. All text goes
  *  through .text(): names are real (untrusted) catalogue data. */
-function contentRow({icon, iconUrl, name, sub, owned, file, dataAttrs}) {
+function contentRow({icon, iconUrl, name, sub, owned, file, dataAttrs, details}) {
     const row = $('<li class="game-row">');
     if (dataAttrs) row.attr(dataAttrs);
     const lead = $('<div class="game-row__lead">');
@@ -247,7 +331,22 @@ function contentRow({icon, iconUrl, name, sub, owned, file, dataAttrs}) {
         if (ver) tail.append(ver);
         if (canDownload()) tail.append(downloadButton(file.id, name));
     }
-    return row.append(lead, tail);
+    row.append(lead, tail);
+    if (details) {
+        // More about it (a DLC's description), folded away under its row.
+        const panel = $('<div class="game-row__details" hidden>').text(details);
+        const toggle = $('<button type="button" class="icon-btn game-row__more" aria-expanded="false">')
+            .attr({title: I18N.details, 'aria-label': I18N.details})
+            .append('<i class="bi bi-chevron-down" aria-hidden="true"></i>');
+        toggle.on('click', () => {
+            const open = panel.prop('hidden');
+            panel.prop('hidden', !open);
+            toggle.attr('aria-expanded', String(open)).toggleClass('is-open', open);
+        });
+        tail.append(toggle);
+        row.append(panel);
+    }
+    return row;
 }
 
 function renderUpdates(t) {
@@ -268,10 +367,19 @@ function renderUpdates(t) {
                 .replace('{installed}', `v${installedVersion(t) || 0}`))));
     }
     const list = $('<ul class="game-rows">');
-    updates.forEach(u => list.append(contentRow({
-        icon: 'bi-arrow-up-circle', name: `v${u.appVersion}`, sub: formatTitledbDate(u.releaseDate),
-        owned: u.owned, file: u.downloadableFile,
-    })));
+    updates.forEach(u => {
+        // Each update tells the firmware it needs, marked when the console is older.
+        const needs = versionFirmware(t, u.appVersion);
+        const sub = [formatTitledbDate(u.releaseDate), needs && I18N.firmwareVersion.replace('{version}', needs)]
+            .filter(Boolean).join(' · ');
+        const row = contentRow({icon: 'bi-arrow-up-circle', name: `v${u.appVersion}`, sub,
+                                owned: u.owned, file: u.downloadableFile});
+        if (firmwareTooOld(needs, CONSOLE_FIRMWARE)) {
+            $(row).addClass('game-row--firmware').attr('title', I18N.firmwareTooOld
+                .replace('{mine}', CONSOLE_FIRMWARE).replace('{needed}', needs));
+        }
+        list.append(row);
+    });
     return section('gameUpdates', 'bi-arrow-up-circle', I18N.updates, content.append(list));
 }
 
@@ -286,10 +394,14 @@ function renderDlc(t) {
     sorted.forEach(d => {
         const meta = d.titledb || {};
         const owned = ownedIds.has(d.appId);
+        // Its own catalogue facts: release date, size, id - and its description below.
+        const sub = [formatTitledbDate(meta.releaseDate), formatTitledbSize(meta.size), d.appId]
+            .filter(Boolean).join(' · ');
         list.append(contentRow({
-            icon: 'bi-puzzle', iconUrl: meta.iconUrl, name: meta.name || d.appId, sub: d.appId, owned,
+            icon: 'bi-puzzle', iconUrl: meta.iconUrl, name: meta.name || d.appId, sub, owned,
             file: owned ? (ownedApps[d.appId] || {}).downloadableFile : null,
             dataAttrs: {'data-dlc': d.appId},
+            details: meta.description || I18N.noDescription,
         }));
     });
     return section('gameDlc', 'bi-puzzle', `${I18N.dlc} (${ownedIds.size} / ${dlc.length})`, list);

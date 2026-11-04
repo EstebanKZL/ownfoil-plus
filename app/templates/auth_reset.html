@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+{# A new password from an emailed link (single use, an hour). #}
+<main class="auth-page">
+    <div class="surface auth-card">
+        <div class="auth-brand">
+            <img src="{{ url_for('static', filename='logo/logo.svg') }}" width="72" height="72" alt="">
+            <h1 class="h4 mb-0">{{ t('reset.title') }}</h1>
+        </div>
+        {% if error %}<div class="alert alert-danger py-2" role="alert">{{ error }}</div>{% endif %}
+        <form method="POST" action="/reset/{{ token }}">
+            <div class="mb-3">
+                <label class="form-label small text-secondary" for="resetPassword">{{ t('reset.new_password') }}</label>
+                <input type="password" class="form-control" name="password" id="resetPassword" autocomplete="new-password" required
+                       aria-describedby="resetHelp">
+                <div class="form-text" id="resetHelp">{{ t('signup.password_help') }}</div>
+            </div>
+            <div class="mb-4">
+                <label class="form-label small text-secondary" for="resetConfirm">{{ t('signup.confirm') }}</label>
+                <input type="password" class="form-control" name="confirm" id="resetConfirm" autocomplete="new-password" required>
+            </div>
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary">{{ t('reset.submit') }}</button>
+            </div>
+        </form>
+    </div>
+</main>
+{% endblock %}

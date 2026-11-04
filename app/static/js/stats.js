@@ -466,7 +466,7 @@ const FILES_BY_STATUS_QUERY = `
             items {
                 filename
                 size
-                apps { appType title { name } }
+                apps { appType title { titleId name iconUrl } }
             }
         }
     }`;
@@ -486,14 +486,21 @@ function titleForFile(file) {
     return withTitle ? withTitle.title.name : file.filename;
 }
 
+/** One file as a list row: the game's icon and name, the filename, the size. */
+function fileRow(file) {
+    const title = ((file.apps || []).find(a => a.title && a.title.name) || {}).title || {};
+    return titleListRow({main: titleForFile(file), sub: file.filename, side: formatBytes(file.size),
+                         titleId: title.titleId, iconUrl: title.iconUrl});
+}
+
 async function loadVerificationFilesPage() {
-    const tbody = document.getElementById('verificationFilesBody');
+    const list = document.getElementById('verificationFilesList');
     const empty = document.getElementById('verificationFilesEmpty');
     const loading = document.getElementById('verificationFilesLoading');
     const prevBtn = document.getElementById('verificationFilesPrev');
     const nextBtn = document.getElementById('verificationFilesNext');
 
-    tbody.innerHTML = '';
+    list.innerHTML = '';
     empty.classList.add('d-none');
     loading.classList.remove('d-none');
     prevBtn.disabled = true;
@@ -521,15 +528,7 @@ async function loadVerificationFilesPage() {
     if (!items.length) {
         empty.classList.remove('d-none');
     } else {
-        items.forEach(f => {
-            const tr = document.createElement('tr');
-            [titleForFile(f), f.filename, formatBytes(f.size)].forEach(cell => {
-                const td = document.createElement('td');
-                td.textContent = cell;
-                tr.appendChild(td);
-            });
-            tbody.appendChild(tr);
-        });
+        items.forEach(f => list.appendChild(fileRow(f)));
     }
 
     const totalPages = Math.max(1, Math.ceil(verificationTotal / VERIFICATION_PAGE_SIZE));
@@ -595,7 +594,7 @@ const MISSING_APP_TYPE_QUERY = `
         titles(owned: true, missingAppType: $type, search: $search, page: $page, pageSize: $pageSize,
                orderBy: {field: NAME}) {
             total
-            items { name }
+            items { titleId name iconUrl }
         }
     }`;
 
@@ -608,13 +607,13 @@ let missingAppTypeSearchDebounce;
 const MISSING_APP_TYPE_PAGE_SIZE = 50;
 
 async function loadMissingAppTypePage() {
-    const tbody = document.getElementById('missingAppTypeBody');
+    const list = document.getElementById('missingAppTypeList');
     const empty = document.getElementById('missingAppTypeEmpty');
     const loading = document.getElementById('missingAppTypeLoading');
     const prevBtn = document.getElementById('missingAppTypePrev');
     const nextBtn = document.getElementById('missingAppTypeNext');
 
-    tbody.innerHTML = '';
+    list.innerHTML = '';
     empty.classList.add('d-none');
     loading.classList.remove('d-none');
     prevBtn.disabled = true;
@@ -641,13 +640,8 @@ async function loadMissingAppTypePage() {
     if (!items.length) {
         empty.classList.remove('d-none');
     } else {
-        items.forEach(t => {
-            const tr = document.createElement('tr');
-            const td = document.createElement('td');
-            td.textContent = t.name;
-            tr.appendChild(td);
-            tbody.appendChild(tr);
-        });
+        items.forEach(t => list.appendChild(
+            titleListRow({main: t.name, titleId: t.titleId, iconUrl: t.iconUrl})));
     }
 
     const totalPages = Math.max(1, Math.ceil(missingAppTypeTotal / MISSING_APP_TYPE_PAGE_SIZE));
@@ -702,6 +696,7 @@ const LIBRARY_DETAIL_QUERY = `
             items {
                 titleId
                 name
+                iconUrl
                 apps(owned: true) {
                     id appId appType appVersion releaseDate
                     downloadableFile { size verificationStatus }
@@ -896,12 +891,24 @@ function buildLibraryDetailSection(sectionTitle, rows) {
 
 function buildLibraryDetailTitleCard(title) {
     const card = document.createElement('div');
-    card.className = 'card text-bg-dark mb-3';
+    card.className = 'card game-surface mb-3';
     const body = document.createElement('div');
     body.className = 'card-body';
+    // The game's icon before its name, like every other list of games.
     const h = document.createElement('h6');
-    h.className = 'mb-2';
-    h.textContent = title.name;
+    h.className = 'library-detail-title';
+    const icon = document.createElement('span');
+    icon.className = 'dash-list__icon';
+    if (title.iconUrl) {
+        const img = document.createElement('img');
+        img.src = title.iconUrl;
+        img.alt = '';
+        img.loading = 'lazy';
+        icon.appendChild(img);
+    } else {
+        icon.innerHTML = '<i class="bi bi-controller"></i>';
+    }
+    h.append(icon, document.createTextNode(title.name));
     body.appendChild(h);
 
     const apps = title.apps || [];
@@ -1051,38 +1058,37 @@ document.getElementById('verifyNowBtn').addEventListener('click', async function
 // --- Downloads: who took what, and when -----------------------------------------
 
 
-function dlCells(tbody, rows) {
-    const body = document.getElementById(tbody);
-    body.innerHTML = '';
+/** A downloads list: one row per item, or the "none yet" line. */
+function dlList(id, rows) {
+    const list = document.getElementById(id);
+    list.innerHTML = '';
     if (!rows.length) {
-        const tr = body.insertRow();
-        const td = tr.insertCell();
-        td.colSpan = 6;
-        td.className = 'text-secondary fst-italic';
-        td.textContent = DL.none;
+        list.appendChild(titleListEmpty(DL.none));
         return;
     }
-    rows.forEach(cells => {
-        const tr = body.insertRow();
-        cells.forEach(value => { tr.insertCell().textContent = value ?? ''; });
-    });
+    rows.forEach(row => list.appendChild(titleListRow(row)));
 }
 
 function renderDownloads(d) {
+    // The same tiles as the top of the page: icon, figure, label, note.
     const tiles = document.getElementById('downloadTiles');
     tiles.innerHTML = '';
-    [[DL.count, count(d.total), DL.countNote.replace('__DAYS__', d.days)],
-     [DL.bytes, formatBytes(d.total_bytes), DL.bytesNote],
-     [DL.allTime, count(d.all_time), DL.allTimeNote]].forEach(([label, value, note]) => {
+    [[DL.count, count(d.total), DL.countNote.replace('__DAYS__', d.days), 'bi-download', 'nav'],
+     [DL.bytes, formatBytes(d.total_bytes), DL.bytesNote, 'bi-hdd-network', 'action'],
+     [DL.allTime, count(d.all_time), DL.allTimeNote, 'bi-archive', 'ok']].forEach(([label, value, note, icon, tone]) => {
         const tile = document.createElement('div');
-        tile.innerHTML = `<div class="stat-value">${value}</div>
-            <div class="stat-label">${label}</div>
-            <div class="stat-note">${note}</div>`;
+        tile.className = `stat-tile stat-tile--${tone}`;
+        const iconBox = document.createElement('span');
+        iconBox.className = 'stat-tile__icon';
+        iconBox.innerHTML = `<i class="bi ${icon}" aria-hidden="true"></i>`;
+        tile.append(iconBox, textEl('div', 'stat-tile__value', value), textEl('div', 'stat-tile__label', label),
+                    textEl('div', 'stat-tile__note', note));
         tiles.appendChild(tile);
     });
 
     const chart = document.getElementById('downloadChart');
     chart.innerHTML = '';
+    chart.classList.toggle('is-dense', d.by_day.length > 60);
     const peak = Math.max(1, ...d.by_day.map(b => b.count));
     d.by_day.forEach(b => {
         const bar = document.createElement('div');
@@ -1103,16 +1109,28 @@ function renderDownloads(d) {
         });
     }
 
-    dlCells('downloadTopTitles', d.top_titles.map(t => [t.name, count(t.count)]));
-    dlCells('downloadByUser', d.by_user.map(u => [u.user || DL.anonymous, count(u.count)]));
-    dlCells('downloadByClient', d.by_client.map(c => [DL.clients[c.client] || c.client, count(c.count)]));
-    dlCells('downloadRecent', d.recent.map(r => [
-        new Date(r.downloaded_at).toLocaleString([], {dateStyle: 'short', timeStyle: 'short'}),
-        r.name || r.title_id || '', r.filename, r.user || DL.anonymous,
-        DL.clients[r.client] || r.client, r.address]));
-    // Ten rows in view each, the rest by scrolling (header stays put).
+    const client = c => DL.clients[c] || c;
+    const clientGlyph = c => (c === 'web' ? 'bi-globe' : c === 'other' ? 'bi-question-circle' : 'bi-nintendo-switch');
+    // Each list's share bars are against its own first row (the most).
+    const share = (n, list) => 100 * n / Math.max(1, ...list.map(x => x.count));
+    dlList('downloadTopTitles', d.top_titles.map((t, i) => ({
+        main: t.name, side: count(t.count), titleId: t.title_id, rank: i + 1, pct: share(t.count, d.top_titles)})));
+    dlList('downloadByUser', d.by_user.map(u => ({
+        main: u.user || DL.anonymous, side: count(u.count), glyph: 'bi-person', avatarUrl: u.avatar_url || undefined,
+        pct: share(u.count, d.by_user)})));
+    dlList('downloadByClient', d.by_client.map(c => ({
+        main: client(c.client), side: count(c.count), glyph: clientGlyph(c.client), pct: share(c.count, d.by_client)})));
+    dlList('downloadRecent', d.recent.map(r => ({
+        main: r.name || r.title_id || r.filename,
+        sub: [r.filename, r.size ? formatBytes(r.size) : null, r.address].filter(Boolean).join(' · '),
+        chips: [{text: r.user || DL.anonymous, avatarUrl: r.user_avatar || undefined, glyph: 'bi-person'},
+                {text: client(r.client), glyph: clientGlyph(r.client)}],
+        side: new Date(r.downloaded_at).toLocaleString([], {dateStyle: 'short', timeStyle: 'short'}),
+        titleId: r.title_id})));
+    fillTitleIcons(document.getElementById('downloadsSection'));
+    // Ten rows in view each, the rest by scrolling.
     ['downloadTopTitles', 'downloadByUser', 'downloadByClient', 'downloadRecent'].forEach(id =>
-        limitVisibleRows(document.getElementById(id + 'Scroll'), 'tbody tr', 10));
+        limitVisibleRows(document.getElementById(id + 'Scroll'), 'li', 10));
 }
 
 function loadDownloads() {

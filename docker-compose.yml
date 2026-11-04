@@ -14,6 +14,17 @@ services:
       # to create/update a regular user at startup
       # - USER_GUEST_NAME=guest
       # - USER_GUEST_PASSWORD=oerze!@8981
+      # account emails (registration, password reset) - see Install.md
+      # - SMTP_HOST=smtp.example.com
+      # - SMTP_PORT=587
+      # - SMTP_SECURITY=TLS
+      # - SMTP_USER=shop@example.com
+      # - SMTP_PASSWORD=
+      # - SMTP_FROM=shop@example.com
+      # "Sign in with Google" - see Install.md
+      # - GOOGLE_CLIENT_ID=
+      # - GOOGLE_CLIENT_SECRET=
+      # - GOOGLE_REDIRECT_URI=https://shop.example.com/login/google/callback
     volumes:
       - /your/game/directory:/games
       - ./config:/app/config

@@ -107,56 +107,17 @@ function renderStorage(d) {
 }
 
 /** Recent items: icon, name, detail, time - a row with a title id leads to its game
- *  page. Icons arrive afterwards, in one request for every visible game. */
+ *  page (title-list.js). Icons arrive afterwards, in one request for every visible game. */
 function renderList(id, items, render) {
     const list = document.getElementById(id);
     list.innerHTML = '';
     if (!items.length) {
-        list.append(el('li', 'dash-list__empty', D.nothingYet));
+        list.append(titleListEmpty(D.nothingYet));
         return;
     }
     items.forEach(item => {
         const [main, sub, side, titleId] = render(item);
-        const li = el('li', 'dash-list__item');
-        const row = el(titleId ? 'a' : 'div', 'dash-list__row');
-        if (titleId) row.href = `/game/${titleId}`;
-        const icon = el('span', 'dash-list__icon');
-        icon.append(el('i', 'bi bi-controller'));
-        if (titleId) icon.dataset.titleId = titleId;
-        const text = el('div', 'dash-list__text');
-        text.append(el('div', 'dash-list__name', main), el('div', 'dash-list__sub', sub));
-        text.title = sub;
-        row.append(icon, text, el('div', 'dash-list__when', side));
-        li.append(row);
-        list.append(li);
-    });
-}
-
-/** One GraphQL request for the icons of every game the two lists show. The ids go
- *  into the query text as aliases, so only well-formed title ids are used. */
-async function loadIcons() {
-    const ids = [...new Set([...document.querySelectorAll('.dash-list__icon[data-title-id]')]
-        .map(span => span.dataset.titleId.toUpperCase()))]
-        .filter(id => /^[0-9A-F]{16}$/.test(id)).slice(0, 40);
-    if (!ids.length) return;
-    const query = '{ ' + ids.map((id, i) => `t${i}: title(titleId: "${id}") { titleId iconUrl }`).join(' ') + ' }';
-    let data;
-    try {
-        const r = await fetch('/api/graphql?' + new URLSearchParams({query}), {credentials: 'same-origin'});
-        data = (await r.json()).data || {};
-    } catch (e) {
-        return;   // the glyph stays: icons are a nicety
-    }
-    const icons = {};
-    Object.values(data).forEach(t => { if (t && t.iconUrl) icons[t.titleId] = t.iconUrl; });
-    document.querySelectorAll('.dash-list__icon[data-title-id]').forEach(span => {
-        const url = icons[span.dataset.titleId.toUpperCase()];
-        if (!url) return;
-        const img = el('img');
-        img.src = url;
-        img.alt = '';
-        img.loading = 'lazy';
-        span.replaceChildren(img);
+        list.append(titleListRow({main, sub, side, titleId}));
     });
 }
 
@@ -200,7 +161,7 @@ function loadDashboard() {
             renderStatus(d);
             limitVisibleRows(document.getElementById('dashRecentFiles'), 'li', 10);
             limitVisibleRows(document.getElementById('dashRecentDownloads'), 'li', 10);
-            loadIcons();
+            fillTitleIcons(document);
         })
         .catch(err => console.error('Could not load the dashboard', err));
 }

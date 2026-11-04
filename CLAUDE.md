@@ -79,7 +79,7 @@ package - `tests/conftest.py` puts `app/` on `sys.path`.
   Basic Auth for console clients.
 - `db.py` - models (`Files`, `Apps`, `Titles`, `Task`, `TaskHistory`, `DownloadEvent`,
   ...) and DB helpers. Schema changes need an **Alembic migration** in
-  `app/migrations/versions/` (current head: `d5e6f7a8b9c0`) *and* the model change
+  `app/migrations/versions/` (current head: `b2c3d4e5f6a8`) *and* the model change
   (new installs use `create_all`). `tests/test_download_history.py` asserts the head.
 - `tasks.py` / `worker.py` / `worker_pool.py` - task registry (`@register_task`),
   enqueue/dedup, scheduled tasks via `run_after` (stored in **UTC**; use
@@ -135,12 +135,14 @@ package - `tests/conftest.py` puts `app/` on `sys.path`.
 
 ## Status and pending work
 
-Done through 6.2.5.48: security hardening, CI, health check, offline UI, notifications,
+Done through 6.2.5.49: security hardening, CI, health check, offline UI, notifications,
 daily maintenance + backups, download history, resumable web uploads, dashboard, PWA,
 light/dark theme, Ctrl+K search, mobile layout, DB indexes, Prometheus metrics, UI
 polish, dependency/image vulnerability fixes, Dependabot, the SLMW-inspired redesign
 (tokens, three styles, flat nav, library, game page, stats/dashboard, admin pages,
-Settings index) with every big page's JS moved to `app/static/js/`.
+Settings index) with every big page's JS moved to `app/static/js/`; My account,
+upcoming releases and sagas, the per-user JKSV save vault, public registration (SMTP,
+Google), Services control panel, profile pictures, one card per game.
 
 Postponed - **remind the maintainer of these when a round of work wraps up**:
 
@@ -148,5 +150,6 @@ Postponed - **remind the maintainer of these when a round of work wraps up**:
    `save_backup` / `resumable_upload` features are placeholders; depends on the client
    supporting it.
 
-Not yet verified by a person: installing the PWA in a real Chrome/Edge (on
+Not yet verified by a person: the save vault with JKSV on a real console, account
+emails through a real SMTP server and Google sign-in with real credentials, installing the PWA in a real Chrome/Edge (on
 `localhost` or HTTPS), and JPEG artwork end-to-end on an arm/v6-v7 device.

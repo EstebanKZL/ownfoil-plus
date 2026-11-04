@@ -43,8 +43,8 @@ def client(shop_app):
 
 def test_every_filter_groups_wrapper_div_is_tagged_filter_group_item(client):
     html = client.get("/").get_data(as_text=True)
-    # Type, Ownership, Update and Completion filters (inside #filterDropdownBtn's menu)...
-    for aria_label in ("Type filter", "Ownership filter", "Update filter", "Completion filter"):
+    # Ownership, Update and Completion filters (inside #filterDropdownBtn's menu)...
+    for aria_label in ("Ownership filter", "Update filter", "Completion filter"):
         # the wrapping dropdown-item sits directly above the aria-labelled btn-group
         assert re.search(
             r'<div class="dropdown-item filter-group-item">\s*<div class="btn-group[^"]*" role="group" aria-label="%s"'
