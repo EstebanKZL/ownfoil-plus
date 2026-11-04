@@ -331,6 +331,11 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(254), nullable=True, unique=True)
     email_verified = db.Column(db.Boolean, nullable=False, default=False, server_default='0')
     pending_email = db.Column(db.String(254), nullable=True)
+    # The user's own password for the save vault (vault.py), hashed; JKSV signs in with
+    # the web user name and this. And their profile picture (My account): a gallery
+    # avatar's id or an uploaded image's file name.
+    vault_password = db.Column(db.String(200), nullable=True)
+    avatar = db.Column(db.String(64), nullable=True)
     google_id = db.Column(db.String(64), nullable=True, unique=True)
     pending = db.Column(db.Boolean, nullable=False, default=False, server_default='0')
 

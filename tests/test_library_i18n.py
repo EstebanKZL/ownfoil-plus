@@ -147,4 +147,3 @@ def test_internal_filter_state_identifiers_are_not_accidentally_translated(clien
 
     assert "activeOwnershipFilter === 'Owned'" in html
     assert "activeOwnershipFilter = 'Owned';" in html
-    assert "activeTypeFilter = 'DLC';" in html

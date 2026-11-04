@@ -92,6 +92,9 @@ DEFAULT_SETTINGS = {
         "enabled": True,
     },
     "shop": {
+        # Off (Services): consoles (Tinfoil, Sphaira, CyberFoil) are turned away; the web
+        # library keeps working for whoever may see it.
+        "enabled": True,
         "name": "",
         "host": "",
         "public": False,
@@ -173,12 +176,10 @@ DEFAULT_SETTINGS = {
         "enabled": False,
         "public_url": "",
     },
-    # The save vault (vault.py): JKSV's backups over WebDAV at /dav/. Off until an admin
-    # turns it on with a password; the password is kept hashed.
+    # The save vault (vault.py): JKSV's backups over WebDAV at /dav/, each user in their
+    # own space with their own vault password (My account). Off until an admin turns it on.
     "vault": {
         "enabled": False,
-        "username": "jksv",
-        "password_hash": "",
         "keep": 0,
     },
 }

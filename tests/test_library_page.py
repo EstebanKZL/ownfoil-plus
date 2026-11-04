@@ -142,7 +142,7 @@ def test_toolbar_holds_search_sort_views_and_both_menus(client):
     # Every filter group lives in the one Filters menu now; the list view's own group
     # is marked so the JS shows it only there.
     menu = bar.split('id="filtersMenuBtn"', 1)[1]
-    for group in ("Type filter", "Ownership filter", "Update filter", "Completion filter",
+    for group in ("Ownership filter", "Update filter", "Completion filter",
                   "Library health filter"):
         assert f'aria-label="{group}"' in menu, group
     assert re.search(r'id="listHealthFilterCol" data-view-only="list"', menu)
@@ -217,8 +217,7 @@ def _rule(css, selector):
 def test_cards_use_the_surface_look_and_status_badges():
     body = _function_body(_library_js(), "renderCardView")
     for needle in ("library-card", "library-cover", "library-card-body", "library-card-meta",
-                   "library-badges", "statusBadge('wait'", "statusBadge('dlc'", "statusBadge('ok'",
-                   "is-missing", "attr('href', game.url)", ".popover("):
+                   "library-badges", "statusBadge('wait'", "is-missing", "attr('href', game.url)"):
         assert needle in body, needle
     # Catalogue text goes through .text(), never into HTML strings.
     assert "${game.name}" not in body and "${game.meta" not in body
@@ -239,8 +238,9 @@ def test_phones_get_two_card_columns():
 
 def test_card_badge_strings_are_translated():
     import i18n
+    # The game page still shows these; a card only says when its base game is missing.
     for key in ("library.badge_update", "library.badge_missing_dlc", "library.badge_complete",
-                "library.badge_dlc", "library.versions"):
+                "library.base_missing"):
         assert {"en", "es"} <= set(i18n.TRANSLATIONS[key]), key
 
 

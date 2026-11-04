@@ -63,10 +63,10 @@
     </div>
 
     <section class="surface stats-section mt-3" id="downloadsSection">
-        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-            <h4 class="mb-0">{{ t('dl.heading') }}</h4>
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 stat-section-head">
+            <h3 class="stats-section__title"><i class="bi bi-download" aria-hidden="true"></i> {{ t('dl.heading') }}</h3>
             <div class="d-flex align-items-center gap-2">
-                <select class="form-select form-select-sm" id="downloadsDaysSelect" style="width: auto;">
+                <select class="form-select form-select-sm w-auto" id="downloadsDaysSelect" aria-label="{{ t('dl.period') }}">
                     <option value="7">{{ t('dl.last_days', days=7) }}</option>
                     <option value="30" selected>{{ t('dl.last_days', days=30) }}</option>
                     <option value="90">{{ t('dl.last_days', days=90) }}</option>
@@ -77,26 +77,35 @@
                 </button>
             </div>
         </div>
-        <div class="stat-grid mb-3" id="downloadTiles"></div>
-        <div class="download-chart mb-1" id="downloadChart" role="img" aria-label="{{ t('dl.per_day') }}"></div>
-        <div class="d-flex justify-content-between text-secondary small mb-4" id="downloadChartAxis"></div>
+        <div class="stat-grid library-tiles mb-3" id="downloadTiles"></div>
 
-        <div class="stat-sections">
-            <section>
-                <h5 class="mb-2">{{ t('dl.top_titles') }}</h5>
-                <div class="dl-scroll" id="downloadTopTitlesScroll"><ul class="dash-list" id="downloadTopTitles"></ul></div>
-            </section>
-            <section>
-                <h5 class="mb-2">{{ t('dl.by_user') }}</h5>
-                <div class="dl-scroll" id="downloadByUserScroll"><ul class="dash-list" id="downloadByUser"></ul></div>
-                <h5 class="mb-2 mt-3">{{ t('dl.by_client') }}</h5>
-                <div class="dl-scroll" id="downloadByClientScroll"><ul class="dash-list" id="downloadByClient"></ul></div>
-            </section>
+        {# One card per view of the downloads, as the rest of the page. #}
+        <div class="dl-card mb-3">
+            <div class="dl-card__title" role="heading" aria-level="4"><i class="bi bi-bar-chart" aria-hidden="true"></i> {{ t('dl.per_day') }}</div>
+            <div class="download-chart mb-1" id="downloadChart" role="img" aria-label="{{ t('dl.per_day') }}"></div>
+            <div class="d-flex justify-content-between text-secondary small" id="downloadChartAxis"></div>
         </div>
 
-        <h5 class="mb-2 mt-2">{{ t('dl.recent') }}</h5>
-        <div class="dl-scroll" id="downloadRecentScroll"><ul class="dash-list" id="downloadRecent"></ul></div>
-        <p class="text-secondary small mb-0">{{ t('dl.hint') }}</p>
+        <div class="dl-grid">
+            <div class="dl-card dl-card--wide">
+                <div class="dl-card__title" role="heading" aria-level="4"><i class="bi bi-trophy" aria-hidden="true"></i> {{ t('dl.top_titles') }}</div>
+                <div class="dl-scroll" id="downloadTopTitlesScroll"><ul class="dash-list dl-list" id="downloadTopTitles"></ul></div>
+            </div>
+            <div class="dl-card">
+                <div class="dl-card__title" role="heading" aria-level="4"><i class="bi bi-people" aria-hidden="true"></i> {{ t('dl.by_user') }}</div>
+                <div class="dl-scroll" id="downloadByUserScroll"><ul class="dash-list dl-list" id="downloadByUser"></ul></div>
+            </div>
+            <div class="dl-card">
+                <div class="dl-card__title" role="heading" aria-level="4"><i class="bi bi-nintendo-switch" aria-hidden="true"></i> {{ t('dl.by_client') }}</div>
+                <div class="dl-scroll" id="downloadByClientScroll"><ul class="dash-list dl-list" id="downloadByClient"></ul></div>
+            </div>
+        </div>
+
+        <div class="dl-card mt-3">
+            <div class="dl-card__title" role="heading" aria-level="4"><i class="bi bi-clock-history" aria-hidden="true"></i> {{ t('dl.recent') }}</div>
+            <div class="dl-scroll" id="downloadRecentScroll"><ul class="dash-list dl-list dl-list--recent" id="downloadRecent"></ul></div>
+        </div>
+        <p class="text-secondary small mt-2 mb-0">{{ t('dl.hint') }}</p>
     </section>
 
     <section class="surface stats-section mt-3" id="duplicatesSection">

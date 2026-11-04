@@ -84,3 +84,94 @@ document.getElementById('accountPasswordSave').addEventListener('click', async (
         feedbackIn('accountPasswordFeedback', text, false);
     }
 });
+
+// --- Save vault (vault.py): this user's own password and webdav.json ---------------------
+
+const vaultSection = document.getElementById('accountVault');
+if (vaultSection) {
+    const password = document.getElementById('vaultPassword');
+    const origin = document.getElementById('vaultOrigin');
+    // The console needs the server's address on the network: the one the browser used,
+    // unless that's localhost, which the user changes here.
+    origin.value = window.location.origin;
+
+    document.getElementById('vaultPasswordSave').addEventListener('click', async () => {
+        const {ok} = await postJson('/api/account/vault', {password: password.value})
+            .catch(() => ({ok: false}));
+        feedbackIn('vaultPasswordFeedback', ok ? I18N.vaultSaved : I18N.vaultShort, ok);
+    });
+
+    // JKSV's webdav.json, made here in the browser: the password written above goes into
+    // it, since the server never sends it back.
+    document.getElementById('vaultDownloadWebdav').addEventListener('click', () => {
+        const needs = document.getElementById('vaultNeedsPassword');
+        needs.classList.toggle('d-none', Boolean(password.value));
+        if (!password.value) {
+            password.focus();
+            return;
+        }
+        const base = origin.value.trim().replace(/\/+$/, '');
+        const config = {origin: base + '/dav', basepath: 'JKSV', username: VAULT_USER, password: password.value};
+        const blob = new Blob([JSON.stringify(config, null, 2) + '\n'], {type: 'application/json'});
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'webdav.json';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    });
+}
+
+// --- Profile picture (avatars.py): a gallery avatar or an uploaded image ------------------
+
+function showAvatar(url) {
+    const preview = document.getElementById('avatarPreview');
+    preview.replaceChildren();
+    if (url) {
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = '';
+        img.width = img.height = 72;
+        preview.append(img);
+    } else {
+        const icon = document.createElement('i');
+        icon.className = 'bi bi-person-circle';
+        icon.setAttribute('aria-hidden', 'true');
+        preview.append(icon);
+    }
+    document.getElementById('avatarRemove').hidden = !url;
+    // The top bar's picture follows on the next page; the selection shows here at once.
+    document.querySelectorAll('.avatar-choice').forEach(b => {
+        const on = Boolean(url) && url.endsWith(`/${b.dataset.avatar}.svg`);
+        b.classList.toggle('is-selected', on);
+        b.setAttribute('aria-pressed', String(on));
+    });
+}
+
+async function saveAvatar(body, isFile) {
+    const r = await fetch('/api/account/avatar', isFile
+        ? {method: 'POST', credentials: 'same-origin', body}
+        : {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'},
+           body: JSON.stringify(body)}).catch(() => null);
+    const data = r ? await r.json().catch(() => ({})) : {};
+    if (r && r.ok && data.success) {
+        showAvatar(data.url);
+        feedbackIn('avatarFeedback', I18N.avatarSaved, true);
+    } else {
+        feedbackIn('avatarFeedback', r && r.status === 413 ? I18N.avatarTooLarge : I18N.avatarFailed, false);
+    }
+}
+
+document.querySelectorAll('.avatar-choice').forEach(button => {
+    button.addEventListener('click', () => saveAvatar({gallery: button.dataset.avatar}, false));
+});
+document.getElementById('avatarRemove').addEventListener('click', () => saveAvatar({gallery: null}, false));
+document.getElementById('avatarFile').addEventListener('change', event => {
+    const file = event.target.files[0];
+    if (!file) return;
+    const form = new FormData();
+    form.append('file', file);
+    saveAvatar(form, true);
+    event.target.value = '';
+});

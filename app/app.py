@@ -25,6 +25,8 @@ import discover
 import vault
 import accounts
 from accounts_views import accounts_blueprint
+from avatars import avatars_blueprint
+import avatars as avatars_mod
 import realtime
 import titledb
 import discovery
@@ -206,6 +208,7 @@ def create_app(db_uri=None):
 
     app.register_blueprint(auth_blueprint)
     app.register_blueprint(accounts_blueprint)
+    app.register_blueprint(avatars_blueprint)
     register_i18n(app)
 
     return app
@@ -252,6 +255,28 @@ def get_client_for_request(request):
         if client_class.identify_client(request):
             return client_class(get_settings())
     return None
+
+def _console_request(request):
+    """A call from a console's shop client: one it identifies itself as, or a Basic Auth
+    caller of the shop's own routes (browsers sign in with a session, never Basic Auth;
+    the save vault at /dav has its own switch)."""
+    if get_client_for_request(request) is not None:
+        return True
+    path = request.path
+    return request.authorization is not None and (
+        path == '/' or path == '/api/graphql' or path.startswith('/api/get_game/'))
+
+@app.before_request
+def shop_closed():
+    """The Store switch (Services): with the shop off, consoles get "closed"."""
+    if get_settings()['shop'].get('enabled', True) or not _console_request(request):
+        return None
+    client = get_client_for_request(request)
+    message = 'The shop is closed for now.'
+    if client is not None and request.path == '/' and request.method != 'OPTIONS':
+        # In the client's own format, as a disabled client is told: that's what it shows.
+        return client.error_response(message)
+    return jsonify({'error': message}), 503
 
 def download_caller(request):
     """(user, client) for the download history: the Basic Auth user a console sends,
@@ -317,7 +342,7 @@ def library_page_context():
         admin_account_created=admin_account_created(), is_admin=is_admin, is_shop=is_shop,
         web_downloads_enabled=settings['library']['management'].get('web_downloads', {}).get('enabled', False),
         show_game_background_image=show_background, console_firmware=console_firmware,
-        can_see_saves=current_user.is_authenticated and current_user.has_access('backup'),
+        can_see_saves=current_user.is_authenticated and vault.may_use(current_user),
     )
 
 def access_shop():
@@ -519,12 +544,66 @@ def settings_page():
         languages_from_titledb=languages,
         admin_account_created=admin_account_created())
 
+# Services: each one's switch in settings.yaml, and the Settings section that sets it up.
+SERVICES = (
+    ('registration', ('registration', 'enabled'), '/admin/settings#Registration'),
+    ('shop', ('shop', 'enabled'), '/admin/settings#Shop'),
+    ('maintenance', ('maintenance', 'enabled'), '/admin/settings#Maintenance'),
+    ('notifications', ('notifications', 'enabled'), '/admin/settings#Notifications'),
+    ('vault', ('vault', 'enabled'), '/admin/settings#Vault'),
+    ('discovery', ('services', 'discovery', 'enabled'), '/admin/services#servicesDiscovery'),
+)
+
+# Each service's card: icon, name and description (spelled out, so unused strings show).
+SERVICE_CARDS = {
+    'registration': ('bi-person-plus', 'services.name_registration', 'services.desc_registration'),
+    'shop': ('bi-shop', 'services.name_shop', 'services.desc_shop'),
+    'maintenance': ('bi-wrench-adjustable', 'services.name_maintenance', 'services.desc_maintenance'),
+    'notifications': ('bi-bell', 'services.name_notifications', 'services.desc_notifications'),
+    'vault': ('bi-safe', 'services.name_vault', 'services.desc_vault'),
+    'discovery': ('bi-wifi', 'services.name_discovery', 'services.desc_discovery'),
+}
+
+def _service_state(settings, path):
+    value = settings
+    for key in path:
+        value = (value or {}).get(key)
+    return bool(value)
+
+@app.get('/api/services')
+@access_required('admin')
+def services_api():
+    settings = get_settings()
+    return jsonify({'services': [{'id': name, 'enabled': _service_state(settings, path), 'settings': link}
+                                 for name, path, link in SERVICES]})
+
+@app.post('/api/services/<name>')
+@access_required('admin')
+def service_switch_api(name):
+    """Turns one service on or off - the same switch its Settings section sets."""
+    entry = next((s for s in SERVICES if s[0] == name), None)
+    if entry is None:
+        return jsonify({'success': False, 'error': 'unknown_service'}), 404
+    enabled = bool((request.get_json(silent=True) or {}).get('enabled'))
+    set_service_enabled(entry[1], enabled)
+    if name == 'discovery':
+        discovery.reconcile()
+    if name == 'maintenance':
+        tasks_mod.reschedule_maintenance()
+    logger.info(f"Service {name} turned {'on' if enabled else 'off'} by {current_user.user}")
+    return jsonify({'success': True, 'enabled': _service_state(get_settings(), entry[1])})
+
 @app.route('/admin/services')
 @access_required('admin')
 def services_page():
+    settings = get_settings()
+    services = [{'id': name, 'enabled': _service_state(settings, path), 'settings': link,
+                 'icon': SERVICE_CARDS[name][0], 'name': t(SERVICE_CARDS[name][1]),
+                 'desc': t(SERVICE_CARDS[name][2])} for name, path, link in SERVICES]
     return render_template(
         'services.html',
         title='Services',
+        services=services,
         discovery_port=DISCOVERY_PORT,
         admin_account_created=admin_account_created())
 
@@ -794,6 +873,8 @@ def download_stats_api():
         return items[:limit] if limit else items
 
     recent = events[:50]
+    from avatars import avatar_url
+    pictures = {u.user: avatar_url(u) for u in User.query.filter(User.user.in_(list(users))).all()}
     return jsonify({
         'days': days,
         'total': len(events),
@@ -801,14 +882,14 @@ def download_stats_api():
         'all_time': DownloadEvent.query.count(),
         'by_day': [{'date': d.isoformat(), 'count': c} for d, c in sorted(by_day.items())],
         'top_titles': [{'title_id': t, 'name': title_name(t), 'count': c} for t, c in ranked(titles, 50)],
-        'by_user': [{'user': u or None, 'count': c} for u, c in ranked(users)],
+        'by_user': [{'user': u or None, 'count': c, 'avatar_url': pictures.get(u)} for u, c in ranked(users)],
         'by_client': [{'client': cl, 'count': c} for cl, c in ranked(clients)],
         'recent': [{
             'downloaded_at': (e.downloaded_at + offset).isoformat(timespec='seconds'),
             'filename': e.filename, 'title_id': e.title_id,
             'name': title_name(e.title_id) if e.title_id else None,
             'app_type': e.app_type, 'app_version': e.app_version, 'size': e.size,
-            'user': e.user, 'client': e.client, 'address': e.address,
+            'user': e.user, 'user_avatar': pictures.get(e.user), 'client': e.client, 'address': e.address,
         } for e in recent],
     })
 
@@ -825,7 +906,28 @@ def clear_download_history_api():
 def account_page():
     """My account: the signed-in user's own preferences (any user, admin or not)."""
     server_background = get_settings()['library']['management'].get('organizer', {})         .get('show_background_image', True)
-    return render_template('account.html', title='Account', server_background=server_background)
+    return render_template('account.html', title='Account', server_background=server_background,
+                           can_use_vault=vault.may_use(current_user), vault_on=vault.enabled(),
+                           avatar_gallery=avatars_mod.GALLERY)
+
+@app.route('/api/account/vault', methods=['GET', 'POST'])
+@login_required
+def account_vault_api():
+    """The signed-in user's own vault password for JKSV (kept hashed, never sent back) -
+    for users with the Backup permission and admins. JKSV signs in with the web user name
+    and this password."""
+    if not vault.may_use(current_user):
+        return jsonify({'success': False, 'error': 'no_access'}), 403
+    if request.method == 'GET':
+        return jsonify({'enabled': vault.enabled(), 'password_set': bool(current_user.vault_password),
+                        'username': current_user.user})
+    password = str((request.get_json(silent=True) or {}).get('password') or '')
+    if len(password) < VAULT_MIN_PASSWORD:
+        return jsonify({'success': False, 'error': 'password'}), 400
+    current_user.vault_password = generate_password_hash(password)
+    db.session.commit()
+    vault.clear_auth_cache()
+    return jsonify({'success': True})
 
 _BACKGROUND_CHOICES = {'default': None, 'on': True, 'off': False}
 
@@ -1002,9 +1104,6 @@ def get_settings_api():
             if 'hauth' in client_settings:
                 # Replace hauth dict with empty dict to keep it private
                 settings['shop']['clients'][client_name]['hauth'] = {}
-    # The vault's password never leaves the server, not even hashed.
-    vault_settings = settings.setdefault('vault', {})
-    vault_settings['password_set'] = bool(vault_settings.pop('password_hash', ''))
     return jsonify(settings)
 
 @app.post('/api/settings/titles')
@@ -1185,42 +1284,24 @@ def set_appearance_settings_api():
     set_appearance_settings({'default_style': style})
     return jsonify({'success': True, 'errors': []})
 
-_VAULT_USER_RE = re.compile(r'[A-Za-z0-9_.-]{1,64}')
 VAULT_MIN_PASSWORD = 10
 
 @app.post('/api/settings/vault')
 @access_required('admin')
 def set_vault_settings_api():
-    """The save vault (vault.py): on/off, JKSV's user and password (kept hashed; empty
-    keeps the one there was), and how many backups each game keeps."""
+    """The save vault (vault.py) for everyone: on/off and how many backups each game
+    keeps. Each user sets their own vault password in My account."""
     data = request.get_json(silent=True) or {}
-    username = str(data.get('username') or '').strip()
-    password = str(data.get('password') or '')
     try:
         keep = int(data.get('keep') or 0)
     except (TypeError, ValueError):
         keep = -1
-    enabled = bool(data.get('enabled'))
-    errors = []
-    if not _VAULT_USER_RE.fullmatch(username):
-        errors.append('username')
-    if password and len(password) < VAULT_MIN_PASSWORD:
-        errors.append('password')
     if keep not in vault.KEEP_CHOICES:
-        errors.append('keep')
-    has_password = bool(password) or bool((get_settings().get('vault') or {}).get('password_hash'))
-    if enabled and not has_password:
-        errors.append('password')
-    if errors:
-        return jsonify({'success': False, 'errors': sorted(set(errors))}), 400
-    update = {'enabled': enabled, 'username': username, 'keep': keep}
-    if password:
-        update['password_hash'] = generate_password_hash(password)
-    set_vault_settings(update)
-    vault.clear_auth_cache()
+        return jsonify({'success': False, 'errors': ['keep']}), 400
+    set_vault_settings({'enabled': bool(data.get('enabled')), 'keep': keep})
     return jsonify({'success': True})
 
-# The vault answers JKSV before (and without) the web login: its own user and password.
+# The vault answers JKSV before (and without) the web login: the user's own vault password.
 @app.post('/api/settings/registration')
 @access_required('admin')
 def set_registration_settings_api():
@@ -1259,21 +1340,36 @@ app.add_url_rule('/dav/<path:subpath>', 'vault_path', vault.handle,
                  methods=vault.METHODS + ['PATCH', 'PROPPATCH', 'LOCK', 'UNLOCK', 'COPY', 'POST'])
 
 def saves_access(view):
-    """Admins and users with the Backup permission."""
-    return access_required('backup')(view)
+    """Admins and users with the Backup permission (vault.may_use)."""
+    @wraps(view)
+    def wrapper(*args, **kwargs):
+        if admin_account_created() and current_user.is_authenticated and current_user.is_admin:
+            return view(*args, **kwargs)
+        return access_required('backup')(view)(*args, **kwargs)
+    return wrapper
 
 @app.route('/saves')
 @saves_access
 def saves_page():
     return render_template('saves.html', title='Saves')
 
+def _saves_owner():
+    """Whose backups a Saves request names: the signed-in user's own - or, for an admin,
+    the user in ?user= (the Saves page lists everyone's for them)."""
+    if current_user.is_admin and request.args.get('user', '').isdigit():
+        return int(request.args['user'])
+    return current_user.id
+
 def _save_games():
-    """The vault's backups grouped by game (newest first), with each game's name and icon."""
+    """The backups one sees grouped by user and game (newest first), with each game's name
+    and icon: one's own, or everyone's for an admin."""
+    names = {u.id: u.user for u in User.query.with_entities(User.id, User.user)}
     games = {}
-    for b in vault.backups():
-        key = b['title_id'] or b['folder']
+    for b in vault.backups(None if current_user.is_admin else [current_user.id]):
+        key = (b['user_id'], b['title_id'] or b['folder'])
         game = games.setdefault(key, {'title_id': b['title_id'], 'folder': b['folder'], 'backups': [],
-                                      'size': 0, 'latest': b['time']})
+                                      'size': 0, 'latest': b['time'], 'user_id': b['user_id'],
+                                      'user': names.get(b['user_id'], f"#{b['user_id']}")})
         game['backups'].append(b)
         game['size'] += b['size']
         game['latest'] = max(game['latest'], b['time'])
@@ -1291,7 +1387,7 @@ def _save_games():
 @saves_access
 def saves_api():
     games = _save_games()
-    saved = {g['title_id'] for g in games if g['title_id']}
+    saved = {g['title_id'] for g in games if g['title_id'] and g['user_id'] == current_user.id}
     missing = []
     # The library's games without a backup: only for those who may see the library.
     library_ids = _owned_title_ids() if current_user.has_access('shop') else set()
@@ -1300,12 +1396,13 @@ def saves_api():
         if info.get('name') and info['name'] != 'Unrecognized':
             missing.append({'title_id': title_id, 'name': info['name'], 'icon_url': info.get('iconUrl')})
     missing.sort(key=lambda g: g['name'].lower())
-    return jsonify({'enabled': vault.enabled(), 'games': games, 'missing': missing})
+    return jsonify({'enabled': vault.enabled(), 'games': games, 'missing': missing,
+                    'all_users': bool(current_user.is_admin)})
 
 @app.get('/api/saves/download')
 @saves_access
 def saves_download_api():
-    path = vault.backup_path(request.args.get('path'))
+    path = vault.backup_path(_saves_owner(), request.args.get('path'))
     if path is None:
         return jsonify({'error': 'not_found'}), 404
     folder = os.path.basename(os.path.dirname(path))
@@ -1315,7 +1412,7 @@ def saves_download_api():
 @app.delete('/api/saves')
 @saves_access
 def saves_delete_api():
-    if not vault.delete_backup(request.args.get('path')):
+    if not vault.delete_backup(_saves_owner(), request.args.get('path')):
         return jsonify({'success': False, 'error': 'not_found'}), 404
     logger.info(f"Save backup {request.args.get('path')} deleted by {current_user.user if current_user.is_authenticated else '-'}")
     return jsonify({'success': True})
@@ -1323,7 +1420,7 @@ def saves_delete_api():
 @app.get('/api/saves/of/<title_id>')
 @saves_access
 def saves_of_api(title_id):
-    mine = [b for b in vault.backups() if (b['title_id'] or '') == title_id.upper()]
+    mine = [b for b in vault.backups([current_user.id]) if (b['title_id'] or '') == title_id.upper()]
     return jsonify({'count': len(mine), 'latest': mine[0]['time'] if mine else None})
 
 @app.post('/api/settings/maintenance')
@@ -1574,8 +1671,6 @@ def export_settings():
         for provider, key in (('discord', 'webhook_url'), ('telegram', 'bot_token'),
                               ('ntfy', 'token'), ('webhook', 'url')):
             settings.get('notifications', {}).get(provider, {}).pop(key, None)
-        # The save vault's password, even hashed, can be attacked offline.
-        settings.get('vault', {}).pop('password_hash', None)
     yaml_text = yaml.safe_dump(settings, sort_keys=False, allow_unicode=True)
     suffix = '' if include_secrets else '-shareable'
     filename = f"ownfoil-settings-{datetime.date.today().isoformat()}{suffix}.yaml"

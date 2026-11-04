@@ -151,7 +151,9 @@ function fillUserTable() {
             // The user's email (if any) under the name, with its state: waiting for its
             // registration to be verified, verified, or not yet (a new address waiting
             // for its link shows instead of the verified one until it's opened).
-            const who = $('<td>').append($('<div>').text(user['user']));
+            const name = $('<div class="user-name">');
+            if (user['avatar_url']) name.append($('<img class="user-avatar" alt="" width="24" height="24">').attr('src', user['avatar_url']));
+            const who = $('<td>').append(name.append($('<span>').text(user['user'])));
             const shown = user['pending_email'] || user['email'];
             if (shown) {
                 const verified = !user['pending_email'];
@@ -1072,55 +1074,21 @@ $('#registrationTestEmail').on('click', function () {
 
 function fillVaultSettings(v) {
     $('#vaultEnabled').prop('checked', Boolean(v.enabled));
-    $('#vaultUsername').val(v.username || 'jksv');
     $('#vaultKeep').val(String(v.keep || 0));
-    // The password never comes back: say one is set, and keep the field for a new one.
-    $('#vaultPasswordSet').toggleClass('d-none', !v.password_set);
-    // The console needs the server's address on the network, which is the one the
-    // browser used - unless that is localhost, which the admin has to change.
-    if (!$('#vaultOrigin').val()) $('#vaultOrigin').val(window.location.origin);
 }
 
+// For everyone: on/off (also in Services) and how many backups each game keeps. Each
+// user sets their own vault password and gets their webdav.json in My account.
 function submitVaultSettings() {
     const feedback = $('#vaultFeedback').removeClass('text-success text-danger').text('');
     fetch('/api/settings/vault', {
         method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            enabled: $('#vaultEnabled').prop('checked'),
-            username: $('#vaultUsername').val().trim(),
-            password: $('#vaultPassword').val(),
-            keep: Number($('#vaultKeep').val()),
-        }),
+        body: JSON.stringify({enabled: $('#vaultEnabled').prop('checked'), keep: Number($('#vaultKeep').val())}),
     }).then(r => r.json().then(body => ({ok: r.ok, body}))).then(({ok, body}) => {
-        if (ok && body.success) {
-            feedback.addClass('text-success').text(I18N.vaultSaved);
-            if ($('#vaultPassword').val()) $('#vaultPasswordSet').removeClass('d-none');
-        } else {
-            feedback.addClass('text-danger').text(I18N.vaultInvalid);
-        }
+        if (ok && body.success) feedback.addClass('text-success').text(I18N.vaultSaved);
+        else feedback.addClass('text-danger').text(I18N.vaultInvalid);
     }).catch(() => feedback.addClass('text-danger').text(I18N.vaultInvalid));
 }
-
-// JKSV's webdav.json, made here in the browser: the password written above goes into it,
-// since the server never sends it back.
-$('#vaultDownloadWebdav').on('click', function () {
-    const password = $('#vaultPassword').val();
-    $('#vaultNeedsPassword').toggleClass('d-none', Boolean(password));
-    if (!password) {
-        $('#vaultPassword').trigger('focus');
-        return;
-    }
-    const origin = $('#vaultOrigin').val().trim().replace(/\/+$/, '');
-    const config = {origin: origin + '/dav', basepath: 'JKSV', username: $('#vaultUsername').val().trim(), password};
-    const blob = new Blob([JSON.stringify(config, null, 2) + '\n'], {type: 'application/json'});
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'webdav.json';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
-});
 
 function submitWorkerSettings() {
     $('#submitWorkerSettingsBtn').prop('disabled', true);

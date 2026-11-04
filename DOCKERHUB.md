@@ -41,8 +41,10 @@ It's a fork of [Ownfoil](https://github.com/a1ex4/ownfoil) by [@a1ex4](https://g
 - Settings export/import from the web UI
 - Per-user console firmware: games and updates that need a newer firmware are marked
 - Upcoming releases with a wishlist per user, and Sagas showing which games of each series you own, miss, or are still to come
-- A save vault: JKSV uploads its save backups over WebDAV, and a Saves page to download or delete them
+- A save vault: JKSV uploads each user's save backups over WebDAV into their own space, and a Saves page to download or delete them
 - Optional public registration with email verification, password reset, and Google sign-in
+- A Services panel to switch the store, registration, maintenance, notifications and the save vault on and off
+- Profile pictures: a gallery of avatars or your own image
 
 ## Quick start
 

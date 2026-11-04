@@ -1,5 +1,6 @@
-"""The save vault: JKSV uploads save backups over WebDAV to /dav/, with its own user and
-password, off until an admin turns it on (app/vault.py)."""
+"""The save vault: JKSV uploads save backups over WebDAV to /dav/, each user into their
+own space with their own vault password (My account), only while an admin has the vault
+turned on (Services) (app/vault.py)."""
 import base64
 import io
 import os
@@ -30,15 +31,30 @@ def _meta_zip(title_id=GAME, stamp=1782864000, extra_entries=0):
     return buf.getvalue()
 
 
-def _auth(user="jksv", password=PASSWORD):
+def _auth(user="keeper", password=PASSWORD):
     token = base64.b64encode(f"{user}:{password}".encode()).decode()
     return {"Authorization": f"Basic {token}"}
 
 
-def _login(shop_app, user):
-    resp = shop_app.client.post("/login", data={"user": user, "password": fixture.PASSWORDS[user]})
+def _login(shop_app, user, password=None):
+    resp = shop_app.client.post("/login", data={"user": user, "password": password or fixture.PASSWORDS[user]})
     assert resp.status_code == 302
     return shop_app.client
+
+
+def _user(shop_app, name, password, **access):
+    from auth import create_or_update_user
+    from db import User
+    with shop_app.app.app_context():
+        create_or_update_user(name, password, **access)
+        return User.query.filter_by(user=name).one().id
+
+
+def _vault_password(shop_app, name, web_password, vault_password=PASSWORD):
+    client = _login(shop_app, name, web_password)
+    resp = client.post("/api/account/vault", json={"password": vault_password})
+    assert resp.status_code == 200, resp.get_data(as_text=True)
+    client.get("/logout")
 
 
 @pytest.fixture
@@ -47,36 +63,72 @@ def saves_dir(tmp_path, monkeypatch):
     monkeypatch.setattr(vault, "SAVES_DIR", str(root))
     monkeypatch.setattr(vault, "_free_bytes", lambda path: 100 << 30)
     vault.clear_auth_cache()
+    vault._meta_cache.clear()     # each test starts with none from another's folders
     return root
 
 
-@pytest.fixture
-def on(shop_app, saves_dir):
-    """The vault turned on from Settings by the admin."""
+def _turn_on(shop_app, keep=0):
     admin = _login(shop_app, "admin")
-    resp = admin.post("/api/settings/vault", json={"enabled": True, "username": "jksv",
-                                                   "password": PASSWORD, "keep": 0})
+    resp = admin.post("/api/settings/vault", json={"enabled": True, "keep": keep})
     assert resp.status_code == 200, resp.get_data(as_text=True)
     admin.get("/logout")
+
+
+@pytest.fixture
+def keeper(shop_app, saves_dir):
+    """A user with the Backup permission (and the shop), with a vault password set."""
+    user_id = _user(shop_app, "keeper", "keeperpass1", shop_access=True, backup_access=True)
+    _vault_password(shop_app, "keeper", "keeperpass1")
+    return user_id
+
+
+@pytest.fixture
+def on(shop_app, keeper):
+    _turn_on(shop_app)
     return shop_app.client
 
 
-def _dav(client, method, path, data=None, headers=None):
-    return client.open(path, method=method, data=data, headers={**_auth(), **(headers or {})})
+@pytest.fixture
+def space(saves_dir, keeper):
+    """The keeper's own space in the vault."""
+    return saves_dir / "users" / str(keeper)
+
+
+def _dav(client, method, path, data=None, headers=None, user="keeper"):
+    return client.open(path, method=method, data=data, headers={**_auth(user), **(headers or {})})
 
 
 # --- off, and who gets in ------------------------------------------------------------------
 
-def test_the_vault_is_off_by_default(shop_app, saves_dir):
+def test_the_vault_is_off_by_default(shop_app, keeper):
     assert shop_app.client.open("/dav/", method="PROPFIND", headers=_auth()).status_code == 404
 
 
-def test_it_asks_for_its_own_user_and_password(on):
+def test_it_asks_for_the_users_own_vault_password(on):
     resp = on.open("/dav/", method="PROPFIND")
     assert resp.status_code == 401 and "Basic" in resp.headers["WWW-Authenticate"]
     assert on.open("/dav/", method="PROPFIND", headers=_auth(password="wrong-password")).status_code == 401
-    # The web interface's accounts don't open it.
-    assert on.open("/dav/", method="PROPFIND", headers=_auth("admin", fixture.PASSWORDS["admin"])).status_code == 401
+    # The web password doesn't open it: only the vault password from My account.
+    assert on.open("/dav/", method="PROPFIND", headers=_auth(password="keeperpass1")).status_code == 401
+    assert on.open("/dav/", method="PROPFIND", headers=_auth()).status_code == 207
+
+
+def test_only_users_with_the_backup_permission_get_in(shop_app, on):
+    _user(shop_app, "nobackup", "nobackuppass1", shop_access=True, backup_access=False)
+    client = _login(shop_app, "nobackup", "nobackuppass1")
+    assert client.post("/api/account/vault", json={"password": PASSWORD}).status_code == 403
+    client.get("/logout")
+    assert on.open("/dav/", method="PROPFIND", headers=_auth("nobackup")).status_code == 401
+
+
+def test_losing_the_permission_closes_the_vault(shop_app, on, keeper):
+    from db import User, db
+    assert _dav(on, "PROPFIND", "/dav/", headers={"Depth": "0"}).status_code == 207
+    with shop_app.app.app_context():
+        db.session.get(User, keeper).backup_access = False
+        db.session.commit()
+    vault.clear_auth_cache()
+    assert _dav(on, "PROPFIND", "/dav/", headers={"Depth": "0"}).status_code == 401
 
 
 def test_repeated_wrong_passwords_are_locked_out(on):
@@ -87,21 +139,78 @@ def test_repeated_wrong_passwords_are_locked_out(on):
 
 # --- what JKSV does --------------------------------------------------------------------------
 
-def test_jksv_lists_creates_a_folder_uploads_and_reads_back(on, saves_dir):
+def test_jksv_lists_creates_a_folder_uploads_and_reads_back(on, space):
     assert _dav(on, "OPTIONS", "/dav/").headers.get("DAV")
     listing = _dav(on, "PROPFIND", "/dav/", headers={"Depth": "1"})
     assert listing.status_code == 207 and "/dav/JKSV/" in listing.get_data(as_text=True)
     assert _dav(on, "MKCOL", "/dav/JKSV/Zelda%20BOTW").status_code == 201
     body = _meta_zip()
     assert _dav(on, "PUT", "/dav/JKSV/Zelda%20BOTW/2026-01-01.zip", data=body).status_code == 201
-    assert (saves_dir / "JKSV" / "Zelda BOTW" / "2026-01-01.zip").read_bytes() == body
+    assert (space / "JKSV" / "Zelda BOTW" / "2026-01-01.zip").read_bytes() == body
     folder = _dav(on, "PROPFIND", "/dav/JKSV/Zelda%20BOTW/", headers={"Depth": "1"}).get_data(as_text=True)
     assert "2026-01-01.zip" in folder and f"<D:getcontentlength>{len(body)}</D:getcontentlength>" in folder
     assert _dav(on, "GET", "/dav/JKSV/Zelda%20BOTW/2026-01-01.zip").data == body
     moved = _dav(on, "MOVE", "/dav/JKSV/Zelda%20BOTW/2026-01-01.zip",
                  headers={"Destination": "http://localhost/dav/JKSV/Zelda%20BOTW/renamed.zip"})
-    assert moved.status_code in (201, 204) and (saves_dir / "JKSV" / "Zelda BOTW" / "renamed.zip").exists()
+    assert moved.status_code in (201, 204) and (space / "JKSV" / "Zelda BOTW" / "renamed.zip").exists()
     assert _dav(on, "DELETE", "/dav/JKSV/Zelda%20BOTW/renamed.zip").status_code == 204
+
+
+# --- each user's own space -----------------------------------------------------------------
+
+@pytest.fixture
+def other(shop_app, on):
+    """A second user with the Backup permission and a backup of their own."""
+    user_id = _user(shop_app, "other", "otherpass12", shop_access=True, backup_access=True)
+    _vault_password(shop_app, "other", "otherpass12", "other-secret-2")
+    headers = _auth("other", "other-secret-2")
+    on.open("/dav/JKSV/Mario", method="MKCOL", headers=headers)
+    assert on.open("/dav/JKSV/Mario/m.zip", method="PUT", data=_meta_zip(), headers=headers).status_code == 201
+    return user_id
+
+
+def test_each_user_sees_only_their_own_backups(shop_app, on, other, space):
+    _dav(on, "MKCOL", "/dav/JKSV/Zelda")
+    _dav(on, "PUT", "/dav/JKSV/Zelda/b.zip", data=_meta_zip())
+    listing = _dav(on, "PROPFIND", "/dav/JKSV/", headers={"Depth": "1"}).get_data(as_text=True)
+    assert "Zelda" in listing and "Mario" not in listing
+    assert _dav(on, "GET", "/dav/JKSV/Mario/m.zip").status_code == 404
+    client = _login(shop_app, "keeper", "keeperpass1")
+    games = client.get("/api/saves").get_json()["games"]
+    assert [g["folder"] for g in games] == ["Zelda"]
+    # Another user's backup can't be named from here: paths are inside one's own space.
+    assert client.get("/api/saves/download", query_string={"path": "Mario/m.zip"}).status_code == 404
+    assert client.get("/api/saves/download", query_string={"path": "Mario/m.zip", "user": other}).status_code == 404
+    assert client.delete("/api/saves", query_string={"path": "Mario/m.zip", "user": other}).status_code == 404
+
+
+def test_an_admin_sees_everyones_backups_by_user(shop_app, on, other, keeper):
+    _dav(on, "MKCOL", "/dav/JKSV/Zelda")
+    _dav(on, "PUT", "/dav/JKSV/Zelda/b.zip", data=_meta_zip())
+    admin = _login(shop_app, "admin")
+    data = admin.get("/api/saves").get_json()
+    owners = {(g["user_id"], g["user"]) for g in data["games"]}
+    assert owners == {(keeper, "keeper"), (other, "other")}
+    resp = admin.get("/api/saves/download", query_string={"path": "Mario/m.zip", "user": other})
+    assert resp.status_code == 200
+    resp.close()      # Windows won't delete a file a response still holds open
+    assert admin.delete("/api/saves", query_string={"path": "Mario/m.zip", "user": other}).status_code == 200
+
+
+def test_backups_from_before_go_to_the_first_admin(shop_app, saves_dir, keeper):
+    """The vault had one shared space: its backups move to the first admin's space."""
+    old = saves_dir / "JKSV" / "Zelda"
+    old.mkdir(parents=True)
+    (old / "old.zip").write_bytes(_meta_zip())
+    _turn_on(shop_app)
+    admin = _login(shop_app, "admin")
+    from db import User
+    with shop_app.app.app_context():
+        admin_id = User.query.filter_by(user="admin").one().id
+    games = admin.get("/api/saves").get_json()["games"]
+    assert games and games[0]["user"] == "admin" and games[0]["folder"] == "Zelda"
+    assert (saves_dir / "users" / str(admin_id) / "JKSV" / "Zelda" / "old.zip").exists()
+    assert not (saves_dir / "JKSV").exists()
 
 
 # --- even with the right password ----------------------------------------------------------
@@ -117,49 +226,47 @@ def test_jksv_lists_creates_a_folder_uploads_and_reads_back(on, saves_dir):
     ("MOVE", "/dav/JKSV/game/a.zip", {"Destination": "http://localhost/dav/out.zip"}, None),
     ("PATCH", "/dav/JKSV/game/a.zip", {}, b"x"),                       # methods JKSV doesn't use
 ])
-def test_the_vault_refuses_anything_but_backups_in_the_jksv_folder(on, saves_dir, method, path, headers, data):
-    (saves_dir / "JKSV" / "game").mkdir(parents=True)
-    (saves_dir / "JKSV" / "game" / "a.zip").write_bytes(_meta_zip())
+def test_the_vault_refuses_anything_but_backups_in_the_jksv_folder(on, space, saves_dir, method, path, headers, data):
+    (space / "JKSV" / "game").mkdir(parents=True)
+    (space / "JKSV" / "game" / "a.zip").write_bytes(_meta_zip())
     assert _dav(on, method, path, data=data, headers=headers).status_code in (400, 403, 405)
-    assert not (saves_dir.parent / "escape.zip").exists()
+    assert not (saves_dir.parent / "escape.zip").exists() and not (space.parent / "escape.zip").exists()
 
 
-def test_an_upload_needs_room_left_on_the_disk(on, saves_dir, monkeypatch):
+def test_an_upload_needs_room_left_on_the_disk(on, space, monkeypatch):
     _dav(on, "MKCOL", "/dav/JKSV/game")
     monkeypatch.setattr(vault, "_free_bytes", lambda path: 100 << 20)     # 100 MB free
     assert _dav(on, "PUT", "/dav/JKSV/game/b.zip", data=_meta_zip()).status_code == 507
-    assert not (saves_dir / "JKSV" / "game" / "b.zip").exists()
+    assert not (space / "JKSV" / "game" / "b.zip").exists()
 
 
-def test_a_zip_with_absurdly_many_entries_is_refused(on, saves_dir, monkeypatch):
+def test_a_zip_with_absurdly_many_entries_is_refused(on, space, monkeypatch):
     monkeypatch.setattr(vault, "MAX_ZIP_ENTRIES", 10)
     _dav(on, "MKCOL", "/dav/JKSV/game")
     assert _dav(on, "PUT", "/dav/JKSV/game/bomb.zip", data=_meta_zip(extra_entries=20)).status_code == 422
-    assert not (saves_dir / "JKSV" / "game" / "bomb.zip").exists()
+    assert not (space / "JKSV" / "game" / "bomb.zip").exists()
 
 
-def test_old_backups_beyond_the_kept_number_are_removed(shop_app, saves_dir):
-    admin = _login(shop_app, "admin")
-    admin.post("/api/settings/vault", json={"enabled": True, "username": "jksv", "password": PASSWORD, "keep": 5})
-    admin.get("/logout")
+def test_old_backups_beyond_the_kept_number_are_removed(shop_app, keeper, space):
+    _turn_on(shop_app, keep=5)
     client = shop_app.client
     _dav(client, "MKCOL", "/dav/JKSV/game")
     past = time.time() - 1000
     for n in range(7):
         _dav(client, "PUT", f"/dav/JKSV/game/{n}.zip", data=_meta_zip())
         # Older uploads, older files: the newest is always the one just uploaded.
-        os.utime(saves_dir / "JKSV" / "game" / f"{n}.zip", (past + n, past + n))
-    left = sorted(p.name for p in (saves_dir / "JKSV" / "game").iterdir())
+        os.utime(space / "JKSV" / "game" / f"{n}.zip", (past + n, past + n))
+    left = sorted(p.name for p in (space / "JKSV" / "game").iterdir())
     assert left == ["2.zip", "3.zip", "4.zip", "5.zip", "6.zip"]
 
 
-def test_a_new_backup_is_notified(on, monkeypatch):
+def test_a_new_backup_is_notified_with_its_user(on, monkeypatch):
     sent = []
     import notifications
     monkeypatch.setattr(notifications, "notify", lambda event, item: sent.append((event, item)))
     _dav(on, "MKCOL", "/dav/JKSV/Zelda")
     _dav(on, "PUT", "/dav/JKSV/Zelda/b.zip", data=_meta_zip())
-    assert sent and sent[0][0] == "save_backup" and "Zelda" in sent[0][1]
+    assert sent and sent[0][0] == "save_backup" and "Zelda" in sent[0][1] and "keeper" in sent[0][1]
     assert "save_backup" in notifications.EVENTS
 
 
@@ -178,31 +285,26 @@ def test_a_file_that_is_not_a_jksv_backup_tells_nothing(tmp_path):
     assert vault.read_meta(str(path)) == (None, None)
 
 
-# --- settings ----------------------------------------------------------------------------------
+# --- settings and My account -----------------------------------------------------------------
 
-def test_vault_settings_need_a_long_password_to_turn_on(shop_app, saves_dir):
+def test_the_admin_sets_only_on_off_and_how_many_are_kept(shop_app, saves_dir):
     admin = _login(shop_app, "admin")
-    assert admin.post("/api/settings/vault", json={"enabled": True, "username": "jksv",
-                                                   "password": "short", "keep": 0}).status_code == 400
-    assert admin.post("/api/settings/vault", json={"enabled": True, "username": "jksv",
-                                                   "password": "", "keep": 0}).status_code == 400
-    assert admin.post("/api/settings/vault", json={"enabled": False, "username": "jk sv",
-                                                   "password": "", "keep": 0}).status_code == 400
-    assert admin.post("/api/settings/vault", json={"enabled": False, "username": "jksv",
-                                                   "password": "", "keep": 3}).status_code == 400
-
-
-def test_the_password_is_kept_hashed_and_never_sent_back(shop_app, saves_dir):
-    admin = _login(shop_app, "admin")
-    admin.post("/api/settings/vault", json={"enabled": True, "username": "jksv", "password": PASSWORD, "keep": 10})
+    assert admin.post("/api/settings/vault", json={"enabled": True, "keep": 0}).status_code == 200
+    assert admin.post("/api/settings/vault", json={"enabled": False, "keep": 3}).status_code == 400
     from settings import get_settings
     stored = get_settings()["vault"]
-    assert stored["password_hash"] and PASSWORD not in stored["password_hash"]
-    sent = admin.get("/api/settings").get_json()["vault"]
-    assert "password_hash" not in sent and sent["password_set"] is True and sent["keep"] == 10
-    # Saving again without a password keeps the one there was.
-    admin.post("/api/settings/vault", json={"enabled": True, "username": "jksv", "password": "", "keep": 5})
-    assert get_settings()["vault"]["password_hash"] == stored["password_hash"]
+    assert set(stored) == {"enabled", "keep"}
+
+
+def test_the_vault_password_is_kept_hashed_on_the_user(shop_app, keeper):
+    from db import User, db
+    with shop_app.app.app_context():
+        stored = db.session.get(User, keeper).vault_password
+    assert stored and PASSWORD not in stored
+    client = _login(shop_app, "keeper", "keeperpass1")
+    sent = client.get("/api/account/vault").get_json()
+    assert sent == {"enabled": False, "password_set": True, "username": "keeper"}
+    assert client.post("/api/account/vault", json={"password": "short"}).status_code == 400
 
 
 def test_only_admins_change_the_vault(shop_app, saves_dir):
@@ -210,21 +312,31 @@ def test_only_admins_change_the_vault(shop_app, saves_dir):
     assert client.post("/api/settings/vault", json={"enabled": True}).status_code in (302, 401, 403)
 
 
+def test_my_account_has_the_vault_section_for_backup_users(shop_app, keeper):
+    client = _login(shop_app, "keeper", "keeperpass1")
+    html = client.get("/account").get_data(as_text=True)
+    for needle in ('id="accountVault"', 'id="vaultPassword"', 'id="vaultOrigin"', 'id="vaultDownloadWebdav"'):
+        assert needle in html, needle
+    client.get("/logout")
+    shopper = _login(shop_app, "shopper")
+    assert 'id="accountVault"' not in shopper.get("/account").get_data(as_text=True)
+    js = open(os.path.join(os.path.dirname(__file__), "..", "app", "static", "js", "account.js"), encoding="utf-8").read()
+    assert "basepath: 'JKSV'" in js and "'/dav'" in js and "username: VAULT_USER" in js
+
+
+def test_settings_keeps_only_the_vault_options_for_everyone(shop_app, saves_dir):
+    html = _login(shop_app, "admin").get("/admin/settings").get_data(as_text=True)
+    section = html[html.index('id="Vault"'):html.index('id="Notifications"')]
+    assert 'id="vaultKeep"' in section
+    assert 'id="vaultPassword"' not in section and 'id="vaultDownloadWebdav"' not in section
+
+
 # --- the Saves page ----------------------------------------------------------------------------
 
-def _backup_user(shop_app):
-    from auth import create_or_update_user
-    with shop_app.app.app_context():
-        create_or_update_user("keeper", "keeperpass1", shop_access=True, backup_access=True)
-    resp = shop_app.client.post("/login", data={"user": "keeper", "password": "keeperpass1"})
-    assert resp.status_code == 302
-    return shop_app.client
-
-
-def test_the_saves_page_and_api_list_backups_by_game(shop_app, on, saves_dir):
+def test_the_saves_page_and_api_list_backups_by_game(shop_app, on, space):
     _dav(on, "MKCOL", "/dav/JKSV/Zelda")
     _dav(on, "PUT", "/dav/JKSV/Zelda/b.zip", data=_meta_zip())
-    client = _backup_user(shop_app)
+    client = _login(shop_app, "keeper", "keeperpass1")
     html = client.get("/saves").get_data(as_text=True)
     assert len(re.findall(r"<script>(.*?)</script>", html, re.S)) == 1 and "/static/js/saves.js" in html
     data = client.get("/api/saves").get_json()
@@ -235,20 +347,13 @@ def test_the_saves_page_and_api_list_backups_by_game(shop_app, on, saves_dir):
     assert client.get("/api/saves/download", query_string={"path": "../../etc/passwd"}).status_code == 404
     assert client.get(f"/api/saves/of/{GAME}").get_json()["count"] == 1
     assert client.delete("/api/saves", query_string={"path": "Zelda/b.zip"}).status_code == 200
-    assert not (saves_dir / "JKSV" / "Zelda" / "b.zip").exists()
+    assert not (space / "JKSV" / "Zelda" / "b.zip").exists()
 
 
 def test_users_without_backup_access_dont_see_saves(shop_app, on):
     client = _login(shop_app, "shopper")
     assert client.get("/saves").status_code == 403
     assert client.get("/api/saves").status_code == 403
-
-
-def test_settings_has_a_vault_section_with_the_webdav_json_button(shop_app, saves_dir):
-    html = _login(shop_app, "admin").get("/admin/settings").get_data(as_text=True)
-    assert 'id="Vault"' in html and 'id="vaultDownloadWebdav"' in html and 'id="vaultOrigin"' in html
-    js = open(os.path.join(os.path.dirname(__file__), "..", "app", "static", "js", "settings.js"), encoding="utf-8").read()
-    assert "basepath: 'JKSV'" in js and "'/dav'" in js
 
 
 def test_one_backup_reads_in_the_singular():
@@ -272,7 +377,7 @@ def _lying_zip(real_entries=30, declared=1):
     return bytes(data)
 
 
-def test_the_entry_cap_counts_the_real_entries_not_the_declared_ones(on, saves_dir, monkeypatch, tmp_path):
+def test_the_entry_cap_counts_the_real_entries_not_the_declared_ones(on, monkeypatch, tmp_path):
     monkeypatch.setattr(vault, "MAX_ZIP_ENTRIES", 10)
     path = tmp_path / "liar.zip"
     path.write_bytes(_lying_zip())
@@ -281,7 +386,7 @@ def test_the_entry_cap_counts_the_real_entries_not_the_declared_ones(on, saves_d
     assert _dav(on, "PUT", "/dav/JKSV/game/liar.zip", data=_lying_zip()).status_code == 422
 
 
-def test_a_cut_off_upload_never_replaces_a_backup_or_leaves_a_temp_file(on, saves_dir):
+def test_a_cut_off_upload_never_replaces_a_backup_or_leaves_a_temp_file(on, space):
     _dav(on, "MKCOL", "/dav/JKSV/game")
     good = _meta_zip()
     _dav(on, "PUT", "/dav/JKSV/game/b.zip", data=good)
@@ -289,15 +394,14 @@ def test_a_cut_off_upload_never_replaces_a_backup_or_leaves_a_temp_file(on, save
     resp = on.open("/dav/JKSV/game/b.zip", method="PUT", data=good[:100], headers=_auth(),
                    environ_overrides=environ)
     assert resp.status_code == 400
-    assert (saves_dir / "JKSV" / "game" / "b.zip").read_bytes() == good
-    assert not [p for p in (saves_dir / "JKSV" / "game").iterdir() if p.name.startswith(".upload-")]
+    assert (space / "JKSV" / "game" / "b.zip").read_bytes() == good
+    assert not [p for p in (space / "JKSV" / "game").iterdir() if p.name.startswith(".upload-")]
 
 
-def test_the_shareable_export_leaves_out_the_vault_password(shop_app, saves_dir):
+def test_the_export_never_carries_vault_passwords(shop_app, keeper):
     admin = _login(shop_app, "admin")
-    admin.post("/api/settings/vault", json={"enabled": True, "username": "jksv", "password": PASSWORD, "keep": 0})
     shared = admin.get("/api/settings/export?include_secrets=0").get_data(as_text=True)
-    assert "password_hash" not in shared
+    assert "password_hash" not in shared and "vault_password" not in shared
 
 
 def test_a_known_good_login_keeps_working_while_someone_else_guesses(on):
@@ -315,16 +419,16 @@ def test_a_wrong_username_costs_the_same_hash_check(on, monkeypatch):
     assert calls, "a wrong username must not answer faster"
 
 
-def test_names_with_percent_signs_are_reachable_and_control_characters_refused(on, saves_dir):
+def test_names_with_percent_signs_are_reachable_and_control_characters_refused(on, space):
     _dav(on, "MKCOL", "/dav/JKSV/game")
     assert _dav(on, "PUT", "/dav/JKSV/game/100%25.zip", data=_meta_zip()).status_code == 201
-    assert (saves_dir / "JKSV" / "game" / "100%.zip").exists()
+    assert (space / "JKSV" / "game" / "100%.zip").exists()
     listing = _dav(on, "PROPFIND", "/dav/JKSV/game/", headers={"Depth": "1"}).get_data(as_text=True)
     assert "/dav/JKSV/game/100%25.zip" in listing
     assert _dav(on, "GET", "/dav/JKSV/game/100%25.zip").status_code == 200
     # Refused before (Flask's router) or by the vault itself; never stored.
     assert _dav(on, "PUT", "/dav/JKSV/game/a%0Ab.zip", data=_meta_zip()).status_code in (400, 404)
-    assert not [p for p in (saves_dir / "JKSV" / "game").iterdir() if "\n" in p.name]
+    assert not [p for p in (space / "JKSV" / "game").iterdir() if "\n" in p.name]
 
 
 def test_a_folder_named_like_a_backup_is_refused(on):
@@ -337,12 +441,12 @@ def test_small_disks_can_still_take_backups():
 
 
 def test_backup_only_users_dont_see_the_library_list(shop_app, on, saves_dir):
-    _dav(on, "MKCOL", "/dav/JKSV/Zelda")
-    _dav(on, "PUT", "/dav/JKSV/Zelda/b.zip", data=_meta_zip())
-    from auth import create_or_update_user
-    with shop_app.app.app_context():
-        create_or_update_user("vaultonly", "vaultonlypass1", shop_access=False, backup_access=True)
-    shop_app.client.post("/login", data={"user": "vaultonly", "password": "vaultonlypass1"})
+    _user(shop_app, "vaultonly", "vaultonlypass1", shop_access=False, backup_access=True)
+    _vault_password(shop_app, "vaultonly", "vaultonlypass1")
+    headers = _auth("vaultonly")
+    shop_app.client.open("/dav/JKSV/Zelda", method="MKCOL", headers=headers)
+    shop_app.client.open("/dav/JKSV/Zelda/b.zip", method="PUT", data=_meta_zip(), headers=headers)
+    _login(shop_app, "vaultonly", "vaultonlypass1")
     assert shop_app.client.get("/api/saves").get_json()["missing"] == []
     src = open(os.path.join(os.path.dirname(__file__), "..", "app", "app.py"), encoding="utf-8").read()
     body = src[src.index("def saves_api"):src.index("def saves_download_api")]
@@ -355,10 +459,22 @@ def test_discord_never_pings_from_names_in_messages():
     assert "'allowed_mentions': {'parse': []}" in body
 
 
-def test_the_meta_cache_forgets_deleted_backups(on, saves_dir):
+def test_the_meta_cache_forgets_deleted_backups(on, keeper):
     _dav(on, "MKCOL", "/dav/JKSV/game")
     _dav(on, "PUT", "/dav/JKSV/game/b.zip", data=_meta_zip())
-    vault.backups()
+    vault.backups([keeper])
     _dav(on, "DELETE", "/dav/JKSV/game/b.zip")
-    vault.backups()
+    vault.backups([keeper])
     assert not any("b.zip" in key[0] for key in vault._meta_cache)
+
+
+def test_a_migration_adds_the_vault_password_and_avatar_and_is_the_head():
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+    from db import User
+    assert "vault_password" in User.__table__.columns and "avatar" in User.__table__.columns
+    cfg = Config()
+    cfg.set_main_option("script_location", os.path.join(os.path.dirname(__file__), "..", "app", "migrations"))
+    script = ScriptDirectory.from_config(cfg)
+    assert script.get_heads() == ["b2c3d4e5f6a8"]
+    assert script.get_revision("b2c3d4e5f6a8").down_revision == "a1b2c3d4e5f7"

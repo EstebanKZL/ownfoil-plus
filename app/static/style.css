@@ -832,11 +832,17 @@ a.stat-tile:hover {
     height: 7rem;
     padding-bottom: 1px;
     border-bottom: 1px solid var(--bs-border-color);
+    overflow: hidden;
+}
+
+/* A year of days: no gaps, and bars as thin as the width allows. */
+.download-chart.is-dense {
+    gap: 0;
 }
 
 .download-bar {
     flex: 1 1 0;
-    min-width: 2px;
+    min-width: 0;
     background: var(--bs-info);
     border-radius: 2px 2px 0 0;
 }
@@ -1018,7 +1024,7 @@ button.stat-tile:hover {
 
 /* Not in the library: the card stays, dimmed. */
 .library-card.is-missing .library-cover {
-    filter: grayscale(.7);
+    filter: grayscale(1);
     opacity: .6;
 }
 
@@ -2500,6 +2506,39 @@ button.stat-tile:hover {
     color: var(--op-text-muted);
 }
 
+/* A row that folds out its details (a DLC's description) underneath. */
+.game-row:has(.game-row__details) {
+    flex-wrap: wrap;
+}
+
+.game-row__more .bi {
+    transition: transform var(--op-dur) var(--op-ease);
+}
+
+.game-row__more.is-open .bi {
+    transform: rotate(180deg);
+}
+
+.game-row__details {
+    flex: 0 0 100%;
+    min-width: 0;
+    margin: .1rem 0 .25rem;
+    padding-left: 3.2rem;     /* under the name, inside the row's width */
+    overflow-wrap: anywhere;
+    font-size: .9rem;
+    color: var(--op-text-muted);
+    white-space: pre-line;
+}
+
+/* A game whose base game the library doesn't hold: its cover in gray. */
+.game-hero__cover.is-missing img {
+    filter: grayscale(1);
+}
+
+.game-notice--base {
+    margin-top: .75rem;
+}
+
 @media (max-width: 575.98px) {
     .game-row {
         flex-wrap: wrap;
@@ -3558,4 +3597,271 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     display: flex;
     flex-wrap: wrap;
     gap: .5rem;
+}
+
+/* Services (/admin/services): one card per service, its state and its switch. */
+.services-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+    gap: 1rem;
+}
+
+.service-card {
+    display: flex;
+    flex-direction: column;
+    gap: .6rem;
+    padding: 1.1rem 1.2rem;
+    border-left: 3px solid var(--op-border);
+}
+
+.service-card.is-on {
+    border-left-color: var(--op-ok);
+}
+
+.service-card__head {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+}
+
+.service-card__icon {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 2.2rem;
+    height: 2.2rem;
+    border-radius: var(--op-radius-sm);
+    background-color: var(--op-surface-2);
+    color: var(--op-nav);
+    font-size: 1.1rem;
+}
+
+.service-card__name {
+    flex: 1 1 auto;
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.service-card__desc {
+    flex: 1 1 auto;
+    margin: 0;
+    font-size: .88rem;
+    color: var(--op-text-muted);
+}
+
+.service-card__foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding-top: .6rem;
+    border-top: 1px solid var(--op-border);
+}
+
+.service-card__link {
+    font-size: .88rem;
+    text-decoration: none;
+}
+
+/* Profile pictures (avatars.py): in the top bar, the users table and My account. */
+.nav-avatar,
+.user-avatar,
+.avatar-preview img,
+.avatar-choice img {
+    border-radius: 50%;
+    object-fit: cover;
+    background-color: var(--op-surface-2);
+}
+
+.nav-avatar {
+    width: 1.75rem;
+    height: 1.75rem;
+    vertical-align: middle;
+}
+
+.user-name {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+.user-avatar {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+.avatar-current {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: .5rem;
+}
+
+.avatar-preview {
+    display: grid;
+    place-items: center;
+    width: 4.5rem;
+    height: 4.5rem;
+    border-radius: 50%;
+    background-color: var(--op-surface-2);
+    color: var(--op-text-muted);
+    font-size: 2.6rem;
+}
+
+.avatar-preview img {
+    width: 100%;
+    height: 100%;
+}
+
+.avatar-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(3.5rem, 1fr));
+    gap: .5rem;
+    max-width: 30rem;
+}
+
+.avatar-choice {
+    padding: 2px;
+    border: 2px solid transparent;
+    border-radius: 50%;
+    background: none;
+    transition: border-color var(--op-dur) var(--op-ease), transform var(--op-dur) var(--op-ease);
+}
+
+.avatar-choice img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.avatar-choice:hover {
+    transform: scale(1.06);
+}
+
+.avatar-choice.is-selected {
+    border-color: var(--op-nav);
+}
+
+/* Statistics > Downloads: a card per view, as the rest of the page; the lists are the
+   shared .dash-list rows with ranks, share bars, pictures and chips (title-list.js). */
+.dl-card {
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--op-border);
+    border-radius: var(--op-radius);
+    background-color: var(--op-surface-2);
+}
+
+.dl-card__title {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin: 0 0 .75rem;
+    font-size: .95rem;
+    font-weight: 700;
+}
+
+.dl-card__title .bi {
+    color: var(--op-nav);
+}
+
+.dl-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.dl-card--wide {
+    grid-row: span 2;
+}
+
+@media (max-width: 767.98px) {
+    .dl-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .dl-card--wide {
+        grid-row: auto;
+    }
+}
+
+.dash-list__rank {
+    flex: 0 0 1.6rem;
+    text-align: center;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--op-text-muted);
+}
+
+.dash-list__rank.is-top {
+    color: var(--op-fav);
+}
+
+.dash-list__icon--person,
+.dash-list__icon--person img {
+    border-radius: 50%;
+}
+
+.dash-list__bar {
+    display: block;
+    height: .3rem;
+    margin-top: .35rem;
+    border-radius: 999px;
+    background-color: var(--op-border);
+    overflow: hidden;
+}
+
+.dash-list__bar-fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background-color: var(--op-nav);
+}
+
+.dash-list__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+    margin-top: .3rem;
+}
+
+.dash-list__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    padding: .05rem .5rem .05rem .2rem;
+    border-radius: 999px;
+    background-color: var(--op-surface-1);
+    border: 1px solid var(--op-border);
+    font-size: .75rem;
+    color: var(--op-text-muted);
+}
+
+.dash-list__chip img {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+}
+
+.dash-list__chip .bi {
+    padding-left: .2rem;
+}
+
+/* On a phone the latest downloads' time goes under the name, which keeps the width. */
+@media (max-width: 575.98px) {
+    .dl-list--recent .dash-list__row {
+        flex-wrap: wrap;
+    }
+
+    .dl-list--recent .dash-list__text {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    .dl-list--recent .dash-list__when {
+        flex-basis: 100%;
+        text-align: left;
+        padding-left: 2.95rem;     /* under the name: past the icon and its gap */
+    }
 }

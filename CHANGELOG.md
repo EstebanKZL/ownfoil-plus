@@ -6,9 +6,10 @@ see the upstream project for its own history.
 
 ## [6.2.5.49]
 
-A round of improvements in three parts: polish on the admin pages, things for each user
-(their console, the games to come, their saves), and accounts people make themselves.
-The database gains three migrations (up to `a1b2c3d4e5f7`), applied on start as usual.
+A round of improvements: polish on the admin pages, things for each user (their console,
+the games to come, their saves, their picture), accounts people make themselves, a
+tidier Library and one place to switch the server's services on and off. The database
+gains four migrations (up to `b2c3d4e5f6a8`), applied on start as usual.
 
 **Admin pages**
 
@@ -21,6 +22,17 @@ The database gains three migrations (up to `a1b2c3d4e5f7`), applied on start as 
   the failures off the screen.
 - **Statistics lists look like the Dashboard's**: rows with each game's icon instead
   of plain tables, from one shared helper (`static/js/title-list.js`).
+- **Downloads in Statistics match the rest of the page**: the section's own title, the
+  page's stat tiles, and a card per list - the most downloaded with their place and a
+  share bar, users with their picture, clients with their icon, the latest downloads
+  with user and client chips. With "last 365 days" the per-day chart drew bars wider
+  than the page, pushing it sideways and hiding the days with downloads; it fits now.
+- **Services is a control panel** (`/admin/services`): each service - user
+  registration, the store, maintenance and backups, notifications, the save vault, LAN
+  discovery - with its state, a switch that applies at once, and a link to its
+  settings. The store's switch is new: off, Tinfoil, Sphaira and CyberFoil are told the
+  shop is closed (in each one's own format, which they show), while the web library
+  keeps working.
 
 **For each user**
 
@@ -35,13 +47,26 @@ The database gains three migrations (up to `a1b2c3d4e5f7`), applied on start as 
   (including names only given in its language-neutral "mul" labels, like Mario Kart),
   at most once a week after a TitleDB refresh, kept in `data/series.json`.
 - **A save vault for JKSV**: the console's save manager can upload its backups over
-  WebDAV at `/dav/`, with its own login (hashed, locked out like the web login), a
-  `webdav.json` to download for the SD card, a limit of backups kept per game, and a
-  notification for each new one. It only takes ZIP backups inside its own folder; it
-  reads a ZIP's directory itself to refuse archives that would unpack to far more than
-  they weigh, and a cut-off upload never replaces a good backup. The new **Saves**
-  page (admins and users with the Backup permission) lists them by game, to download
-  or delete. Exported settings leave the vault's password hash out.
+  WebDAV at `/dav/`. Each user (with the Backup permission, or an admin) has their own
+  space and their own vault password - set in My account, hashed, never the web
+  password - and downloads their own `webdav.json` there; nobody reaches another's
+  backups, from the console or the web. An admin turns it on for everyone (Services)
+  and sets how many backups each game keeps; each new one can be notified, with whose
+  it is. It only takes ZIP backups inside the JKSV folder; it reads a ZIP's directory
+  itself to refuse archives that would unpack to far more than they weigh, a cut-off
+  upload never replaces a good backup, and wrong passwords are locked out like the web
+  login. The new **Saves** page lists one's backups by game, to download or delete;
+  admins see everyone's, each card saying whose.
+- **A profile picture** (My account): one of a gallery of twelve avatars drawn for this
+  project, or an uploaded image - opened with Pillow, cropped square, shrunk to 256 px
+  and saved again as JPEG under a random name, so what is served is always the
+  server's own copy. It shows in the top bar and in the users table.
+- **One card per game in the Library's Cards view**: no more DLC cards or DLC/update
+  badges - a game's page lists those. A game you own only DLC or an update of shows
+  through its base game, in grayscale with "Base game missing", and its page says what
+  you have and that the base game is needed. The game page's DLC rows open their
+  catalogue description, with date and size. Cards and Icons each remember their own
+  size; the page size stays one for every view.
 
 **Accounts people make themselves** (off by default: Settings > User registration)
 

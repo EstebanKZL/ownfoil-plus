@@ -82,23 +82,6 @@
                     <ul class="list-unstyled mb-0">
                         <li>
                             <div class="dropdown-item filter-group-item">
-                                <div class="btn-group w-100" role="group" aria-label="Type filter">
-                                    <input type="radio" class="btn-check type-toggle" name="typeFilter" id="typeAll" autocomplete="off" checked>
-                                    <label class="btn btn-outline-primary" for="typeAll">{{ t('library.filter_all') }}</label>
-
-                                    <input type="radio" class="btn-check type-toggle" name="typeFilter" id="typeBase" autocomplete="off">
-                                    <label class="btn btn-outline-primary" for="typeBase">{{ t('library.filter_base') }}</label>
-
-                                    <input type="radio" class="btn-check type-toggle" name="typeFilter" id="typeDlc" autocomplete="off">
-                                    <label class="btn btn-outline-primary" for="typeDlc">{{ t('library.filter_dlc') }}</label>
-                                </div>
-                            </div>
-                        </li>
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-                        <li>
-                            <div class="dropdown-item filter-group-item">
                                 <div class="btn-group w-100" role="group" aria-label="Ownership filter">
                                     <input type="radio" class="btn-check ownership-toggle" name="ownershipFilter" id="ownershipAll" autocomplete="off" checked>
                                     <label class="btn btn-outline-primary" for="ownershipAll">{{ t('library.filter_all') }}</label>
@@ -255,6 +238,7 @@
         next: {{ t('library.next') | tojson }},
         owned: {{ t('library.owned') | tojson }},
         missing: {{ t('library.missing') | tojson }},
+        baseMissing: {{ t('library.base_missing') | tojson }},
         baseGame: {{ t('library.base_game') | tojson }},
         updatesSection: {{ t('library.updates_section') | tojson }},
         dlcSection: {{ t('library.dlc_section') | tojson }},
@@ -275,12 +259,7 @@
             corrupt: {{ t('library.pill_corrupt') | tojson }},
             repack: {{ t('library.pill_repack') | tojson }},
         },
-        badgeUpdate: {{ t('library.badge_update') | tojson }},
-        badgeMissingDlc: {{ t('library.badge_missing_dlc') | tojson }},
-        badgeComplete: {{ t('library.badge_complete') | tojson }},
         needsNewerFirmware: {{ t('library.needs_newer_firmware') | tojson }},
-        badgeDlc: {{ t('library.badge_dlc') | tojson }},
-        versions: {{ t('library.versions') | tojson }},
         sortAsc: {{ t('library.sort_asc') | tojson }},
         sortDesc: {{ t('library.sort_desc') | tojson }},
     };

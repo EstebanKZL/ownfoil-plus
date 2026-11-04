@@ -1070,20 +1070,25 @@ function dlList(id, rows) {
 }
 
 function renderDownloads(d) {
+    // The same tiles as the top of the page: icon, figure, label, note.
     const tiles = document.getElementById('downloadTiles');
     tiles.innerHTML = '';
-    [[DL.count, count(d.total), DL.countNote.replace('__DAYS__', d.days)],
-     [DL.bytes, formatBytes(d.total_bytes), DL.bytesNote],
-     [DL.allTime, count(d.all_time), DL.allTimeNote]].forEach(([label, value, note]) => {
+    [[DL.count, count(d.total), DL.countNote.replace('__DAYS__', d.days), 'bi-download', 'nav'],
+     [DL.bytes, formatBytes(d.total_bytes), DL.bytesNote, 'bi-hdd-network', 'action'],
+     [DL.allTime, count(d.all_time), DL.allTimeNote, 'bi-archive', 'ok']].forEach(([label, value, note, icon, tone]) => {
         const tile = document.createElement('div');
-        tile.innerHTML = `<div class="stat-value">${value}</div>
-            <div class="stat-label">${label}</div>
-            <div class="stat-note">${note}</div>`;
+        tile.className = `stat-tile stat-tile--${tone}`;
+        const iconBox = document.createElement('span');
+        iconBox.className = 'stat-tile__icon';
+        iconBox.innerHTML = `<i class="bi ${icon}" aria-hidden="true"></i>`;
+        tile.append(iconBox, textEl('div', 'stat-tile__value', value), textEl('div', 'stat-tile__label', label),
+                    textEl('div', 'stat-tile__note', note));
         tiles.appendChild(tile);
     });
 
     const chart = document.getElementById('downloadChart');
     chart.innerHTML = '';
+    chart.classList.toggle('is-dense', d.by_day.length > 60);
     const peak = Math.max(1, ...d.by_day.map(b => b.count));
     d.by_day.forEach(b => {
         const bar = document.createElement('div');
@@ -1105,16 +1110,21 @@ function renderDownloads(d) {
     }
 
     const client = c => DL.clients[c] || c;
-    const clientGlyph = c => (c === 'web' ? 'bi-globe' : 'bi-nintendo-switch');
-    dlList('downloadTopTitles', d.top_titles.map(t => ({
-        main: t.name, side: count(t.count), titleId: t.title_id})));
+    const clientGlyph = c => (c === 'web' ? 'bi-globe' : c === 'other' ? 'bi-question-circle' : 'bi-nintendo-switch');
+    // Each list's share bars are against its own first row (the most).
+    const share = (n, list) => 100 * n / Math.max(1, ...list.map(x => x.count));
+    dlList('downloadTopTitles', d.top_titles.map((t, i) => ({
+        main: t.name, side: count(t.count), titleId: t.title_id, rank: i + 1, pct: share(t.count, d.top_titles)})));
     dlList('downloadByUser', d.by_user.map(u => ({
-        main: u.user || DL.anonymous, side: count(u.count), glyph: 'bi-person'})));
+        main: u.user || DL.anonymous, side: count(u.count), glyph: 'bi-person', avatarUrl: u.avatar_url || undefined,
+        pct: share(u.count, d.by_user)})));
     dlList('downloadByClient', d.by_client.map(c => ({
-        main: client(c.client), side: count(c.count), glyph: clientGlyph(c.client)})));
+        main: client(c.client), side: count(c.count), glyph: clientGlyph(c.client), pct: share(c.count, d.by_client)})));
     dlList('downloadRecent', d.recent.map(r => ({
         main: r.name || r.title_id || r.filename,
-        sub: [r.filename, r.user || DL.anonymous, client(r.client), r.address].filter(Boolean).join(' · '),
+        sub: [r.filename, r.size ? formatBytes(r.size) : null, r.address].filter(Boolean).join(' · '),
+        chips: [{text: r.user || DL.anonymous, avatarUrl: r.user_avatar || undefined, glyph: 'bi-person'},
+                {text: client(r.client), glyph: clientGlyph(r.client)}],
         side: new Date(r.downloaded_at).toLocaleString([], {dateStyle: 'short', timeStyle: 'short'}),
         titleId: r.title_id})));
     fillTitleIcons(document.getElementById('downloadsSection'));

@@ -100,7 +100,7 @@ A file taken again by the same address within a minute counts once, so a console
 
 ## My account
 
-Every signed-in user has `My account` (the person icon at the top right): your console's firmware, so games and updates that need a newer one are marked in the Library and on their pages, and whether the Library's List view shows each game's background image for you (or follows the server's setting).
+Every signed-in user has `My account` (the person icon at the top right): your console's firmware, so games and updates that need a newer one are marked in the Library and on their pages, and whether the Library's List view shows each game's background image for you (or follows the server's setting). Also your profile picture, shown in the top bar and in the users table: one of the gallery's avatars, or a picture you upload (PNG, JPEG, WebP or GIF up to 5 MB, cropped square and shrunk on the server, kept in `data/avatars/`).
 
 ## Upcoming releases and Sagas
 
@@ -108,7 +108,11 @@ Every signed-in user has `My account` (the person icon at the top right): your c
 
 ## Saves page
 
-Admins and users with the `Backup` permission see the backups JKSV uploaded to the save vault (see [Save vault](#save-vault)), by game, to download or delete, and the library's games without any.
+Users with the `Backup` permission see their own backups JKSV uploaded to the save vault (see [Save vault](#save-vault)), by game, to download or delete, and the library's games without any. Admins see everyone's, each card saying whose.
+
+## Services
+
+`Admin > Services` shows each service with its state, `Active` or `Inactive`, a switch that turns it on or off at once, and a link to where it's set up: user registration, the store, maintenance and backups, notifications, the save vault and LAN discovery. The store's switch closes the shop to consoles: Tinfoil, Sphaira and CyberFoil are told the shop is closed, and the web library keeps working for whoever may see it.
 
 ## Settings page
 
@@ -390,17 +394,18 @@ The section also shows whether email and Google are set up, and sends a test ema
 
 ## Save vault
 
-JKSV, the console's save manager, can upload its save backups to Ownfoil-Plus over WebDAV, at `/dav/` on the same address and port as the web UI. Off by default.
+JKSV, the console's save manager, can upload its save backups to Ownfoil-Plus over WebDAV, at `/dav/` on the same address and port as the web UI. Off by default: an admin turns it on in Services (or here).
+
+Each user has their own space: nobody sees or downloads anyone else's backups, from the console or the web; admins see everyone's on the Saves page, each with whose it is. The vault is for users with the `Backup` permission and admins.
 
 | Setting | Default | What it does |
 |---|---|---|
-| `Turn on the save vault` | Off | Lets JKSV in. Needs a password first. |
-| `User for JKSV` / `Password for JKSV` | `jksv` / - | JKSV's own login, not a web account. The password is at least 10 characters and is kept hashed; leaving it empty when saving keeps the one there was. |
+| `Turn on the save vault` | Off | Lets JKSV in, for everyone. |
 | `Backups kept per game` | All | 5, 10, 20 or 50 delete the oldest backups of a game beyond that. |
 
-To set up the console: save the settings with the vault on, check the server's address (the one the console reaches on your network, not `localhost`), download `webdav.json` and copy it to the SD card as `sdmc:/config/JKSV/webdav.json`. JKSV then says WebDAV is ready.
+To set up a console, each user goes to **My account > Save vault**: saves a vault password (at least 10 characters, kept hashed; not the web password), checks the server's address (the one the console reaches on your network, not `localhost`), downloads `webdav.json` and copies it to the SD card as `sdmc:/config/JKSV/webdav.json`. JKSV signs in with the web user name and that vault password, and then says WebDAV is ready.
 
-The backups are kept in `data/saves/JKSV/<game>/`. The vault only takes ZIP backups inside that folder: nothing else can be uploaded, moved or deleted there, an upload must leave 2 GB free on the disk, and wrong passwords are locked out like the web login. A new backup can be notified (Notifications > `JKSV uploads a save backup to the vault`).
+The backups are kept in `data/saves/users/<user id>/JKSV/<game>/`. Backups from before 6.2.5.49 (one shared space, `data/saves/JKSV/`) move to the first admin's space. The vault only takes ZIP backups inside the JKSV folder: nothing else can be uploaded, moved or deleted there, an upload must leave 512 MB free on the disk, and wrong passwords are locked out like the web login. A new backup can be notified, with whose it is (Notifications > `JKSV uploads a save backup to the vault`).
 
 ## Notifications
 

@@ -787,16 +787,6 @@
                 </div>
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
-                        <label for="vaultUsername" class="form-label">{{ t('vault.username') }}</label>
-                        <input type="text" class="form-control" id="vaultUsername" autocomplete="off" value="jksv">
-                    </div>
-                    <div class="col-md-6">
-                        <label for="vaultPassword" class="form-label">{{ t('vault.password') }}</label>
-                        <input type="password" class="form-control" id="vaultPassword" autocomplete="new-password">
-                        <div class="form-text" id="vaultPasswordHelp">{{ t('vault.password_help') }}</div>
-                        <div class="form-text d-none" id="vaultPasswordSet">{{ t('vault.password_set') }}</div>
-                    </div>
-                    <div class="col-md-6">
                         <label for="vaultKeep" class="form-label">{{ t('vault.keep') }}</label>
                         <select class="form-select" id="vaultKeep">
                             <option value="0">{{ t('vault.keep_all') }}</option>
@@ -804,23 +794,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="settings-inner mb-3">
-                    <h3 class="settings-subhead"><i class="bi bi-nintendo-switch" aria-hidden="true"></i> {{ t('vault.setup_heading') }}</h3>
-                    <ol class="mb-3">
-                        <li>{{ t('vault.setup_1') }}</li>
-                        <li>{{ t('vault.setup_2') }}</li>
-                        <li>{{ t('vault.setup_3') }}</li>
-                    </ol>
-                    <label for="vaultOrigin" class="form-label">{{ t('vault.origin') }}</label>
-                    <div class="d-flex flex-wrap gap-2 align-items-start">
-                        <input type="text" class="form-control vault-origin" id="vaultOrigin" autocomplete="off">
-                        <button type="button" class="btn btn-outline-primary" id="vaultDownloadWebdav">
-                            <i class="bi bi-download"></i> {{ t('vault.download') }}
-                        </button>
-                    </div>
-                    <div class="form-text">{{ t('vault.origin_help') }}</div>
-                    <div class="form-text text-warning d-none" id="vaultNeedsPassword">{{ t('vault.needs_password') }}</div>
-                </div>
+                <p class="form-text mb-3"><i class="bi bi-person-circle" aria-hidden="true"></i> {{ t('vault.users_hint') }}</p>
                 <div class="d-flex align-items-center gap-3">
                     <button type="button" class="btn btn-primary" id="vaultSave" onClick="submitVaultSettings()">{{ t('vault.save') }}</button>
                     <span class="small" id="vaultFeedback" role="status"></span>

@@ -79,7 +79,7 @@ package - `tests/conftest.py` puts `app/` on `sys.path`.
   Basic Auth for console clients.
 - `db.py` - models (`Files`, `Apps`, `Titles`, `Task`, `TaskHistory`, `DownloadEvent`,
   ...) and DB helpers. Schema changes need an **Alembic migration** in
-  `app/migrations/versions/` (current head: `a1b2c3d4e5f7`) *and* the model change
+  `app/migrations/versions/` (current head: `b2c3d4e5f6a8`) *and* the model change
   (new installs use `create_all`). `tests/test_download_history.py` asserts the head.
 - `tasks.py` / `worker.py` / `worker_pool.py` - task registry (`@register_task`),
   enqueue/dedup, scheduled tasks via `run_after` (stored in **UTC**; use
@@ -141,7 +141,8 @@ light/dark theme, Ctrl+K search, mobile layout, DB indexes, Prometheus metrics, 
 polish, dependency/image vulnerability fixes, Dependabot, the SLMW-inspired redesign
 (tokens, three styles, flat nav, library, game page, stats/dashboard, admin pages,
 Settings index) with every big page's JS moved to `app/static/js/`; My account,
-upcoming releases and sagas, the JKSV save vault, public registration (SMTP, Google).
+upcoming releases and sagas, the per-user JKSV save vault, public registration (SMTP,
+Google), Services control panel, profile pictures, one card per game.
 
 Postponed - **remind the maintainer of these when a round of work wraps up**:
 

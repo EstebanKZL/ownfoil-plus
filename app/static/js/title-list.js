@@ -11,8 +11,12 @@
  *   titleId  links the row to /game/<id>; its icon comes later from fillTitleIcons
  *   iconUrl  an icon already known (no request needed)
  *   glyph    the Bootstrap icon shown when there is no game picture (default: a controller)
+ *   avatarUrl  a person's picture instead (round)
+ *   rank     a place number before the icon (1, 2, 3 stand out)
+ *   pct      a share bar under the name, 0-100
+ *   chips    small labels after the name: [{text, glyph, avatarUrl}]
  */
-function titleListRow({main, sub, side, titleId, iconUrl, glyph}) {
+function titleListRow({main, sub, side, titleId, iconUrl, glyph, avatarUrl, rank, pct, chips}) {
     const make = (tag, className, text) => {
         const node = document.createElement(tag);
         node.className = className;
@@ -22,8 +26,15 @@ function titleListRow({main, sub, side, titleId, iconUrl, glyph}) {
     const li = make('li', 'dash-list__item');
     const row = make(titleId ? 'a' : 'div', 'dash-list__row');
     if (titleId) row.href = `/game/${titleId}`;
-    const icon = make('span', 'dash-list__icon');
-    if (iconUrl) {
+    if (rank !== undefined) row.append(make('span', `dash-list__rank${rank <= 3 ? ' is-top' : ''}`, rank));
+    const icon = make('span', avatarUrl ? 'dash-list__icon dash-list__icon--person' : 'dash-list__icon');
+    if (avatarUrl) {
+        const img = document.createElement('img');
+        img.src = avatarUrl;
+        img.alt = '';
+        img.loading = 'lazy';
+        icon.append(img);
+    } else if (iconUrl) {
         const img = document.createElement('img');
         img.src = iconUrl;
         img.alt = '';
@@ -38,6 +49,30 @@ function titleListRow({main, sub, side, titleId, iconUrl, glyph}) {
     if (sub) {
         text.append(make('div', 'dash-list__sub', sub));
         text.title = sub;
+    }
+    if (chips && chips.length) {
+        const line = make('div', 'dash-list__chips');
+        chips.forEach(chip => {
+            const tag = make('span', 'dash-list__chip');
+            if (chip.avatarUrl) {
+                const img = document.createElement('img');
+                img.src = chip.avatarUrl;
+                img.alt = '';
+                tag.append(img);
+            } else if (chip.glyph) {
+                tag.append(make('i', `bi ${chip.glyph}`));
+            }
+            tag.append(document.createTextNode(chip.text));
+            line.append(tag);
+        });
+        text.append(line);
+    }
+    if (pct !== undefined) {
+        const bar = make('span', 'dash-list__bar');
+        const fill = make('span', 'dash-list__bar-fill');
+        fill.style.width = `${Math.max(2, Math.min(100, pct))}%`;
+        bar.append(fill);
+        text.append(bar);
     }
     row.append(icon, text);
     if (side !== undefined && side !== null && side !== '') row.append(make('div', 'dash-list__when', side));

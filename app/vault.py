@@ -1,10 +1,13 @@
 """The save vault: where the console keeps its save backups.
 
 JKSV, the save manager of the Switch, uploads its backups over WebDAV. The server answers
-at /dav/ with its own user and password (Settings > Save vault, never the web interface's
-accounts), and only while an admin has turned it on. JKSV makes a folder per game under
-"JKSV" and uploads one ZIP per backup, with a small `.nx_save_meta.bin` inside telling the
-title ID and the time - that is how each backup is matched to its game.
+at /dav/ only while an admin has the vault turned on (Services), to users with the Backup
+permission (or admins), each with their web user name and their own vault password - set
+in My account, never the web password. Each user has their own space,
+data/saves/users/<user id>/: nobody reaches another's backups, from the console or the
+web (admins see everyone's on the Saves page). JKSV makes a folder per game under "JKSV"
+and uploads one ZIP per backup, with a small `.nx_save_meta.bin` inside telling the title
+ID and the time - that is how each backup is matched to its game.
 
 Only what JKSV does is answered (OPTIONS, GET/HEAD, PROPFIND one level deep, MKCOL, PUT,
 DELETE, MOVE), and even with the right password changes stay inside the JKSV folder and
@@ -80,8 +83,50 @@ def config():
 
 
 def enabled():
-    c = config()
-    return bool(c.get('enabled') and c.get('password_hash'))
+    return bool(config().get('enabled'))
+
+
+def user_root(user_id):
+    """A user's own space; their JKSV folder is inside it."""
+    return os.path.join(SAVES_DIR, 'users', str(int(user_id)))
+
+
+def may_use(user):
+    """Users with the Backup permission, and admins - never a registration still waiting
+    for its email."""
+    return bool(user) and not user.pending and bool(user.admin_access or user.backup_access)
+
+
+# --- the shared space from before -----------------------------------------------------
+
+_adopt_lock = threading.Lock()
+
+
+def adopt_shared_backups():
+    """The vault used to have one space for everyone, data/saves/JKSV. Its backups move to
+    the first admin's space (once; games already there keep theirs)."""
+    old = os.path.join(SAVES_DIR, BASE)
+    if not os.path.isdir(old):
+        return
+    from db import User
+    with _adopt_lock:
+        if not os.path.isdir(old):
+            return
+        admin = User.query.filter_by(admin_access=True).order_by(User.id).first()
+        if admin is None:
+            return
+        target = os.path.join(user_root(admin.id), BASE)
+        os.makedirs(target, exist_ok=True)
+        for game in os.listdir(old):
+            source, dest = os.path.join(old, game), os.path.join(target, game)
+            if not os.path.exists(dest):
+                shutil.move(source, dest)
+            elif os.path.isdir(source):
+                for name in os.listdir(source):
+                    if not os.path.exists(os.path.join(dest, name)):
+                        shutil.move(os.path.join(source, name), os.path.join(dest, name))
+        shutil.rmtree(old, ignore_errors=True)
+        logger.info(f'Save vault: the shared backups moved to {admin.user!r}\'s space')
 
 
 # --- who gets in ----------------------------------------------------------------------
@@ -89,33 +134,45 @@ def enabled():
 _dummy_hash = []
 
 
-def _cache_key(username, password, c):
-    return (username, hashlib.sha256((password or '').encode()).hexdigest(), c.get('password_hash'))
+def _cache_key(username, password):
+    return (username, hashlib.sha256((password or '').encode()).hexdigest())
+
+
+def _vault_user(username):
+    from db import User
+    return User.query.filter_by(user=username).first() if username else None
 
 
 def _cached_login(username, password):
-    """Credentials verified in the last minutes: they skip the hash check and the lockout,
-    so someone guessing (from behind the same proxy, say) can't lock the console out."""
-    key = _cache_key(username, password, config())
+    """The user, when these credentials were verified in the last minutes: they skip the
+    hash check and the lockout, so someone guessing (from behind the same proxy, say)
+    can't lock the console out. The user is read again every time: a vault password
+    changed or a permission taken away counts at once."""
     with _auth_lock:
-        return _auth_cache.get(key, 0) > time.monotonic()
+        hit = _auth_cache.get(_cache_key(username, password))
+    if not hit or hit[0] <= time.monotonic():
+        return None
+    user = _vault_user(username)
+    if user is None or not may_use(user) or not hmac.compare_digest(user.vault_password or '', hit[1]):
+        return None
+    return user
 
 
 def _check_credentials(username, password):
-    c = config()
-    stored = c.get('password_hash') or ''
-    right_user = bool(username) and hmac.compare_digest(username.encode(), (c.get('username') or '').encode())
-    if not right_user or not stored:
+    """The user these credentials open the vault for, or None."""
+    user = _vault_user(username)
+    stored = (user.vault_password or '') if may_use(user) else ''
+    if not stored:
         # The same hash check either way: a wrong username doesn't answer faster.
         if not _dummy_hash:
             _dummy_hash.append(generate_password_hash('not the vault password'))
         check_password_hash(_dummy_hash[0], password or '')
-        return False
+        return None
     if not check_password_hash(stored, password or ''):
-        return False
+        return None
     with _auth_lock:
-        _auth_cache[_cache_key(username, password, c)] = time.monotonic() + AUTH_CACHE_SECONDS
-    return True
+        _auth_cache[_cache_key(username, password)] = (time.monotonic() + AUTH_CACHE_SECONDS, stored)
+    return user
 
 
 def _unauthorized():
@@ -150,8 +207,8 @@ def _is_zip(rel):
     return rel.lower().endswith('.zip')
 
 
-def _disk(rel):
-    return os.path.join(SAVES_DIR, *[p for p in rel.split('/') if p])
+def _disk(rel, root):
+    return os.path.join(root, *[p for p in rel.split('/') if p])
 
 
 # --- WebDAV ----------------------------------------------------------------------------
@@ -163,17 +220,19 @@ def handle(subpath=''):
     creds = request.authorization
     username = (creds.username if creds else '') or ''
     lock_key = 'vault:' + username
-    if creds is not None and _cached_login(username, creds.password):
-        pass
-    elif auth.login_locked_for(lock_key):
-        return Response('too many failed logins, try again later', 429, {'Retry-After': '900'})
-    elif creds is None or not _check_credentials(username, creds.password):
-        if creds is not None:
-            auth.record_login_failure(lock_key)
-            logger.warning(f'Failed save vault login for {username!r} from {request.remote_addr}')
-        return _unauthorized()
-    else:
+    user = _cached_login(username, creds.password) if creds is not None else None
+    if user is None:
+        if auth.login_locked_for(lock_key):
+            return Response('too many failed logins, try again later', 429, {'Retry-After': '900'})
+        user = _check_credentials(username, creds.password) if creds is not None else None
+        if user is None:
+            if creds is not None:
+                auth.record_login_failure(lock_key)
+                logger.warning(f'Failed save vault login for {username!r} from {request.remote_addr}')
+            return _unauthorized()
         auth.clear_login_failures(lock_key)
+    adopt_shared_backups()
+    root = user_root(user.id)
 
     method = request.method.upper()
     if method not in METHODS:
@@ -181,30 +240,30 @@ def handle(subpath=''):
     rel = _relative(request.path)
     if rel is None:
         return Response('bad path', 400)
-    os.makedirs(_disk('/' + BASE), exist_ok=True)
+    os.makedirs(_disk('/' + BASE, root), exist_ok=True)
 
     if method == 'OPTIONS':
         return Response('', 200, {'DAV': '1', 'Allow': ', '.join(METHODS), 'MS-Author-Via': 'DAV'})
     if method in ('GET', 'HEAD'):
-        return _get(rel)
+        return _get(rel, root)
     if method == 'PROPFIND':
-        return _propfind(rel)
+        return _propfind(rel, root)
     # Everything else changes the vault: only inside the JKSV folder.
     if not _inside_base(rel):
         return Response('only the JKSV folder can be changed', 403)
     if method == 'MKCOL':
-        return _mkcol(rel)
+        return _mkcol(rel, root)
     if not _is_zip(rel):
         return Response('only backups (ZIP files) are kept', 403)
     if method == 'PUT':
-        return _put(rel)
+        return _put(rel, root, user.user)
     if method == 'DELETE':
-        return _delete(rel)
-    return _move(rel)
+        return _delete(rel, root)
+    return _move(rel, root, user.user)
 
 
-def _get(rel):
-    path = _disk(rel)
+def _get(rel, root):
+    path = _disk(rel, root)
     if not os.path.isfile(path):
         return Response('not found', 404 if not os.path.isdir(path) else 405)
     return send_file(path, mimetype='application/zip', conditional=True)
@@ -230,11 +289,11 @@ def _entry_xml(rel, path):
             f'</D:prop><D:status>HTTP/1.1 200 OK</D:status></D:propstat></D:response>')
 
 
-def _propfind(rel):
+def _propfind(rel, root):
     depth = (request.headers.get('Depth') or '1').strip().lower()
     if depth not in ('0', '1'):
         return Response('only listings of one level are answered', 403)
-    path = _disk(rel)
+    path = _disk(rel, root)
     if not os.path.exists(path):
         return Response('not found', 404)
     entries = [_entry_xml(rel, path)]
@@ -250,10 +309,10 @@ def _propfind(rel):
     return Response(body, 207, content_type='application/xml; charset="utf-8"')
 
 
-def _mkcol(rel):
+def _mkcol(rel, root):
     if _is_zip(rel):
         return Response('a folder named like a backup', 403)
-    path = _disk(rel)
+    path = _disk(rel, root)
     if os.path.exists(path):
         return Response('exists', 405)
     if not os.path.isdir(os.path.dirname(path)):
@@ -312,8 +371,8 @@ def zip_entry_count(path):
     return None if entries is None else len(entries)
 
 
-def _put(rel):
-    path = _disk(rel)
+def _put(rel, root, username):
+    path = _disk(rel, root)
     folder = os.path.dirname(path)
     if not os.path.isdir(folder):
         return Response('no game folder', 409)
@@ -356,7 +415,7 @@ def _put(rel):
     finally:
         if not stored:
             _remove_quietly(tmp)
-    _after_upload(path)
+    _after_upload(path, username)
     return Response('', 204 if existed else 201)
 
 
@@ -367,33 +426,33 @@ def _remove_quietly(path):
         pass
 
 
-def _delete(rel):
-    path = _disk(rel)
+def _delete(rel, root):
+    path = _disk(rel, root)
     if not os.path.isfile(path):
         return Response('not found', 404)
     os.remove(path)
     return Response('', 204)
 
 
-def _move(rel):
-    source = _disk(rel)
+def _move(rel, root, username):
+    source = _disk(rel, root)
     target_rel = _relative(urlsplit(request.headers.get('Destination') or '').path, encoded=True)
     if not target_rel or not _inside_base(target_rel) or not _is_zip(target_rel):
         return Response('backups stay in the JKSV folder', 403)
     if not os.path.isfile(source):
         return Response('not found', 404)
-    target = _disk(target_rel)
+    target = _disk(target_rel, root)
     if not os.path.isdir(os.path.dirname(target)) or os.path.isdir(target):
         return Response('no game folder, or a folder has that name', 409)
     existed = os.path.exists(target)
     if existed and (request.headers.get('Overwrite') or 'T').upper() == 'F':
         return Response('exists', 412)
     os.replace(source, target)
-    _after_upload(target)
+    _after_upload(target, username)
     return Response('', 204 if existed else 201)
 
 
-def _after_upload(path):
+def _after_upload(path, username):
     """Keeps the number of backups asked for in the game's folder, and tells about it."""
     keep = int(config().get('keep') or 0)
     if keep:
@@ -401,7 +460,7 @@ def _after_upload(path):
     try:
         import notifications
         game = os.path.basename(os.path.dirname(path))
-        notifications.notify(notifications.EVENT_SAVE_BACKUP, f'{game} - {os.path.basename(path)}')
+        notifications.notify(notifications.EVENT_SAVE_BACKUP, f'{username}: {game} - {os.path.basename(path)}')
     except Exception:
         logger.exception('Could not notify a new save backup')
 
@@ -465,14 +524,39 @@ def _meta_cached(path, stat):
     return meta
 
 
-def backups():
-    """Every backup of the vault: path (inside the JKSV folder, with /), folder, file name,
-    size, time, and the title id read from it."""
-    root = _disk('/' + BASE)
+def _spaces():
+    """The ids of every user with a space in the vault."""
+    users = os.path.join(SAVES_DIR, 'users')
+    return sorted(int(n) for n in os.listdir(users) if n.isdigit()) if os.path.isdir(users) else []
+
+
+def backups(user_ids=None):
+    """The backups of these users (None: everyone's): user id, path (inside their JKSV
+    folder, with /), folder, file name, size, time, and the title id read from it."""
+    adopt_shared_backups()
     out = []
     seen = set()
+    for user_id in (_spaces() if user_ids is None else user_ids):
+        _user_backups(user_id, out, seen)
+    # The cache keeps only the backups there are: deleted and pruned ones go - with
+    # everyone's listed only (one user's listing says nothing of the others').
+    if user_ids is None:
+        with _meta_lock:
+            for key in [k for k in _meta_cache if k not in seen]:
+                del _meta_cache[key]
+    else:
+        with _meta_lock:
+            roots = tuple(user_root(u) + os.sep for u in user_ids)
+            for key in [k for k in _meta_cache if k not in seen and k[0].startswith(roots)]:
+                del _meta_cache[key]
+    out.sort(key=lambda b: b['time'], reverse=True)
+    return out
+
+
+def _user_backups(user_id, out, seen):
+    root = _disk('/' + BASE, user_root(user_id))
     if not os.path.isdir(root):
-        return out
+        return
     for folder in sorted(os.listdir(root)):
         folder_path = os.path.join(root, folder)
         if not os.path.isdir(folder_path):
@@ -487,29 +571,23 @@ def backups():
                 continue
             seen.add((path, stat.st_size, stat.st_mtime))
             title_id, when = _meta_cached(path, stat)
-            out.append({'path': f'{folder}/{name}', 'folder': folder, 'name': name, 'size': stat.st_size,
-                        'title_id': title_id,
+            out.append({'user_id': user_id, 'path': f'{folder}/{name}', 'folder': folder, 'name': name,
+                        'size': stat.st_size, 'title_id': title_id,
                         'time': (when or datetime.datetime.fromtimestamp(stat.st_mtime)).isoformat(timespec='seconds')})
-    # The cache keeps only the backups there are: deleted and pruned ones go.
-    with _meta_lock:
-        for key in [k for k in _meta_cache if k not in seen]:
-            del _meta_cache[key]
-    out.sort(key=lambda b: b['time'], reverse=True)
-    return out
 
 
-def backup_path(relative):
-    """The file of a backup named as backups() names it ('game/x.zip'), or None when it
-    isn't one inside the JKSV folder."""
+def backup_path(user_id, relative):
+    """The file of one of this user's backups named as backups() names it ('game/x.zip'),
+    or None when it isn't one inside their JKSV folder."""
     rel = _relative('/' + BASE + '/' + (relative or ''))
     if not _inside_base(rel) or not _is_zip(rel):
         return None
-    path = _disk(rel)
+    path = _disk(rel, user_root(user_id))
     return path if os.path.isfile(path) else None
 
 
-def delete_backup(relative):
-    path = backup_path(relative)
+def delete_backup(user_id, relative):
+    path = backup_path(user_id, relative)
     if path is None:
         return False
     os.remove(path)

@@ -365,12 +365,15 @@ def profile():
 @auth_blueprint.route('/api/users')
 @access_required('admin')
 def get_users():
+    from avatars import avatar_url
     all_users = [
-        dict(db_user._mapping)
+        {**dict(db_user._mapping), 'avatar_url': avatar_url(db_user)}
         for db_user in db.session.query(User.id, User.user, User.admin_access, User.shop_access, User.backup_access,
                                         User.email, User.email_verified, User.pending_email, User.pending,
-                                        User.google_id).all()
+                                        User.google_id, User.avatar).all()
     ]
+    for user in all_users:
+        user.pop('avatar')
     return jsonify(all_users)
 
 @auth_blueprint.route('/api/user', methods=['DELETE'])

@@ -70,7 +70,8 @@ def test_tasks_sections_are_surfaces(admin_client):
 def test_services_section_is_a_surface(admin_client):
     html = admin_client.get("/admin/services").get_data(as_text=True)
     assert re.search(r'<section class="surface[^"]*" id="servicesDiscovery"', html)
-    assert 'id="discoveryEnabledCheck"' in html and 'id="submitServicesSettingsBtn"' in html
+    # Discovery's switch is a card of the Services panel, saved as it's flipped.
+    assert 'id="serviceSwitch-discovery"' in html and 'id="servicesPanel"' in html
 
 
 # --- Files: tokens, tile tones, game link ---------------------------------------------------

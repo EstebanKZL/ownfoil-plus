@@ -32,7 +32,7 @@
                 {{ nav_item('library', '/', 'bi-grid', t('nav.library')) }}
                 {{ nav_item('upcoming', '/upcoming', 'bi-calendar-event', t('nav.upcoming')) }}
                 {{ nav_item('sagas', '/sagas', 'bi-collection', t('nav.sagas')) }}
-                {% if current_user.is_authenticated and current_user.has_access('backup') %}
+                {% if current_user.is_authenticated and (current_user.is_admin or current_user.has_access('backup')) %}
                 {{ nav_item('saves', '/saves', 'bi-safe', t('nav.saves')) }}
                 {% endif %}
                 {% if nav_shop %}
@@ -90,7 +90,7 @@
                 {% if current_user.is_authenticated %}
                 <li class="nav-item">
                     <a class="nav-link op-account-link{% if p == '/account' %} active{% endif %}" href="/account"
-                       title="{{ t('nav.account') }}"><i class="bi bi-person-circle" aria-hidden="true"></i><span class="d-lg-none ms-2">{{ t('nav.account') }}</span><span class="visually-hidden d-none d-lg-inline">{{ t('nav.account') }}</span></a>
+                       title="{{ t('nav.account') }}">{% set my_avatar = avatar_url(current_user) %}{% if my_avatar %}<img class="nav-avatar" src="{{ my_avatar }}" alt="" width="28" height="28">{% else %}<i class="bi bi-person-circle" aria-hidden="true"></i>{% endif %}<span class="d-lg-none ms-2">{{ t('nav.account') }}</span><span class="visually-hidden d-none d-lg-inline">{{ t('nav.account') }}</span></a>
                 </li>
                 <li class="nav-item">
                     <a class="btn btn-sm btn-outline-secondary" href="/logout" role="button">{{ t('nav.logout') }}</a>

@@ -21,7 +21,8 @@ function backupRow(backup, game) {
     text.append(node('div', 'saves-backup__when', when(backup.time)),
                 node('div', 'saves-backup__file', `${backup.name} · ${formatBytes(backup.size)}`));
     const download = node('a', 'icon-btn');
-    download.href = '/api/saves/download?' + new URLSearchParams({path: backup.path});
+    const where = {path: backup.path, user: game.user_id};
+    download.href = '/api/saves/download?' + new URLSearchParams(where);
     download.title = I18N.download;
     download.setAttribute('aria-label', I18N.download);
     download.append(node('i', 'bi bi-download'));
@@ -33,7 +34,7 @@ function backupRow(backup, game) {
     remove.addEventListener('click', async () => {
         if (!confirm(I18N.deleteConfirm)) return;
         remove.disabled = true;
-        const r = await fetch('/api/saves?' + new URLSearchParams({path: backup.path}),
+        const r = await fetch('/api/saves?' + new URLSearchParams(where),
                               {method: 'DELETE', credentials: 'same-origin'}).catch(() => null);
         if (r && r.ok) loadSaves();
         else remove.disabled = false;
@@ -42,6 +43,8 @@ function backupRow(backup, game) {
     return li;
 }
 
+let ALL_USERS = false;   // an admin sees everyone's backups, each card saying whose
+
 function gameCard(game) {
     const card = node('section', 'surface saves-game');
     const head = node('div', 'saves-game__head');
@@ -49,8 +52,9 @@ function gameCard(game) {
     // The game itself, as every other list of games: icon, name, a line under it.
     const row = titleListRow({
         main: game.name, titleId: game.title_id || undefined, iconUrl: game.icon_url || undefined,
-        sub: (game.backups.length === 1 ? I18N.backupsOne : I18N.backups)
-            .replace('{count}', game.backups.length).replace('{size}', formatBytes(game.size)),
+        sub: (ALL_USERS ? I18N.owner.replace('{user}', game.user) + ' · ' : '')
+            + (game.backups.length === 1 ? I18N.backupsOne : I18N.backups)
+                .replace('{count}', game.backups.length).replace('{size}', formatBytes(game.size)),
         side: when(game.latest),
     });
     list.append(row);
@@ -66,6 +70,7 @@ async function loadSaves() {
         const r = await fetch('/api/saves', {credentials: 'same-origin'});
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const data = await r.json();
+        ALL_USERS = data.all_users;
         document.getElementById('savesOff').hidden = data.enabled;
         document.getElementById('savesNone').hidden = data.games.length > 0 || !data.enabled;
         document.getElementById('savesGames').replaceChildren(...data.games.map(gameCard));
