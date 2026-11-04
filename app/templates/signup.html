@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+{# Public registration (accounts_views.py): the account waits for its email to be verified. #}
+<main class="auth-page">
+    <div class="surface auth-card">
+        <div class="auth-brand">
+            <img src="{{ url_for('static', filename='logo/logo.svg') }}" width="72" height="72" alt="">
+            <h1 class="h4 mb-0">{{ t('signup.title') }}</h1>
+            <p class="text-secondary mb-0">{{ t('signup.subtitle', shop=shop_name) }}</p>
+        </div>
+        {% if error %}<div class="alert alert-danger py-2" role="alert">{{ error }}</div>{% endif %}
+        {% if google %}
+        <div class="d-grid mb-3">
+            <a class="btn btn-outline-secondary auth-google" href="/login/google"><i class="bi bi-google" aria-hidden="true"></i> {{ t('google.button') }}</a>
+        </div>
+        {% endif %}
+        {% if can_email %}
+        <form method="POST" action="/signup">
+            <div class="mb-3">
+                <label class="form-label small text-secondary" for="signupUser">{{ t('login.username') }}</label>
+                <input class="form-control" name="user" id="signupUser" value="{{ user or '' }}" autocomplete="username" required
+                       pattern="[A-Za-z0-9_.\-]{3,32}" aria-describedby="signupUserHelp">
+                <div class="form-text" id="signupUserHelp">{{ t('signup.user_help') }}</div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label small text-secondary" for="signupEmail">{{ t('signup.email') }}</label>
+                <input type="email" class="form-control" name="email" id="signupEmail" value="{{ email or '' }}" autocomplete="email" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label small text-secondary" for="signupPassword">{{ t('login.password') }}</label>
+                <input type="password" class="form-control" name="password" id="signupPassword" autocomplete="new-password" required
+                       aria-describedby="signupPasswordHelp">
+                <div class="form-text" id="signupPasswordHelp">{{ t('signup.password_help') }}</div>
+            </div>
+            <div class="mb-4">
+                <label class="form-label small text-secondary" for="signupConfirm">{{ t('signup.confirm') }}</label>
+                <input type="password" class="form-control" name="confirm" id="signupConfirm" autocomplete="new-password" required>
+            </div>
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary">{{ t('signup.submit') }}</button>
+            </div>
+        </form>
+        {% else %}
+        <p class="auth-text">{{ t('signup.no_email') }}</p>
+        {% endif %}
+        <p class="auth-links"><a href="/login">{{ t('signup.have_account') }}</a></p>
+    </div>
+</main>
+{% endblock %}

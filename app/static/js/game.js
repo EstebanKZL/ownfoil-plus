@@ -10,6 +10,8 @@ const GAME_QUERY = `
         title(titleId: $titleId) {
             titleId name intro description developer publisher releaseDate
             bannerUrl iconUrl size category numberOfPlayers rating languages region
+            requiredFirmware
+            availableVersions { version requiredFirmware }
             screenshots { url }
             ownership { haveBase upToDate complete }
             apps(owned: true) {
@@ -71,6 +73,8 @@ function renderGame(t) {
     $('#gameBreadcrumbName').text(name);
     renderHero(t);
     renderFacts(t);
+    loadSagas(t);
+    loadSaves(t);
     renderSections(t);
 }
 
@@ -158,6 +162,9 @@ function renderFacts(t) {
         ['bi-hdd', I18N.size, formatTitledbSize(t.size)],
         ['bi-box-seam', I18N.installedVersion, installed !== null ? `v${installed}` : null],
         ['bi-arrow-up-circle', I18N.latestVersion, (owned || latest) ? `v${latest}` : null],
+        // The newest version's; a console older than that can't run it up to date.
+        ['bi-cpu', I18N.requiredFirmware, t.requiredFirmware,
+         firmwareTooOld(t.requiredFirmware, CONSOLE_FIRMWARE) ? 'game-fact--warn' : ''],
     ].filter(([, , value]) => value !== null && value !== undefined && value !== '');
 
     const box = $('#gameFacts').empty();
@@ -166,8 +173,66 @@ function renderFacts(t) {
         fact.append($('<div class="game-fact__label">')
             .append($('<i aria-hidden="true">').addClass(`bi ${icon}`), $('<span>').text(label)));
         fact.append($('<div class="game-fact__value">').text(value));
+        if (extra === 'game-fact--warn') {
+            fact.append($('<div class="game-fact__note">').text(I18N.firmwareTooOld
+                .replace('{mine}', CONSOLE_FIRMWARE).replace('{needed}', t.requiredFirmware)));
+        }
         box.append(fact);
     });
+}
+
+/** "Saga: The Legend of Zelda (4 of 6)" among the facts, each saga linking to its page.
+ *  Asked apart: the facts don't wait for it, and a game without a saga adds nothing. */
+async function loadSagas(t) {
+    let sagas;
+    try {
+        const r = await fetch(`/api/sagas/of/${t.titleId}`, {credentials: 'same-origin'});
+        if (!r.ok) return;
+        sagas = (await r.json()).sagas || [];
+    } catch (e) {
+        return;
+    }
+    if (!sagas.length) return;
+    const fact = $('<div class="game-fact game-fact--saga">');
+    fact.append($('<div class="game-fact__label">')
+        .append($('<i class="bi bi-collection" aria-hidden="true">'), $('<span>').text(I18N.sagaOf)));
+    const value = $('<div class="game-fact__value">');
+    sagas.forEach((s, i) => {
+        if (i) value.append(document.createTextNode(', '));
+        value.append($('<a class="game-saga-link">').attr('href', `/sagas/${s.id}`).text(s.name),
+                     $('<span class="game-saga-count">')
+                         .text(` (${I18N.sagaCount.replace('{owned}', s.owned).replace('{total}', s.total)})`));
+    });
+    $('#gameFacts').append(fact.append(value));
+}
+
+/** "Saved games: 3 backups, the latest 2 Nov 2026" among the facts, linking to /saves. */
+async function loadSaves(t) {
+    if (!CAN_SEE_SAVES) return;
+    let saves;
+    try {
+        const r = await fetch(`/api/saves/of/${t.titleId}`, {credentials: 'same-origin'});
+        if (!r.ok) return;
+        saves = await r.json();
+    } catch (e) {
+        return;
+    }
+    if (!saves.count) return;
+    const latest = new Date(saves.latest).toLocaleDateString(document.documentElement.lang || undefined,
+                                                             {day: 'numeric', month: 'short', year: 'numeric'});
+    const fact = $('<div class="game-fact">');
+    fact.append($('<div class="game-fact__label">')
+        .append($('<i class="bi bi-safe" aria-hidden="true">'), $('<span>').text(I18N.saves)));
+    fact.append($('<div class="game-fact__value">').append($('<a class="game-saga-link" href="/saves">')
+        .text((saves.count === 1 ? I18N.savesValueOne : I18N.savesValue)
+            .replace('{count}', saves.count).replace('{when}', latest))));
+    $('#gameFacts').append(fact);
+}
+
+/** The firmware a given update version needs, from the catalogue's versions. */
+function versionFirmware(t, version) {
+    const v = (t.availableVersions || []).find(x => Number(x.version) === Number(version));
+    return v ? v.requiredFirmware : null;
 }
 
 // --- sections -------------------------------------------------------------------------
@@ -268,10 +333,19 @@ function renderUpdates(t) {
                 .replace('{installed}', `v${installedVersion(t) || 0}`))));
     }
     const list = $('<ul class="game-rows">');
-    updates.forEach(u => list.append(contentRow({
-        icon: 'bi-arrow-up-circle', name: `v${u.appVersion}`, sub: formatTitledbDate(u.releaseDate),
-        owned: u.owned, file: u.downloadableFile,
-    })));
+    updates.forEach(u => {
+        // Each update tells the firmware it needs, marked when the console is older.
+        const needs = versionFirmware(t, u.appVersion);
+        const sub = [formatTitledbDate(u.releaseDate), needs && I18N.firmwareVersion.replace('{version}', needs)]
+            .filter(Boolean).join(' · ');
+        const row = contentRow({icon: 'bi-arrow-up-circle', name: `v${u.appVersion}`, sub,
+                                owned: u.owned, file: u.downloadableFile});
+        if (firmwareTooOld(needs, CONSOLE_FIRMWARE)) {
+            $(row).addClass('game-row--firmware').attr('title', I18N.firmwareTooOld
+                .replace('{mine}', CONSOLE_FIRMWARE).replace('{needed}', needs));
+        }
+        list.append(row);
+    });
     return section('gameUpdates', 'bi-arrow-up-circle', I18N.updates, content.append(list));
 }
 

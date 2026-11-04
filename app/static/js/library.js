@@ -147,6 +147,7 @@ const LIST_QUERY = `
             items {
                 titleId name intro description developer publisher releaseDate
                 bannerUrl iconUrl size category numberOfPlayers rating languages
+                requiredFirmware
                 screenshots { url }
                 ownership { haveBase upToDate complete }
                 apps(owned: true) {
@@ -550,6 +551,7 @@ function cardModel(app) {
             owned: ownership.haveBase,
             has_latest_version: ownership.haveBase && ownership.upToDate,
             has_all_dlcs: ownership.complete,
+            title_id: recognized ? title.titleId : null,
             version: versions,
             meta: metaFromApp(app, title.name || I18N.unrecognized),
             url: gameUrl(app),
@@ -589,6 +591,7 @@ function renderCardView(games) {
 
         const card = $('<div class="card game-surface game-card library-card"></div>')
             .toggleClass('is-missing', game.owned === false);
+        if (game.app_type === 'BASE' && game.title_id) card.attr('data-firmware-title', game.title_id);
 
         const coverWrap = $('<div class="library-cover-wrap">');
         const cover = game.bannerUrl
@@ -650,6 +653,34 @@ function renderCardView(games) {
         card.append(body);
         gameCol.append(card);
         gameGrid.append(gameCol);
+    });
+    markCardFirmware();
+}
+
+/** "Needs firmware X": a game the user's console (My account) is too old for. */
+function firmwareBadge(needed) {
+    return statusBadge('wait', 'bi-cpu', I18N.needsNewerFirmware.replace('{needed}', needed));
+}
+
+/** Cards come from a grouped apps query without the firmware: once they are drawn, one
+ *  request asks for it for every game on screen. Only when the user set theirs. */
+async function markCardFirmware() {
+    if (!CONSOLE_FIRMWARE) return;
+    const cards = [...document.querySelectorAll('#gameGrid [data-firmware-title]')];
+    const ids = [...new Set(cards.map(c => c.dataset.firmwareTitle.toUpperCase()))]
+        .filter(id => /^[0-9A-F]{16}$/.test(id)).slice(0, 200);
+    if (!ids.length) return;
+    let data;
+    try {
+        data = await gqlFetch('{ ' + ids.map((id, i) => `t${i}: title(titleId: "${id}") { titleId requiredFirmware }`).join(' ') + ' }');
+    } catch (e) {
+        return;   // no badge rather than a broken page
+    }
+    const needs = {};
+    Object.values(data || {}).forEach(t => { if (t && t.requiredFirmware) needs[t.titleId.toUpperCase()] = t.requiredFirmware; });
+    cards.forEach(card => {
+        const needed = needs[card.dataset.firmwareTitle.toUpperCase()];
+        if (firmwareTooOld(needed, CONSOLE_FIRMWARE)) $(card).find('.library-badges').append(firmwareBadge(needed));
     });
 }
 
@@ -860,6 +891,7 @@ function renderListView(titles) {
             id: t.titleId, url: `/game/${t.titleId}`,
         });
         if (titleMetaBtn) titleLine.append(titleMetaBtn);
+        if (firmwareTooOld(t.requiredFirmware, CONSOLE_FIRMWARE)) titleLine.append(firmwareBadge(t.requiredFirmware));
         headerText.append(titleLine);
         if (t.intro) {
             headerText.append($('<p class="card-text small text-secondary mb-1"></p>').text(t.intro));

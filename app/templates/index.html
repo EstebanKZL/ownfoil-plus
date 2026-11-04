@@ -239,6 +239,8 @@
     // only gates the .list-banner-strip behind each row in renderListView; the cover
     // icon (.list-cover) and every other view (card grid, detail popup) are untouched.
     const SHOW_GAME_BACKGROUND_IMAGE = {{ show_game_background_image | tojson }};
+    // The signed-in user's console firmware (My account), or null.
+    const CONSOLE_FIRMWARE = {{ console_firmware | tojson }};
 
     // Strings the JS below needs but can't hardcode in English.
     const I18N = {
@@ -276,6 +278,7 @@
         badgeUpdate: {{ t('library.badge_update') | tojson }},
         badgeMissingDlc: {{ t('library.badge_missing_dlc') | tojson }},
         badgeComplete: {{ t('library.badge_complete') | tojson }},
+        needsNewerFirmware: {{ t('library.needs_newer_firmware') | tojson }},
         badgeDlc: {{ t('library.badge_dlc') | tojson }},
         versions: {{ t('library.versions') | tojson }},
         sortAsc: {{ t('library.sort_asc') | tojson }},

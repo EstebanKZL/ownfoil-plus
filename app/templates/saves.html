@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% include 'nav.html' %}
+{# Saves: the backups JKSV uploaded to the save vault (vault.py), by game. For admins and
+   users with the Backup permission. #}
+<div class="container-fluid discover-page mt-3">
+    <header class="page-head">
+        <span class="page-head__icon"><i class="bi bi-safe" aria-hidden="true"></i></span>
+        <h1 class="page-head__title">{{ t('saves.title') }}</h1>
+        <p class="page-head__desc">{{ t('saves.desc') }}</p>
+    </header>
+
+    <p id="savesLoading" class="text-secondary fst-italic">{{ t('common.loading') }}</p>
+    <p id="savesError" class="text-danger" hidden>{{ t('saves.load_failed') }}</p>
+    <div class="alert alert-secondary" id="savesOff" hidden>
+        <i class="bi bi-info-circle" aria-hidden="true"></i> {{ t('saves.off') }}
+    </div>
+    <p id="savesNone" class="text-secondary" hidden>{{ t('saves.none') }}</p>
+
+    <div id="savesGames" class="saves-games"></div>
+
+    <section class="surface admin-section discover-section" id="savesMissing" hidden>
+        <h2 class="admin-section__title"><i class="bi bi-exclamation-circle" aria-hidden="true"></i> {{ t('saves.missing') }}</h2>
+        <ul class="dash-list" id="savesMissingList"></ul>
+    </section>
+</div>
+
+<script>
+    const I18N = {
+        backups: {{ t('saves.backups') | tojson }},
+        backupsOne: {{ t('saves.backups_one') | tojson }},
+        download: {{ t('saves.download') | tojson }},
+        remove: {{ t('saves.delete') | tojson }},
+        deleteConfirm: {{ t('saves.delete_confirm') | tojson }},
+    };
+</script>
+<script src="{{ url_for('static', filename='js/format.js') }}"></script>
+<script src="{{ url_for('static', filename='js/title-list.js') }}"></script>
+<script src="{{ url_for('static', filename='js/saves.js') }}"></script>
+{% endblock %}

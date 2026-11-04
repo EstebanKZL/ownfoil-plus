@@ -95,3 +95,19 @@ function downloadButton(fileId, label) {
     btn.attr('aria-label', I18N.downloadAria.replace('{name}', label));
     return btn;
 }
+
+// --- console firmware -------------------------------------------------------------------
+
+/** '23.0.1' as a number that compares like the version; null when it isn't one. */
+function firmwareCode(text) {
+    const m = /^(\d{1,2})\.(\d{1,2})\.(\d{1,2})$/.exec(String(text || '').trim());
+    return m ? Number(m[1]) * 1e6 + Number(m[2]) * 1e3 + Number(m[3]) : null;
+}
+
+/** Whether a console on `mine` is too old for content that needs `required` (both as
+ *  23.0.1). False when either is unknown: no warning without both numbers. */
+function firmwareTooOld(required, mine) {
+    const need = firmwareCode(required);
+    const have = firmwareCode(mine);
+    return need !== null && have !== null && need > have;
+}

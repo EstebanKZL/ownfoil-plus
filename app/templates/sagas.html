@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% include 'nav.html' %}
+{# Sagas: the series the user has games of (/sagas), or one of them (/sagas/<id>). The
+   series come from Wikidata (series.py). #}
+<div class="container-fluid discover-page mt-3">
+    <header class="page-head">
+        <span class="page-head__icon"><i class="bi bi-collection" aria-hidden="true"></i></span>
+        <h1 class="page-head__title" id="sagasTitle">{{ t('sagas.title') }}</h1>
+        <p class="page-head__desc" id="sagasDesc">{{ t('sagas.desc') }}</p>
+    </header>
+
+    <a href="/sagas" class="discover-back" id="sagasBack" hidden><i class="bi bi-arrow-left" aria-hidden="true"></i> {{ t('sagas.back') }}</a>
+
+    <p id="sagasLoading" class="text-secondary fst-italic">{{ t('common.loading') }}</p>
+    <p id="sagasError" class="text-danger" hidden>{{ t('upcoming.load_failed') }}</p>
+    <p id="sagasNone" class="text-secondary" hidden>{{ t('sagas.none') }}</p>
+    <p id="sagasNotFound" class="text-secondary" hidden>{{ t('sagas.not_found') }}</p>
+
+    <div class="saga-grid" id="sagasList"></div>
+
+    <section class="surface admin-section discover-section" id="sagaDetail" hidden>
+        <div class="saga-summary" id="sagaSummary"></div>
+        <div class="release-grid" id="sagaGames"></div>
+    </section>
+</div>
+
+<script>
+    const SAGA_ID = {{ saga_id | tojson }};
+    const I18N = {
+        count: {{ t('sagas.count') | tojson }},
+        upcomingCount: {{ t('sagas.upcoming_count') | tojson }},
+        owned: {{ t('sagas.owned') | tojson }},
+        missing: {{ t('sagas.missing') | tojson }},
+        coming: {{ t('sagas.coming') | tojson }},
+    };
+</script>
+<script src="{{ url_for('static', filename='js/sagas.js') }}"></script>
+{% endblock %}

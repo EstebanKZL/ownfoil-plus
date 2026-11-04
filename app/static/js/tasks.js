@@ -342,6 +342,13 @@ function render() {
     section('failedTasks', 'failedEmpty', failed);
     document.getElementById('purgeFailed').classList.toggle('d-none', !failed.length);
 
+    // Queue and Failed show 10 rows, Scheduled 5, the rest by scrolling. Counted on the
+    // top-level rows: a parent's sub-tasks scroll with it.
+    const topLevel = ':scope > .task-list > .task-row';
+    limitVisibleRows(document.getElementById('queueScroll'), topLevel, 10);
+    limitVisibleRows(document.getElementById('failedScroll'), topLevel, 10);
+    limitVisibleRows(document.getElementById('scheduledScroll'), topLevel, 5);
+
     // A full window means the server had more rows to give. Counting what arrived
     // avoids asking it for a total nothing else needs.
     document.getElementById('queueTruncated').classList.toggle(

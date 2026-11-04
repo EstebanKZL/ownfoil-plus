@@ -10,7 +10,8 @@
         </div>
         <form method="POST" action="/login">
             {% if error %}
-            <div class="alert alert-danger py-2" role="alert">{{ error }}</div>
+            <div class="alert alert-danger py-2" role="alert">{{ error }}
+                {% if show_resend %}<a class="alert-link" href="/verify/resend">{{ t('login.resend') }}</a>{% endif %}</div>
             {% endif %}
             <div class="mb-3">
                 <label class="form-label small text-secondary" for="exampleInputEmail1">{{ t('login.username') }}</label>
@@ -29,6 +30,18 @@
                 <button type="submit" class="btn btn-primary">{{ t('login.submit') }}</button>
             </div>
         </form>
+        {% if auth_options.google %}
+        <div class="auth-divider"><span>{{ t('auth.or') }}</span></div>
+        <div class="d-grid">
+            <a class="btn btn-outline-secondary auth-google" href="/login/google{% if next_url and next_url != '/' %}?next={{ next_url | urlencode }}{% endif %}"><i class="bi bi-google" aria-hidden="true"></i> {{ t('google.button') }}</a>
+        </div>
+        {% endif %}
+        {% if auth_options.signup or auth_options.forgot %}
+        <p class="auth-links">
+            {% if auth_options.forgot %}<a href="/forgot">{{ t('login.forgot') }}</a>{% endif %}
+            {% if auth_options.signup %}<a href="/signup">{{ t('login.signup') }}</a>{% endif %}
+        </p>
+        {% endif %}
     </div>
 </main>
 {% endblock %}

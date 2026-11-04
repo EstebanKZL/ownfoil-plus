@@ -385,6 +385,10 @@ class TitledbVersion:
     version: int = desc("The version number, as Nintendo counts them.")
     release_date: Optional[str] = desc(
         "When this version shipped. Null when titledb does not say.", default=None)
+    required_firmware: Optional[str] = desc(
+        "The console firmware this version needs, as 23.0.1 - its cnmt's "
+        "requiredSystemVersion. Null when titledb does not say (often the case for a "
+        "base game).", default=None)
 
 
 @described(strawberry.type)
@@ -744,6 +748,15 @@ class Title:
         `apps { versions }` this does not need the title to be in the library, so a
         catalogue or wishlist view can show what a title would involve owning."""
         return self.available_versions_loaded
+
+    @described_field
+    def required_firmware(self) -> Optional[str]:
+        """The console firmware the newest version of this title needs, as 23.0.1 -
+        the one an up-to-date install asks for. Null when titledb does not say."""
+        for version in reversed(self.available_versions_loaded or []):
+            if version.required_firmware:
+                return version.required_firmware
+        return None
 
     @described_field
     def available_dlc(self) -> Optional[List[TitledbDlc]]:

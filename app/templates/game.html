@@ -109,6 +109,10 @@
     const IS_ADMIN = {{ is_admin | tojson }};
     const IS_SHOP = {{ is_shop | tojson }};
     const WEB_DOWNLOADS_ENABLED = {{ web_downloads_enabled | tojson }};
+    // The signed-in user's console firmware (My account), or null.
+    const CONSOLE_FIRMWARE = {{ console_firmware | tojson }};
+    // Admins and users with the Backup permission see the game's save backups.
+    const CAN_SEE_SAVES = {{ can_see_saves | tojson }};
 
     const I18N = {
         library: {{ t('nav.library') | tojson }},
@@ -128,6 +132,14 @@
         size: {{ t('library.file_size') | tojson }},
         installedVersion: {{ t('game.installed_version') | tojson }},
         latestVersion: {{ t('game.latest_version') | tojson }},
+        requiredFirmware: {{ t('game.required_firmware') | tojson }},
+        sagaOf: {{ t('game.saga') | tojson }},
+        saves: {{ t('game.saves') | tojson }},
+        savesValue: {{ t('game.saves_value') | tojson }},
+        savesValueOne: {{ t('game.saves_value_one') | tojson }},
+        sagaCount: {{ t('sagas.count') | tojson }},
+        firmwareTooOld: {{ t('game.firmware_too_old') | tojson }},
+        firmwareVersion: {{ t('game.firmware_version') | tojson }},
         description: {{ t('game.description') | tojson }},
         screenshots: {{ t('game.screenshots') | tojson }},
         updates: {{ t('game.updates') | tojson }},

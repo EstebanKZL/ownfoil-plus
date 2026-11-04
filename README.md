@@ -62,6 +62,10 @@ On top of the original project, this fork adds:
 - A live view of what's actually happening in the background - task progress and what each worker is doing, in real time
 - A direct "Verify library now" action, and other library management improvements
 - Settings export/import from the web UI
+- Per-user console firmware: games and updates that need a newer firmware are marked
+- Upcoming releases with a wishlist per user, and Sagas showing which games of each series you own, miss, or are still to come
+- A save vault: JKSV uploads its save backups over WebDAV, and a Saves page to download or delete them
+- Optional public registration with email verification, password reset, and Google sign-in
 
 The Docker image for this fork is published at [estebankzl/ownfoil-plus](https://hub.docker.com/r/estebankzl/ownfoil-plus) - rebuilt weekly (not just on release) so it keeps picking up OS and Python security patches, and built for `amd64`, `arm64/v8`, `arm/v7` and `arm/v6`.
 

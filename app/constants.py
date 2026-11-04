@@ -146,6 +146,7 @@ DEFAULT_SETTINGS = {
             "update_available": True,
             "file_corrupt": True,
             "task_failed": True,
+            "save_backup": True,
         },
         "discord": {"enabled": False, "webhook_url": ""},
         "telegram": {"enabled": False, "bot_token": "", "chat_id": ""},
@@ -165,6 +166,20 @@ DEFAULT_SETTINGS = {
     },
     "appearance": {
         "default_style": DEFAULT_APPEARANCE_STYLE,
+    },
+    # Accounts people make themselves (accounts.py). Off: nobody can register, with the
+    # form or with Google. public_url: the address links in emails point at.
+    "registration": {
+        "enabled": False,
+        "public_url": "",
+    },
+    # The save vault (vault.py): JKSV's backups over WebDAV at /dav/. Off until an admin
+    # turns it on with a password; the password is kept hashed.
+    "vault": {
+        "enabled": False,
+        "username": "jksv",
+        "password_hash": "",
+        "keep": 0,
     },
 }
 

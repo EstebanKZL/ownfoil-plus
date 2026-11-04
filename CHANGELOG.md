@@ -4,6 +4,70 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.49]
+
+A round of improvements in three parts: polish on the admin pages, things for each user
+(their console, the games to come, their saves), and accounts people make themselves.
+The database gains three migrations (up to `a1b2c3d4e5f7`), applied on start as usual.
+
+**Admin pages**
+
+- **Section titles had no room above them.** A global `margin: 0 !important` on
+  headings won over every page's spacing; section titles get their own now.
+- **Clean DB in the Files drawer**: a file that no longer exists on disk can be dropped
+  from the database from its own row, without waiting for a library scan.
+- **Tasks reads in pairs**: Queue next to Failed, Scheduled next to History, each list
+  capped (10, 10, 5, 5) with the rest a scroll away - a long queue no longer pushes
+  the failures off the screen.
+- **Statistics lists look like the Dashboard's**: rows with each game's icon instead
+  of plain tables, from one shared helper (`static/js/title-list.js`).
+
+**For each user**
+
+- **My account** (`/account`, the person icon): your console's firmware, so games and
+  updates that need a newer one are marked in the Library and on their pages
+  (`requiredFirmware` in GraphQL, from TitleDB), and whether the List view shows
+  background images for you. Admins kept the only say on both before.
+- **Upcoming releases** (`/upcoming`): the games still to come by month, a wishlist per
+  user, and "For you" - your wishlist plus the next games of sagas you own.
+- **Sagas** (`/sagas`): the series you own games of, as "4 of 6", with what you're
+  missing and what's coming. TitleDB has no series, so they come from Wikidata
+  (including names only given in its language-neutral "mul" labels, like Mario Kart),
+  at most once a week after a TitleDB refresh, kept in `data/series.json`.
+- **A save vault for JKSV**: the console's save manager can upload its backups over
+  WebDAV at `/dav/`, with its own login (hashed, locked out like the web login), a
+  `webdav.json` to download for the SD card, a limit of backups kept per game, and a
+  notification for each new one. It only takes ZIP backups inside its own folder; it
+  reads a ZIP's directory itself to refuse archives that would unpack to far more than
+  they weigh, and a cut-off upload never replaces a good backup. The new **Saves**
+  page (admins and users with the Backup permission) lists them by game, to download
+  or delete. Exported settings leave the vault's password hash out.
+
+**Accounts people make themselves** (off by default: Settings > User registration)
+
+- **Sign up** with a user name, email and password; the account works once its email
+  is verified. **Sign in with Google** makes or signs into an account with a verified
+  Google email. **Forgot your password?** sends a one-hour, single-use link. New
+  accounts get shop access only - never the administration or the saves. Existing
+  accounts can add an email and set or change their password in My account.
+- Email and Google are set with environment variables (`SMTP_*`, `GOOGLE_*`), never in
+  `settings.yaml`, so their secrets stay out of backups and exports; `SECRET_KEY` is
+  accepted as an alias of `OWNFOIL_SECRET_KEY`.
+- **Built not to be abused**, after a security review:
+  - links in emails use only the public address set in Settings, never the Host of the
+    request - anyone can forge that to have a reset link point at their own server.
+    Without the address, account emails are off;
+  - a verification link works once and doesn't sign in (mail scanners open links);
+  - an email nobody verified is only a claim: it blocks no one from signing up with
+    it, and Google never links to it;
+  - nothing tells whether an email has an account: signing up with a taken one
+    answers the same (and warns its owner), and emails go out in the background so
+    the page's timing doesn't tell either;
+  - tries are limited per network address, per email and per user; wrong current
+    passwords in My account lock that form like the login.
+- The migration adds the columns in place instead of rebuilding the `user` table,
+  which with foreign keys on would have cascaded into the wishlist.
+
 ## [6.2.5.48]
 
 - **The weekly image rebuild no longer publishes unreleased work.** Every Monday the

@@ -11,18 +11,12 @@
     <div class="admin-grid">
         <section class="surface admin-section" id="tasksQueue">
             <h3 class="admin-section__title"><i class="bi bi-hourglass-split" aria-hidden="true"></i> {{ t('tasks.queue') }}</h3>
-            <div class="task-scroll">
+            <div class="task-scroll" id="queueScroll">
                 <ul id="queueTasks" class="task-list"></ul>
             </div>
             <p id="queueEmpty" class="text-secondary fst-italic mb-0">{{ t('tasks.nothing_queued') }}</p>
             <p id="queueTruncated" class="text-secondary fst-italic d-none mb-0">
                 {{ t('tasks.showing_n_oldest', n=max_tasks) }}</p>
-        </section>
-
-        <section class="surface admin-section" id="tasksScheduled">
-            <h3 class="admin-section__title"><i class="bi bi-calendar-event" aria-hidden="true"></i> {{ t('tasks.scheduled') }}</h3>
-            <ul id="scheduledTasks" class="task-list task-list--scheduled"></ul>
-            <p id="scheduledEmpty" class="text-secondary fst-italic mb-0">{{ t('tasks.nothing_scheduled') }}</p>
         </section>
 
         <section class="surface admin-section" id="tasksFailed">
@@ -33,10 +27,18 @@
                     <i class="bi bi-trash"></i>
                 </button>
             </div>
-            <div class="task-scroll">
+            <div class="task-scroll" id="failedScroll">
                 <ul id="failedTasks" class="task-list task-list--failed"></ul>
             </div>
             <p id="failedEmpty" class="text-secondary fst-italic mb-0">{{ t('tasks.no_failures') }}</p>
+        </section>
+
+        <section class="surface admin-section" id="tasksScheduled">
+            <h3 class="admin-section__title"><i class="bi bi-calendar-event" aria-hidden="true"></i> {{ t('tasks.scheduled') }}</h3>
+            <div class="task-scroll" id="scheduledScroll">
+                <ul id="scheduledTasks" class="task-list task-list--scheduled"></ul>
+            </div>
+            <p id="scheduledEmpty" class="text-secondary fst-italic mb-0">{{ t('tasks.nothing_scheduled') }}</p>
         </section>
 
         <section class="surface admin-section" id="tasksHistory">

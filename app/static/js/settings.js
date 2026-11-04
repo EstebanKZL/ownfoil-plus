@@ -148,7 +148,20 @@ function fillUserTable() {
                     .attr({'data-bs-id': user['id'], 'title': I18N.editTooltip}),
                 $('<button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteUserModal"><i class="bi bi-x-circle"></i></button>')
                     .attr({'data-bs-id': user['id'], 'data-bs-user': user['user']}));
-            $('#userTable tbody').append($('<tr>').append($('<td>').text(user['user']), perms, actions));
+            // The user's email (if any) under the name, with its state: waiting for its
+            // registration to be verified, verified, or not yet (a new address waiting
+            // for its link shows instead of the verified one until it's opened).
+            const who = $('<td>').append($('<div>').text(user['user']));
+            const shown = user['pending_email'] || user['email'];
+            if (shown) {
+                const verified = !user['pending_email'];
+                const tone = user['pending'] ? 'status-badge--wait' : verified ? 'status-badge--ok' : '';
+                who.append($('<div class="small text-secondary user-email">').text(shown).append(
+                    user['google_id'] ? $('<i class="bi bi-google ms-1" aria-hidden="true">') : null,
+                    $('<span class="status-badge ms-1">').addClass(tone).text(
+                        user['pending'] ? I18N.userPending : verified ? I18N.userVerified : I18N.userUnverified)));
+            }
+            $('#userTable tbody').append($('<tr>').append(who, perms, actions));
         });
     })
 
@@ -1016,6 +1029,99 @@ function submitSchedulerSettings() {
     });
 }
 
+// --- User registration (accounts.py) ---------------------------------------------------
+
+function fillRegistrationSettings(r) {
+    $('#registrationEnabled').prop('checked', Boolean(r.enabled));
+    $('#registrationPublicUrl').val(r.public_url || '');
+    fetch('/api/settings/registration/status', {credentials: 'same-origin'}).then(res => res.json()).then(s => {
+        const say = (id, on) => $(id).text(on ? I18N.registrationConfigured : I18N.registrationNotConfigured)
+            .toggleClass('text-success', on).toggleClass('text-secondary', !on);
+        say('#registrationStatusEmail', s.email);
+        say('#registrationStatusGoogle', s.google);
+        $('#registrationTestBox').toggleClass('d-none', !s.email);
+    }).catch(() => {});
+}
+
+$('#registrationSave').on('click', function () {
+    const feedback = $('#registrationFeedback').removeClass('text-success text-danger').text('');
+    fetch('/api/settings/registration', {
+        method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({enabled: $('#registrationEnabled').prop('checked'),
+                              public_url: $('#registrationPublicUrl').val().trim()}),
+    }).then(r => r.json().then(body => ({ok: r.ok, body}))).then(({ok, body}) => {
+        if (ok && body.success) feedback.addClass('text-success').text(I18N.registrationSaved);
+        else feedback.addClass('text-danger').text(I18N.registrationInvalid);
+    }).catch(() => feedback.addClass('text-danger').text(I18N.registrationInvalid));
+});
+
+$('#registrationTestEmail').on('click', function () {
+    const button = $(this).prop('disabled', true);
+    const feedback = $('#registrationTestFeedback').removeClass('text-success text-danger').text('');
+    fetch('/api/settings/registration/test-email', {
+        method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({to: $('#registrationTestTo').val().trim()}),
+    }).then(r => r.json().then(body => ({ok: r.ok, body}))).then(({ok, body}) => {
+        if (ok && body.success) feedback.addClass('text-success').text(I18N.registrationTestOk);
+        else feedback.addClass('text-danger').text(I18N.registrationTestFailed.replace('{error}', body.error || ''));
+    }).catch(e => feedback.addClass('text-danger').text(I18N.registrationTestFailed.replace('{error}', e.message)))
+      .finally(() => button.prop('disabled', false));
+});
+
+// --- Save vault (vault.py) ---------------------------------------------------------------
+
+function fillVaultSettings(v) {
+    $('#vaultEnabled').prop('checked', Boolean(v.enabled));
+    $('#vaultUsername').val(v.username || 'jksv');
+    $('#vaultKeep').val(String(v.keep || 0));
+    // The password never comes back: say one is set, and keep the field for a new one.
+    $('#vaultPasswordSet').toggleClass('d-none', !v.password_set);
+    // The console needs the server's address on the network, which is the one the
+    // browser used - unless that is localhost, which the admin has to change.
+    if (!$('#vaultOrigin').val()) $('#vaultOrigin').val(window.location.origin);
+}
+
+function submitVaultSettings() {
+    const feedback = $('#vaultFeedback').removeClass('text-success text-danger').text('');
+    fetch('/api/settings/vault', {
+        method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            enabled: $('#vaultEnabled').prop('checked'),
+            username: $('#vaultUsername').val().trim(),
+            password: $('#vaultPassword').val(),
+            keep: Number($('#vaultKeep').val()),
+        }),
+    }).then(r => r.json().then(body => ({ok: r.ok, body}))).then(({ok, body}) => {
+        if (ok && body.success) {
+            feedback.addClass('text-success').text(I18N.vaultSaved);
+            if ($('#vaultPassword').val()) $('#vaultPasswordSet').removeClass('d-none');
+        } else {
+            feedback.addClass('text-danger').text(I18N.vaultInvalid);
+        }
+    }).catch(() => feedback.addClass('text-danger').text(I18N.vaultInvalid));
+}
+
+// JKSV's webdav.json, made here in the browser: the password written above goes into it,
+// since the server never sends it back.
+$('#vaultDownloadWebdav').on('click', function () {
+    const password = $('#vaultPassword').val();
+    $('#vaultNeedsPassword').toggleClass('d-none', Boolean(password));
+    if (!password) {
+        $('#vaultPassword').trigger('focus');
+        return;
+    }
+    const origin = $('#vaultOrigin').val().trim().replace(/\/+$/, '');
+    const config = {origin: origin + '/dav', basepath: 'JKSV', username: $('#vaultUsername').val().trim(), password};
+    const blob = new Blob([JSON.stringify(config, null, 2) + '\n'], {type: 'application/json'});
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'webdav.json';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+});
+
 function submitWorkerSettings() {
     $('#submitWorkerSettingsBtn').prop('disabled', true);
     data = {
@@ -1189,6 +1295,8 @@ $(document).ready(function () {
     });
 
     $.getJSON("/api/settings", function (result) {
+        fillVaultSettings(result.vault || {});
+        fillRegistrationSettings(result.registration || {});
         languages = JSON.parse(document.getElementById('settingsLanguages').textContent);
         Object.keys(languages).forEach(function (key) {
             $('#selectRegion').append(`<option value="${key}">${key}</option>`);

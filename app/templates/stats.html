@@ -31,7 +31,7 @@
         <section class="surface stats-section" id="statsLibraries">
             <h3 class="stats-section__title"><i class="bi bi-hdd-stack" aria-hidden="true"></i> {{ t('stats.space_by_library') }}</h3>
             <ul class="chart-rows" id="byLibrary"></ul>
-            <p class="text-secondary small mb-0">{{ t('stats.click_library_hint') }}</p>
+            <p class="stats-hint text-secondary small mb-0">{{ t('stats.click_library_hint') }}</p>
         </section>
 
         <section class="surface stats-section" id="statsVerification">
@@ -47,7 +47,7 @@
                 </div>
                 <ul class="chart-rows" id="byVerification"></ul>
             </div>
-            <p class="text-secondary small mb-0">{{ t('stats.click_row_hint') }}</p>
+            <p class="stats-hint text-secondary small mb-0">{{ t('stats.click_row_hint') }}</p>
         </section>
 
         <section class="surface stats-section" id="statsTypes">
@@ -84,35 +84,18 @@
         <div class="stat-sections">
             <section>
                 <h5 class="mb-2">{{ t('dl.top_titles') }}</h5>
-                <div class="dl-scroll" id="downloadTopTitlesScroll"><table class="table table-sm stat-table">
-                    <thead><tr><th>{{ t('common.title') }}</th><th>{{ t('dl.downloads') }}</th></tr></thead>
-                    <tbody id="downloadTopTitles"></tbody>
-                </table></div>
+                <div class="dl-scroll" id="downloadTopTitlesScroll"><ul class="dash-list" id="downloadTopTitles"></ul></div>
             </section>
             <section>
                 <h5 class="mb-2">{{ t('dl.by_user') }}</h5>
-                <div class="dl-scroll" id="downloadByUserScroll"><table class="table table-sm stat-table">
-                    <thead><tr><th>{{ t('dl.user') }}</th><th>{{ t('dl.downloads') }}</th></tr></thead>
-                    <tbody id="downloadByUser"></tbody>
-                </table></div>
+                <div class="dl-scroll" id="downloadByUserScroll"><ul class="dash-list" id="downloadByUser"></ul></div>
                 <h5 class="mb-2 mt-3">{{ t('dl.by_client') }}</h5>
-                <div class="dl-scroll" id="downloadByClientScroll"><table class="table table-sm stat-table">
-                    <thead><tr><th>{{ t('dl.client') }}</th><th>{{ t('dl.downloads') }}</th></tr></thead>
-                    <tbody id="downloadByClient"></tbody>
-                </table></div>
+                <div class="dl-scroll" id="downloadByClientScroll"><ul class="dash-list" id="downloadByClient"></ul></div>
             </section>
         </div>
 
         <h5 class="mb-2 mt-2">{{ t('dl.recent') }}</h5>
-        <div class="table-responsive" id="downloadRecentScroll">
-            <table class="table table-sm table-hover">
-                <thead><tr>
-                    <th>{{ t('dl.when') }}</th><th>{{ t('common.title') }}</th><th>{{ t('common.file') }}</th>
-                    <th>{{ t('dl.user') }}</th><th>{{ t('dl.client') }}</th><th>{{ t('dl.address') }}</th>
-                </tr></thead>
-                <tbody id="downloadRecent"></tbody>
-            </table>
-        </div>
+        <div class="dl-scroll" id="downloadRecentScroll"><ul class="dash-list" id="downloadRecent"></ul></div>
         <p class="text-secondary small mb-0">{{ t('dl.hint') }}</p>
     </section>
 
@@ -146,10 +129,7 @@
             </div>
             <div class="modal-body">
                 <input type="text" id="verificationFilesSearch" class="form-control form-control-sm mb-2" placeholder="{{ t('stats.search_files_placeholder') }}">
-                <table class="table table-sm stat-table">
-                    <thead><tr><th>{{ t('common.title') }}</th><th>{{ t('common.file') }}</th><th>{{ t('common.size') }}</th></tr></thead>
-                    <tbody id="verificationFilesBody"></tbody>
-                </table>
+                <ul class="dash-list" id="verificationFilesList"></ul>
                 <div id="verificationFilesEmpty" class="text-secondary fst-italic d-none">
                     {{ t('common.nothing_to_report') }}
                 </div>
@@ -178,10 +158,7 @@
             <div class="modal-body">
                 <p class="text-secondary small">{{ t('stats.missing_titles_hint') }}</p>
                 <input type="text" id="missingAppTypeSearch" class="form-control form-control-sm mb-2" placeholder="{{ t('library.search_placeholder') }}">
-                <table class="table table-sm stat-table">
-                    <thead><tr><th>{{ t('common.title') }}</th></tr></thead>
-                    <tbody id="missingAppTypeBody"></tbody>
-                </table>
+                <ul class="dash-list" id="missingAppTypeList"></ul>
                 <div id="missingAppTypeEmpty" class="text-secondary fst-italic d-none">
                     {{ t('common.nothing_to_report') }}
                 </div>
@@ -298,5 +275,6 @@
     };
 </script>
 <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script src="{{ url_for('static', filename='js/title-list.js') }}"></script>
 <script src="{{ url_for('static', filename='js/stats.js') }}"></script>
 {% endblock %}

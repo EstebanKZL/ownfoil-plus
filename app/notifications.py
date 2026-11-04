@@ -24,7 +24,8 @@ EVENT_FILE_ADDED = 'file_added'
 EVENT_UPDATE_AVAILABLE = 'update_available'
 EVENT_FILE_CORRUPT = 'file_corrupt'
 EVENT_TASK_FAILED = 'task_failed'
-EVENTS = (EVENT_FILE_ADDED, EVENT_UPDATE_AVAILABLE, EVENT_FILE_CORRUPT, EVENT_TASK_FAILED)
+EVENT_SAVE_BACKUP = 'save_backup'
+EVENTS = (EVENT_FILE_ADDED, EVENT_UPDATE_AVAILABLE, EVENT_FILE_CORRUPT, EVENT_TASK_FAILED, EVENT_SAVE_BACKUP)
 
 PROVIDERS = ('discord', 'telegram', 'ntfy', 'webhook')
 
@@ -148,7 +149,9 @@ def _send_discord(cfg, event, title, lines):
     if not url:
         raise ValueError('missing webhook URL')
     content = f'**{title}**\n' + '\n'.join(f'• {line}' for line in lines)
-    _check(requests.post(url, json={'content': content[:2000], 'username': _shop_name()},
+    # Names come from files and folders: '@everyone' in one must not ping the channel.
+    _check(requests.post(url, json={'content': content[:2000], 'username': _shop_name(),
+                                    'allowed_mentions': {'parse': []}},
                          timeout=TIMEOUT))
 
 
