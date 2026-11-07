@@ -59,6 +59,10 @@ class Ownership:
     up_to_date: bool = desc("No newer UPDATE version is known than the highest one "
                             "owned. False also when nothing is owned at all.")
     complete: bool = desc("Every DLC titledb attributes to this title is owned.")
+    dlc_owned: Optional[int] = desc(
+        "How many of this title's DLC the library has (any version).", default=None)
+    dlc_total: Optional[int] = desc(
+        "How many DLC this title has, owned or not.", default=None)
 
 
 @described(strawberry.type)
@@ -219,6 +223,14 @@ class LibraryStats:
     up_to_date_titles: int = desc(
         "Owned titles carrying the latest known update. Counted over owned titles "
         "only, so it never exceeds `ownedTitles`.", default=0)
+    current_titles: int = desc(
+        "Owned titles with nothing missing: the latest update and every DLC - what "
+        "the Library calls \"up to date\".", default=0)
+    outdated_dlc: int = desc(
+        "DLC of owned games that the library has, with a newer version it doesn't: "
+        "pending DLC updates.", default=0)
+    missing_dlc: int = desc(
+        "DLC of owned games with no version in the library.", default=0)
     total_apps: int = desc(
         "App rows, owned or not: every base, update and DLC ownfoil knows about for "
         "the titles it tracks.", default=0)
@@ -251,6 +263,8 @@ class DownloadableFile:
     size: Optional[BigInt] = desc("Bytes on disk, same figure `files { size }` would give an admin.", default=None)
     verification_status: VerificationStatus = desc(
         "Same computed verdict as `File.verificationStatus`.")
+    format: Optional[str] = desc(
+        "The file's format from its extension, upper case: NSP, NSZ, XCI or XCZ.", default=None)
 
 
 @described(strawberry.type)
@@ -489,7 +503,8 @@ class App:
             return None
         f = self.files_loaded[0]
         return DownloadableFile(id=f.id, size=f.size,
-                                verification_status=VerificationStatus(verification_status(f)))
+                                verification_status=VerificationStatus(verification_status(f)),
+                                format=(f.extension or '').upper() or None)
 
     @described_field
     def titledb(self) -> Optional["Title"]:

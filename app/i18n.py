@@ -6,11 +6,25 @@ Coverage is intentionally incremental: `t()` falls back to the key itself (Engli
 when a translation is missing, so templates can be migrated one at a time without ever
 showing a blank string or crashing on an untranslated page.
 """
+import json
+import os
+
 from flask import request
 
-SUPPORTED_LANGUAGES = ('en', 'es')
+# English and Spanish live in TRANSLATIONS below; every other language in its own
+# app/locales/<code>.json ({key: text}), merged in at import (_load_locales).
+SUPPORTED_LANGUAGES = ('en', 'es', 'fr', 'de', 'it', 'pt', 'nl', 'ru', 'ja', 'ko', 'zh')
 DEFAULT_LANGUAGE = 'en'
 LANGUAGE_COOKIE = 'ownfoil_lang'
+# The cookie value (and the default without one) that follows the browser's language.
+AUTO_LANGUAGE = 'auto'
+# Each language by its own name, whatever the interface language is.
+LANGUAGE_NAMES = {
+    'en': 'English', 'es': 'Español', 'fr': 'Français', 'de': 'Deutsch', 'it': 'Italiano',
+    'pt': 'Português', 'nl': 'Nederlands', 'ru': 'Русский', 'ja': '日本語', 'ko': '한국어',
+    'zh': '简体中文',
+}
+LOCALES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'locales')
 
 # {key: {lang: text}}. English is the fallback for any key/language not present here,
 # so only Spanish strings that actually differ from the key need an entry - though for
@@ -21,6 +35,7 @@ TRANSLATIONS = {
     'nav.sagas': {'en': 'Sagas', 'es': 'Sagas'},
     'upcoming.title': {'en': 'Upcoming releases', 'es': 'Próximos lanzamientos'},
     'upcoming.desc': {'en': "Games coming to the eShop, by date. What's on your wishlist and the next games of your sagas come first.", 'es': 'Los juegos que llegan a la eShop, por fecha. Primero lo de tu lista de deseos y lo próximo de tus sagas.'},
+    'upcoming.recent': {'en': 'Just released', 'es': 'Recién lanzados'},
     'upcoming.for_you': {'en': 'For you', 'es': 'Para vos'},
     'upcoming.for_you_empty': {'en': 'Add games to your wishlist with the heart. The next games of your sagas show here too.', 'es': 'Sumá juegos a tu lista de deseos con el corazón. Lo próximo de tus sagas también aparece acá.'},
     'upcoming.calendar': {'en': 'Calendar', 'es': 'Calendario'},
@@ -36,6 +51,12 @@ TRANSLATIONS = {
     'sagas.count': {'en': '{owned} of {total}', 'es': '{owned} de {total}'},
     'sagas.upcoming_count': {'en': '+{n} coming', 'es': '+{n} por salir'},
     'sagas.none': {'en': 'None of your games belongs to a known saga yet. Sagas are refreshed from Wikidata along with TitleDB.', 'es': 'Ninguno de tus juegos pertenece a una saga conocida todavía. Las sagas se actualizan desde Wikidata junto con TitleDB.'},
+    'sagas.search': {'en': 'Search a saga', 'es': 'Buscar una saga'},
+    'sagas.tab_all': {'en': 'All', 'es': 'Todas'},
+    'sagas.tab_incomplete': {'en': 'To complete', 'es': 'Por completar'},
+    'sagas.tab_complete': {'en': 'Complete', 'es': 'Completas'},
+    'sagas.view': {'en': 'View the saga', 'es': 'Ver la saga'},
+    'sagas.no_match': {'en': 'No saga matches.', 'es': 'Ninguna saga coincide.'},
     'sagas.not_found': {'en': "That saga doesn't exist.", 'es': 'Esa saga no existe.'},
     'sagas.back': {'en': 'All sagas', 'es': 'Todas las sagas'},
     'sagas.owned': {'en': 'You have it', 'es': 'Lo tenés'},
@@ -95,6 +116,7 @@ TRANSLATIONS = {
     'signup.user_help': {'en': '3 to 32 letters, numbers, dots, dashes or underscores.', 'es': 'De 3 a 32 letras, números, puntos, guiones o guiones bajos.'},
     'signup.password_help': {'en': 'At least 8 characters, without @ & / ? # = (Tinfoil and Sphaira use it too).', 'es': 'Al menos 8 caracteres, sin @ & / ? # = (Tinfoil y Sphaira también la usan).'},
     'signup.have_account': {'en': 'I already have an account', 'es': 'Ya tengo una cuenta'},
+    'signup.not_ready': {'en': "Sign-up isn't ready yet: an admin must set up email (SMTP) or Google sign-in, so every new account can verify its email.", 'es': 'El registro todavía no está listo: un administrador tiene que configurar el email (SMTP) o el inicio de sesión con Google, para que cada cuenta nueva verifique su email.'},
     'signup.no_email': {'en': "This server can't send emails yet, so new accounts can only be made with Google.", 'es': 'Este servidor todavía no puede enviar emails, así que las cuentas nuevas solo se crean con Google.'},
     'signup.bad_user': {'en': 'Choose a user name of 3 to 32 letters, numbers, dots, dashes or underscores.', 'es': 'Elegí un usuario de 3 a 32 letras, números, puntos, guiones o guiones bajos.'},
     'signup.user_taken': {'en': 'That user name is taken.', 'es': 'Ese usuario ya existe.'},
@@ -135,7 +157,18 @@ TRANSLATIONS = {
     'mail.exists_body': {'en': 'Hi {user},\n\nSomeone tried to make a new account with this email, which your account already uses. Nothing changed.\n\nIf it was you and you forgot your password, ask for a new one here:\n{link}\n\nIf it was not you, ignore this email.', 'es': 'Hola {user}:\n\nAlguien intentó crear una cuenta nueva con este email, que ya usa tu cuenta. No cambió nada.\n\nSi fuiste vos y olvidaste tu contraseña, pedí una nueva acá:\n{link}\n\nSi no fuiste vos, ignorá este email.'},
     'mail.test_subject': {'en': 'Test email', 'es': 'Email de prueba'},
     'mail.test_body': {'en': 'Email works: this server can send verification and password reset emails.', 'es': 'El email funciona: este servidor puede enviar emails de verificación y de restablecimiento de contraseña.'},
+    'users.title': {'en': 'Users', 'es': 'Usuarios'},
+    'users.view': {'en': 'View users ({n})', 'es': 'Ver usuarios ({n})'},
+    'lib.view_paths': {'en': 'View paths ({n})', 'es': 'Ver rutas ({n})'},
+    'maint.view_backups': {'en': 'View backups ({n})', 'es': 'Ver backups ({n})'},
+    'media.view_usage': {'en': 'View disk usage', 'es': 'Ver uso de disco'},
     'users.pending': {'en': 'Waiting for its email', 'es': 'Esperando su email'},
+    'users.search_placeholder': {'en': 'Search users by name or email', 'es': 'Buscá usuarios por nombre o email'},
+    'users.count': {'en': '{n} users', 'es': '{n} usuarios'},
+    'users.no_match': {'en': 'No user matches the search.', 'es': 'Ningún usuario coincide con la búsqueda.'},
+    'users.page': {'en': 'Page {page} of {pages}', 'es': 'Página {page} de {pages}'},
+    'users.perm_yes': {'en': 'Yes', 'es': 'Sí'},
+    'users.perm_no': {'en': 'No', 'es': 'No'},
     'sections.registration': {'en': 'User registration', 'es': 'Registro de usuarios'},
     'registration.desc': {'en': 'Let people make their own accounts, with the form or with Google. New accounts can browse and download games and set up Tinfoil and Sphaira - never the administration.', 'es': 'Permití que la gente cree su propia cuenta, con el formulario o con Google. Las cuentas nuevas pueden ver y descargar juegos y configurar Tinfoil y Sphaira, nunca la administración.'},
     'registration.enabled': {'en': 'Allow public registration', 'es': 'Permitir registro público'},
@@ -245,27 +278,16 @@ TRANSLATIONS = {
     'dash.storage': {'en': 'Storage', 'es': 'Almacenamiento'},
     'dash.storage_used': {'en': '{used} used of {total} · {free} free', 'es': '{used} usados de {total} · {free} libres'},
     'dash.offline': {'en': 'not reachable', 'es': 'no accesible'},
+    'dash.recent_saves': {'en': 'Uploaded saves', 'es': 'Partidas subidas'},
     'dash.recent_files': {'en': 'Recently added', 'es': 'Agregados recientemente'},
-    'dash.recent_downloads': {'en': 'Latest downloads', 'es': 'Últimas descargas'},
     'dash.see_all': {'en': 'See all', 'es': 'Ver todo'},
     'dash.nothing_yet': {'en': 'Nothing yet.', 'es': 'Nada todavía.'},
-    'dash.status': {'en': 'Status', 'es': 'Estado'},
-    'dash.badge.maint_on': {'en': 'Maintenance: next {when}', 'es': 'Mantenimiento: próximo {when}'},
-    'dash.badge.maint_off': {'en': 'Maintenance: off', 'es': 'Mantenimiento: apagado'},
-    'dash.badge.last_backup': {'en': 'Last backup: {when}', 'es': 'Último backup: {when}'},
-    'dash.badge.no_backup': {'en': 'No backups', 'es': 'Sin backups'},
-    'dash.badge.notif_on': {'en': 'Notifications: on', 'es': 'Notificaciones: activadas'},
-    'dash.badge.notif_off': {'en': 'Notifications: off', 'es': 'Notificaciones: apagadas'},
-    'dash.badge.shop_public': {'en': 'Shop: public', 'es': 'Tienda: pública'},
-    'dash.badge.shop_private': {'en': 'Shop: private', 'es': 'Tienda: privada'},
     'settings_nav.services': {'en': 'Services', 'es': 'Servicios'},
     'settings_nav.files': {'en': 'Files', 'es': 'Archivos'},
     'settings_nav.tasks': {'en': 'Tasks', 'es': 'Tareas'},
     'settings_nav.stats': {'en': 'Stats', 'es': 'Estadísticas'},
 
-    'language.label': {'en': 'Language', 'es': 'Idioma'},
-    'language.en': {'en': 'English', 'es': 'Inglés'},
-    'language.es': {'en': 'Spanish', 'es': 'Español'},
+    'language.auto': {'en': 'Automatic (browser language)', 'es': 'Automático (idioma del navegador)'},
 
     'common.nothing_to_report': {'en': 'Nothing to report.', 'es': 'No hay nada para mostrar.'},
     'common.loading': {'en': 'Loading...', 'es': 'Cargando...'},
@@ -336,7 +358,6 @@ TRANSLATIONS = {
     'stats.delete_record_failed': {'en': 'Could not delete the file.', 'es': 'No se pudo eliminar el archivo.'},
     'stats.files_page_count': {'en': '{count} file{s} · page {page} of {totalPages}',
                                 'es': '{count} archivo{s} · página {page} de {totalPages}'},
-    'stats.duplicate_files': {'en': 'Duplicate files', 'es': 'Archivos duplicados'},
 
     # Stats > Downloads
     'dl.heading': {'en': 'Downloads', 'es': 'Descargas'},
@@ -355,33 +376,12 @@ TRANSLATIONS = {
     'dl.anonymous': {'en': '(public shop)', 'es': '(tienda pública)'},
     'dl.client_other': {'en': 'Other', 'es': 'Otro'},
     'dl.none': {'en': 'No downloads in this period.', 'es': 'No hay descargas en este período.'},
-    'dl.hint': {
-        'en': 'A file taken again by the same address within a minute counts once (resumed or probed downloads). History is kept for one year.',
-        'es': 'Un archivo que la misma dirección vuelve a pedir dentro del minuto cuenta una sola vez (descargas reanudadas o sondeadas). El historial se guarda un año.'},
     'dl.tile.count': {'en': 'Downloads', 'es': 'Descargas'},
     'dl.tile.count_note': {'en': 'in the last {days} days', 'es': 'en los últimos {days} días'},
     'dl.tile.bytes': {'en': 'Data served', 'es': 'Datos servidos'},
     'dl.tile.bytes_note': {'en': 'same period', 'es': 'mismo período'},
     'dl.tile.all_time': {'en': 'All recorded', 'es': 'Total registrado'},
     'dl.tile.all_time_note': {'en': 'since the history started', 'es': 'desde que empezó el historial'},
-    'stats.duplicate_files_hint': {
-        'en': 'More than one physical file exists for the same content. Pick which one to keep - the others are deleted, and the one you keep is renamed to drop any "(n)" suffix if that name is free.',
-        'es': 'Existe más de un archivo físico para el mismo contenido. Elegí cuál conservar — los demás se eliminan, y el que elijas se renombra para sacarle el sufijo "(n)" si ese nombre queda libre.'},
-    'stats.duplicate_keep_this': {'en': 'Keep this one', 'es': 'Conservar este'},
-    'stats.duplicate_resolved': {'en': 'Kept, removed the rest.', 'es': 'Conservado, se eliminó el resto.'},
-    'stats.duplicate_resolve_failed': {'en': 'Could not resolve this duplicate.', 'es': 'No se pudo resolver este duplicado.'},
-    'stats.duplicate_none': {'en': 'No duplicate files right now.', 'es': 'No hay archivos duplicados por ahora.'},
-    'stats.duplicate_resolve_by_size': {'en': 'Resolve all by size', 'es': 'Resolver todo por tamaño'},
-    'stats.duplicate_keep_largest': {'en': 'Keep the larger one', 'es': 'Conservar el más grande'},
-    'stats.duplicate_bulk_resolved': {'en': 'Resolved {n} group(s).', 'es': 'Se resolvieron {n} grupo(s).'},
-    'stats.duplicate_bulk_none': {'en': 'Nothing could be resolved automatically - the rest need a manual look.',
-                                   'es': 'No se pudo resolver nada automáticamente — el resto necesita revisión manual.'},
-    'stats.duplicate_bulk_failed': {'en': 'Could not resolve by size.', 'es': 'No se pudo resolver por tamaño.'},
-    'stats.duplicate_bulk_pref_none': {'en': 'No preference (size only)', 'es': 'Sin preferencia (solo tamaño)'},
-    'stats.duplicate_bulk_pref_compressed': {'en': 'Prefer compressed (nsz/xcz)', 'es': 'Preferir comprimido (nsz/xcz)'},
-    'stats.duplicate_bulk_pref_uncompressed': {'en': 'Prefer uncompressed (nsp/xci)', 'es': 'Preferir sin comprimir (nsp/xci)'},
-    'stats.duplicate_bulk_pref_hint': {'en': "If a group mixes a compressed and an uncompressed copy, the dropdown above decides that one first - size alone would always favor the uncompressed copy, since it's bigger.",
-                                        'es': 'Si un grupo mezcla una copia comprimida y una sin comprimir, el desplegable de arriba decide ese caso primero — el tamaño solo siempre favorecería a la copia sin comprimir, por pesar más.'},
     'stats.app_types': {'en': 'App types', 'es': 'Tipos de aplicación'},
 
     'stats.tile.files_note': {'en': '{n} identified', 'es': '{n} identificados'},
@@ -428,6 +428,7 @@ TRANSLATIONS = {
     'tasks.alive': {'en': 'alive', 'es': 'activo'},
     'tasks.stopped': {'en': 'stopped', 'es': 'detenido'},
     'tasks.idle': {'en': 'Idle', 'es': 'Inactivo'},
+    'tasks.interrupted': {'en': 'Interrupted by a restart of the app', 'es': 'Interrumpida por un reinicio de la app'},
     'tasks.cancel': {'en': 'Cancel', 'es': 'Cancelar'},
     'tasks.dismiss': {'en': 'Dismiss', 'es': 'Descartar'},
     'tasks.status_cancelled': {'en': 'cancelled', 'es': 'cancelada'},
@@ -511,7 +512,6 @@ TRANSLATIONS = {
     'auth.heading': {'en': 'Authentication', 'es': 'Autenticación'},
     'auth.user_list_caption': {'en': 'List of users:', 'es': 'Lista de usuarios:'},
     'auth.col_user': {'en': 'User', 'es': 'Usuario'},
-    'auth.col_permissions': {'en': 'Permissions', 'es': 'Permisos'},
     'auth.col_actions': {'en': 'Actions', 'es': 'Acciones'},
     'auth.add_new_user': {'en': 'Add new user', 'es': 'Agregar usuario'},
     'auth.add_a_new_user': {'en': 'Add a new user:', 'es': 'Agregar un usuario nuevo:'},
@@ -551,6 +551,9 @@ TRANSLATIONS = {
     'sections.scheduler': {'en': 'Scheduler', 'es': 'Programación'},
     'sections.workers': {'en': 'Workers', 'es': 'Procesos'},
     'sections.discovery': {'en': 'LAN discovery', 'es': 'Descubrimiento en la red local'},
+    'sections.network': {'en': 'Server network', 'es': 'Red del servidor'},
+    'network.discovery_switch': {'en': 'Answer discovery requests', 'es': 'Responder solicitudes de descubrimiento'},
+    'network.saved': {'en': 'Saved', 'es': 'Guardado'},
     'sections.media': {'en': 'Local artworks', 'es': 'Artes locales'},
     'sections.notifications': {'en': 'Notifications', 'es': 'Notificaciones'},
     'sections.appearance': {'en': 'Appearance', 'es': 'Apariencia'},
@@ -649,6 +652,10 @@ TRANSLATIONS = {
     'services.desc_registration': {'en': 'People make their own accounts, with the form or with Google.', 'es': 'La gente crea su propia cuenta, con el formulario o con Google.'},
     'services.name_shop': {'en': 'Store', 'es': 'Tienda'},
     'services.desc_shop': {'en': 'Tinfoil, Sphaira and CyberFoil browse and download from the console. Off, they are told the shop is closed; the web library keeps working.', 'es': 'Tinfoil, Sphaira y CyberFoil navegan y descargan desde la consola. Apagada, les dice que la tienda está cerrada; la biblioteca web sigue funcionando.'},
+    'services.name_public_shop': {'en': 'Public shop', 'es': 'Tienda pública'},
+    'services.desc_public_shop': {'en': 'Consoles browse and download without a user and password. Off, every client must sign in with a user that has shop access.', 'es': 'Las consolas navegan y descargan sin usuario ni contraseña. Apagada, cada cliente tiene que entrar con un usuario con acceso a la tienda.'},
+    'services.name_watcher': {'en': 'File watcher', 'es': 'Vigilancia de archivos'},
+    'services.desc_watcher': {'en': 'New, moved and deleted files in the library folders are picked up as they happen, without waiting for the next scan.', 'es': 'Los archivos nuevos, movidos o borrados en las carpetas de la biblioteca se detectan en el momento, sin esperar al próximo escaneo.'},
     'services.name_maintenance': {'en': 'Maintenance and backups', 'es': 'Mantenimiento y backups'},
     'services.desc_maintenance': {'en': 'Every day at the set time: library scan, checks and the database backup.', 'es': 'Todos los días a la hora elegida: escaneo de la biblioteca, verificaciones y el backup de la base de datos.'},
     'services.name_notifications': {'en': 'Notifications', 'es': 'Notificaciones'},
@@ -657,9 +664,15 @@ TRANSLATIONS = {
     'services.desc_vault': {'en': 'JKSV uploads save backups over WebDAV, each user into their own space.', 'es': 'JKSV sube copias de partidas por WebDAV, cada usuario a su propio espacio.'},
     'services.name_discovery': {'en': 'LAN discovery', 'es': 'Descubrimiento en la red local'},
     'services.desc_discovery': {'en': 'Sphaira finds this shop on your network by itself.', 'es': 'Sphaira encuentra esta tienda en tu red por sí sola.'},
+    'vault.allow_admins': {'en': 'Admins can keep saves', 'es': 'Los administradores pueden guardar partidas'},
+    'vault.allow_users': {'en': "Users who aren't admins can keep saves (with the Backup permission)", 'es': 'Los usuarios que no son administradores pueden guardar partidas (con el permiso Copia de seguridad)'},
+    'vault.allow_help': {'en': 'Whoever may keep saves sees the Saves page and the save vault in My account; JKSV signs in only for them.', 'es': 'Quien puede guardar partidas ve la página Partidas y la bóveda en Mi cuenta; JKSV solo entra con ellos.'},
     'vault.enabled': {'en': 'Turn on the save vault', 'es': 'Activar la bóveda de partidas'},
     'vault.password': {'en': 'Vault password', 'es': 'Contraseña de bóveda'},
     'vault.password_help': {'en': 'Not your web password: only JKSV uses it. At least 10 characters.', 'es': 'No es la contraseña de la web: solo la usa JKSV. Al menos 10 caracteres.'},
+    'vault.max_games': {'en': 'Games with saves per user', 'es': 'Juegos con partidas por usuario'},
+    'vault.max_games_help': {'en': 'Different games, not copies. At the limit, a new game waits until all saves of another are deleted.', 'es': 'Juegos distintos, no copias. Al llegar al límite, un juego nuevo espera a que se borren todas las partidas de otro.'},
+    'vault.keep_help': {'en': 'Backups of each game kept on the server; the oldest go first.', 'es': 'Copias de cada juego que se guardan en el servidor; se borran primero las más viejas.'},
     'vault.keep': {'en': 'Backups kept per game', 'es': 'Copias que se conservan por juego'},
     'vault.keep_all': {'en': 'All', 'es': 'Todas'},
     'vault.setup_heading': {'en': 'Set up JKSV on the console', 'es': 'Configurar JKSV en la consola'},
@@ -676,8 +689,9 @@ TRANSLATIONS = {
     'saves.title': {'en': 'Saves', 'es': 'Partidas'},
     'saves.desc': {'en': 'The save backups JKSV uploaded to the vault, by game.', 'es': 'Las copias de partidas que JKSV subió a la bóveda, por juego.'},
     'saves.off': {'en': 'The save vault is off. An admin turns it on in Services.', 'es': 'La bóveda de partidas está apagada. Un admin la activa en Servicios.'},
+    'saves.search': {'en': 'Search saves by game', 'es': 'Buscar partidas por juego'},
+    'saves.no_match': {'en': 'No save matches.', 'es': 'Ninguna partida coincide.'},
     'saves.none': {'en': 'No backups yet. Upload one from JKSV on the console.', 'es': 'Todavía no hay copias. Subí una desde JKSV en la consola.'},
-    'saves.missing': {'en': 'Library games without a backup', 'es': 'Juegos de la biblioteca sin copia'},
     'saves.backups': {'en': '{count} backups · {size}', 'es': '{count} copias · {size}'},
     'saves.backups_one': {'en': '1 backup · {size}', 'es': '1 copia · {size}'},
     'saves.download': {'en': 'Download', 'es': 'Descargar'},
@@ -758,7 +772,6 @@ TRANSLATIONS = {
                           'es': 'Monitorea las rutas de la biblioteca en busca de cambios. Las rutas locales usan eventos nativos del sistema operativo; los sistemas de archivos de red se consultan en el intervalo de abajo.'},
     'lib.enable_watcher': {'en': 'Enable file watcher', 'es': 'Activar vigilancia de archivos'},
     'lib.polling_interval': {'en': 'Polling interval', 'es': 'Intervalo de consulta'},
-    'lib.save': {'en': 'Save', 'es': 'Guardar'},
 
     'lib.management_heading': {'en': 'Management', 'es': 'Gestión'},
     'lib.management_desc': {'en': 'Configure automated library management.', 'es': 'Configurá la gestión automática de la biblioteca.'},
@@ -839,6 +852,10 @@ TRANSLATIONS = {
     'organizer.windows_compat': {'en': 'Windows compatible filenames', 'es': 'Nombres de archivo compatibles con Windows'},
     'organizer.windows_compat_help': {'en': 'Ownfoil-Plus enforces filename sanitization depending on the OS running it. Enabling this will sanitize filenames with Windows compatible characters and keep paths within the Windows length limit, this is needed when acessing libraries from Windows systems (e.g. SMB/NFS mount).',
                                        'es': 'Ownfoil-Plus sanea los nombres de archivo según el sistema operativo en el que corre. Activar esto sanea los nombres con caracteres compatibles con Windows y mantiene las rutas dentro del límite de longitud de Windows — necesario si accedés a la biblioteca desde sistemas Windows (ej: montaje SMB/NFS).'},
+    'organizer.move_companions_label': {'en': 'Take NFO, SFV and proof files along', 'es': 'Llevar los archivos NFO, SFV y proof con el juego'},
+    'organizer.move_companions_help': {
+        'en': 'A file named as the game (game.nfo next to game.nsp) takes its new name, and a folder left holding only notes, checksums, images and a Proof folder hands them over, so it is left empty. A name already taken where it would go stays where it is.',
+        'es': 'Un archivo con el mismo nombre que el juego (juego.nfo junto a juego.nsp) toma su nombre nuevo, y una carpeta que queda solo con notas, checksums, imágenes y una carpeta Proof se los pasa, así queda vacía. Si el nombre ya existe en el destino, el archivo se queda donde está.'},
     'organizer.clean_names_label': {'en': 'Clean names (remove ™, ®, ©, +, :, ／)', 'es': 'Limpiar nombres (quitar ™, ®, ©, +, :, ／)'},
     'organizer.clean_names_help': {'en': 'Strips trademark, registered and copyright symbols, plus "+" and colons/slashes (in either their normal or fullwidth form), from game names when organizing files, similar to Switch Library Manager\'s clean name option.',
                                     'es': 'Quita los símbolos de marca registrada y copyright, además de "+" y dos puntos/barras (en su forma normal o de ancho completo), de los nombres de los juegos al organizar archivos, similar a la opción de limpieza de nombres de Switch Library Manager.'},
@@ -936,13 +953,21 @@ TRANSLATIONS = {
     'workers.net_limit_help': {'en': 'How many artwork downloads run at once, independent of worker count.',
                                 'es': 'Cuántas descargas de arte corren a la vez, independiente de la cantidad de procesos.'},
 
+    'lib.switch2_label': {'en': 'I have a Nintendo Switch 2', 'es': 'Tengo una Nintendo Switch 2'},
+    'lib.switch2_help': {'en': 'Switch 2 games you don\'t have also show in Sagas. Upcoming releases always shows both consoles, and your Switch 2 games always show, with a "Switch 2" mark.', 'es': 'Los juegos de Switch 2 que no tenés también aparecen en Sagas. Próximos lanzamientos muestra siempre las dos consolas, y los juegos de Switch 2 que tenés aparecen siempre, con la marca "Switch 2".'},
+    'library.console': {'en': 'Console', 'es': 'Consola'},
+    'library.console_all': {'en': 'Both', 'es': 'Todas'},
+    'library.filter_group_ownership': {'en': 'Ownership', 'es': 'Propiedad'},
+    'library.filter_group_updates': {'en': 'Updates', 'es': 'Actualizaciones'},
+    'library.filter_group_dlc': {'en': 'DLC', 'es': 'DLC'},
+    'library.filter_group_health': {'en': 'Files', 'es': 'Archivos'},
     'library.filter_all': {'en': 'All', 'es': 'Todos'},
     'library.filter_owned': {'en': 'Owned', 'es': 'Poseído'},
     'library.filter_missing': {'en': 'Missing', 'es': 'Faltante'},
     'library.filter_up_to_date': {'en': 'Up to date', 'es': 'Al día'},
     'library.filter_missing_update': {'en': 'Missing Update', 'es': 'Falta update'},
     'library.filter_complete': {'en': 'Complete', 'es': 'Completo'},
-    'library.filter_missing_dlc': {'en': 'Missing DLC', 'es': 'Falta DLC'},
+    'library.filter_missing_dlc': {'en': 'Missing DLC', 'es': 'Faltan DLC'},
     'library.filter_health_complete': {'en': 'Complete', 'es': 'Completos'},
     'library.filter_health_incomplete': {'en': 'Incomplete', 'es': 'Incompletos'},
     'library.filter_health_corrupt': {'en': 'Corrupt', 'es': 'Corruptos'},
@@ -993,20 +1018,19 @@ TRANSLATIONS = {
     'library.subtitle': {'en': 'The games in your library. Open one to see its details, updates and DLC.',
                          'es': 'Los juegos de tu biblioteca. Abrí uno para ver sus detalles, actualizaciones y DLC.'},
     'library.tile_games': {'en': 'Games', 'es': 'Juegos'},
-    'library.tile_updates': {'en': 'Games with a pending update', 'es': 'Juegos con actualización pendiente'},
-    'library.tile_missing_dlc': {'en': 'Games missing DLC', 'es': 'Juegos a los que les falta DLC'},
+    'library.tile_updates': {'en': 'Pending updates', 'es': 'Actualizaciones pendientes'},
+    'library.tile_dlc_missing': {'en': 'Missing DLC', 'es': 'DLC faltantes'},
     'library.tile_size': {'en': 'Total size', 'es': 'Tamaño total'},
     'library.progress_heading': {'en': 'Games up to date', 'es': 'Juegos al día'},
     'library.progress': {'en': '{pct}% ({n} / {total})', 'es': '{pct}% ({n} / {total})'},
     'library.view_menu': {'en': 'View', 'es': 'Vista'},
     'library.view_cards': {'en': 'Cards', 'es': 'Tarjetas'},
-    'library.view_icons': {'en': 'Icons', 'es': 'Íconos'},
+    'library.view_compact': {'en': 'Compact view', 'es': 'Vista compacta'},
     'library.view_list': {'en': 'List', 'es': 'Lista'},
-    'library.card_size': {'en': 'Card size', 'es': 'Tamaño de las tarjetas'},
     'library.filters_menu': {'en': 'Filters', 'es': 'Filtros'},
     'library.filters_active': {'en': 'Some filters are on', 'es': 'Hay filtros activos'},
     'library.badge_update': {'en': 'Update', 'es': 'Actualización'},
-    'library.badge_missing_dlc': {'en': 'Missing DLC', 'es': 'Falta DLC'},
+    'library.badge_missing_dlc': {'en': 'Missing DLC', 'es': 'Faltan DLC'},
     'library.badge_complete': {'en': 'Complete', 'es': 'Completo'},
     'library.needs_newer_firmware': {'en': 'Needs firmware {needed}', 'es': 'Necesita firmware {needed}'},
     'library.empty_title': {'en': 'No games match these filters', 'es': 'Ningún juego coincide con estos filtros'},
@@ -1026,7 +1050,7 @@ TRANSLATIONS = {
     'library.retry': {'en': 'Retry', 'es': 'Reintentar'},
     'library.pill_all': {'en': 'All', 'es': 'Todos'},
     'library.pill_outdated': {'en': 'Update pending', 'es': 'Actualización pendiente'},
-    'library.pill_missing_dlc': {'en': 'Missing DLC', 'es': 'Falta DLC'},
+    'library.pill_missing_dlc': {'en': 'Missing DLC', 'es': 'Faltan DLC'},
     'library.pill_up_to_date': {'en': 'Up to date', 'es': 'Al día'},
     'library.pill_complete': {'en': 'Complete', 'es': 'Completos'},
     'library.pill_incomplete': {'en': 'Incomplete', 'es': 'Incompletos'},
@@ -1038,14 +1062,15 @@ TRANSLATIONS = {
     'library.sort_asc': {'en': 'Ascending (click to reverse)', 'es': 'Ascendente (clic para invertir)'},
     'library.sort_desc': {'en': 'Descending (click to reverse)', 'es': 'Descendente (clic para invertir)'},
     'library.items_per_page': {'en': 'Items per page', 'es': 'Elementos por página'},
-    'library.custom_placeholder': {'en': 'Custom', 'es': 'Personalizado'},
-    'library.apply': {'en': 'Apply', 'es': 'Aplicar'},
     'library.details': {'en': 'Details', 'es': 'Detalles'},
     'library.unrecognized': {'en': 'Unrecognized', 'es': 'No reconocido'},
     'library.not_found_in_titledb': {'en': 'not found in titledb', 'es': 'no encontrado en titledb'},
     'library.previous': {'en': 'Previous', 'es': 'Anterior'},
     'library.next': {'en': 'Next', 'es': 'Siguiente'},
     'library.owned': {'en': 'Owned', 'es': 'Poseído'},
+    'library.no_dlc': {'en': 'No DLC', 'es': 'Sin DLC'},
+    'library.dlc_count': {'en': 'DLC {owned}/{total}', 'es': 'DLC {owned}/{total}'},
+    'library.update_available': {'en': 'Update available', 'es': 'Actualización disponible'},
     'library.base_missing': {'en': 'Base game missing', 'es': 'Falta el juego base'},
     'library.missing': {'en': 'Missing', 'es': 'Faltante'},
     'library.base_game': {'en': 'Base Game', 'es': 'Juego base'},
@@ -1089,8 +1114,9 @@ TRANSLATIONS = {
     'upload.button': {'en': 'Upload files', 'es': 'Subir archivos'},
     'upload.title': {'en': 'Upload files to the library', 'es': 'Subir archivos a la biblioteca'},
     'upload.library': {'en': 'Destination library', 'es': 'Biblioteca de destino'},
-    'upload.drop': {'en': 'Drop NSP, NSZ, XCI or XCZ files here, or click to choose',
-                    'es': 'Arrastrá archivos NSP, NSZ, XCI o XCZ acá, o hacé clic para elegirlos'},
+    'upload.free': {'en': '{size} free', 'es': '{size} libres'},
+    'upload.drop': {'en': 'Drop NSP, NSZ, XCI, XCZ or NUP files here, or click to choose',
+                    'es': 'Arrastrá archivos NSP, NSZ, XCI, XCZ o NUP acá, o hacé clic para elegirlos'},
     'upload.drop_hint': {
         'en': 'They are identified and processed like any other new file once uploaded.',
         'es': 'Al terminar se identifican y procesan como cualquier archivo nuevo.'},
@@ -1114,8 +1140,8 @@ TRANSLATIONS = {
     'upload.leave_warning': {'en': 'Uploads in progress will pause.', 'es': 'Las subidas en curso se van a pausar.'},
     'upload.err_exists': {'en': 'A file with that name is already in the library',
                           'es': 'Ya hay un archivo con ese nombre en la biblioteca'},
-    'upload.err_extension': {'en': 'Only NSP, NSZ, XCI and XCZ files can be uploaded',
-                             'es': 'Solo se pueden subir archivos NSP, NSZ, XCI y XCZ'},
+    'upload.err_extension': {'en': 'Only NSP, NSZ, XCI, XCZ and NUP files can be uploaded',
+                             'es': 'Solo se pueden subir archivos NSP, NSZ, XCI, XCZ y NUP'},
     'upload.err_space': {'en': 'Not enough free space in the library',
                          'es': 'No hay espacio libre suficiente en la biblioteca'},
     'upload.err_offline': {'en': 'The library folder is not reachable',
@@ -1187,6 +1213,7 @@ TRANSLATIONS = {
     'files.status_unverified': {'en': 'Unverified', 'es': 'Sin verificar'},
 
     'files.identified_cnmt_tooltip': {'en': 'Identified from its CNMT', 'es': 'Identificado por su CNMT'},
+    'files.identified_nup_tooltip': {'en': 'Identified from its NUP table of contents', 'es': 'Identificado por la tabla de contenidos del NUP'},
     'files.identified_filename_tooltip': {'en': 'Identified from its file name only',
                                           'es': 'Identificado solo por el nombre de archivo'},
     'files.not_identified_tooltip': {'en': 'Not identified', 'es': 'No identificado'},
@@ -1208,6 +1235,7 @@ TRANSLATIONS = {
     'files.filter_format_label': {'en': 'Format', 'es': 'Formato'},
     'files.filter_identified_by_label': {'en': 'Identified by', 'es': 'Identificado por'},
     'files.filter_identified_by_cnmt': {'en': 'CNMT', 'es': 'CNMT'},
+    'files.filter_identified_by_nup': {'en': 'NUP', 'es': 'NUP'},
     'files.filter_identified_by_filename': {'en': 'File name', 'es': 'Nombre de archivo'},
     'files.label_compressed': {'en': 'Compressed', 'es': 'Comprimido'},
     'files.label_organized': {'en': 'Organized', 'es': 'Organizado'},
@@ -1297,6 +1325,7 @@ TRANSLATIONS = {
     'files.dt_downloads': {'en': 'Downloads', 'es': 'Descargas'},
     'files.compressed_suffix': {'en': ', compressed', 'es': ', comprimido'},
     'files.from_cnmt': {'en': 'From CNMT', 'es': 'Desde CNMT'},
+    'files.from_nup': {'en': 'From its NUP table of contents', 'es': 'Desde la tabla de contenidos del NUP'},
     'files.from_filename': {'en': 'From file name', 'es': 'Desde el nombre de archivo'},
     'files.close_title': {'en': 'Close', 'es': 'Cerrar'},
 
@@ -1469,11 +1498,56 @@ TRANSLATIONS = {
 }
 
 
-def current_language():
-    """The person's chosen language for this request: the cookie if it's one we
-    support, otherwise the default. Never raises on a missing/garbled cookie."""
+def _load_locales():
+    """Merge app/locales/<code>.json into TRANSLATIONS. A key the file doesn't have
+    (or a key TRANSLATIONS no longer has) is skipped: English stands in for it."""
+    for lang in SUPPORTED_LANGUAGES:
+        path = os.path.join(LOCALES_DIR, f'{lang}.json')
+        if lang in ('en', 'es') or not os.path.exists(path):
+            continue
+        with open(path, encoding='utf-8') as f:
+            for key, text in json.load(f).items():
+                if key in TRANSLATIONS and isinstance(text, str) and text:
+                    TRANSLATIONS[key][lang] = text
+
+
+_load_locales()
+
+
+def browser_language(header):
+    """The best supported language for an Accept-Language header, or the default.
+    'pt-BR' and 'zh-Hans-CN' count as 'pt' and 'zh'."""
+    choices = []
+    for position, part in enumerate((header or '').split(',')):
+        tag, _, params = part.strip().partition(';')
+        quality = 1.0
+        for param in params.split(';'):
+            name, _, value = param.strip().partition('=')
+            if name == 'q':
+                try:
+                    quality = float(value)
+                except ValueError:
+                    quality = 0.0
+        primary = tag.strip().lower().split('-')[0]
+        if primary in SUPPORTED_LANGUAGES and quality > 0:
+            choices.append((-quality, position, primary))
+    return min(choices)[2] if choices else DEFAULT_LANGUAGE
+
+
+def chosen_language():
+    """What the person picked: a language code, or AUTO_LANGUAGE (also without a
+    cookie, or with one we don't know)."""
     lang = request.cookies.get(LANGUAGE_COOKIE)
-    return lang if lang in SUPPORTED_LANGUAGES else DEFAULT_LANGUAGE
+    return lang if lang in SUPPORTED_LANGUAGES else AUTO_LANGUAGE
+
+
+def current_language():
+    """The language of this request: the one picked, or the browser's when it's set
+    to automatic. Never raises on a missing/garbled cookie."""
+    lang = chosen_language()
+    if lang != AUTO_LANGUAGE:
+        return lang
+    return browser_language(request.headers.get('Accept-Language'))
 
 
 def t(key, **kwargs):
@@ -1494,13 +1568,15 @@ def register_i18n(app):
     create_app."""
     app.jinja_env.globals['t'] = t
     app.jinja_env.globals['current_language'] = current_language
+    app.jinja_env.globals['chosen_language'] = chosen_language
     app.jinja_env.globals['SUPPORTED_LANGUAGES'] = SUPPORTED_LANGUAGES
+    app.jinja_env.globals['LANGUAGE_NAMES'] = LANGUAGE_NAMES
 
     from flask import redirect, request as flask_request
 
     @app.route('/set-language/<lang>')
     def set_language(lang):
-        target = lang if lang in SUPPORTED_LANGUAGES else DEFAULT_LANGUAGE
+        target = lang if lang in SUPPORTED_LANGUAGES else AUTO_LANGUAGE
         next_url = flask_request.referrer or '/'
         resp = redirect(next_url)
         # A year is plenty for a UI preference; the cookie is not sensitive, so no

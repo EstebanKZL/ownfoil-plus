@@ -18,12 +18,17 @@
     </div>
     <p id="savesNone" class="text-secondary" hidden>{{ t('saves.none') }}</p>
 
+    <div class="discover-toolbar" id="savesToolbar" hidden>
+        <div class="discover-search discover-search--bar surface">
+            <i class="bi bi-search" aria-hidden="true"></i>
+            <input type="search" class="form-control" id="savesSearch" placeholder="{{ t('saves.search') }}"
+                aria-label="{{ t('saves.search') }}" autocomplete="off">
+        </div>
+    </div>
+    <p id="savesNoMatch" class="text-secondary" hidden>{{ t('saves.no_match') }}</p>
+
     <div id="savesGames" class="saves-games"></div>
 
-    <section class="surface admin-section discover-section" id="savesMissing" hidden>
-        <h2 class="admin-section__title"><i class="bi bi-exclamation-circle" aria-hidden="true"></i> {{ t('saves.missing') }}</h2>
-        <ul class="dash-list" id="savesMissingList"></ul>
-    </section>
 </div>
 
 <script>

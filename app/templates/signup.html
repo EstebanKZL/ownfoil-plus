@@ -41,8 +41,11 @@
                 <button type="submit" class="btn btn-primary">{{ t('signup.submit') }}</button>
             </div>
         </form>
-        {% else %}
+        {% elif google %}
         <p class="auth-text">{{ t('signup.no_email') }}</p>
+        {% else %}
+        {# Registration is on, but neither way to verify an account is set up yet. #}
+        <div class="alert alert-warning py-2" role="status">{{ t('signup.not_ready') }}</div>
         {% endif %}
         <p class="auth-links"><a href="/login">{{ t('signup.have_account') }}</a></p>
     </div>

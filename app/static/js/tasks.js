@@ -139,6 +139,8 @@ function relativeTime(iso) {
 function taskMeta(task) {
     if (task.cancelled) return I18N.statusCancelled;
     if (task.done) return I18N.statusFinished;
+    // The server's one fixed message (tasks.cleanup_tasks) is shown in the page language.
+    if (task.status === 'failed' && task.errorMessage === 'Interrupted by application restart') return I18N.interrupted;
     if (task.status === 'failed') return task.errorMessage || I18N.statusFailed;
     if (task.runAfter) {
         return `${new Date(task.runAfter).toLocaleString()} — ${relativeTime(task.runAfter)}`;
@@ -342,12 +344,12 @@ function render() {
     section('failedTasks', 'failedEmpty', failed);
     document.getElementById('purgeFailed').classList.toggle('d-none', !failed.length);
 
-    // Queue and Failed show 10 rows, Scheduled 5, the rest by scrolling. Counted on the
-    // top-level rows: a parent's sub-tasks scroll with it.
-    const topLevel = ':scope > .task-list > .task-row';
-    limitVisibleRows(document.getElementById('queueScroll'), topLevel, 10);
-    limitVisibleRows(document.getElementById('failedScroll'), topLevel, 10);
-    limitVisibleRows(document.getElementById('scheduledScroll'), topLevel, 5);
+    // Queue and Failed show 10 rows, Scheduled 5, the rest by scrolling. Every row
+    // counts, sub-tasks included (in the order they show): a scan with hundreds of
+    // files under it no longer shows them all.
+    limitVisibleRows(document.getElementById('queueScroll'), '.task-row', 10);
+    limitVisibleRows(document.getElementById('failedScroll'), '.task-row', 10);
+    limitVisibleRows(document.getElementById('scheduledScroll'), '.task-row', 5);
 
     // A full window means the server had more rows to give. Counting what arrived
     // avoids asking it for a total nothing else needs.

@@ -16,10 +16,12 @@ function storageRemove(key) {
     try { localStorage.removeItem(key); } catch (e) { /* this page only */ }
 }
 
-let itemsPerPage = 12;
+let itemsPerPage = 20;      // the page size in use: pageTarget fitted to the columns shown
+let pageTarget = 20;        // what was chosen: 10, 20 ... 100
 let currentPage = 1;
+// The console the cards show: '' both, 'switch', 'switch2' (remembered per browser).
+let activeConsole = ['switch', 'switch2'].includes(storageGet('libraryConsole')) ? storageGet('libraryConsole') : '';
 let totalItems = 0;
-let cardSize = 3; // The current view's card size; Cards and Icons each remember their own
 let currentView = 'card'; // Default view is 'card'
 let fetchSeq = 0;    // guards against an older request answering after a newer one
 let searchDebounce;
@@ -75,10 +77,11 @@ function setSort(field, direction) {
 // There is no separate local-cache proxy to go through here any more.
 const CARDS_QUERY = `
     query Cards($page: Int!, $pageSize: Int!, $appType: [AppType!], $search: String,
-                $owned: Boolean, $upToDate: Boolean, $complete: Boolean, $orderBy: OrderBy) {
+                $owned: Boolean, $upToDate: Boolean, $complete: Boolean, $orderBy: OrderBy,
+                $console: String) {
         apps(groupByAppId: true, orderBy: $orderBy, page: $page, pageSize: $pageSize,
              appType: $appType, search: $search, owned: $owned,
-             upToDate: $upToDate, complete: $complete) {
+             upToDate: $upToDate, complete: $complete, console: $console) {
             total
             items {
                 appId
@@ -89,17 +92,19 @@ const CARDS_QUERY = `
                     category numberOfPlayers rating languages size
                     screenshots { url }
                 }
-                title { titleId name ownership { haveBase upToDate complete } }
+                title { titleId name ownership { haveBase upToDate complete dlcOwned dlcTotal } }
+                downloadableFile { format }
             }
         }
     }`;
 
 const ICONS_QUERY = `
     query Icons($page: Int!, $pageSize: Int!, $appType: [AppType!], $search: String,
-                $owned: Boolean, $upToDate: Boolean, $complete: Boolean, $orderBy: OrderBy) {
+                $owned: Boolean, $upToDate: Boolean, $complete: Boolean, $orderBy: OrderBy,
+                $console: String) {
         apps(groupByAppId: true, orderBy: $orderBy, page: $page, pageSize: $pageSize,
              appType: $appType, search: $search, owned: $owned,
-             upToDate: $upToDate, complete: $complete) {
+             upToDate: $upToDate, complete: $complete, console: $console) {
             total
             items {
                 appId
@@ -109,7 +114,8 @@ const ICONS_QUERY = `
                     category numberOfPlayers rating languages size
                     screenshots { url }
                 }
-                title { titleId name }
+                title { titleId name ownership { haveBase upToDate complete dlcOwned dlcTotal } }
+                downloadableFile { format }
             }
         }
     }`;
@@ -183,6 +189,7 @@ function queryVariables() {
         upToDate: activeUpdateFilter ? activeUpdateFilter === 'Up to date' : null,
         complete: activeCompletionFilter ? activeCompletionFilter === 'Complete' : null,
         orderBy: librarySort,
+        console: activeConsole || null,
     };
 }
 
@@ -225,7 +232,8 @@ async function loadPage() {
         return loadPage();
     }
 
-    $('#cardSizeRange').val(cardSize);
+    // The Compact view is a grid of its own; Cards and List lay out in Bootstrap's row.
+    $('#gameGrid').toggleClass('compact-grid', currentView === 'icon');
     if (!totalItems) {
         showLibraryState(anyFilterOrSearch() ? 'libraryEmpty' : 'libraryEmptyLibrary');
     } else {
@@ -234,7 +242,7 @@ async function loadPage() {
     if (currentView === 'list') {
         renderListView(data.titles.items);
     } else if (currentView === 'icon') {
-        renderIconView(data.apps.items);
+        renderCompactView(data.apps.items.map(cardModel));
     } else {
         renderCardView(data.apps.items.map(cardModel));
     }
@@ -254,7 +262,7 @@ async function loadPage() {
 const LIBRARY_STATS_QUERY = `
     query LibraryStats {
         stats {
-            ownedTitles completeTitles upToDateTitles totalFiles totalSize
+            ownedTitles completeTitles upToDateTitles currentTitles missingDlc totalFiles totalSize
         }
     }`;
 
@@ -276,28 +284,31 @@ function renderLibraryStats(stats) {
     if (!stats.ownedTitles) return;
     const owned = stats.ownedTitles;
     const pending = stats.ownedTitles - stats.upToDateTitles;
-    const missingDlc = stats.ownedTitles - stats.completeTitles;
 
     $('#libraryCount').text(owned.toLocaleString()).prop('hidden', false);
 
-    // (value, label, icon, tone, pill it applies or null)
+    // (value, label, note, icon, tone, pill it applies or null, link or null). Pending
+    // updates count base games only - the same games the "up to date" bar below leaves
+    // out; DLC count only under missing DLC.
     const tiles = [
-        [owned.toLocaleString(), I18N.tileGames, 'bi-controller', 'ok', null],
-        [pending.toLocaleString(), I18N.tileUpdates, 'bi-arrow-up-circle', 'wait', 'outdated'],
-        [missingDlc.toLocaleString(), I18N.tileMissingDlc, 'bi-puzzle', 'nav', 'missingDlc'],
+        [owned.toLocaleString(), I18N.tileGames, null, 'bi-controller', 'ok', 'all', null],
+        [pending.toLocaleString(), I18N.tileUpdates, null, 'bi-arrow-up-circle', 'wait', 'outdated', null],
+        [stats.missingDlc.toLocaleString(), I18N.tileDlcMissing, null, 'bi-puzzle', 'nav', 'missingDlc', null],
     ];
     // File figures are admin only and read zero for every other role, which is what
-    // keeps the library's storage footprint off a shop user's screen.
+    // keeps the library's storage footprint off a shop user's screen. It leads to Stats.
     if (stats.totalFiles) {
-        tiles.push([formatBytes(stats.totalSize), I18N.tileSize, 'bi-hdd-stack', 'action', null]);
+        tiles.push([formatBytes(stats.totalSize), I18N.tileSize, null, 'bi-hdd-stack', 'action', null, '/admin/stats']);
     }
 
     const box = $('#libraryTiles').empty();
-    tiles.forEach(([value, label, icon, tone, pill]) => {
-        const tile = $(pill ? '<button type="button">' : '<div>').addClass(`stat-tile stat-tile--${tone}`);
+    tiles.forEach(([value, label, note, icon, tone, pill, link]) => {
+        const tile = $(pill ? '<button type="button">' : link ? '<a>' : '<div>').addClass(`stat-tile stat-tile--${tone}`);
+        if (link) tile.attr('href', link);
         tile.append($('<span class="stat-tile__icon">').append($('<i>').addClass(`bi ${icon}`)),
                     $('<div class="stat-tile__value">').text(value),
                     $('<div class="stat-tile__label">').text(label));
+        if (note) tile.append($('<div class="stat-tile__note">').text(note));
         if (pill) {
             tile.attr('data-pill', pill).on('click', () => {
                 // These filters belong to the cards and icons: leave the list view first.
@@ -309,9 +320,10 @@ function renderLibraryStats(stats) {
     });
     box.prop('hidden', false);
 
-    const pct = Math.round(100 * stats.upToDateTitles / owned);
+    // "Up to date" means nothing missing: the latest update and every DLC.
+    const pct = Math.round(100 * stats.currentTitles / owned);
     $('#libraryProgressLabel').text(I18N.progress
-        .replace('{pct}', pct).replace('{n}', stats.upToDateTitles.toLocaleString())
+        .replace('{pct}', pct).replace('{n}', stats.currentTitles.toLocaleString())
         .replace('{total}', owned.toLocaleString()));
     $('#libraryProgress .progress').attr('aria-valuenow', pct);
     $('#libraryProgress .progress-bar').css('width', pct + '%');
@@ -326,7 +338,8 @@ const CARD_PILLS = {
     all: {update: '', completion: '', ownership: ''},
     outdated: {update: 'Outdated', completion: '', ownership: 'Owned'},
     missingDlc: {update: '', completion: 'Missing DLC', ownership: 'Owned'},
-    upToDate: {update: 'Up to date', completion: '', ownership: 'Owned'},
+    // Up to date: nothing missing - the latest update and every DLC.
+    upToDate: {update: 'Up to date', completion: 'Complete', ownership: 'Owned'},
 };
 
 // What each list-view pill sets: the list's own health filter.
@@ -335,11 +348,14 @@ const LIST_PILLS = {all: '', complete: 'COMPLETE', incomplete: 'INCOMPLETE', cor
 // One request for every pill's count, with the grid's own variables minus the filter
 // the pills set - so each count is exactly what clicking that pill returns.
 const CARD_COUNTS_QUERY = `
-    query CardCounts($appType: [AppType!], $search: String, $owned: Boolean) {
-        all: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, page: 1, pageSize: 1) { total }
-        outdated: apps(groupByAppId: true, appType: $appType, search: $search, owned: true, upToDate: false, page: 1, pageSize: 1) { total }
-        missingDlc: apps(groupByAppId: true, appType: $appType, search: $search, owned: true, complete: false, page: 1, pageSize: 1) { total }
-        upToDate: apps(groupByAppId: true, appType: $appType, search: $search, owned: true, upToDate: true, page: 1, pageSize: 1) { total }
+    query CardCounts($appType: [AppType!], $search: String, $owned: Boolean, $console: String) {
+        all: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, console: $console, page: 1, pageSize: 1) { total }
+        outdated: apps(groupByAppId: true, appType: $appType, search: $search, owned: true, upToDate: false, console: $console, page: 1, pageSize: 1) { total }
+        missingDlc: apps(groupByAppId: true, appType: $appType, search: $search, owned: true, complete: false, console: $console, page: 1, pageSize: 1) { total }
+        upToDate: apps(groupByAppId: true, appType: $appType, search: $search, owned: true, upToDate: true, complete: true, console: $console, page: 1, pageSize: 1) { total }
+        consoleAll: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, page: 1, pageSize: 1) { total }
+        consoleSwitch: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, console: "switch", page: 1, pageSize: 1) { total }
+        consoleSwitch2: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, console: "switch2", page: 1, pageSize: 1) { total }
     }`;
 
 const LIST_COUNTS_QUERY = `
@@ -362,7 +378,7 @@ async function loadPillCounts() {
         vars = {search: listQueryVariables().search};
     } else {
         const grid = queryVariables();
-        vars = {appType: grid.appType, search: grid.search, owned: grid.owned};
+        vars = {appType: grid.appType, search: grid.search, owned: grid.owned, console: grid.console};
     }
     let data;
     try {
@@ -383,12 +399,46 @@ function activePill() {
     if (currentView === 'list') {
         return Object.keys(LIST_PILLS).find(k => LIST_PILLS[k] === activeHealthFilter) || null;
     }
-    return Object.keys(CARD_PILLS).find(k =>
+    const exact = Object.keys(CARD_PILLS).find(k =>
         CARD_PILLS[k].update === activeUpdateFilter && CARD_PILLS[k].completion === activeCompletionFilter
-        && CARD_PILLS[k].ownership === activeOwnershipFilter) || null;
+        && CARD_PILLS[k].ownership === activeOwnershipFilter);
+    if (exact) return exact;
+    // "All" is every game whatever its state: with no update or DLC filter on it stays
+    // lit, also when the Filters menu narrows ownership (only mine, only missing).
+    return !activeUpdateFilter && !activeCompletionFilter ? 'all' : null;
+}
+
+/** Both / Switch / Switch 2, with how many of each the view holds (cards and compact). */
+/** The cover's bottom-left: the file's format, and "Switch 2" for its games. */
+function coverFormat(game) {
+    const box = $('<span class="library-cover-format">');
+    if (game.switch2) box.append($('<span class="library-cover-console">').text('Switch 2'));
+    if (game.format) box.append($('<span>').text(game.format));
+    return box;
+}
+
+function renderConsolePills() {
+    const row = $('#libraryConsole').empty().prop('hidden', currentView === 'list');
+    [['', I18N.consoleAll, 'consoleAll', 'bi-collection'], ['switch', 'Switch', 'consoleSwitch', 'bi-nintendo-switch'],
+     ['switch2', 'Switch 2', 'consoleSwitch2', 'bi-nintendo-switch']].forEach(([value, label, key, icon]) => {
+        const pill = $('<button type="button" class="filter-pill filter-pill--console">')
+            .toggleClass('active', activeConsole === value)
+            .attr('aria-pressed', activeConsole === value ? 'true' : 'false')
+            .append($('<i aria-hidden="true">').addClass(`bi ${icon}`), $('<span>').text(label));
+        if (pillCounts[key] !== undefined) {
+            pill.append($('<span class="filter-pill__count">').text(pillCounts[key].toLocaleString()));
+        }
+        pill.on('click', () => {
+            activeConsole = value;
+            if (value) storageSet('libraryConsole', value); else storageRemove('libraryConsole');
+            resetToFirstPage();
+        });
+        row.append(pill);
+    });
 }
 
 function renderPills() {
+    renderConsolePills();
     const names = currentView === 'list' ? Object.keys(LIST_PILLS) : Object.keys(CARD_PILLS);
     const active = activePill();
     const row = $('#libraryPills').empty();
@@ -443,11 +493,18 @@ try {
     const nav = (performance.getEntriesByType('navigation') || [])[0];
     if (nav && nav.type === 'back_forward') {
         scrollToRestore = parseInt(sessionStorage.getItem('libraryScroll'));
+        // ...and the page of the grid it was on.
+        const page = parseInt(sessionStorage.getItem('libraryPage'));
+        if (page > 1) currentPage = page;
     }
     sessionStorage.removeItem('libraryScroll');
+    sessionStorage.removeItem('libraryPage');
 } catch (e) { /* storage unavailable: start at the top */ }
 window.addEventListener('pagehide', () => {
-    try { sessionStorage.setItem('libraryScroll', String(Math.round(window.scrollY))); } catch (e) { /* ignore */ }
+    try {
+        sessionStorage.setItem('libraryScroll', String(Math.round(window.scrollY)));
+        sessionStorage.setItem('libraryPage', String(currentPage));
+    } catch (e) { /* ignore */ }
 });
 
 function restoreLibraryScroll() {
@@ -483,9 +540,8 @@ function resetToFirstPage() {
     loadPillCounts();
 }
 
-/** The metadata-modal object for one app - shared by cardModel (Card view) and
- *  iconMeta (Icon view), so both open the same modal with the same data on a
- *  cover click. `id` is the title's own id for a BASE app (its own metadata is
+/** The metadata object for one app, kept on each card model (cardModel - the Cards
+ *  and Compact views). `id` is the title's own id for a BASE app (its own metadata is
  *  the title's), or the app's own id for an UPDATE/DLC. */
 function metaFromApp(app, name) {
     const meta = app.titledb || {};
@@ -524,11 +580,23 @@ function cardModel(app) {
         id: recognized ? title.titleId : title.titleId + ' ' + I18N.notFoundInTitledb,
         name: title.name || I18N.unrecognized,
         bannerUrl: meta.bannerUrl || '',
+        iconUrl: meta.iconUrl || '',
         owned: ownership.haveBase,
+        format: (app.downloadableFile || {}).format || null,
+        switch2: /^04/i.test(title.titleId || app.appId || ''),
+        update_pending: Boolean(ownership.haveBase) && ownership.upToDate === false,
+        dlc_owned: ownership.dlcOwned || 0,
+        dlc_total: ownership.dlcTotal || 0,
         title_id: recognized ? title.titleId : null,
         meta: metaFromApp(app, title.name || I18N.unrecognized),
         url: gameUrl(app),
     };
+}
+
+/** "DLC 1/2", or "No DLC" for a game without any: text only, no bar. */
+function dlcCountText(owned, total) {
+    if (!total) return I18N.noDlc;
+    return I18N.dlcCount.replace('{owned}', owned).replace('{total}', total);
 }
 
 /** "Publisher · 2021" (either part may be missing), from the catalogue's metadata. */
@@ -564,8 +632,18 @@ function renderCardView(games) {
         // state shown is a base game the library doesn't hold (only its DLC or an
         // update), in gray like a missing game in Sagas.
         const badges = $('<div class="library-badges">');
-        if (game.owned === false) badges.append(statusBadge('wait', 'bi-dash-circle', I18N.baseMissing));
+        if (game.owned === false) {
+            badges.append(statusBadge('wait', 'bi-dash-circle', I18N.baseMissing).attr('title', I18N.baseMissing));
+        }
         coverWrap.append(badges);
+        // Along the cover's bottom: the file's format on the left, and on the right a
+        // mark when the game has a newer update than the library's.
+        if (game.format || game.switch2) coverWrap.append(coverFormat(game));
+        if (game.update_pending) {
+            coverWrap.append($('<span class="library-cover-update">')
+                .attr({title: I18N.updateAvailable, role: 'img', 'aria-label': I18N.updateAvailable})
+                .append('<i class="bi bi-arrow-up-circle-fill" aria-hidden="true"></i>'));
+        }
         card.append(coverWrap);
 
         const body = $('<div class="library-card-body">');
@@ -576,7 +654,8 @@ function renderCardView(games) {
         if (metaLine) body.append($('<p class="library-card-meta">').text(metaLine));
 
         const foot = $('<div class="library-card-foot">');
-        foot.append($('<small class="library-card-id">').text(game.id));
+        foot.append($('<small class="library-card-id">').text(game.id),
+                    $('<small class="library-card-dlc">').text(dlcCountText(game.dlc_owned, game.dlc_total)));
         body.append(foot);
 
         card.append(body);
@@ -588,7 +667,9 @@ function renderCardView(games) {
 
 /** "Needs firmware X": a game the user's console (My account) is too old for. */
 function firmwareBadge(needed) {
-    return statusBadge('wait', 'bi-cpu', I18N.needsNewerFirmware.replace('{needed}', needed));
+    // The words also as the tooltip: on a phone the cover shows just the icon.
+    const label = I18N.needsNewerFirmware.replace('{needed}', needed);
+    return statusBadge('firmware', 'bi-cpu', label).attr('title', label);
 }
 
 /** Cards come from a grouped apps query without the firmware: once they are drawn, one
@@ -613,31 +694,47 @@ async function markCardFirmware() {
     });
 }
 
-/** Icon view's equivalent of cardModel - much less display data (just the icon
- *  image itself), but the same metadata-modal object on click. */
-function iconModel(app) {
-    const meta = app.titledb || {};
-    const title = app.title || {};
-    const name = app.appType === 'BASE' ? (title.name || I18N.unrecognized) : (meta.name || I18N.unrecognized);
-    return {
-        iconUrl: meta.iconUrl || '',
-        name: name,
-        url: gameUrl(app),
-    };
-}
-
-function renderIconView(apps) {
+/** The Compact view: narrower cards, five or six a row - the game's square cover, its
+ *  name, publisher and year, title id and DLC count, with the same marks as a card. */
+function renderCompactView(games) {
     const gameGrid = $('#gameGrid');
-    gameGrid.empty(); // Clear existing games
+    gameGrid.empty();
+    games.forEach(game => {
+        const card = $('<div class="card game-surface compact-card">').toggleClass('is-missing', game.owned === false);
+        if (game.title_id) card.attr('data-firmware-title', game.title_id);
 
-    apps.map(iconModel).forEach(icon => {
-        const img = $('<img class="game-icon library-icon" loading="lazy" alt="">').attr('src', icon.iconUrl);
-        gameGrid.append($('<a class="library-icon-link">').attr({href: icon.url, title: icon.name, 'aria-label': icon.name})
-            .append(img));
+        const cover = $('<a class="compact-cover" tabindex="-1" aria-hidden="true">').attr('href', game.url);
+        cover.append(game.iconUrl
+            ? $('<img class="compact-cover__img" loading="lazy" alt="">').attr('src', game.iconUrl)
+                .on('error', function () {
+                    $(this).replaceWith('<span class="compact-cover__img library-cover--empty"><i class="bi bi-controller" aria-hidden="true"></i></span>');
+                })
+            : $('<span class="compact-cover__img library-cover--empty"><i class="bi bi-controller" aria-hidden="true"></i></span>'));
+        const badges = $('<div class="library-badges">');
+        if (game.owned === false) {
+            badges.append(statusBadge('wait', 'bi-dash-circle', I18N.baseMissing).attr('title', I18N.baseMissing));
+        }
+        cover.append(badges);
+        if (game.format || game.switch2) cover.append(coverFormat(game));
+        if (game.update_pending) {
+            cover.append($('<span class="library-cover-update">')
+                .attr({title: I18N.updateAvailable, role: 'img', 'aria-label': I18N.updateAvailable})
+                .append('<i class="bi bi-arrow-up-circle-fill" aria-hidden="true"></i>'));
+        }
+
+        const body = $('<div class="compact-card__body">');
+        body.append($('<h6 class="game-title library-card-title">').append(
+            $('<a class="stretched-link library-card-link">').attr('href', game.url).text(game.name).attr('title', game.name)));
+        const metaLine = cardMetaLine(game.meta);
+        if (metaLine) body.append($('<p class="library-card-meta">').text(metaLine));
+        body.append($('<div class="library-card-foot">').append(
+            $('<small class="library-card-id">').text(game.id),
+            $('<small class="library-card-dlc">').text(dlcCountText(game.dlc_owned, game.dlc_total))));
+
+        gameGrid.append(card.append(cover, body));
     });
-
-    // Adjust icon sizes based on the slider value
-    adjustIconSizes(cardSize);
+    adjustCompactSizes();
+    markCardFirmware();
 }
 
 // --- List view: one row per game, with Base/Updates/DLC unified underneath ---
@@ -928,21 +1025,71 @@ function renderListView(titles) {
 /** The slider sets how many cards a row holds, but only from `md` up: below that
  *  the screen cannot carry six of them, and a card too narrow to fit its own title
  *  grows an overlay taller than the banner it sits on. */
+/** Cards: at most four a row - two on a phone, three on a tablet, four from 1200px. */
 function cardColumnClasses() {
-    const columns = getColumnsForCardSize(cardSize);
-    // Phones always get two columns: one card per row is a lot of scrolling.
-    return `col-6 col-md-${12 / columns}`;
+    return 'col-6 col-md-4 col-xl-3';
 }
 
-function getColumnsForCardSize(size) {
-    switch (size) {
-        case 1: return 1; // 2 columns
-        case 2: return 2; // 3 columns
-        case 3: return 3; // 4 columns
-        case 4: return 4; // 6 columns
-        case 5: return 6; // 8 columns
-        default: return 4; // default to 3 columns
+/** How many cards a row of the current view holds at this width, the same rule the CSS
+ *  follows (Bootstrap's breakpoints for Cards, the compact grid's auto-fill for Compact). */
+function gridColumns() {
+    if (currentView === 'list') return 1;
+    const width = window.innerWidth;
+    if (currentView === 'card') return width >= 1200 ? 4 : width >= 768 ? 3 : 2;
+    const grid = document.getElementById('gameGrid');
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const gap = .85 * rem;
+    const minCard = parseFloat(COMPACT_CARD_MIN) * rem;
+    const space = (grid && grid.clientWidth) || width;
+    return Math.max(2, Math.floor((space + gap) / (minCard + gap)));
+}
+
+/** The page sizes offered: 10, 20 ... 100, each rounded to whole rows of `columns` (the
+ *  nearest multiple above, or below when that passes 100), so no row is left short. */
+function pageSizeOptions(columns) {
+    const sizes = [];
+    for (let target = 10; target <= 100; target += 10) {
+        let size = Math.ceil(target / columns) * columns;
+        if (size > 100) size = Math.floor(100 / columns) * columns;
+        if (size >= columns && !sizes.includes(size)) sizes.push(size);
     }
+    return sizes;
+}
+
+/** The page size for the chosen target at this width: its option in pageSizeOptions. */
+function fittedPageSize(target, columns) {
+    const sizes = pageSizeOptions(columns);
+    const index = Math.max(0, Math.min(sizes.length - 1, Math.round(target / 10) - 1));
+    return sizes[Math.min(index, sizes.length - 1)];
+}
+
+function renderPageSizeOptions() {
+    const columns = gridColumns();
+    const box = $('#pageSizeOptions').empty();
+    pageSizeOptions(columns).forEach((size, i) => {
+        const target = (i + 1) * 10;
+        box.append($('<button type="button" class="page-size-option">')
+            .toggleClass('active', size === itemsPerPage)
+            .attr('aria-pressed', size === itemsPerPage ? 'true' : 'false')
+            .text(size)
+            .on('click', () => {
+                pageTarget = target;
+                storageSet('pageTarget', String(target));
+                itemsPerPage = size;
+                renderPageSizeOptions();
+                resetToFirstPage();
+            }));
+    });
+}
+
+/** Re-fit the page size to the columns now shown (a resize, another view): a different
+ *  size reloads the page, so every row stays full. */
+function refitPageSize(reload) {
+    const size = fittedPageSize(pageTarget, gridColumns());
+    const changed = size !== itemsPerPage;
+    itemsPerPage = size;
+    renderPageSizeOptions();
+    if (changed && reload) loadPage();
 }
 
 /** Page numbers around the current one: the totals are server-side now, and a
@@ -1020,28 +1167,14 @@ function updatePaginationControls(totalPages) {
     });
 }
 
-function adjustCardSizes() {
-    const gameGrid = $('#gameGrid');
-    const gameCols = gameGrid.find('.game-col');
-    gameCols.each(function () {
-        $(this).removeClass().addClass(`col game-col ${cardColumnClasses()}`);
-    });
+/** The Compact view's card width for the size slider: the smallest a card may be, the
+ *  grid fitting as many as that allows (about six a row at the middle size). */
+function adjustCompactSizes() {
+    // One size, not chosen: the Compact view's cards stay legible (Vista hides the slider).
+    document.getElementById('gameGrid').style.setProperty('--compact-min', COMPACT_CARD_MIN);
 }
 
-function adjustIconSizes() {
-    // Calculate the size of the icons based on the slider value
-    const iconSize = 100 / (cardSize + 3); // Assuming 100 is the maximum size
-
-    // Update the CSS of the game icons
-    $('.library-icon-link').css('width', `${iconSize}%`);
-}
-
-/** The card size Cards or Icons last used: each view keeps its own (the one size both
- *  shared before is where they start from). */
-function savedSizeFor(view) {
-    const savedCardSize = parseInt(storageGet('cardSize.' + view) || storageGet('cardSize'));
-    return savedCardSize >= 1 && savedCardSize <= 5 ? savedCardSize : 3;
-}
+const COMPACT_CARD_MIN = '12rem';
 
 function saveFiltersToStorage() {
     storageSet('activeFilters', JSON.stringify({
@@ -1055,6 +1188,9 @@ function saveFiltersToStorage() {
 function loadFiltersFromStorage() {
     let filters = null;
     try { filters = JSON.parse(storageGet('activeFilters') || 'null'); } catch (e) { /* unreadable: no filters */ }
+    // What's stored is the whole state: the browser refills form fields by itself when
+    // coming back to a page, and that must not bring back filters that were cleared.
+    ['#ownershipAll', '#updateAll', '#completionAll', '#healthAll'].forEach(id => $(id).prop('checked', true));
     if (filters && typeof filters === 'object') {
 
         $('#ownershipOwned').prop('checked', filters.ownership === 'Owned');
@@ -1071,13 +1207,11 @@ function loadFiltersFromStorage() {
         $('#healthCorrupt').prop('checked', filters.health === 'CORRUPT');
         $('#healthRepack').prop('checked', filters.health === 'REPACK');
 
-        updateFilter();
     }
+    updateFilter();
 
     const savedSearch = storageGet('searchTerm');
-    if (savedSearch) {
-        $('#textFilter').val(savedSearch);
-    }
+    $('#textFilter').val(savedSearch || '');
     // ?q= from the global search (Ctrl+K) wins over the remembered search.
     const urlSearch = new URLSearchParams(location.search).get('q');
     if (urlSearch) {
@@ -1148,14 +1282,9 @@ function clearAllFilters() {
     resetToFirstPage();
 }
 
-/** A typed page size as a whole number from 1 to 500 - the most the server returns
- *  for a list page - or null when it isn't a number. Larger values would page past
- *  rows the server never sends; fractions would make zero-sized pages. */
-function clampPageSize(value) {
-    const n = Math.floor(Number(value));
-    if (!Number.isFinite(n) || n < 1) return null;
-    return Math.min(500, n);
-}
+// Back from a game page the Library is as it was left: the same filters and search
+// (remembered in storage), the same page and scroll (kept per tab on pagehide, see
+// scrollToRestore). From the browser's back-forward cache it is simply shown again.
 
 function onFilterChange() {
     updateFilter();
@@ -1175,7 +1304,6 @@ function updateFiltersDot() {
 /** Show the toolbar parts that apply to the current view: card size for cards and
  *  icons, and each view's own filter groups. */
 function applyViewToToolbar() {
-    $('#cardSizeRangeCol').toggleClass('d-none', currentView === 'list');
     $('#filterDropdownCol').toggleClass('d-none', currentView === 'list');
     $('#listHealthFilterCol').toggleClass('d-none', currentView !== 'list');
     updateFiltersDot();
@@ -1184,10 +1312,8 @@ function applyViewToToolbar() {
 $(document).ready(function () {
     // Only sensible values are taken back: a bad page size or an unknown view would
     // otherwise reach the server as a failing query.
-    const savedItemsPerPage = parseInt(storageGet('itemsPerPage'));
-    if (savedItemsPerPage > 0 && savedItemsPerPage <= 500) {
-        itemsPerPage = savedItemsPerPage;
-    }
+    const savedTarget = parseInt(storageGet('pageTarget'));
+    if (savedTarget >= 10 && savedTarget <= 100 && savedTarget % 10 === 0) pageTarget = savedTarget;
 
     const savedCurrentView = storageGet('currentView');
     if (['card', 'icon', 'list'].includes(savedCurrentView)) {
@@ -1197,7 +1323,7 @@ $(document).ready(function () {
         applyViewToToolbar();
     }
 
-    cardSize = savedSizeFor(currentView);
+    refitPageSize(false);
 
     loadFiltersFromStorage();
     updateFiltersDot();
@@ -1210,33 +1336,14 @@ $(document).ready(function () {
     $('#clearFiltersBtn').on('click', clearAllFilters);
     $('#libraryRetryBtn').on('click', () => { loadPage(); loadLibraryStats(); loadPillCounts(); });
 
-    // Event listeners for items per page dropdown
-    $('.items-per-page').click(function () {
-        itemsPerPage = $(this).data('value');
-        storageSet('itemsPerPage', itemsPerPage);
-        resetToFirstPage();
+    // A narrower or wider window can hold another number of cards a row: the page size
+    // follows, so the last row is never left with one card.
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => refitPageSize(true), 250);
     });
-
-    $('#applyCustomItemsPerPage').click(function () {
-        const size = clampPageSize($('#customItemsPerPage').val());
-        if (size) {
-            itemsPerPage = size;
-            $('#customItemsPerPage').val(size);
-            storageSet('itemsPerPage', itemsPerPage);
-            resetToFirstPage();
-        }
-    });
-
-    // Event listener for card size slider
-    $('#cardSizeRange').on('input', function () {
-        cardSize = parseInt($(this).val());
-        storageSet('cardSize.' + currentView, cardSize);
-        if (currentView === 'icon') {
-            adjustIconSizes(cardSize);
-        } else {
-            adjustCardSizes(cardSize);
-        }
-    });
+    $('#filtersClearBtn').on('click', clearAllFilters);
 
     // Event listener for view buttons
     $('.view-toggle-btn').click(function () {
@@ -1244,8 +1351,8 @@ $(document).ready(function () {
         $(this).addClass("active");
         currentView = $(this).data('view');
         storageSet('currentView', currentView);
-        cardSize = savedSizeFor(currentView);
         applyViewToToolbar();
+        refitPageSize(false);
         // The views page different things (every card vs one icon per game), so the
         // page number from the previous view means nothing here.
         resetToFirstPage();

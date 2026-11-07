@@ -8,7 +8,8 @@ import pytest
 
 from settings import get_settings
 
-SERVICES = ("registration", "shop", "maintenance", "notifications", "vault", "discovery")
+SERVICES = ("registration", "shop", "public_shop", "watcher", "maintenance", "notifications", "vault",
+            "discovery")
 
 
 def _login(shop_app, user):
@@ -35,7 +36,8 @@ def test_the_panel_lists_every_service_with_its_state(shop_app):
 @pytest.mark.parametrize("service,path", [
     ("registration", ("registration", "enabled")), ("shop", ("shop", "enabled")),
     ("maintenance", ("maintenance", "enabled")), ("notifications", ("notifications", "enabled")),
-    ("vault", ("vault", "enabled")), ("discovery", ("services", "discovery", "enabled"))])
+    ("vault", ("vault", "enabled")), ("discovery", ("services", "discovery", "enabled")),
+    ("public_shop", ("shop", "public")), ("watcher", ("library", "watcher", "enabled"))])
 def test_a_switch_turns_its_service_on_and_off(shop_app, service, path):
     admin = _login(shop_app, "admin")
 

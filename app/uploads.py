@@ -71,14 +71,19 @@ def _lock(upload_id):
         return _locks.setdefault(upload_id, threading.Lock())
 
 
-def _load(upload_id):
+def _load(upload_id, user=None):
+    """One upload session. With `user`, only that user's: an upload belongs to whoever
+    started it, and to anyone else it doesn't exist (no adding to it, no cancelling it)."""
     if not upload_id or not all(c in '0123456789abcdef' for c in upload_id):
         raise UploadError('not_found', 'No such upload', 404)
     try:
         with open(_session_path(upload_id), encoding='utf-8') as f:
-            return json.load(f)
+            session = json.load(f)
     except FileNotFoundError:
         raise UploadError('not_found', 'No such upload', 404)
+    if user is not None and session.get('user') not in (None, user):
+        raise UploadError('not_found', 'No such upload', 404)
+    return session
 
 
 def _save(session):
@@ -103,8 +108,9 @@ def _public(session):
     }
 
 
-def start(library, filename, size, libraries):
-    """Create or resume an upload. Returns its public state (with the offset to send from)."""
+def start(library, filename, size, libraries, user=None):
+    """Create or resume an upload. Returns its public state (with the offset to send from).
+    The session belongs to `user`: another user starting the same file gets a refusal."""
     if library not in libraries:
         raise UploadError('bad_library', 'Unknown library')
     filename = sanitize_filename(filename)
@@ -126,8 +132,12 @@ def start(library, filename, size, libraries):
         try:
             session = _load(upload_id)
         except UploadError:
+            session = None
+        if session is not None and session.get('user') not in (None, user):
+            raise UploadError('exists', 'Someone else is uploading a file with that name', 409)
+        if session is None:
             session = {
-                'id': upload_id, 'library': library, 'filename': filename, 'size': size,
+                'id': upload_id, 'library': library, 'filename': filename, 'size': size, 'user': user,
                 'final': final, 'partial': os.path.join(library, f'.{filename}.{upload_id[:8]}.part'),
                 'created': datetime.datetime.now().isoformat(timespec='seconds'),
             }
@@ -142,15 +152,15 @@ def start(library, filename, size, libraries):
         return _public(session)
 
 
-def status(upload_id):
-    return _public(_load(upload_id))
+def status(upload_id, user=None):
+    return _public(_load(upload_id, user))
 
 
-def append(upload_id, offset, stream, length):
+def append(upload_id, offset, stream, length, user=None):
     """Append `length` bytes from `stream` at `offset`. Returns (state, finished_path):
     finished_path is the library file once the last byte has landed, else None."""
     with _lock(upload_id):
-        session = _load(upload_id)
+        session = _load(upload_id, user)
         current = _offset(session)
         if offset != current:
             # Lost response, retried chunk, two tabs: tell the client where we really are.
@@ -193,9 +203,9 @@ def _remove_session(upload_id):
         pass
 
 
-def cancel(upload_id):
+def cancel(upload_id, user=None):
     with _lock(upload_id):
-        session = _load(upload_id)
+        session = _load(upload_id, user)
         try:
             os.remove(session['partial'])
         except FileNotFoundError:
@@ -203,8 +213,8 @@ def cancel(upload_id):
         _remove_session(upload_id)
 
 
-def list_sessions():
-    """Unfinished uploads, newest first."""
+def list_sessions(user=None):
+    """Unfinished uploads (with `user`, only that user's), newest first."""
     try:
         names = [n for n in os.listdir(SESSION_DIR) if n.endswith('.json')]
     except FileNotFoundError:
@@ -212,7 +222,7 @@ def list_sessions():
     sessions = []
     for name in names:
         try:
-            sessions.append(_public(_load(name[:-5])))
+            sessions.append(_public(_load(name[:-5], user)))
         except (UploadError, ValueError, OSError):
             continue
     return sorted(sessions, key=lambda s: s['created'], reverse=True)

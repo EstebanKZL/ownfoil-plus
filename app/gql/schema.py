@@ -124,6 +124,9 @@ class Query:
             = False,
         page: Page = 1,
         page_size: PageSize = 100,
+        console: Annotated[Optional[str], _arg(
+            "`switch2`: only Nintendo Switch 2 titles (ids starting with 04); `switch`: "
+            "only the others.")] = None,
     ) -> AppConnection:
         """A page of apps: base games, updates and DLC, owned or merely known.
         Requires shop access; returns an empty page otherwise.
@@ -139,7 +142,7 @@ class Query:
             owned=owned, app_type=app_type, filter=filter,
             up_to_date=up_to_date, complete=complete,
             search=search, order_by=order_by, group_by_app_id=group_by_app_id,
-            page=page, page_size=page_size, ctx=info.context, info=info,
+            page=page, page_size=page_size, ctx=info.context, info=info, console=console,
         )
 
     @described_field

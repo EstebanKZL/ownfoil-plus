@@ -16,12 +16,12 @@ const GAME_QUERY = `
             ownership { haveBase upToDate complete }
             apps(owned: true) {
                 appId appType appVersion releaseDate
-                downloadableFile { id size verificationStatus }
+                downloadableFile { id size verificationStatus format }
                 files { id filename size extension }
             }
             updateApps: apps(appType: [UPDATE]) {
                 appId appVersion releaseDate owned
-                downloadableFile { id size verificationStatus }
+                downloadableFile { id size verificationStatus format }
             }
             availableDlc {
                 appId version
@@ -124,7 +124,9 @@ function renderHero(t) {
     // A base game the library doesn't hold is drawn in gray, like a missing game in
     // Sagas or on its Library card.
     const cover = $('<div class="game-hero__cover">').toggleClass('is-missing', !(own && own.haveBase));
-    const art = t.bannerUrl || t.iconUrl;
+    // The game's square cover, like the eShop's; the banner only when there's none (it
+    // stays as the blurred backdrop either way).
+    const art = t.iconUrl || t.bannerUrl;
     cover.append(art
         ? $('<img alt="">').attr('src', art)
         : $('<div class="library-cover--empty"><i class="bi bi-controller" aria-hidden="true"></i></div>'));
@@ -183,7 +185,7 @@ function renderFacts(t) {
         ['bi-arrow-up-circle', I18N.latestVersion, (owned || latest) ? `v${latest}` : null],
         // The newest version's; a console older than that can't run it up to date.
         ['bi-cpu', I18N.requiredFirmware, t.requiredFirmware,
-         firmwareTooOld(t.requiredFirmware, CONSOLE_FIRMWARE) ? 'game-fact--warn' : ''],
+         firmwareTooOld(t.requiredFirmware, CONSOLE_FIRMWARE) ? 'game-fact--firmware' : ''],
     ].filter(([, , value]) => value !== null && value !== undefined && value !== '');
 
     const box = $('#gameFacts').empty();
@@ -192,7 +194,7 @@ function renderFacts(t) {
         fact.append($('<div class="game-fact__label">')
             .append($('<i aria-hidden="true">').addClass(`bi ${icon}`), $('<span>').text(label)));
         fact.append($('<div class="game-fact__value">').text(value));
-        if (extra === 'game-fact--warn') {
+        if (extra === 'game-fact--firmware') {
             fact.append($('<div class="game-fact__note">').text(I18N.firmwareTooOld
                 .replace('{mine}', CONSOLE_FIRMWARE).replace('{needed}', t.requiredFirmware)));
         }
@@ -278,7 +280,7 @@ function ownedBadge(owned) {
 
 function renderSections(t) {
     const box = $('#gameSections').empty();
-    [renderDescription(t), renderScreenshots(t), renderUpdates(t), renderDlc(t), renderFiles(t)]
+    [renderDescription(t), renderScreenshots(t), renderUpdates(t), renderDlc(t)]
         .filter(Boolean).forEach(s => box.append(s));
 }
 
@@ -384,10 +386,18 @@ function renderUpdates(t) {
 }
 
 function renderDlc(t) {
-    const dlc = t.availableDlc || [];
-    if (!dlc.length) return null;
     const ownedIds = ownedDlcIds(t);
     const ownedApps = Object.fromEntries((t.apps || []).filter(a => a.appType === 'DLC').map(a => [a.appId, a]));
+    // The catalogue's DLC plus the ones you have that it doesn't list (newer than the
+    // catalogue, say): the same set the Library card counts, so "35 / 35" reads the same
+    // here - never "35 / 32".
+    const listed = new Set((t.availableDlc || []).map(d => d.appId));
+    const extra = [...ownedIds].filter(id => !listed.has(id)).map(id => {
+        const file = ((ownedApps[id] || {}).files || [])[0];
+        return {appId: id, titledb: {name: file ? file.filename : null}};
+    });
+    const dlc = (t.availableDlc || []).concat(extra);
+    if (!dlc.length) return null;
     // Owned first, then what is missing.
     const sorted = dlc.slice().sort((a, b) => Number(ownedIds.has(b.appId)) - Number(ownedIds.has(a.appId)));
     const list = $('<ul class="game-rows">');
@@ -407,27 +417,6 @@ function renderDlc(t) {
     return section('gameDlc', 'bi-puzzle', `${I18N.dlc} (${ownedIds.size} / ${dlc.length})`, list);
 }
 
-/** Every file the library holds for this game. Admin only: `files` is null for
- *  anyone else, and the section is not drawn. */
-function renderFiles(t) {
-    if (!IS_ADMIN) return null;
-    const rows = [];
-    (t.apps || []).forEach(a => (a.files || []).forEach(f => rows.push({app: a, file: f})));
-    if (!rows.length) return null;
-    const verification = Object.fromEntries((t.apps || []).filter(a => a.downloadableFile)
-        .map(a => [a.downloadableFile.id, a.downloadableFile.verificationStatus]));
-    const list = $('<ul class="game-rows">');
-    rows.forEach(({app, file}) => {
-        const sub = [app.appType, `v${app.appVersion}`, (file.extension || '').toUpperCase()]
-            .filter(Boolean).join(' · ');
-        list.append(contentRow({
-            icon: 'bi-file-earmark-zip', name: file.filename, sub, owned: true,
-            file: {id: file.id, size: file.size, verificationStatus: verification[file.id]},
-        }));
-    });
-    return section('gameFiles', 'bi-hdd-stack', I18N.files, list);
-}
-
 /** `?dlc=<appId>` (a DLC card in the Library) scrolls to that DLC and marks it. */
 function highlightDlcFromUrl() {
     const id = new URLSearchParams(location.search).get('dlc');
@@ -441,22 +430,61 @@ function highlightDlcFromUrl() {
 
 // --- actions --------------------------------------------------------------------------
 
-/** Every downloadable file of the game: the base, its updates and its DLC. */
-function downloadableFileIds(t) {
-    const ids = new Set();
-    (t.apps || []).forEach(a => { if (a.downloadableFile) ids.add(a.downloadableFile.id); });
-    (t.updateApps || []).forEach(a => { if (a.owned && a.downloadableFile) ids.add(a.downloadableFile.id); });
-    return [...ids];
+/** Every file of the game the viewer may download, for the Files dialog. An admin sees
+ *  each file by its name (`files`, admin only); anyone else one file per owned base,
+ *  update and DLC (`downloadableFile`), named after what it holds. */
+function gameFiles(t) {
+    const dlcNames = Object.fromEntries((t.availableDlc || [])
+        .map(d => [d.appId, (d.titledb || {}).name || d.appId]));
+    const label = a => a.appType === 'BASE' ? t.name || t.titleId
+        : a.appType === 'DLC' ? dlcNames[a.appId] || a.appId : `v${a.appVersion}`;
+    const typeName = a => ({BASE: I18N.typeBase, UPDATE: I18N.typeUpdate, DLC: I18N.typeDlc})[a.appType] || a.appType;
+    const order = {BASE: 0, UPDATE: 1, DLC: 2};
+    const icons = {BASE: 'bi-controller', UPDATE: 'bi-arrow-up-circle', DLC: 'bi-puzzle'};
+    const apps = (t.apps || []).concat((t.updateApps || []).filter(a => a.owned)
+        .map(a => Object.assign({appType: 'UPDATE'}, a)));
+    const verification = {};
+    apps.forEach(a => {
+        if (a.downloadableFile) verification[a.downloadableFile.id] = a.downloadableFile.verificationStatus;
+    });
+    // What each file holds: a NUP or a multi-content file carries the game, updates and DLC.
+    const parts = {};
+    apps.forEach(a => {
+        const ids = IS_ADMIN && a.files ? a.files.map(f => f.id) : a.downloadableFile ? [a.downloadableFile.id] : [];
+        ids.forEach(id => {
+            const list = parts[id] = parts[id] || [];
+            const label = `${typeName(a)} v${a.appVersion}`;
+            if (!list.includes(label)) list.push(label);
+        });
+    });
+    const seen = new Set();
+    const rows = [];
+    apps.forEach(a => {
+        const files = IS_ADMIN && a.files ? a.files
+            : a.downloadableFile ? [Object.assign({extension: a.downloadableFile.format}, a.downloadableFile)] : [];
+        files.forEach(f => {
+            if (seen.has(f.id)) return;
+            seen.add(f.id);
+            rows.push({
+                id: f.id, size: f.size, verificationStatus: verification[f.id],
+                name: f.filename || label(a), icon: icons[a.appType] || 'bi-file-earmark-zip',
+                sub: [(parts[f.id] || []).length > 1 ? parts[f.id].join(', ') : `${typeName(a)} v${a.appVersion}`,
+                      (f.extension || '').toUpperCase()].filter(Boolean).join(' · '),
+                order: a.appType in order ? order[a.appType] : 3,
+            });
+        });
+    });
+    return rows.sort((a, b) => a.order - b.order);
 }
 
 function renderActions(t) {
     const box = $('#gameActions').empty();
-    const fileIds = downloadableFileIds(t);
-    if (canDownload() && fileIds.length) {
-        box.append($('<button type="button" class="btn btn-primary">')
-            .append($('<i class="bi bi-download" aria-hidden="true"></i>'),
-                    $('<span>').text(` ${I18N.downloadAll} (${fileIds.length})`))
-            .on('click', () => downloadAll(fileIds)));
+    const files = canDownload() ? gameFiles(t) : [];
+    if (files.length) {
+        box.append($('<button type="button" class="btn btn-primary" id="gameFilesBtn">')
+            .append($('<i class="bi bi-hdd-stack" aria-hidden="true"></i>'),
+                    $('<span>').text(` ${I18N.files} (${files.length})`))
+            .on('click', () => openFiles(files)));
     }
     if (IS_ADMIN) {
         box.append($('<button type="button" class="btn btn-outline-secondary">')
@@ -468,6 +496,33 @@ function renderActions(t) {
         .append($('<i class="bi bi-clipboard" aria-hidden="true"></i>'),
                 $('<span>').text(` ${I18N.copyTitleId}`))
         .on('click', () => copyTitleId(t.titleId)));
+}
+
+/** The Files dialog: each file with its size, check and its own download link, and
+ *  "Download all" at the foot. Every download is the browser's own (a plain link to
+ *  the route, which answers with Content-Disposition: attachment). */
+function openFiles(files) {
+    const list = $('#gameFilesList').empty();
+    files.forEach(f => {
+        const lead = $('<div class="game-row__lead">').append(
+            $('<span class="game-row__icon game-row__icon--glyph">')
+                .append($('<i aria-hidden="true">').addClass(`bi ${f.icon}`)),
+            $('<div class="game-row__text">').append(
+                $('<div class="game-row__name">').text(f.name),
+                $('<div class="game-row__sub">').text(f.sub)));
+        const tail = $('<div class="game-row__tail">');
+        if (f.size) tail.append($('<span class="game-row__size">').text(formatBytes(f.size)));
+        const ver = verificationBadge(f.verificationStatus);
+        if (ver) tail.append(ver);
+        tail.append($('<a class="btn btn-sm icon-btn p-0" download>')
+            .attr({href: `/api/library/download/${f.id}`, title: I18N.downloadTooltip,
+                   'aria-label': I18N.downloadAria.replace('{name}', f.name)})
+            .append('<i class="bi bi-download" aria-hidden="true"></i>'));
+        list.append($('<li class="game-row">').append(lead, tail));
+    });
+    $('#gameFilesDownloadAll').off('click').on('click', () => downloadAll(files.map(f => f.id)))
+        .find('span').text(` ${I18N.downloadAll} (${files.length})`);
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('gameFilesModal')).show();
 }
 
 /** One file after another: each is a normal download through the existing route

@@ -168,9 +168,11 @@ def test_load_handles_not_found_and_failure():
 def test_sections_render_from_the_query():
     js = _js("game.js")
     body = _function_body(js, "renderSections")
-    for fn in ("renderDescription", "renderScreenshots", "renderUpdates", "renderDlc", "renderFiles"):
+    for fn in ("renderDescription", "renderScreenshots", "renderUpdates", "renderDlc"):
         assert f"{fn}(" in body, fn
         _function_body(js, fn)  # defined
+    # The files moved out of the page into the Files dialog.
+    assert "renderFiles" not in js
 
 
 def test_downloads_follow_the_existing_gate():
@@ -182,8 +184,22 @@ def test_downloads_follow_the_existing_gate():
     assert "function downloadButton" not in _js("library.js")
 
 
-def test_files_are_for_admins_only():
-    assert "IS_ADMIN" in _function_body(_js("game.js"), "renderFiles")
+def test_file_names_are_for_admins_only():
+    body = _function_body(_js("game.js"), "gameFiles")
+    assert "IS_ADMIN && a.files" in body and "downloadableFile" in body
+
+
+def test_the_files_button_opens_a_dialog_with_native_downloads(shop_app):
+    html = _page(_login(shop_app.client, "shopper")).get_data(as_text=True)
+    for needle in ('id="gameFilesModal"', 'id="gameFilesList"', 'id="gameFilesDownloadAll"'):
+        assert needle in html, needle
+    js = _js("game.js")
+    actions = _function_body(js, "renderActions")
+    assert "I18N.files" in actions and "openFiles(" in actions
+    assert "downloadAll(" not in actions
+    dialog = _function_body(js, "openFiles")
+    assert "download>" in dialog and "/api/library/download/" in dialog
+    assert "downloadAll(" in dialog and "gameFilesModal" in dialog
 
 
 def test_dlc_link_is_validated_scrolled_and_highlighted():
@@ -250,8 +266,8 @@ def test_cards_icons_and_list_rows_are_links():
     js = _js("library.js")
     card = _function_body(js, "renderCardView")
     assert "<a" in card and "attr('href', game.url)" in card
-    icons = _function_body(js, "renderIconView")
-    assert "<a" in icons and "href" in icons
+    compact = _function_body(js, "renderCompactView")
+    assert "<a" in compact and "attr('href', game.url)" in compact
     details = _function_body(js, "metadataButton")
     assert "<a" in details and "href" in details
     assert "?dlc=" in _function_body(js, "renderListView")
@@ -313,6 +329,6 @@ def test_scroll_is_only_restored_when_going_back():
     the Library after a bfcache Back), jumping to the middle of the page."""
     js = _js("library.js")
     i = js.index("sessionStorage.getItem('libraryScroll')")
-    setup = js[js.rindex("let scrollToRestore", 0, i):i + 200]
+    setup = js[js.rindex("let scrollToRestore", 0, i):i + 600]
     assert "back_forward" in setup
     assert "sessionStorage.removeItem('libraryScroll')" in setup

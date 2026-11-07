@@ -11,6 +11,7 @@ from constants import APP_TYPE_BASE, APP_TYPE_UPD
 from containers.verification import status_of
 from db import db, Media
 from settings import local_media_enabled
+from titledb import store as titledb_store
 
 from .context import GraphQLContext
 from .filters import (
@@ -96,6 +97,13 @@ def _title_cols(driver: str, sel: "Selection") -> str:
         cols.append("ot.have_base AS have_base")
         cols.append("ot.up_to_date AS up_to_date")
         cols.append("ot.complete AS complete")
+        # The DLC counts a card shows ("DLC 1/2"): only when asked, one lookup each.
+        own_sel = sel.child("ownership")
+        if own_sel.has("dlcOwned") or own_sel.has("dlcTotal"):
+            cols.append("(SELECT COUNT(DISTINCT a.app_id) FROM main.apps a "
+                        "WHERE a.title_id = ot.id AND a.app_type = 'DLC') AS dlc_total")
+            cols.append("(SELECT COUNT(DISTINCT a.app_id) FROM main.apps a "
+                        "WHERE a.title_id = ot.id AND a.app_type = 'DLC' AND a.owned) AS dlc_owned")
     return ", ".join(cols)
 
 _FILE_COLS = """
@@ -216,6 +224,8 @@ def _build_title(row, *, with_apps: bool, with_files: bool) -> Title:
             have_base=bool(m.get('have_base')),
             up_to_date=bool(m.get('up_to_date')),
             complete=bool(m.get('complete')),
+            dlc_owned=m.get('dlc_owned'),
+            dlc_total=m.get('dlc_total'),
         )
     title_id = (m.get('title_id') or "").upper()
     icon_url, banner_url, screenshots, icon_media, banner_media, screenshots_media = _local_media_urls(
@@ -484,18 +494,24 @@ def _hydrate_titledb_versions(titles: List[Title]) -> None:
     placeholders = ",".join(f":v_{i}" for i in range(len(ids)))
     # The firmware each version needs is the cnmt's requiredSystemVersion: the base
     # game's own cnmt for version 0, the update's (title id ending 800) for the rest.
-    # cnmts keeps the JSON's lowercase ids.
+    # cnmts keeps the JSON's lowercase ids. cnmts.json leaves it empty for many older
+    # updates: then the value read from the library's own file (apps), when it has it.
     rows = db.session.execute(text(f"""
     SELECT td.id AS key, 0 AS version, {_ISO_RELEASE_DATE} AS release_date,
-           (SELECT MAX(c.required_system_version) FROM titledb.cnmts c
-            WHERE c.app_id = lower(td.id) AND c.version = 0) AS required_system_version
+           COALESCE((SELECT MAX(c.required_system_version) FROM titledb.cnmts c
+                     WHERE c.app_id = lower(td.id) AND c.version = 0),
+                    (SELECT MAX(a.required_system_version) FROM main.apps a
+                     WHERE a.app_id = td.id AND a.app_version = '0')) AS required_system_version
     FROM {_TITLEDB} td
     WHERE td.id IN ({placeholders}) AND td.release_date IS NOT NULL
     UNION ALL
     SELECT v.title_id AS key, v.version AS version, v.release_date AS release_date,
-           (SELECT MAX(c.required_system_version) FROM titledb.cnmts c
-            WHERE c.app_id = lower(substr(v.title_id, 1, 13) || '800')
-              AND c.version = v.version) AS required_system_version
+           COALESCE((SELECT MAX(c.required_system_version) FROM titledb.cnmts c
+                     WHERE c.app_id = lower(substr(v.title_id, 1, 13) || '800')
+                       AND c.version = v.version),
+                    (SELECT MAX(a.required_system_version) FROM main.apps a
+                     WHERE a.app_id = substr(v.title_id, 1, 13) || '800'
+                       AND CAST(a.app_version AS INTEGER) = v.version)) AS required_system_version
     FROM titledb.versions v
     WHERE v.title_id IN ({placeholders})
     ORDER BY key, version
@@ -540,6 +556,34 @@ def _hydrate_titledb_dlc(titles: List[Title], sel: "Selection") -> None:
             titledb=_build_title(r, with_apps=False, with_files=False)
                     if want_titledb and r._mapping.get('title_id') else None,
         ))
+    # Then the DLC only the catalogue lists (cnmts.json has just the dumped ones, so
+    # Biomutant's language packs are only here): every id in each game's DLC range,
+    # at version 0 - titledb.store.get_all_dlc_versions does the same for the library.
+    spans = [(t.title_id, titledb_store.dlc_id_range(t.title_id)) for t in titles if t.title_id]
+    spans = [(game, span) for game, span in spans if span]
+    if spans:
+        span_params = {}
+        for i, (_game, (low, high)) in enumerate(spans):
+            span_params[f"lo_{i}"], span_params[f"hi_{i}"] = low, high
+        where = " OR ".join(f"(td.id BETWEEN :lo_{i} AND :hi_{i})" for i in range(len(spans)))
+        listed = db.session.execute(text(f"""
+        SELECT UPPER(td.id) AS dlc_app_id, {_title_cols('titledb', titledb_sel)}
+        FROM {_TITLEDB} td
+        LEFT JOIN main.titles ot ON ot.title_id = UPPER(td.id)
+        WHERE {where}
+        ORDER BY dlc_app_id
+        """), span_params).all()
+        for r in listed:
+            game = f"{(int(r.dlc_app_id, 16) - 0x1000) & ~0xFFF:016X}"
+            known = by_id.setdefault(game, [])
+            if any(d.app_id == r.dlc_app_id for d in known):
+                continue
+            known.append(TitledbDlc(
+                app_id=r.dlc_app_id, version=0,
+                titledb=_build_title(r, with_apps=False, with_files=False)
+                        if want_titledb and r._mapping.get('title_id') else None))
+        for known in by_id.values():
+            known.sort(key=lambda d: d.app_id)
     for t in titles:
         t.available_dlc_loaded = by_id.get(t.title_id, [])
 
@@ -915,7 +959,7 @@ def resolve_apps(*, owned: Optional[bool], app_type: Optional[List[AppType]],
                   search: Optional[str] = None, order_by: Optional[OrderBy] = None,
                   group_by_app_id: bool = False,
                   page: int, page_size: int, ctx: GraphQLContext, info,
-                  only_pk: Optional[str] = None) -> AppConnection:
+                  only_pk: Optional[str] = None, console: Optional[str] = None) -> AppConnection:
     if not ctx.can_shop:
         return AppConnection(total=0, items=[])
     page = max(1, page)
@@ -981,6 +1025,11 @@ def resolve_apps(*, owned: Optional[bool], app_type: Optional[List[AppType]],
     if search:
         params["search"] = f"%{search}%"
         where.append(_APP_SEARCH)
+    # Nintendo Switch 2 titles have ids starting with 04 (their DLC and updates too).
+    if console == 'switch2':
+        where.append("a.app_id LIKE '04%'")
+    elif console == 'switch':
+        where.append("a.app_id NOT LIKE '04%'")
 
     where_sql = (" WHERE " + " AND ".join(where)) if where else ""
     group_sql = " GROUP BY a.app_id" if group_by_app_id else ""
@@ -1510,12 +1559,23 @@ def resolve_stats(*, ctx: GraphQLContext, info) -> LibraryStats:
 
     # Completeness is only meaningful for a title that is owned, so all three figures
     # come off the same owned-titles scan.
-    if any(sel.has(f) for f in ("ownedTitles", "completeTitles", "upToDateTitles")):
+    if any(sel.has(f) for f in ("ownedTitles", "completeTitles", "upToDateTitles", "currentTitles")):
         r = db.session.execute(text("""
-        SELECT COUNT(*), COALESCE(SUM(complete), 0), COALESCE(SUM(up_to_date), 0)
+        SELECT COUNT(*), COALESCE(SUM(complete), 0), COALESCE(SUM(up_to_date), 0),
+               COALESCE(SUM(up_to_date AND complete), 0)
         FROM main.titles WHERE have_base = 1""")).first()
-        stats.owned_titles, stats.complete_titles, stats.up_to_date_titles = (
-            int(r[0]), int(r[1]), int(r[2]))
+        stats.owned_titles, stats.complete_titles, stats.up_to_date_titles, stats.current_titles = (
+            int(r[0]), int(r[1]), int(r[2]), int(r[3]))
+
+    if sel.has("outdatedDlc") or sel.has("missingDlc"):
+        r = db.session.execute(text("""
+        SELECT COALESCE(SUM(owned_v IS NULL), 0), COALESCE(SUM(owned_v IS NOT NULL AND known > owned_v), 0)
+        FROM (SELECT MAX(CAST(a.app_version AS INTEGER)) AS known,
+                     MAX(CASE WHEN a.owned THEN CAST(a.app_version AS INTEGER) END) AS owned_v
+              FROM apps a JOIN main.titles t ON t.id = a.title_id
+              WHERE a.app_type = :dlc AND t.have_base = 1
+              GROUP BY a.app_id)"""), {"dlc": "DLC"}).first()
+        stats.missing_dlc, stats.outdated_dlc = int(r[0]), int(r[1])
 
     if any(sel.has(f) for f in ("totalApps", "ownedApps")):
         r = db.session.execute(text(

@@ -91,7 +91,7 @@ def test_history_outlives_the_file(shop_app):
         assert event.title_id == GAME_ID and event.filename.endswith("[v0].nsp")
 
 
-def test_old_entries_are_pruned_on_the_next_download(shop_app):
+def test_old_entries_are_kept_for_good(shop_app):
     with shop_app.app.app_context():
         db.session.add(DownloadEvent(filename="old.nsp", client="web",
                                      downloaded_at=datetime.datetime.utcnow() - datetime.timedelta(days=400)))
@@ -99,8 +99,8 @@ def test_old_entries_are_pruned_on_the_next_download(shop_app):
         file_id = _base_file().id
     shop_app.client.get(f"/api/get_game/{file_id}", headers=_basic("shopper")).close()
     with shop_app.app.app_context():
-        assert [e.filename for e in _events() if e.filename == "old.nsp"] == []
-        assert len(_events()) == 1
+        assert [e.filename for e in _events() if e.filename == "old.nsp"] == ["old.nsp"]
+        assert len(_events()) == 2
 
 
 def test_a_recording_failure_does_not_break_the_download(shop_app, monkeypatch):
@@ -172,4 +172,4 @@ def test_migration_chain_ends_at_download_events():
     cfg = Config()
     cfg.set_main_option("script_location", os.path.join(os.path.dirname(__file__), "..", "app", "migrations"))
     script = ScriptDirectory.from_config(cfg)
-    assert script.get_heads() == ["b2c3d4e5f6a8"]
+    assert script.get_heads() == ["c3d4e5f6a7b9"]

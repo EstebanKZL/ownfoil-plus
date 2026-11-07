@@ -87,7 +87,7 @@ def test_stats_page_has_the_overview_sections(admin_client):
     html = admin_client.get("/admin/stats").get_data(as_text=True)
     assert 'class="page-head' in html
     for section in ("statsFormats", "statsLibraries", "statsVerification", "statsTypes", "statsLargest",
-                    "downloadsSection", "duplicatesSection"):
+                    "downloadsSection"):
         assert re.search(rf'id="{section}"[^>]*>|class="[^"]*surface[^"]*"[^>]*id="{section}"', html), section
     for chart in ("formatDonut", "verificationRing", "largestFiles"):
         assert f'id="{chart}"' in html, chart
@@ -165,7 +165,7 @@ def test_recent_rows_link_to_the_game_and_icons_come_in_one_request():
     js = _js("dashboard.js")
     # The rows and the icon request are shared with Statistics since 6.2.5.49
     # (static/js/title-list.js; tests/test_admin_polish.py covers the single request).
-    assert "titleListRow(" in _function_body(js, "renderList")
+    assert "titleListRow(" in _function_body(js, "renderCardList")
     shared = _js("title-list.js")
     assert "`/game/${titleId}`" in shared
     icons = _function_body(shared, "fillTitleIcons")
@@ -184,9 +184,10 @@ def test_recent_downloads_carry_their_title_id(admin_client, shop_app):
     assert data["recent_downloads"][0]["title_id"] == "0100000000010000"
 
 
-def test_status_chips_are_status_badges():
-    body = _function_body(_js("dashboard.js"), "renderStatus")
-    assert "status-badge" in body and "text-bg-" not in body
+def test_the_dashboard_has_no_status_chips(admin_client):
+    # Each service's state is under Services; the dashboard keeps alerts and lists.
+    assert "renderStatus" not in _js("dashboard.js")
+    assert 'id="dashStatus"' not in admin_client.get("/admin").get_data(as_text=True)
 
 
 def test_dashboard_strings_are_translated():

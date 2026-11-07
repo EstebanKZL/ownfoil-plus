@@ -8,7 +8,7 @@ from flask import Request, Response, request, send_from_directory
 from .client import BaseClient
 from db import Files, Libraries, increment_download_count_throttled
 from constants import APP_TYPE_FILTERS, ALLOWED_EXTENSIONS
-from utils import client_address
+from utils import client_address, servable_library_file
 
 # Sphaira announces itself as `Sphaira/<version>` since version 1.0.6.
 SPHAIRA_USER_AGENT = 'Sphaira/'
@@ -153,7 +153,7 @@ class SphairaClient(BaseClient):
         candidates = [os.path.join(library.path, *paths) for library in Libraries.query.all()]
         file = Files.query.filter(Files.filepath.in_(candidates)).order_by(Files.id).first()
 
-        if not file:
+        if not file or not servable_library_file(file.filepath):
             self.log_warning(f"File not found: {path}")
             # Throws NspBadMagic for HEAD requests anyway
             return self.error_response("File not found")

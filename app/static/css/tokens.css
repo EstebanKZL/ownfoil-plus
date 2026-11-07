@@ -61,6 +61,10 @@
     --op-danger-rgb: 248, 81, 73;
     --op-info: #58a6ff;
     --op-info-rgb: 88, 166, 255;
+    --op-dlc: #22d3ee;           /* DLC counts: cyan in every style */
+    --op-dlc-rgb: 34, 211, 238;
+    --op-firmware: #a78bfa;      /* "needs firmware X": violet, apart from the amber waits */
+    --op-firmware-rgb: 167, 139, 250;
 }
 
 /* The soft warm light theme Ownfoil-Plus already had, now as tokens. */
@@ -87,6 +91,10 @@
     --op-danger-rgb: 207, 34, 46;
     --op-info: #0969da;
     --op-info-rgb: 9, 105, 218;
+    --op-dlc: #0e7490;
+    --op-dlc-rgb: 14, 116, 144;
+    --op-firmware: #6d28d9;
+    --op-firmware-rgb: 109, 40, 217;
 }
 
 /* --- Styles ----------------------------------------------------------------------- */

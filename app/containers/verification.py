@@ -19,8 +19,10 @@ DEPTH_SIGNATURE = 'signature'
 DEPTH_HASH = 'hash'
 DEPTHS = (DEPTH_SIGNATURE, DEPTH_HASH)
 
-# The container formats nstools can open. Same set the compressor works on.
-VERIFY_EXT = frozenset(COMPRESS_EXT) | frozenset(DECOMPRESS_EXT)
+# The container formats nstools can open (the same set the compressor works on), plus
+# NUP, checked by its own SHA-256 list (containers/nup.py) without keys.
+VERIFY_EXT = frozenset(COMPRESS_EXT) | frozenset(DECOMPRESS_EXT) | {'nup'}
+NO_KEYS_EXT = frozenset({'nup'})
 
 # One label for the verdicts `verify` returns. Derived on read, never stored.
 STATUS_UNVERIFIED = 'UNVERIFIED'
@@ -126,6 +128,30 @@ def _modified_from(messages):
                for msg in messages for line in msg.splitlines())
 
 
+def _verify_nup(filepath, depth, progress):
+    """A NUP: its table of contents' hash is the "signature" level, every file's SHA-256
+    the hash level. Nothing in it is encrypted, so no keys are needed."""
+    from . import nup
+    try:
+        nup.read(filepath)
+    except (nup.NupError, OSError) as e:
+        return False, (False if depth == DEPTH_HASH else None), None, str(e)
+    if depth != DEPTH_HASH:
+        return True, None, None, None
+    report = None
+    if progress is not None:
+        last = {'pct': -1}
+
+        def report(fraction):
+            # Only a percent change is worth a database write.
+            pct = min(99, int(fraction * 100))
+            if pct != last['pct']:
+                last['pct'] = pct
+                progress(pct)
+    ok, error = nup.verify(filepath, progress=report)
+    return True, ok, False if not ok else None, error
+
+
 def verify(filepath, depth, progress=None):
     """Verify one container. Returns (signature_valid, hash_valid, hash_modified, error).
 
@@ -134,6 +160,9 @@ def verify(filepath, depth, progress=None):
     still filed under the names the container's own CNMT records, so they were rewritten
     in place rather than damaged or swapped.
     """
+    if filepath.lower().endswith('.nup'):
+        return _verify_nup(filepath, depth, progress)
+
     from settings import ensure_keys
     ensure_keys('verify')
 

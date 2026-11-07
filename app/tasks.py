@@ -25,7 +25,9 @@ from db import (
     verification_status, _library_looks_offline, deletion_event_is_trustworthy,
     Titles, upsert_media, get_title_media, delete_media_slots,
 )
+import settings as settings_lib
 from settings import get_settings, local_media_enabled
+from constants import APP_TYPE_BASE, APP_TYPE_UPD
 from utils import interval_string_to_timedelta, delete_empty_folders, human_size
 from library import (
     add_missing_apps_for_title, update_title_flags,
@@ -127,6 +129,7 @@ TASK_DISPLAY = {
     'startup': lambda **kw: 'Startup',
     'update_titledb': lambda **kw: 'Update TitleDB',
     'update_series': lambda **kw: 'Update sagas',
+    'backfill_required_firmware': lambda **kw: 'Read required firmware',
     'scheduled_maintenance': lambda **kw: 'Daily maintenance',
     'download_media': lambda **kw: 'Download title artwork',
     'download_title_media': lambda title_id=None, **kw: (
@@ -659,12 +662,45 @@ def startup_task(**kwargs):
     # window turned off while the server was down must not leave a stale run behind.
     reschedule_maintenance()
     _cleanup_stale_uploads()
+    if titles_lib.Keys.keys_loaded:
+        enqueue_task('backfill_required_firmware')
     try:
         update_titledb_task()
     except Exception:
         # A retry is already scheduled; scanning must not be held hostage to the network
         logger.exception('titledb update failed at startup')
     scan_libraries_task()
+
+@register_task('backfill_required_firmware')
+def backfill_required_firmware_task(**kwargs):
+    """Once per install: read the firmware each owned base game / update needs
+    (apps.required_system_version) from files identified before it was stored. TitleDB
+    lacks it for many older updates, so the file's own CNMT is the only source."""
+    if not titles_lib.Keys.keys_loaded or not settings_lib.mark_once('required_firmware_backfilled'):
+        return
+    from containers.cnmt import identify_file_from_cnmt
+    files = (Files.query.join(Files.apps)
+             .filter(Apps.app_type.in_([APP_TYPE_BASE, APP_TYPE_UPD]),
+                     Apps.required_system_version.is_(None),
+                     Files.identification_type == 'cnmt')
+             .distinct().all())
+    updated = 0
+    for file in files:
+        try:
+            contents = identify_file_from_cnmt(file.filepath)
+        except Exception as e:
+            logger.debug(f'Could not read the firmware of {file.filepath}: {e}')
+            continue
+        for content in contents:
+            if len(content) < 4 or not content[3]:
+                continue
+            _, app_id, version, required = content[:4]
+            updated += Apps.query.filter_by(
+                app_id=app_id, app_version=str(version), required_system_version=None,
+            ).update({'required_system_version': required}, synchronize_session=False)
+        db.session.commit()
+    logger.info(f'Required firmware read for {updated} base games/updates')
+
 
 # --- Periodic tasks ---
 @register_task('update_titledb')
@@ -1016,6 +1052,7 @@ def _identify(file, mgmt):
                 owned=True,
                 title_id=title_id_in_db,
                 display_version=file_content.get("display_version"),
+                required_system_version=file_content.get("required_system_version"),
             )
             stmt = stmt.on_conflict_do_update(
                 index_elements=['app_id', 'app_version'],
@@ -1023,6 +1060,8 @@ def _identify(file, mgmt):
                     'owned': True,
                     'display_version': func.coalesce(
                         stmt.excluded.display_version, Apps.__table__.c.display_version),
+                    'required_system_version': func.coalesce(
+                        stmt.excluded.required_system_version, Apps.__table__.c.required_system_version),
                 },
             )
             db.session.execute(stmt)
@@ -1064,7 +1103,7 @@ def _verify_eligible(file, mgmt):
     literally everything."""
     verification = mgmt['verification']
     return (verification['enabled'] and file.extension in verification_lib.VERIFY_EXT
-            and titles_lib.Keys.keys_loaded)
+            and (titles_lib.Keys.keys_loaded or file.extension in verification_lib.NO_KEYS_EXT))
 
 
 def _needs_verify(file, mgmt):

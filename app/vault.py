@@ -46,7 +46,8 @@ logger = logging.getLogger('main')
 SAVES_DIR = os.path.join(DATA_DIR, 'saves')
 PREFIX = '/dav'
 BASE = 'JKSV'                       # the folder JKSV is told to use ("basepath")
-KEEP_CHOICES = (0, 5, 10, 20, 50)   # backups kept per game; 0 keeps them all
+KEEP_CHOICES = (0, 2, 5, 10, 20, 50)    # backups kept per game; 0 keeps them all
+GAME_CHOICES = (0, 10, 20, 30, 40, 50)  # different games each user may keep; 0: no limit
 MIN_FREE = 512 << 20                # an upload must leave this much free (small SD cards too)
 MAX_UPLOAD = 4 << 30                # a save backup is rarely more than a few hundred MB
 MAX_ZIP_ENTRIES = 20000             # a real save has a handful of files
@@ -91,10 +92,49 @@ def user_root(user_id):
     return os.path.join(SAVES_DIR, 'users', str(int(user_id)))
 
 
+def max_games():
+    return int(config().get('max_games') or 0)
+
+
+def _games_in(root):
+    """The game folders of a user's JKSV space that hold at least one backup."""
+    base = _disk('/' + BASE, root)
+    try:
+        folders = os.listdir(base)
+    except OSError:
+        return set()
+    games = set()
+    for folder in folders:
+        path = os.path.join(base, folder)
+        try:
+            if os.path.isdir(path) and any(n.lower().endswith('.zip') for n in os.listdir(path)):
+                games.add(folder)
+        except OSError:
+            continue
+    return games
+
+
+def game_limit_reached(root, folder):
+    """Whether a backup into `folder` would be one game too many: the limit counts
+    different games, never their backups. A game already kept always takes more; deleting
+    every backup of a game frees its place. Nothing is ever deleted to make room."""
+    limit = max_games()
+    if not limit:
+        return False
+    games = _games_in(root)
+    return folder not in games and len(games) >= limit
+
+
 def may_use(user):
-    """Users with the Backup permission, and admins - never a registration still waiting
-    for its email."""
-    return bool(user) and not user.pending and bool(user.admin_access or user.backup_access)
+    """Who may keep saves in the vault - and so sees the Saves page and the vault in My
+    account: admins when Settings > Save vault allows admins, users with the Backup
+    permission when it allows users; never a registration still waiting for its email."""
+    if not user or user.pending:
+        return False
+    cfg = config()
+    if user.admin_access:
+        return bool(cfg.get('admins', True))
+    return bool(user.backup_access) and bool(cfg.get('users', True))
 
 
 # --- the shared space from before -----------------------------------------------------
@@ -376,6 +416,8 @@ def _put(rel, root, username):
     folder = os.path.dirname(path)
     if not os.path.isdir(folder):
         return Response('no game folder', 409)
+    if game_limit_reached(root, os.path.basename(folder)):
+        return Response('the limit of games with saves is reached: delete the saves of a game first', 507)
     free = _free_bytes(SAVES_DIR)
     declared = request.content_length
     if free is not None and free < MIN_FREE + (declared or 0):
@@ -444,6 +486,9 @@ def _move(rel, root, username):
     target = _disk(target_rel, root)
     if not os.path.isdir(os.path.dirname(target)) or os.path.isdir(target):
         return Response('no game folder, or a folder has that name', 409)
+    target_game = os.path.basename(os.path.dirname(target))
+    if target_game != os.path.basename(os.path.dirname(source)) and game_limit_reached(root, target_game):
+        return Response('the limit of games with saves is reached: delete the saves of a game first', 507)
     existed = os.path.exists(target)
     if existed and (request.headers.get('Overwrite') or 'T').upper() == 'F':
         return Response('exists', 412)

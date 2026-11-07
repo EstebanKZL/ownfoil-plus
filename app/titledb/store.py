@@ -212,6 +212,7 @@ def import_from_json(region_file, locale):
         _import_titles(conn, region_file)
         _import_cnmts(conn, cnmts_file)
         _import_versions(conn, versions_file)
+        _import_extra_versions(conn, os.path.join(titledb_dir, 'extra'))
         _import_overrides(conn)
         _apply_overrides(conn)
 
@@ -321,6 +322,21 @@ def _import_versions(conn, path):
         batch,
     )
     logger.info(f'  versions: {len(batch)} rows')
+
+
+def _import_extra_versions(conn, folder):
+    """The versions the extra sources add (titledb/extra_versions.py). After the release's
+    own, and INSERT OR IGNORE: a version both know keeps the release's date."""
+    from titledb import extra_versions
+    batch = [(title_id, version, date)
+             for title_id, versions in extra_versions.merged(folder).items()
+             for version, date in versions.items()]
+    if not batch:
+        return
+    before = conn.total_changes
+    conn.executemany(
+        'INSERT OR IGNORE INTO versions(title_id, version, release_date) VALUES (?, ?, ?)', batch)
+    logger.info(f'  versions from extra sources: {conn.total_changes - before} added')
 
 
 def _import_overrides(conn):
@@ -653,8 +669,32 @@ def get_all_app_existing_versions(app_id):
         conn.close()
 
 
+def dlc_id_range(title_id):
+    """The first and last id a DLC of this game can have, uppercase: a DLC is the game's
+    id plus 0x1000 plus an index from 1 to 0xFFF. None for an id that isn't a base game's.
+
+    cnmts.json only has the DLC someone dumped, while the catalogue (titles.json) lists
+    every DLC of the eShop: Biomutant's nine language packs are only there. Grouping by
+    id finds them all - the same rule Switch Library Manager Web uses."""
+    try:
+        value = int(title_id, 16)
+    except (TypeError, ValueError):
+        return None
+    if len(title_id) != 16 or value & 0x1FFF:
+        return None
+    return f'{value + 0x1001:016X}', f'{value + 0x1FFF:016X}'
+
+
+def _release_date(raw):
+    if not raw:
+        return None
+    raw = str(raw)
+    return f"{raw[:4]}-{raw[4:6]}-{raw[6:8]}"
+
+
 def get_all_dlc_versions(title_id):
-    """Return [(app_id_upper, cnmt_version, release_date), ...] for every DLC of the given title."""
+    """Return [(app_id_upper, version, release_date), ...] for every DLC of the given title:
+    the versions cnmts.json knows, and version 0 for a DLC only the catalogue lists."""
     conn = _connect_ro()
     if conn is None:
         return []
@@ -666,29 +706,18 @@ def get_all_dlc_versions(title_id):
             'WHERE c.other_application_id = ? AND c.title_type = 130',
             (title_id.lower(),),
         ).fetchall()
-        out = []
-        for r in rows:
-            rd = r['release_date']
-            if rd:
-                rd = str(rd)
-                rd = f"{rd[:4]}-{rd[4:6]}-{rd[6:8]}"
-            else:
-                rd = None
-            out.append((r['app_id'], r['cnmt_version'], rd))
+        out = [(r['app_id'], r['cnmt_version'], _release_date(r['release_date'])) for r in rows]
+        dumped = {r['app_id'] for r in rows}
+        span = dlc_id_range(title_id.upper())
+        if span:
+            for r in conn.execute('SELECT id, release_date FROM titles WHERE id BETWEEN ? AND ?', span):
+                if r['id'] not in dumped:
+                    out.append((r['id'], 0, _release_date(r['release_date'])))
         return out
     finally:
         conn.close()
 
 
 def get_all_existing_dlc(title_id):
-    conn = _connect_ro()
-    if conn is None:
-        return []
-    try:
-        rows = conn.execute(
-            'SELECT DISTINCT app_id FROM cnmts WHERE other_application_id = ? AND title_type = 130',
-            (title_id.lower(),),
-        ).fetchall()
-        return [r['app_id'].upper() for r in rows]
-    finally:
-        conn.close()
+    """Every DLC id of the given title: cnmts.json's and the catalogue's."""
+    return sorted({app_id for app_id, _version, _date in get_all_dlc_versions(title_id)})

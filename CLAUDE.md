@@ -9,10 +9,14 @@ Docker image `estebankzl/ownfoil-plus`.
 
 - **Talk to the maintainer in Spanish** (rioplatense, "vos"). Code, comments, commit
   messages and `CHANGELOG.md` are in **English**.
-- The UI is bilingual: every user-facing string lives in `app/i18n.py` with both `en`
-  and `es` entries (Spanish uses voseo: "Elegí", "Probá", "Revisá"). Never hard-code
-  UI text in templates or JS - templates use `{{ t('key') }}`, JS gets strings through
-  each page's `I18N` object (`{{ t('key') | tojson }}`) or a JSON `<script>` block.
+- The UI speaks 11 languages: every user-facing string lives in `app/i18n.py` with
+  `en` and `es` entries (Spanish uses voseo: "Elegí", "Probá", "Revisá"), and the other
+  nine in `app/locales/<code>.json` (fr, de, it, pt, nl, ru, ja, ko, zh). A new key goes
+  in i18n.py *and* each locale file (`tests/test_languages.py` checks keys, `{placeholders}`
+  and HTML tags); a key removed must go from both (`tests/test_cleanup.py` flags unused
+  keys). Never hard-code UI text in templates or JS - templates use `{{ t('key') }}`, JS
+  gets strings through each page's `I18N` object (`{{ t('key') | tojson }}`) or a JSON
+  `<script>` block. Without a language cookie the page follows the browser's language.
 - The maintainer works by stages and screenshots: they send a list of things to polish
   with screenshots; group related items into one version, explain the plan briefly,
   then implement, verify in a browser, and open a PR.
@@ -79,7 +83,7 @@ package - `tests/conftest.py` puts `app/` on `sys.path`.
   Basic Auth for console clients.
 - `db.py` - models (`Files`, `Apps`, `Titles`, `Task`, `TaskHistory`, `DownloadEvent`,
   ...) and DB helpers. Schema changes need an **Alembic migration** in
-  `app/migrations/versions/` (current head: `b2c3d4e5f6a8`) *and* the model change
+  `app/migrations/versions/` (current head: `c3d4e5f6a7b9`) *and* the model change
   (new installs use `create_all`). `tests/test_download_history.py` asserts the head.
 - `tasks.py` / `worker.py` / `worker_pool.py` - task registry (`@register_task`),
   enqueue/dedup, scheduled tasks via `run_after` (stored in **UTC**; use
@@ -142,7 +146,11 @@ polish, dependency/image vulnerability fixes, Dependabot, the SLMW-inspired rede
 (tokens, three styles, flat nav, library, game page, stats/dashboard, admin pages,
 Settings index) with every big page's JS moved to `app/static/js/`; My account,
 upcoming releases and sagas, the per-user JKSV save vault, public registration (SMTP,
-Google), Services control panel, profile pictures, one card per game.
+Google), Services control panel, profile pictures, one card per game; 6.2.5.50: more
+update sources and every catalogue DLC, firmware read from the files, NUP files, Organize
+taking NFO/SFV/proof files along, the Files dialog, 11 languages, Nintendo Switch 2
+games (ids 04...), the Dashboard's lists, the save vault's per-user game limit, and a
+round of Library/Sagas/Settings polish.
 
 Postponed - **remind the maintainer of these when a round of work wraps up**:
 

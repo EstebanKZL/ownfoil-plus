@@ -35,7 +35,7 @@ def admin_client(shop_app):
 
 def _section(html):
     start = html.index('id="downloadsSection"')
-    return html[start:html.index('id="duplicatesSection"')]
+    return html[start:html.index('</section>', start)]
 
 
 def test_the_section_has_the_pages_title_and_no_bare_headings(admin_client):
@@ -46,10 +46,12 @@ def test_the_section_has_the_pages_title_and_no_bare_headings(admin_client):
 
 def test_each_list_is_its_own_card(admin_client):
     section = _section(admin_client.get("/admin/stats").get_data(as_text=True))
-    assert len(re.findall(r'class="dl-card[ "]', section)) == 5     # per day, top, users, clients, recent
-    for list_id in ("downloadTopTitles", "downloadByUser", "downloadByClient", "downloadRecent"):
+    # Per day, top, users, clients - the latest downloads moved to the Dashboard.
+    assert len(re.findall(r'class="dl-card[ "]', section)) == 4
+    for list_id in ("downloadTopTitles", "downloadByUser", "downloadByClient"):
         assert re.search(rf'<ul class="dash-list[^"]*" id="{list_id}"', section), list_id
-    assert section.count('class="dl-card__title"') == 5
+    assert 'id="downloadRecent"' not in section
+    assert section.count('class="dl-card__title"') == 4
 
 
 def test_the_figures_are_stat_tiles():
@@ -61,7 +63,9 @@ def test_the_lists_carry_ranks_bars_pictures_and_chips():
     body = _function_body(_read("app", "static", "js", "stats.js"), "renderDownloads")
     assert "rank:" in body and "pct:" in body
     assert "avatarUrl: u.avatar_url" in body
-    assert "chips:" in body and "r.user_avatar" in body
+    # The latest downloads, with their user and client chips, are on the Dashboard now.
+    dash = _read("app", "static", "js", "dashboard.js")
+    assert "chips:" in dash and "r.user_avatar" in dash
     row = _function_body(_read("app", "static", "js", "title-list.js"), "titleListRow")
     for part in ("dash-list__rank", "dash-list__bar", "dash-list__chip", "avatarUrl"):
         assert part in row, part

@@ -7,7 +7,7 @@
 [![Tinfoil Version](https://img.shields.io/badge/Tinfoil-v20.0-da1c5c)](https://tinfoil.io/Download)
 [![Sphaira Version](https://img.shields.io/badge/Sphaira-v1.0.6-%233cd57a)](https://github.com/NaGaa95/sphaira)
 [![CyberFoil Version](https://img.shields.io/badge/CyberFoil-v1.4.5-firebrick)](https://github.com/luketanti/CyberFoil)
-![Web UI language](https://img.shields.io/badge/Web%20UI-%F0%9F%87%AC%F0%9F%87%A7%20English%20%7C%20%F0%9F%87%AA%F0%9F%87%B8%20Espa%C3%B1ol-ffc107)
+![Web UI languages](https://img.shields.io/badge/Web%20UI-11%20languages-ffc107)
 
 <table>
   <tr>
@@ -26,7 +26,7 @@
 
 Ownfoil-Plus turns a folder of game files into a fully organized, self-verified, self-hosted Nintendo Switch shop: it figures out what you have, flags what's missing or broken, keeps your files tidy, and serves everything to your console - all from one web interface, no manual bookkeeping required. Some of the features include:
 - multi user authentication
-- 🇬🇧🇪🇸 **full web interface in English and Spanish**, switch anytime from the navbar
+- 🌐 **full web interface in 11 languages** - English, Spanish, French, German, Italian, Portuguese, Dutch, Russian, Japanese, Korean and Chinese - following the browser's language or switched anytime from the navbar
 - content identification using content decryption or filename
 - automatic library organization, verification and compression
 - automatic and manual duplicate file resolution
@@ -40,7 +40,7 @@ Ownfoil-Plus turns a folder of game files into a fully organized, self-verified,
 Ownfoil-Plus is a fork of [Ownfoil](https://github.com/a1ex4/ownfoil), created by
 [@a1ex4](https://github.com/a1ex4), distributed under the same **GNU AGPLv3**
 license, built for people who want the convenience of a managed shop without
-babysitting it: a bilingual interface instead of an English-only one, an admin
+babysitting it: a multilingual interface instead of an English-only one, an admin
 toolkit deep enough to actually fix problems when they come up instead of just
 reporting them, and a published Docker image that keeps itself patched instead of
 quietly accumulating known vulnerabilities between releases. Every fix here is
@@ -51,7 +51,7 @@ every version.
 
 On top of the original project, this fork adds:
 
-- 🇬🇧🇪🇸 A full Spanish/English web interface, switch anytime from the navbar
+- 🌐 A full web interface in 11 languages (English, Español, Français, Deutsch, Italiano, Português, Nederlands, Русский, 日本語, 한국어, 简体中文), automatic from the browser's language or switched anytime from the navbar
 - A List view showing every game with its updates and DLC in one place, including what's still missing from your library
 - A filter to quickly find titles that are complete, incomplete, or have a corrupt or repack file anywhere in them
 - A richer game info panel - genre, players, rating, languages, file size, and screenshots - opens from any view (List, Card, or Icon) by clicking the cover
@@ -65,9 +65,14 @@ On top of the original project, this fork adds:
 - Per-user console firmware: games and updates that need a newer firmware are marked
 - Upcoming releases with a wishlist per user, and Sagas showing which games of each series you own, miss, or are still to come
 - A save vault: JKSV uploads each user's save backups over WebDAV into their own space, and a Saves page to download or delete them
-- Optional public registration with email verification, password reset, and Google sign-in
-- A Services panel to switch the store, registration, maintenance, notifications and the save vault on and off
+- Optional public registration with email verification, password reset, and Google sign-in - see the [step-by-step SMTP and Google setup](./Install.md#public-registration-email-smtp-and-google-sign-in)
+- A Services panel to switch the store, the public shop, the file watcher, registration, maintenance, notifications, the save vault and LAN discovery on and off
 - Profile pictures: a gallery of avatars or your own image
+- NUP files (decrypted games) read without keys: one file with its game, updates and DLC, checked by SHA-256, kept out of the console shops and never a duplicate of an NSP
+- Organize takes each game's NFO, SFV and proof files along with it
+- A Files dialog on every game page to download any file, or all of them, straight from the browser
+- The firmware each update needs, read from your own files when TitleDB doesn't know it
+- A permanent download history, per title, user and client
 
 The Docker image for this fork is published at [estebankzl/ownfoil-plus](https://hub.docker.com/r/estebankzl/ownfoil-plus) - rebuilt weekly (not just on release) so it keeps picking up OS and Python security patches, and built for `amd64`, `arm64/v8`, `arm/v7` and `arm/v6`.
 
@@ -79,6 +84,7 @@ Head over to [Install.md](./Install.md) for the full instructions:
 
 - [Using Docker](./Install.md#using-docker)
 - [Using the Helm chart](./Install.md#using-the-helm-chart)
+- [Public registration: email (SMTP) and Google sign-in](./Install.md#public-registration-email-smtp-and-google-sign-in)
 
 > [!CAUTION]
 > There is __no website associated with this project__, only this GitHub repo.  

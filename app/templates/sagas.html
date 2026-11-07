@@ -18,6 +18,21 @@
     <p id="sagasNone" class="text-secondary" hidden>{{ t('sagas.none') }}</p>
     <p id="sagasNotFound" class="text-secondary" hidden>{{ t('sagas.not_found') }}</p>
 
+    {# The list: a search and two tabs - sagas still to complete, and complete ones. #}
+    <div class="saga-toolbar" id="sagasToolbar" hidden>
+        <div class="discover-search discover-search--bar surface">
+            <i class="bi bi-search" aria-hidden="true"></i>
+            <input type="search" class="form-control" id="sagasSearch" placeholder="{{ t('sagas.search') }}"
+                aria-label="{{ t('sagas.search') }}" autocomplete="off">
+        </div>
+        <div class="filter-pills" role="group" aria-label="{{ t('sagas.title') }}">
+            <button type="button" class="filter-pill" data-saga-tab="all"><i class="bi bi-collection" aria-hidden="true"></i> {{ t('sagas.tab_all') }} <span class="filter-pill__count" id="sagasAllCount"></span></button>
+            <button type="button" class="filter-pill" data-saga-tab="incomplete"><i class="bi bi-hourglass-split" aria-hidden="true"></i> {{ t('sagas.tab_incomplete') }} <span class="filter-pill__count" id="sagasIncompleteCount"></span></button>
+            <button type="button" class="filter-pill" data-saga-tab="complete"><i class="bi bi-trophy" aria-hidden="true"></i> {{ t('sagas.tab_complete') }} <span class="filter-pill__count" id="sagasCompleteCount"></span></button>
+        </div>
+    </div>
+    <p id="sagasNoMatch" class="text-secondary" hidden>{{ t('sagas.no_match') }}</p>
+
     <div class="saga-grid" id="sagasList"></div>
 
     <section class="surface admin-section discover-section" id="sagaDetail" hidden>
@@ -34,6 +49,7 @@
         owned: {{ t('sagas.owned') | tojson }},
         missing: {{ t('sagas.missing') | tojson }},
         coming: {{ t('sagas.coming') | tojson }},
+        view: {{ t('sagas.view') | tojson }},
     };
 </script>
 <script src="{{ url_for('static', filename='js/sagas.js') }}"></script>

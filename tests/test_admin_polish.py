@@ -35,7 +35,7 @@ def test_section_titles_keep_their_space_below():
     """A global `h1..h6 { margin: 0 !important }` swallowed every section title's own
     margin: the content sat right under the title."""
     css = _css()
-    rule = re.search(r"\.admin-section__title:not\(\.mb-0\),\s*\.stats-section__title:not\(\.mb-0\) \{([^}]*)\}", css)
+    rule = re.search(r"\.admin-section__title:not\(\.mb-0\),\s*\.stats-section__title:not\(\.mb-0\)[^{]*\{([^}]*)\}", css)
     assert rule and re.search(r"margin-bottom: [.\d]+rem !important", rule.group(1))
 
 
@@ -80,10 +80,11 @@ def test_tasks_sections_read_queue_failed_then_scheduled_history(admin_client):
 
 def test_tasks_lists_show_ten_or_five_rows_then_scroll():
     body = re.search(r"function render\(\) \{(.*?)\n\}", _js("tasks.js"), re.S).group(1)
-    # Counted on top-level rows: a parent's sub-tasks scroll with it.
-    assert "const topLevel = ':scope > .task-list > .task-row';" in body
+    # Every row counts, sub-tasks included: a scan with hundreds of files under it showed
+    # them all when only the top-level rows counted.
+    assert "topLevel" not in body
     for scroll, n in (("queueScroll", 10), ("failedScroll", 10), ("scheduledScroll", 5)):
-        assert f"limitVisibleRows(document.getElementById('{scroll}'), topLevel, {n})" in body, scroll
+        assert f"limitVisibleRows(document.getElementById('{scroll}'), '.task-row', {n})" in body, scroll
     assert "limitVisibleRows(document.getElementById('historyScroll'), '.task-row', 5)" in _js("tasks.js")
     # The row limiter sizes them; a fixed max-height would cut a short list.
     task_scroll = re.search(r"(?m)^\.task-scroll \{([^}]*)\}", _css()).group(1)
@@ -118,7 +119,7 @@ def test_title_rows_and_icons_are_shared_by_dashboard_and_stats(admin_client):
 def test_stats_lists_are_rows_not_tables(admin_client):
     html = admin_client.get("/admin/stats").get_data(as_text=True)
     for list_id in ("verificationFilesList", "missingAppTypeList", "downloadTopTitles",
-                    "downloadByUser", "downloadByClient", "downloadRecent"):
+                    "downloadByUser", "downloadByClient"):
         assert re.search(rf'<ul class="dash-list[^"]*" id="{list_id}"', html), list_id
     assert "<table" not in html
 
@@ -135,7 +136,7 @@ def test_stats_lists_carry_the_game_icon():
     downloads = _function_body(js, "renderDownloads")
     assert "dlList(" in downloads and "fillTitleIcons(" in downloads
     assert "titleListRow(" in _function_body(js, "dlList")
-    assert "limitVisibleRows(document.getElementById(id + 'Scroll'), 'li', 10)" in downloads
+    assert "limitVisibleRows(document.getElementById(id + 'Scroll'), 'li', rows)" in downloads
 
 
 def test_a_long_error_never_squeezes_the_task_name_away():

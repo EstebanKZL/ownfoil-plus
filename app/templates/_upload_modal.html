@@ -10,6 +10,7 @@
     "cancel": {{ t('upload.cancel') | tojson }},
     "discard": {{ t('upload.discard') | tojson }},
     "leaveWarning": {{ t('upload.leave_warning') | tojson }},
+    "free": {{ t('upload.free') | tojson }},
     "errors": {
         "exists": {{ t('upload.err_exists') | tojson }},
         "bad_extension": {{ t('upload.err_extension') | tojson }},
@@ -33,7 +34,7 @@
                     <i class="bi bi-cloud-arrow-up fs-2"></i>
                     <span>{{ t('upload.drop') }}</span>
                     <small class="text-secondary">{{ t('upload.drop_hint') }}</small>
-                    <input type="file" id="uploadFileInput" multiple accept=".nsp,.nsz,.xci,.xcz" hidden>
+                    <input type="file" id="uploadFileInput" multiple accept=".nsp,.nsz,.xci,.xcz,.nup" hidden>
                 </label>
                 <ul class="list-group mt-3" id="uploadQueue"></ul>
                 <div id="uploadPendingBlock" class="mt-4" hidden>

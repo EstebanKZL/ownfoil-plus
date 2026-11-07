@@ -40,7 +40,8 @@ def admin_client(shop_app):
 def test_game_cards_are_no_longer_forced_dark():
     html = _read("app", "static", "js", "library.js")  # the cards are built there since stage 2
     assert "text-bg-dark game-card" not in html and "text-bg-dark list-game-card" not in html
-    assert html.count("card game-surface") == 2
+    # Cards, Compact and List each build their cards on the theme-aware surface.
+    assert html.count("card game-surface") == 3
 
 
 # --- light theme -----------------------------------------------------------------------
@@ -100,25 +101,27 @@ def test_admin_pages_load_the_row_limiter(admin_client):
         assert "/static/js/scroll-limit.js" in admin_client.get(url).get_data(as_text=True), url
 
 
-def test_dashboard_lists_show_ten_and_return_up_to_thirty(admin_client):
-    html = admin_client.get("/static/js/dashboard.js").get_data(as_text=True)  # since stage 4
-    assert "limitVisibleRows(document.getElementById('dashRecentFiles'), 'li', 10)" in html
-    assert "limitVisibleRows(document.getElementById('dashRecentDownloads'), 'li', 10)" in html
+def test_dashboard_lists_show_ten_and_return_up_to_fifty(admin_client):
+    js = admin_client.get("/static/js/dashboard.js").get_data(as_text=True)  # since stage 4
+    assert "limitVisibleRows(document.getElementById(id + 'Scroll'), 'li', 10)" in js
+    for list_id in ("dashRecentDownloads", "dashRecentSaves", "dashRecentFiles"):
+        assert f"renderCardList('{list_id}'" in js, list_id
     with admin_client.application.app_context():
         now = datetime.datetime.utcnow()
-        for n in range(35):
+        for n in range(55):
             db.session.add(DownloadEvent(filename=f"g{n}.nsp", client="web",
                                          downloaded_at=now - datetime.timedelta(minutes=n)))
         db.session.commit()
-    assert len(admin_client.get("/api/dashboard").get_json()["recent_downloads"]) == 30
+    assert len(admin_client.get("/api/dashboard").get_json()["recent_downloads"]) == 50
 
 
-def test_stats_download_tables_show_ten(admin_client):
+def test_stats_download_tables_show_ten_and_the_short_ones_four(admin_client):
     html = admin_client.get("/admin/stats").get_data(as_text=True)
-    for table in ("downloadTopTitles", "downloadByUser", "downloadByClient", "downloadRecent"):
+    for table in ("downloadTopTitles", "downloadByUser", "downloadByClient"):
         assert f'id="{table}Scroll"' in html, table
     js = admin_client.get("/static/js/stats.js").get_data(as_text=True)  # since stage 4
-    assert "limitVisibleRows(document.getElementById(id + 'Scroll'), 'li', 10)" in js
+    assert "[['downloadTopTitles', 10], ['downloadByUser', 4], ['downloadByClient', 4]]" in js
+    assert "limitVisibleRows(document.getElementById(id + 'Scroll'), 'li', rows)" in js
 
 
 def test_stats_top_titles_go_beyond_ten(admin_client):

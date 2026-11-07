@@ -27,7 +27,7 @@
     <div class="toolbar library-toolbar mb-2">
         <div class="toolbar-search">
             <i class="bi bi-search" aria-hidden="true"></i>
-            <input type="search" id="textFilter" class="form-control" placeholder="{{ t('library.search_placeholder') }}"
+            <input type="search" id="textFilter" class="form-control" autocomplete="off" placeholder="{{ t('library.search_placeholder') }}"
                    aria-label="{{ t('library.search_placeholder') }}">
         </div>
         <div class="input-group library-sort">
@@ -43,7 +43,7 @@
             <button id="view-toggle-btn-card" type="button" class="btn btn-outline-secondary view-toggle-btn active" data-view="card"
                     title="{{ t('library.view_cards') }}" aria-label="{{ t('library.view_cards') }}"><i class="bi bi-card-heading"></i></button>
             <button id="view-toggle-btn-icon" type="button" class="btn btn-outline-secondary view-toggle-btn" data-view="icon"
-                    title="{{ t('library.view_icons') }}" aria-label="{{ t('library.view_icons') }}"><i class="bi bi-grid-fill"></i></button>
+                    title="{{ t('library.view_compact') }}" aria-label="{{ t('library.view_compact') }}"><i class="bi bi-grid-3x3-gap-fill"></i></button>
             <button id="view-toggle-btn-list" type="button" class="btn btn-outline-secondary view-toggle-btn" data-view="list"
                     title="{{ t('library.view_list') }}" aria-label="{{ t('library.view_list') }}"><i class="bi bi-list-ul"></i></button>
         </div>
@@ -52,23 +52,11 @@
                     data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
                 <i class="bi bi-sliders2" aria-hidden="true"></i> <span class="d-none d-md-inline">{{ t('library.view_menu') }}</span>
             </button>
-            <ul class="dropdown-menu dropdown-menu-end library-menu" aria-labelledby="viewMenuBtn">
+            <ul class="dropdown-menu dropdown-menu-end library-menu library-menu--view" aria-labelledby="viewMenuBtn">
+                {# Filled by static/js/library.js: 10 to 100, each rounded to fill the rows the
+                   current width shows. #}
                 <li><h6 class="dropdown-header" id="itemsPerPageDropdownBtn">{{ t('library.items_per_page') }}</h6></li>
-                <li><button class="dropdown-item items-per-page" data-value="9">9</button></li>
-                <li><button class="dropdown-item items-per-page" data-value="12">12</button></li>
-                <li><button class="dropdown-item items-per-page" data-value="18">18</button></li>
-                <li><button class="dropdown-item items-per-page" data-value="27">27</button></li>
-                <li>
-                    <div class="dropdown-item">
-                        <input type="number" id="customItemsPerPage" class="form-control" min="1" max="500" step="1" placeholder="{{ t('library.custom_placeholder') }}">
-                        <button id="applyCustomItemsPerPage" class="btn btn-primary mt-2">{{ t('library.apply') }}</button>
-                    </div>
-                </li>
-                <li id="cardSizeRangeCol">
-                    <hr class="dropdown-divider">
-                    <h6 class="dropdown-header"><label for="cardSizeRange">{{ t('library.card_size') }}</label></h6>
-                    <div class="px-3 pb-2"><input type="range" class="form-range" min="1" max="5" step="1" id="cardSizeRange"></div>
-                </li>
+                <li><div class="page-size-grid" id="pageSizeOptions" role="group" aria-labelledby="itemsPerPageDropdownBtn"></div></li>
             </ul>
         </div>
         <div class="dropdown">
@@ -77,88 +65,69 @@
                 <i class="bi bi-funnel" aria-hidden="true"></i> <span class="d-none d-md-inline">{{ t('library.filters_menu') }}</span>
                 <span class="filters-dot" id="filtersActiveDot" hidden><span class="visually-hidden">{{ t('library.filters_active') }}</span></span>
             </button>
-            <ul class="dropdown-menu dropdown-menu-end library-menu" aria-labelledby="filtersMenuBtn">
-                <li id="filterDropdownCol" data-view-only="card icon">
-                    <ul class="list-unstyled mb-0">
-                        <li>
-                            <div class="dropdown-item filter-group-item">
-                                <div class="btn-group w-100" role="group" aria-label="Ownership filter">
-                                    <input type="radio" class="btn-check ownership-toggle" name="ownershipFilter" id="ownershipAll" autocomplete="off" checked>
-                                    <label class="btn btn-outline-primary" for="ownershipAll">{{ t('library.filter_all') }}</label>
-
-                                    <input type="radio" class="btn-check ownership-toggle" name="ownershipFilter" id="ownershipOwned" autocomplete="off">
-                                    <label class="btn btn-outline-primary" for="ownershipOwned">{{ t('library.filter_owned') }}</label>
-
-                                    <input type="radio" class="btn-check ownership-toggle" name="ownershipFilter" id="ownershipMissing" autocomplete="off">
-                                    <label class="btn btn-outline-primary" for="ownershipMissing">{{ t('library.filter_missing') }}</label>
-                                </div>
-                            </div>
-                        </li>
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-                        <li>
-                            <div class="dropdown-item filter-group-item">
-                                <div class="btn-group w-100" role="group" aria-label="Update filter">
-                                    <input type="radio" class="btn-check update-toggle" name="updateFilter" id="updateAll" autocomplete="off" checked>
-                                    <label class="btn btn-outline-primary" for="updateAll">{{ t('library.filter_all') }}</label>
-
-                                    <input type="radio" class="btn-check update-toggle" name="updateFilter" id="updateUpToDate" autocomplete="off">
-                                    <label class="btn btn-outline-primary" for="updateUpToDate">{{ t('library.filter_up_to_date') }}</label>
-
-                                    <input type="radio" class="btn-check update-toggle" name="updateFilter" id="updateMissingUpdate" autocomplete="off">
-                                    <label class="btn btn-outline-primary" for="updateMissingUpdate">{{ t('library.filter_missing_update') }}</label>
-                                </div>
-                            </div>
-                        </li>
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-                        <li>
-                            <div class="dropdown-item filter-group-item">
-                                <div class="btn-group w-100" role="group" aria-label="Completion filter">
-                                    <input type="radio" class="btn-check completion-toggle" name="completionFilter" id="completionAll" autocomplete="off" checked>
-                                    <label class="btn btn-outline-primary" for="completionAll">{{ t('library.filter_all') }}</label>
-
-                                    <input type="radio" class="btn-check completion-toggle" name="completionFilter" id="completionComplete" autocomplete="off">
-                                    <label class="btn btn-outline-primary" for="completionComplete">{{ t('library.filter_complete') }}</label>
-
-                                    <input type="radio" class="btn-check completion-toggle" name="completionFilter" id="completionMissingDlc" autocomplete="off">
-                                    <label class="btn btn-outline-primary" for="completionMissingDlc">{{ t('library.filter_missing_dlc') }}</label>
-                                </div>
-                            </div>
-                        </li>
-                    </ul>
-                </li>
-                <li id="listHealthFilterCol" data-view-only="list" class="d-none">
-                    <ul class="list-unstyled mb-0">
-                        <li>
-                            <div class="dropdown-item filter-group-item">
-                                <div class="btn-group-vertical w-100" role="group" aria-label="Library health filter">
-                                    <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthAll" autocomplete="off" checked>
-                                    <label class="btn btn-outline-primary" for="healthAll">{{ t('library.filter_all') }}</label>
-
-                                    <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthComplete" autocomplete="off">
-                                    <label class="btn btn-outline-primary" for="healthComplete">{{ t('library.filter_health_complete') }}</label>
-
-                                    <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthIncomplete" autocomplete="off">
-                                    <label class="btn btn-outline-primary" for="healthIncomplete">{{ t('library.filter_health_incomplete') }}</label>
-
-                                    <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthCorrupt" autocomplete="off">
-                                    <label class="btn btn-outline-primary" for="healthCorrupt">{{ t('library.filter_health_corrupt') }}</label>
-
-                                    <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthRepack" autocomplete="off">
-                                    <label class="btn btn-outline-primary" for="healthRepack">{{ t('library.filter_health_repack') }}</label>
-                                </div>
-                            </div>
-                        </li>
-                    </ul>
-                </li>
-            </ul>
+            <div class="dropdown-menu dropdown-menu-end library-filters" aria-labelledby="filtersMenuBtn">
+                <div class="library-filters__head">
+                    <span class="library-filters__title"><i class="bi bi-funnel" aria-hidden="true"></i> {{ t('library.filters_menu') }}</span>
+                    <button type="button" class="btn btn-link btn-sm p-0" id="filtersClearBtn">{{ t('library.clear_filters') }}</button>
+                </div>
+                <div id="filterDropdownCol" data-view-only="card icon">
+                    <fieldset class="filter-group">
+                        <legend class="filter-group__label"><i class="bi bi-collection" aria-hidden="true"></i> {{ t('library.filter_group_ownership') }}</legend>
+                        <div class="filter-chips" role="group" aria-label="Ownership filter">
+                            <input type="radio" class="btn-check ownership-toggle" name="ownershipFilter" id="ownershipAll" autocomplete="off" checked>
+                            <label class="filter-chip" for="ownershipAll">{{ t('library.filter_all') }}</label>
+                            <input type="radio" class="btn-check ownership-toggle" name="ownershipFilter" id="ownershipOwned" autocomplete="off">
+                            <label class="filter-chip" for="ownershipOwned">{{ t('library.filter_owned') }}</label>
+                            <input type="radio" class="btn-check ownership-toggle" name="ownershipFilter" id="ownershipMissing" autocomplete="off">
+                            <label class="filter-chip" for="ownershipMissing">{{ t('library.filter_missing') }}</label>
+                        </div>
+                    </fieldset>
+                    <fieldset class="filter-group">
+                        <legend class="filter-group__label"><i class="bi bi-arrow-up-circle" aria-hidden="true"></i> {{ t('library.filter_group_updates') }}</legend>
+                        <div class="filter-chips" role="group" aria-label="Update filter">
+                            <input type="radio" class="btn-check update-toggle" name="updateFilter" id="updateAll" autocomplete="off" checked>
+                            <label class="filter-chip" for="updateAll">{{ t('library.filter_all') }}</label>
+                            <input type="radio" class="btn-check update-toggle" name="updateFilter" id="updateUpToDate" autocomplete="off">
+                            <label class="filter-chip" for="updateUpToDate">{{ t('library.filter_up_to_date') }}</label>
+                            <input type="radio" class="btn-check update-toggle" name="updateFilter" id="updateMissingUpdate" autocomplete="off">
+                            <label class="filter-chip" for="updateMissingUpdate">{{ t('library.filter_missing_update') }}</label>
+                        </div>
+                    </fieldset>
+                    <fieldset class="filter-group">
+                        <legend class="filter-group__label"><i class="bi bi-puzzle" aria-hidden="true"></i> {{ t('library.filter_group_dlc') }}</legend>
+                        <div class="filter-chips" role="group" aria-label="Completion filter">
+                            <input type="radio" class="btn-check completion-toggle" name="completionFilter" id="completionAll" autocomplete="off" checked>
+                            <label class="filter-chip" for="completionAll">{{ t('library.filter_all') }}</label>
+                            <input type="radio" class="btn-check completion-toggle" name="completionFilter" id="completionComplete" autocomplete="off">
+                            <label class="filter-chip" for="completionComplete">{{ t('library.filter_complete') }}</label>
+                            <input type="radio" class="btn-check completion-toggle" name="completionFilter" id="completionMissingDlc" autocomplete="off">
+                            <label class="filter-chip" for="completionMissingDlc">{{ t('library.filter_missing_dlc') }}</label>
+                        </div>
+                    </fieldset>
+                </div>
+                <div id="listHealthFilterCol" data-view-only="list" class="d-none">
+                    <fieldset class="filter-group">
+                        <legend class="filter-group__label"><i class="bi bi-shield-check" aria-hidden="true"></i> {{ t('library.filter_group_health') }}</legend>
+                        <div class="filter-chips" role="group" aria-label="Library health filter">
+                            <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthAll" autocomplete="off" checked>
+                            <label class="filter-chip" for="healthAll">{{ t('library.filter_all') }}</label>
+                            <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthComplete" autocomplete="off">
+                            <label class="filter-chip" for="healthComplete">{{ t('library.filter_health_complete') }}</label>
+                            <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthIncomplete" autocomplete="off">
+                            <label class="filter-chip" for="healthIncomplete">{{ t('library.filter_health_incomplete') }}</label>
+                            <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthCorrupt" autocomplete="off">
+                            <label class="filter-chip" for="healthCorrupt">{{ t('library.filter_health_corrupt') }}</label>
+                            <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthRepack" autocomplete="off">
+                            <label class="filter-chip" for="healthRepack">{{ t('library.filter_health_repack') }}</label>
+                        </div>
+                    </fieldset>
+                </div>
+            </div>
         </div>
     </div>
 
     {# One-click filters with how many results each gives (library.js renders them). #}
+    <div class="pill-row mb-2" id="libraryConsole" role="group" aria-label="{{ t('library.console') }}"></div>
     <div class="pill-row mb-2" id="libraryPills" role="group" aria-label="{{ t('library.filters_menu') }}"></div>
 
     <!-- Pagination controls (top) - mirrors the bottom one, same content, so paging
@@ -230,8 +199,9 @@
         unrecognized: {{ t('library.unrecognized') | tojson }},
         notFoundInTitledb: {{ t('library.not_found_in_titledb') | tojson }},
         tileGames: {{ t('library.tile_games') | tojson }},
+        consoleAll: {{ t('library.console_all') | tojson }},
         tileUpdates: {{ t('library.tile_updates') | tojson }},
-        tileMissingDlc: {{ t('library.tile_missing_dlc') | tojson }},
+        tileDlcMissing: {{ t('library.tile_dlc_missing') | tojson }},
         tileSize: {{ t('library.tile_size') | tojson }},
         progress: {{ t('library.progress') | tojson }},
         previous: {{ t('library.previous') | tojson }},
@@ -239,6 +209,9 @@
         owned: {{ t('library.owned') | tojson }},
         missing: {{ t('library.missing') | tojson }},
         baseMissing: {{ t('library.base_missing') | tojson }},
+        noDlc: {{ t('library.no_dlc') | tojson }},
+        dlcCount: {{ t('library.dlc_count') | tojson }},
+        updateAvailable: {{ t('library.update_available') | tojson }},
         baseGame: {{ t('library.base_game') | tojson }},
         updatesSection: {{ t('library.updates_section') | tojson }},
         dlcSection: {{ t('library.dlc_section') | tojson }},

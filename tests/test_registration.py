@@ -168,7 +168,8 @@ def test_a_new_account_waits_for_its_email_and_gets_shop_access_only(shop_app, o
         # Unverified, the address is only a claim: `email` holds verified ones alone.
         assert u.pending and not u.email_verified and u.email is None
         assert u.pending_email == "newbie@example.test"
-        assert u.shop_access and not u.admin_access and not u.backup_access
+        # Shop and backups by default, never the administration.
+        assert u.shop_access and u.backup_access and not u.admin_access
     assert len(outbox) == 1 and outbox[0]["To"] == "newbie@example.test"
     # Not before verifying - neither the web nor the shop clients' Basic Auth.
     login = client.post("/login", data={"user": "newbie", "password": "newbiepass1"})
@@ -387,7 +388,7 @@ def test_google_creates_a_shop_account_when_registration_is_open(shop_app, googl
     with shop_app.app.app_context():
         u = User.query.filter_by(google_id="g-123").one()
         assert u.user == "gamer" and u.email == "gamer@gmail.test" and u.email_verified and not u.pending
-        assert u.shop_access and not u.admin_access and u.password is None
+        assert u.shop_access and u.backup_access and not u.admin_access and u.password is None
 
 
 def test_google_never_creates_accounts_while_registration_is_closed(shop_app, google):

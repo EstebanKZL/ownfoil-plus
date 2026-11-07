@@ -169,7 +169,12 @@
         $.getJSON('/api/uploads', data => {
             const select = $('#uploadLibrarySelect');
             if (!select.children().length) {
-                data.libraries.forEach(path => select.append($('<option>').val(path).text(path)));
+                // Each folder with what is free on its disk.
+                data.libraries.forEach(path => {
+                    const free = (data.free_space || {})[path];
+                    const label = free == null ? path : `${path} · ${UP.free.replace('{size}', formatBytes(free))}`;
+                    select.append($('<option>').val(path).text(label));
+                });
             }
             const active = new Set(uploadItems.map(i => i.id).filter(Boolean));
             const pending = data.uploads.filter(u => !active.has(u.id));

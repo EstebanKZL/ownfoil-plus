@@ -65,20 +65,31 @@ function gameCard(game) {
     return card;
 }
 
+let allGames = [];
+
+/** The games that match the search: by name, and for an admin by whose they are too. */
+function renderSaves() {
+    const query = document.getElementById('savesSearch').value.trim().toLowerCase();
+    const shown = allGames.filter(g => !query || (g.name || '').toLowerCase().includes(query)
+                                       || (ALL_USERS && (g.user || '').toLowerCase().includes(query)));
+    document.getElementById('savesGames').replaceChildren(...shown.map(gameCard));
+    document.getElementById('savesNoMatch').hidden = !allGames.length || shown.length > 0;
+    fillTitleIcons(document);
+}
+
+document.getElementById('savesSearch').addEventListener('input', renderSaves);
+
 async function loadSaves() {
     try {
         const r = await fetch('/api/saves', {credentials: 'same-origin'});
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const data = await r.json();
         ALL_USERS = data.all_users;
+        allGames = data.games;
         document.getElementById('savesOff').hidden = data.enabled;
         document.getElementById('savesNone').hidden = data.games.length > 0 || !data.enabled;
-        document.getElementById('savesGames').replaceChildren(...data.games.map(gameCard));
-        const missing = document.getElementById('savesMissingList');
-        missing.replaceChildren(...data.missing.map(g =>
-            titleListRow({main: g.name, titleId: g.title_id, iconUrl: g.icon_url || undefined})));
-        document.getElementById('savesMissing').hidden = !data.games.length || !data.missing.length;
-        fillTitleIcons(document);
+        document.getElementById('savesToolbar').hidden = !data.games.length;
+        renderSaves();
     } catch (e) {
         document.getElementById('savesError').hidden = false;
     } finally {

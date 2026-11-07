@@ -45,9 +45,9 @@ def test_set_language_with_no_referrer_falls_back_to_home(client):
     assert resp.headers["Location"] == "/"
 
 
-def test_an_unsupported_language_code_falls_back_to_the_default(client):
-    resp = client.get("/set-language/fr", headers={"Referer": "/login"})
-    assert "ownfoil_lang=en" in resp.headers.get("Set-Cookie", "")
+def test_an_unsupported_language_code_falls_back_to_automatic(client):
+    resp = client.get("/set-language/xx", headers={"Referer": "/login"})
+    assert "ownfoil_lang=auto" in resp.headers.get("Set-Cookie", "")
 
 
 def test_a_garbled_cookie_value_falls_back_to_english_rather_than_crashing(client):
@@ -82,6 +82,8 @@ def test_every_translation_entry_has_both_supported_languages():
     and intentional rather than accidental."""
     incomplete = {
         key for key, langs in i18n.TRANSLATIONS.items()
-        if not set(i18n.SUPPORTED_LANGUAGES).issubset(langs)
+        # English and Spanish live here; the other languages in app/locales/*.json
+        # (test_languages.py checks those).
+        if not {"en", "es"}.issubset(langs)
     }
     assert incomplete == set(), f"Missing a language for: {incomplete}"

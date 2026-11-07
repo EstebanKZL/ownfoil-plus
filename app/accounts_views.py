@@ -72,12 +72,13 @@ def _verification(user):
 
 @accounts_blueprint.app_context_processor
 def inject_auth_options():
-    """What the login page offers: sign up (registration open, and email or Google to
-    use it), forgot password (needs email), Google (needs its settings). On the
-    blueprint, so every app that registers it gets it."""
+    """What the login page offers: sign up whenever registration is open (the sign-up
+    page says what is missing when neither email nor Google is set up - an account made
+    there always verifies its email), forgot password (needs email), Google (needs its
+    settings). On the blueprint, so every app that registers it gets it."""
     email = accounts.email_ready()
     google = accounts.google_config() is not None
-    return {'auth_options': {'signup': accounts.registration_open() and (email or google),
+    return {'auth_options': {'signup': accounts.registration_open(),
                              'forgot': email, 'google': google, 'email': email}}
 
 
@@ -116,7 +117,7 @@ def signup():
                                  t('mail.exists_body', user=owner.user, link=f'{accounts.public_url()}/forgot'))
         return checked
     user = User(user=username, password=generate_password_hash(password, method='scrypt'), pending_email=email,
-                email_verified=False, pending=True, admin_access=False, shop_access=True, backup_access=False)
+                email_verified=False, pending=True, admin_access=False, shop_access=True, backup_access=True)
     db.session.add(user)
     try:
         db.session.commit()
@@ -235,7 +236,7 @@ def google_callback():
             name = accounts.username_from_email(
                 profile['email'], lambda n: User.query.filter(db.func.lower(User.user) == n.lower()).first() is not None)
             user = User(user=name, password=None, email=profile['email'], email_verified=True, pending=False,
-                        google_id=profile['sub'], admin_access=False, shop_access=True, backup_access=False)
+                        google_id=profile['sub'], admin_access=False, shop_access=True, backup_access=True)
             db.session.add(user)
             logger.info(f'New account {name!r} registered with Google')
         else:

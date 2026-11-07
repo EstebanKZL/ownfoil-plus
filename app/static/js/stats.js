@@ -257,205 +257,6 @@ async function loadStats() {
 loadStats();
 loadLargestFiles();
 
-// --- Duplicate files: more than one physical file for the same content -------
-
-const DUPLICATE_GROUPS_QUERY = `
-    query {
-        duplicateFileGroups {
-            titleId titleName appId appType appName
-            files { id filename size verificationStatus }
-        }
-    }`;
-
-const RESOLVE_DUPLICATE_MUTATION = `
-    mutation ResolveDuplicate($id: ID!) {
-        resolveDuplicateFiles(keepFileId: $id)
-    }`;
-
-async function loadDuplicateGroups() {
-    let groups;
-    try {
-        const params = new URLSearchParams({query: DUPLICATE_GROUPS_QUERY});
-        const r = await fetch('/api/graphql?' + params.toString(), {
-            headers: {'Accept': 'application/json'},
-            credentials: 'same-origin',
-        });
-        if (!r.ok) throw new Error(`GraphQL HTTP ${r.status}`);
-        const body = await r.json();
-        if (body.errors && body.errors.length) {
-            throw new Error('GraphQL errors: ' + JSON.stringify(body.errors));
-        }
-        groups = body.data.duplicateFileGroups || [];
-    } catch (e) {
-        console.error(e);
-        return;
-    }
-    renderDuplicateGroups(groups);
-}
-
-/** One row per file inside a duplicate group's card: name, size, verification
- *  status, and the button that keeps it (deleting the rest of the group). */
-function buildDuplicateFileRow(file) {
-    const li = document.createElement('li');
-    li.className = 'list-group-item bg-transparent d-flex justify-content-between align-items-center flex-wrap gap-2';
-
-    const left = document.createElement('span');
-    left.className = 'text-break';
-    left.textContent = file.filename;
-
-    const right = document.createElement('span');
-    right.className = 'd-flex align-items-center gap-2 flex-shrink-0';
-
-    const sizeBadge = document.createElement('span');
-    sizeBadge.className = 'badge text-bg-secondary';
-    sizeBadge.textContent = formatBytes(file.size);
-    right.appendChild(sizeBadge);
-
-    const statusBadge = document.createElement('span');
-    statusBadge.className = 'badge text-bg-dark';
-    statusBadge.textContent = humanize(file.verificationStatus);
-    right.appendChild(statusBadge);
-
-    const keepBtn = document.createElement('button');
-    keepBtn.type = 'button';
-    keepBtn.className = 'btn btn-sm btn-outline-success';
-    keepBtn.textContent = I18N.duplicateKeepThis;
-    keepBtn.addEventListener('click', () => resolveDuplicate(file.id, keepBtn));
-    right.appendChild(keepBtn);
-
-    li.appendChild(left);
-    li.appendChild(right);
-    return li;
-}
-
-/** One card per duplicate group: the title/DLC name (plus a quick "keep the
- *  larger one" shortcut for a group with more than one file, since that's the
- *  most common single choice), then every physical file currently attached to it
- *  as a row with its own "keep this one" action. */
-function buildDuplicateGroupCard(group) {
-    const card = document.createElement('div');
-    card.className = 'card mb-3';
-    const body = document.createElement('div');
-    body.className = 'card-body';
-
-    const header = document.createElement('div');
-    header.className = 'd-flex justify-content-between align-items-center flex-wrap gap-2 mb-2';
-
-    const title = document.createElement('h6');
-    title.className = 'card-title mb-0';
-    title.textContent = group.appType === 'DLC'
-        ? `${group.appName || group.titleName || group.titleId} (DLC)`
-        : (group.titleName || group.titleId);
-    header.appendChild(title);
-
-    if (group.files.length > 1) {
-        const keepLargestBtn = document.createElement('button');
-        keepLargestBtn.type = 'button';
-        keepLargestBtn.className = 'btn btn-sm btn-outline-success';
-        keepLargestBtn.textContent = I18N.duplicateKeepLargest;
-        keepLargestBtn.addEventListener('click', () => {
-            const largest = group.files.reduce((a, b) => (b.size > a.size ? b : a));
-            resolveDuplicate(largest.id, keepLargestBtn);
-        });
-        header.appendChild(keepLargestBtn);
-    }
-    body.appendChild(header);
-
-    const list = document.createElement('ul');
-    list.className = 'list-group list-group-flush';
-    group.files.forEach(file => list.appendChild(buildDuplicateFileRow(file)));
-    body.appendChild(list);
-
-    card.appendChild(body);
-    return card;
-}
-
-function renderDuplicateGroups(groups) {
-    const container = document.getElementById('duplicateGroups');
-    container.innerHTML = '';
-
-    // The section itself (heading, hint, buttons) always stays visible, so the
-    // feature is discoverable even with nothing to show right now - only the
-    // content area switches between an empty-state message and the actual cards.
-    if (!groups.length) {
-        container.innerHTML = `<p class="text-secondary fst-italic mb-0">${I18N.duplicateNone}</p>`;
-        return;
-    }
-    groups.forEach(group => container.appendChild(buildDuplicateGroupCard(group)));
-}
-
-async function resolveDuplicate(fileId, button) {
-    const originalHtml = button.innerHTML;
-    button.disabled = true;
-    button.textContent = '...';
-    try {
-        const r = await fetch('/api/graphql', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
-            credentials: 'same-origin',
-            body: JSON.stringify({query: RESOLVE_DUPLICATE_MUTATION, variables: {id: String(fileId)}}),
-        });
-        if (!r.ok) throw new Error(`GraphQL HTTP ${r.status}`);
-        const body = await r.json();
-        if (body.errors && body.errors.length) {
-            throw new Error('GraphQL errors: ' + JSON.stringify(body.errors));
-        }
-        if (!body.data.resolveDuplicateFiles) throw new Error('resolution did not succeed');
-        console.info(I18N.duplicateResolved);
-        // The resolved group's card is gone once this reloads - no need to reset
-        // this specific button, its row no longer exists.
-        await Promise.all([loadDuplicateGroups(), loadStats()]);
-    } catch (e) {
-        console.error(e);
-        button.textContent = I18N.duplicateResolveFailed;
-        setTimeout(() => {
-            button.disabled = false;
-            button.innerHTML = originalHtml;
-        }, 3000);
-    }
-}
-
-const RESOLVE_BY_SIZE_MUTATION = `
-    mutation ResolveBySize($pref: String) {
-        resolveDuplicatesBySize(compressionPreference: $pref)
-    }`;
-
-document.getElementById('resolveBySizeBtn').addEventListener('click', async function () {
-    const btn = this;
-    const originalHtml = btn.innerHTML;
-    const pref = document.getElementById('bulkCompressionPreferenceSelect').value;
-    btn.disabled = true;
-    btn.innerHTML = '...';
-    try {
-        const r = await fetch('/api/graphql', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
-            credentials: 'same-origin',
-            body: JSON.stringify({query: RESOLVE_BY_SIZE_MUTATION, variables: {pref: pref}}),
-        });
-        if (!r.ok) throw new Error(`GraphQL HTTP ${r.status}`);
-        const body = await r.json();
-        if (body.errors && body.errors.length) {
-            throw new Error('GraphQL errors: ' + JSON.stringify(body.errors));
-        }
-        const resolvedCount = body.data.resolveDuplicatesBySize;
-        btn.innerHTML = resolvedCount > 0
-            ? `<i class="bi bi-check-lg"></i> ${I18N.duplicateBulkResolved.replace('{n}', resolvedCount)}`
-            : `<i class="bi bi-info-circle"></i> ${I18N.duplicateBulkNone}`;
-        await Promise.all([loadDuplicateGroups(), loadStats()]);
-    } catch (e) {
-        console.error(e);
-        btn.innerHTML = `<i class="bi bi-exclamation-triangle"></i> ${I18N.duplicateBulkFailed}`;
-    } finally {
-        setTimeout(() => {
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-        }, 4000);
-    }
-});
-
-loadDuplicateGroups();
-
 // --- Verification status drill-down: which titles are behind each row above ---
 const FILES_BY_STATUS_QUERY = `
     query FilesByStatus($status: [VerificationStatus!], $page: Int!, $pageSize: Int!, $search: String) {
@@ -534,7 +335,7 @@ async function loadVerificationFilesPage() {
     const totalPages = Math.max(1, Math.ceil(verificationTotal / VERIFICATION_PAGE_SIZE));
     document.getElementById('verificationFilesCount').textContent = I18N.filesPageCount
         .replace('{count}', count(verificationTotal))
-        .replace('{s}', verificationTotal === 1 ? '' : 's')
+        .replace('{s}', pluralS(verificationTotal))
         .replace('{page}', verificationPage)
         .replace('{totalPages}', totalPages);
     prevBtn.disabled = verificationPage <= 1;
@@ -647,7 +448,7 @@ async function loadMissingAppTypePage() {
     const totalPages = Math.max(1, Math.ceil(missingAppTypeTotal / MISSING_APP_TYPE_PAGE_SIZE));
     document.getElementById('missingAppTypeCount').textContent = I18N.filesPageCount
         .replace('{count}', count(missingAppTypeTotal))
-        .replace('{s}', missingAppTypeTotal === 1 ? '' : 's')
+        .replace('{s}', pluralS(missingAppTypeTotal))
         .replace('{page}', missingAppTypePage)
         .replace('{totalPages}', totalPages);
     prevBtn.disabled = missingAppTypePage <= 1;
@@ -974,7 +775,7 @@ async function loadLibraryDetailPage() {
     const totalPages = Math.max(1, Math.ceil(libraryDetailTotal / LIBRARY_DETAIL_PAGE_SIZE));
     document.getElementById('libraryDetailCount').textContent = I18N.filesPageCount
         .replace('{count}', count(libraryDetailTotal))
-        .replace('{s}', libraryDetailTotal === 1 ? '' : 's')
+        .replace('{s}', pluralS(libraryDetailTotal))
         .replace('{page}', libraryDetailPage)
         .replace('{totalPages}', totalPages);
     prevBtn.disabled = libraryDetailPage <= 1;
@@ -1120,17 +921,11 @@ function renderDownloads(d) {
         pct: share(u.count, d.by_user)})));
     dlList('downloadByClient', d.by_client.map(c => ({
         main: client(c.client), side: count(c.count), glyph: clientGlyph(c.client), pct: share(c.count, d.by_client)})));
-    dlList('downloadRecent', d.recent.map(r => ({
-        main: r.name || r.title_id || r.filename,
-        sub: [r.filename, r.size ? formatBytes(r.size) : null, r.address].filter(Boolean).join(' · '),
-        chips: [{text: r.user || DL.anonymous, avatarUrl: r.user_avatar || undefined, glyph: 'bi-person'},
-                {text: client(r.client), glyph: clientGlyph(r.client)}],
-        side: new Date(r.downloaded_at).toLocaleString([], {dateStyle: 'short', timeStyle: 'short'}),
-        titleId: r.title_id})));
     fillTitleIcons(document.getElementById('downloadsSection'));
-    // Ten rows in view each, the rest by scrolling.
-    ['downloadTopTitles', 'downloadByUser', 'downloadByClient', 'downloadRecent'].forEach(id =>
-        limitVisibleRows(document.getElementById(id + 'Scroll'), 'li', 10));
+    // Ten rows in view for the long list, four for the short ones beside it; the rest by
+    // scrolling. (The latest downloads moved to the Dashboard.)
+    [['downloadTopTitles', 10], ['downloadByUser', 4], ['downloadByClient', 4]]
+        .forEach(([id, rows]) => limitVisibleRows(document.getElementById(id + 'Scroll'), 'li', rows));
 }
 
 function loadDownloads() {
