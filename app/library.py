@@ -221,7 +221,11 @@ def move_companion_files(old_path, new_path, library_root):
         for n in entries)
     if entries and only_companions:
         for name in sorted(entries):
-            move(os.path.join(old_dir, name), os.path.join(new_dir, name))
+            src = os.path.join(old_dir, name)
+            # A companion left in place in step 1 (its new name taken) stays there - on a
+            # case-sensitive disk its old name could still be free at the new folder.
+            if src not in skipped:
+                move(src, os.path.join(new_dir, name))
     return moved, skipped
 
 
