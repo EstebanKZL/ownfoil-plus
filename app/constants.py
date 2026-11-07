@@ -52,6 +52,9 @@ DEFAULT_SETTINGS = {
                 "mode": "auto",
                 "block_size_exponent": 20,
                 "threads": 0,
+                # Files > Compression and Files > Combine: delete each original once the
+                # new file is verified (off: both stay, the duplicate settings decide).
+                "delete_originals": True,
             },
             "verification": {
                 "enabled": True,

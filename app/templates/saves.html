@@ -11,6 +11,16 @@
         <p class="page-head__desc">{{ t('saves.desc') }}</p>
     </header>
 
+    {% if vault_enabled %}
+    {# What the server keeps (Settings > Save vault), in the amber of a heads-up. #}
+    <div class="dash-notice dash-notice--wait saves-limits mb-3" role="note">
+        <i class="bi bi-info-circle" aria-hidden="true"></i>
+        <div class="dash-notice__text">
+            <div>{% if vault_keep %}{{ t('saves.limits_keep', n=vault_keep) }}{% else %}{{ t('saves.limits_keep_all') }}{% endif %}</div>
+            <div>{% if vault_max_games %}{{ t('saves.limits_games', n=vault_max_games, used=vault_games_used) }}{% else %}{{ t('saves.limits_games_all') }}{% endif %}</div>
+        </div>
+    </div>
+    {% endif %}
     <p id="savesLoading" class="text-secondary fst-italic">{{ t('common.loading') }}</p>
     <p id="savesError" class="text-danger" hidden>{{ t('saves.load_failed') }}</p>
     <div class="alert alert-secondary" id="savesOff" hidden>
@@ -35,7 +45,6 @@
     const I18N = {
         backups: {{ t('saves.backups') | tojson }},
         backupsOne: {{ t('saves.backups_one') | tojson }},
-        owner: {{ t('saves.owner') | tojson }},
         download: {{ t('saves.download') | tojson }},
         remove: {{ t('saves.delete') | tojson }},
         deleteConfirm: {{ t('saves.delete_confirm') | tojson }},

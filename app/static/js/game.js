@@ -450,7 +450,7 @@ function gameFiles(t) {
     // What each file holds: a NUP or a multi-content file carries the game, updates and DLC.
     const parts = {};
     apps.forEach(a => {
-        const ids = IS_ADMIN && a.files ? a.files.map(f => f.id) : a.downloadableFile ? [a.downloadableFile.id] : [];
+        const ids = CAN_VIEW_ADMIN && a.files ? a.files.map(f => f.id) : a.downloadableFile ? [a.downloadableFile.id] : [];
         ids.forEach(id => {
             const list = parts[id] = parts[id] || [];
             const label = `${typeName(a)} v${a.appVersion}`;
@@ -460,7 +460,7 @@ function gameFiles(t) {
     const seen = new Set();
     const rows = [];
     apps.forEach(a => {
-        const files = IS_ADMIN && a.files ? a.files
+        const files = CAN_VIEW_ADMIN && a.files ? a.files
             : a.downloadableFile ? [Object.assign({extension: a.downloadableFile.format}, a.downloadableFile)] : [];
         files.forEach(f => {
             if (seen.has(f.id)) return;
@@ -492,10 +492,39 @@ function renderActions(t) {
                     $('<span>').text(` ${I18N.editMetadata}`))
             .on('click', () => openEdit(t)));
     }
+    if (CAN_FAVORITE && t.titleId) box.append(favoriteAction(t.titleId));
     box.append($('<button type="button" class="btn btn-outline-secondary">')
         .append($('<i class="bi bi-clipboard" aria-hidden="true"></i>'),
                 $('<span>').text(` ${I18N.copyTitleId}`))
         .on('click', () => copyTitleId(t.titleId)));
+}
+
+/** Favourite: the signed-in user's own star, the same list as the Library's. */
+function favoriteAction(titleId) {
+    let on = false;
+    const btn = $('<button type="button" class="btn btn-outline-secondary game-fav-btn">');
+    const paint = () => btn.toggleClass('is-on', on).attr('aria-pressed', on ? 'true' : 'false').empty()
+        .append($('<i aria-hidden="true">').addClass(`bi ${on ? 'bi-star-fill' : 'bi-star'}`),
+                $('<span>').text(` ${on ? I18N.favoriteRemove : I18N.favoriteAdd}`));
+    paint();
+    fetch('/api/favorites', {credentials: 'same-origin'})
+        .then(r => r.ok ? r.json() : {title_ids: []})
+        .then(d => { on = (d.title_ids || []).includes(titleId.toUpperCase()); paint(); })
+        .catch(() => {});
+    btn.on('click', async () => {
+        btn.prop('disabled', true);
+        try {
+            const r = on
+                ? await fetch(`/api/favorites/${titleId}`, {method: 'DELETE', credentials: 'same-origin'})
+                : await fetch('/api/favorites', {method: 'POST', credentials: 'same-origin',
+                                                 headers: {'Content-Type': 'application/json'},
+                                                 body: JSON.stringify({title_id: titleId})});
+            if (r.ok) { on = !on; paint(); }
+        } finally {
+            btn.prop('disabled', false);
+        }
+    });
+    return btn;
 }
 
 /** The Files dialog: each file with its size, check and its own download link, and

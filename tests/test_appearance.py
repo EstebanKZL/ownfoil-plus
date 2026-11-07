@@ -61,4 +61,4 @@ def test_shopper_cannot_change_style(shopper_client):
 def test_appearance_section_and_search_entry(admin_client):
     html = admin_client.get("/admin/settings").get_data(as_text=True)
     assert 'id="Appearance"' in html
-    assert "/admin/settings#Appearance" in admin_client.get("/").get_data(as_text=True)
+    assert "apariencia" in admin_client.get("/").get_data(as_text=True)   # Ctrl+K finds Settings by it

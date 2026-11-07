@@ -524,6 +524,8 @@ class OrderField(Enum):
     """What to sort by. Not every member applies to every query, and one that does
     not falls back to that query's default order rather than erroring - sorting
     titles by DOWNLOAD_COUNT is meaningless, not invalid."""
+    REGION = strawberry.enum_value("region", description=(
+        "The catalogue's region of the title. `titles` and `apps`."))
     ID = strawberry.enum_value("id", description=(
         "Primary key order. Every query's default, and the tie-break appended to "
         "every other ordering so paging stays stable."))
@@ -532,7 +534,7 @@ class OrderField(Enum):
         "Case-insensitive, with unnamed rows last."))
     SIZE = strawberry.enum_value("size", description=(
         "Bytes for `files`; the catalogue's install size, cast to a number, for "
-        "`titles`. Not applicable to `apps`."))
+        "`titles` and `apps`."))
     RELEASE_DATE = strawberry.enum_value("release_date", description=(
         "Catalogue release date for `titles` and `apps`. On `files` it sorts by "
         "`mtime`, the closest thing a file has."))
@@ -540,7 +542,7 @@ class OrderField(Enum):
         "How often shop clients fetched the file. `files` only."))
     ADDED_AT = strawberry.enum_value("added_at", description=(
         "When ownfoil first saw the file - the 'recently added' view, paired with "
-        "`direction: DESC`. `files` only."))
+        "`direction: DESC`. For `titles` and `apps`, when the title's newest file came in."))
     VERSION = strawberry.enum_value("version", description=(
         "App version, compared numerically. `apps` only; under "
         "`groupByAppId: true` it sorts by the group's highest version."))
@@ -567,11 +569,21 @@ class OrderBy:
 # Per-query whitelist: {OrderField value: SQL expression}. A field absent from a
 # query's map falls back to that query's default, so asking a files query to sort by
 # NAME degrades to its id order rather than erroring.
+# When a title's newest file came into the library (the Library's "Date added").
+_TITLE_ADDED = ("(SELECT MAX(fl.added_at) FROM apps ap JOIN app_files af ON af.app_id = ap.id "
+                "JOIN files fl ON fl.id = af.file_id WHERE ap.title_id = ot.id)")
+
 TITLE_ORDER = {
     "name": "td.name IS NULL, td.name COLLATE NOCASE",
     "release_date": "td.release_date IS NULL, td.release_date",
     "size": "td.size IS NULL, CAST(td.size AS INTEGER)",
+    "region": "td.region IS NULL, td.region",
+    "added_at": f"{_TITLE_ADDED} IS NULL, {_TITLE_ADDED}",
+    "id": "COALESCE(ot.title_id, td.id)",
 }
+
+_APP_ADDED = ("(SELECT MAX(fl.added_at) FROM apps ap JOIN app_files af ON af.app_id = ap.id "
+              "JOIN files fl ON fl.id = af.file_id WHERE ap.title_id = a.title_id)")
 
 APP_ORDER = {
     "name": "td.name IS NULL, td.name COLLATE NOCASE",
@@ -579,6 +591,10 @@ APP_ORDER = {
     # row's own release_date is empty for base games, which left them unsorted.
     "release_date": "td.release_date IS NULL, td.release_date",
     "version": "CAST(a.app_version AS INTEGER)",
+    "size": "td.size IS NULL, CAST(td.size AS INTEGER)",
+    "region": "td.region IS NULL, td.region",
+    "added_at": f"{_APP_ADDED} IS NULL, {_APP_ADDED}",
+    "id": "a.app_id",
 }
 
 # Grouped by app id, the item is the group's highest version, so that is what sorting
@@ -595,6 +611,22 @@ FILE_ORDER = {
 }
 
 
+def _top_level_parts(expr: str) -> List[str]:
+    """Split an ORDER BY list at its own commas, not those inside a call such as
+    COALESCE(a, b) or a subquery."""
+    parts, depth, start = [], 0, 0
+    for i, ch in enumerate(expr):
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            parts.append(expr[start:i].strip())
+            start = i + 1
+    parts.append(expr[start:].strip())
+    return parts
+
+
 def order_sql(order_by: Optional[OrderBy], allowed: dict, default: str) -> str:
     """Build an ORDER BY body from a whitelisted field plus a direction.
 
@@ -608,7 +640,7 @@ def order_sql(order_by: Optional[OrderBy], allowed: dict, default: str) -> str:
     if expr is None:
         return f"{default} {direction}"
     # NULL-placement flags must not take the direction, or DESC would flip them.
-    parts = [p.strip() for p in expr.split(",")]
+    parts = _top_level_parts(expr)
     ordered = ", ".join(p if p.endswith("IS NULL") else f"{p} {direction}" for p in parts)
     return f"{ordered}, {default}"
 

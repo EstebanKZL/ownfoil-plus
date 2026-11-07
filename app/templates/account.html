@@ -22,6 +22,20 @@
             {% set my_avatar = avatar_url(current_user) %}
             <div class="avatar-current">
                 <span class="avatar-preview" id="avatarPreview">{% if my_avatar %}<img src="{{ my_avatar }}" alt="" width="72" height="72">{% else %}<i class="bi bi-person-circle" aria-hidden="true"></i>{% endif %}</span>
+                {# Who is signed in: the user name, email and what the account may do. #}
+                <div class="account-identity">
+                    <div class="account-identity__name">{{ current_user.user }}</div>
+                    {% if current_user.email %}<div class="account-identity__email">{{ current_user.email }}</div>{% endif %}
+                    <div class="account-identity__roles">
+                        {% if current_user.admin_access %}<span class="status-badge status-badge--ok"><i class="bi bi-shield-lock" aria-hidden="true"></i> {{ t('auth.admin') }}</span>
+                        {% elif current_user.is_collaborator %}<span class="status-badge status-badge--info"><i class="bi bi-eye" aria-hidden="true"></i> {{ t('auth.collaborator') }}</span>
+                        {% else %}<span class="status-badge"><i class="bi bi-person" aria-hidden="true"></i> {{ t('account.role_user') }}</span>{% endif %}
+                        {% if current_user.shop_access %}<span class="status-badge">{{ t('auth.shop') }}</span>{% endif %}
+                        {% if current_user.backup_access %}<span class="status-badge">{{ t('auth.backup') }}</span>{% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="avatar-current">
                 <div class="d-flex flex-wrap gap-2">
                     <label class="btn btn-outline-primary btn-sm mb-0" for="avatarFile"><i class="bi bi-upload" aria-hidden="true"></i> {{ t('avatar.upload') }}</label>
                     <input type="file" id="avatarFile" accept="image/png,image/jpeg,image/webp,image/gif" hidden>

@@ -9,6 +9,7 @@ import json
 from enum import Enum
 
 import strawberry
+from .context import sees_admin
 from strawberry import Private
 from strawberry.types import Info
 from typing import List, Optional
@@ -489,7 +490,7 @@ class App:
         """
         if self.files_loaded is None:
             return None
-        if info is not None and not info.context.can_admin:
+        if info is not None and not sees_admin(info.context):
             return None
         return [f for f in self.files_loaded if match_file(f, filter)]
 

@@ -42,13 +42,20 @@ WITH RECURSIVE active_chain(id) AS (
     FROM tasks t JOIN active_chain a ON t.id = a.id
     WHERE t.parent_id IS NOT NULL
 ),
-oldest(id) AS (
-    SELECT id FROM tasks ORDER BY id LIMIT ?
+-- Two windows of MAX_TASKS each, failed and the rest: a long list of failures must not
+-- crowd the queue out of what the page gets (it used to show one queued task).
+oldest_open(id) AS (
+    SELECT id FROM tasks WHERE status != 'failed' ORDER BY id LIMIT ?
+),
+oldest_failed(id) AS (
+    SELECT id FROM tasks WHERE status = 'failed' ORDER BY id LIMIT ?
 ),
 wanted(id) AS (
     SELECT id FROM active_chain
     UNION
-    SELECT id FROM oldest
+    SELECT id FROM oldest_open
+    UNION
+    SELECT id FROM oldest_failed
 )
 SELECT t.id, t.parent_id, t.task_name, t.status, t.completion_pct, t.input_json,
        t.error_message, t.created_at, t.started_at, t.run_after, t.worker_id, f.filepath
@@ -78,7 +85,7 @@ def _read_tasks():
     connection = db.engine.raw_connection()
     try:
         cursor = connection.cursor()
-        cursor.execute(_TASK_SQL, (MAX_TASKS,))
+        cursor.execute(_TASK_SQL, (MAX_TASKS, MAX_TASKS))
         rows = cursor.fetchall()
     finally:
         connection.close()

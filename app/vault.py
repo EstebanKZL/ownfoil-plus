@@ -114,6 +114,16 @@ def _games_in(root):
     return games
 
 
+def games_used(user_id):
+    """How many different games a user keeps saves of (what max_games counts)."""
+    return len(_games_in(user_root(user_id)))
+
+
+def keep():
+    """Backups kept per game (0: all)."""
+    return int(config().get('keep') or 0)
+
+
 def game_limit_reached(root, folder):
     """Whether a backup into `folder` would be one game too many: the limit counts
     different games, never their backups. A game already kept always takes more; deleting

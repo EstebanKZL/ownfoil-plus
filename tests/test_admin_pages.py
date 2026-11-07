@@ -95,8 +95,10 @@ def test_files_palette_is_built_from_the_tokens():
 
 def test_files_tiles_take_a_tone_per_state():
     css = _css()
-    for key, token in (("unidentified", "--op-wait"), ("duplicates", "--op-wait"), ("outdated", "--op-wait"),
-                       ("all", "--op-nav"), ("pending", "--op-nav"), ("verification", "--op-ok")):
+    # A color of its own per tile (asked for: they read the same before).
+    for key, token in (("all", "--op-nav"), ("compress", "--op-action"), ("combine", "--op-fav"),
+                       ("unidentified", "--op-wait"), ("verification", "--op-ok"), ("duplicates", "--op-info"),
+                       ("outdated", "--op-firmware"), ("pending", "--op-dlc")):
         assert re.search(rf'\.files-tile\[data-tile="{key}"\] \{{[^}}]*var\({token}', css), key
     tile = re.search(r"(?m)^\.files-tile \{([^}]*)\}", css).group(1)
     assert "var(--op-radius-lg)" in tile and "#" not in tile
@@ -264,7 +266,7 @@ def test_links_into_settings_still_land(admin_client):
         for name in os.listdir(path):
             if name.endswith((".html", ".js")):
                 targets |= set(re.findall(r"/admin/settings#([A-Za-z]\w*)", _read(*folder, name)))
-    assert targets >= {"Authentication", "Library", "Maintenance", "Notifications"}
+    assert targets >= {"Authentication", "Library", "Maintenance"}
     missing = sorted(t for t in targets if f'id="{t}"' not in html)
     assert not missing, missing
 
@@ -355,10 +357,12 @@ def test_danger_title_icon_is_red_too():
     assert re.search(r"\.settings-section--danger \.admin-section__title \.bi \{[^}]*color: var\(--op-danger\)", _css())
 
 
-def test_every_settings_section_is_in_the_search_palette():
+def test_settings_is_one_entry_of_the_search_palette():
+    """Asked for: Settings once in Ctrl+K, not one entry per section (its words still
+    find it)."""
     nav = _read("app", "templates", "nav.html")
-    missing = [s for s in SETTINGS_IDS if f"'/admin/settings#{s}'" not in nav]
-    assert not missing, missing
+    assert "'/admin/settings', 'bi-gear'" in nav
+    assert "'/admin/settings#" not in nav
 
 
 def test_index_click_moves_keyboard_focus_into_the_section(admin_client):

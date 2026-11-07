@@ -6,6 +6,12 @@
    phone's bottom bar) now link every one of them. #}
 <div class="container-fluid setting-body">
     <div class="settings-panel">
+        {% if is_collaborator %}
+        <div class="readonly-notice" role="note">
+            <i class="bi bi-eye" aria-hidden="true"></i>
+            <span>{{ t('role.readonly_notice') }}</span>
+        </div>
+        {% endif %}
         {% block panel %}{% endblock %}
     </div>
 </div>
