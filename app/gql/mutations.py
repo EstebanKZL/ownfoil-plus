@@ -37,6 +37,7 @@ class MutationFailed(Exception):
 
 
 def _require_admin(ctx) -> None:
+    # Real admins only: a collaborator has can_view_admin, never can_admin.
     if not ctx.can_admin:
         raise NotAuthorized("Admin access is required for this operation.")
 

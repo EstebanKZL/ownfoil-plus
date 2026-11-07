@@ -10,7 +10,11 @@ function showServiceState(card, enabled) {
     card.querySelector('.service-switch').checked = enabled;
 }
 
+// A collaborator (<html data-readonly>) sees the states and turns nothing on or off.
+const READ_ONLY = document.documentElement.hasAttribute('data-readonly');
+
 document.querySelectorAll('.service-switch').forEach(input => {
+    if (READ_ONLY) { input.disabled = true; return; }
     input.addEventListener('change', async () => {
         const card = input.closest('.service-card');
         const wanted = input.checked;

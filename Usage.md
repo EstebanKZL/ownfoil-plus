@@ -82,9 +82,10 @@ The landing page of `Admin`. At the top, what needs attention, each linking to w
 
 The landing page: your whole library as cards, a compact grid or a list.
 
-- **At the top**, how the library is doing: the number of games; pending updates, of games and of DLC (*50 games and 16 DLC*); the DLC missing, and in how many games; the total size (admins only); and a bar with the share of games up to date. Clicking *Pending updates* or *DLC missing* shows those games.
-- **The toolbar**: search (by name or title ID), sort by **name** or **release date** in either direction, the view (cards, compact, list), the **View** menu (games per page - one for every view - and the card size, which Cards and Compact each remember) and the **Filters** menu (ownership, update, DLC; in the list view, the state of the files). A dot on *Filters* means some filter is on.
-- **The pills** under it are one-click filters, each with how many results it gives: *All*, *Update pending*, *Missing DLC*, *Up to date* (in the list view: *Complete*, *Incomplete*, *With errors*, *Repacks*). The counts follow the search and the Filters menu.
+- **At the top**, four tiles: the number of games, pending updates, missing DLC, and the games **up to date** with their share (*Up to date · 64%*, with a small bar). Each tile shows its games when clicked.
+- **The toolbar**: search (by name or title ID), sort by **name**, **release date**, **region**, **size**, **date added** or **ID**, with a button for each direction, the view (cards, compact, list), the **View** menu (games per page - one for every view - and the card size, which Cards and Compact each remember) and the **Filters** menu (ownership, update, DLC, favourites). A dot on *Filters* means some filter is on. Every view, the list too, takes the same filters.
+- **The pills** under it pick the console - *All*, *Switch*, *Switch 2* - each with how many games it gives, in every view. The other filters are in the Filters menu; the tiles at the top apply the common ones in one click.
+- **Favourites**: the star at the top right of a cover (or *Add to favourites* on the game's page) marks a game. Each user has their own list; *Favourites only* in the Filters menu shows just those games, on top of the other filters.
 - **Each card** is one game: its cover with the file's format (NSP, NSZ, XCI or XCZ) at the bottom left and an orange arrow at the bottom right when it has an update pending, then its name, publisher and year, title ID and DLC (*DLC 3/10*, or *No DLC*). A game you have only DLC or an update of shows in gray, with *Base game missing*. On a narrow card the state badges show just their icon. The **Compact** view has the same, smaller, five or six a row. The cover or the name opens the game's page.
 
 A DLC counts as missing only when no version of it is in the library; one with a newer version is a pending update.
@@ -134,7 +135,7 @@ Every signed-in user has `My account` (the person icon at the top right): your c
 
 ## Saves page
 
-Users with the `Backup` permission see their own backups JKSV uploaded to the save vault (see [Save vault](#save-vault)), by game, to download or delete. Admins see everyone's, each card saying whose.
+Users with the `Backup` permission see their own backups JKSV uploaded to the save vault (see [Save vault](#save-vault)), by game, to download or delete. Admins see everyone's, each card saying whose. An amber notice at the top says what the server keeps: how many backups of each game, and how many different games each user may keep saves of (with how many they already use).
 
 ## Services
 
@@ -207,12 +208,13 @@ Ownfoil-Plus requires an `admin` user to be created to enable authentication for
 
 The user list shows each user's picture, name and email, a column per permission and the edit and delete buttons, ten per page; the search box finds users by name or email.
 
-Each user has up to three permissions:
+Each user has up to four permissions:
 
 | Permission | Grants |
 | --- | --- |
 | `Shop` | Access to the shop from a client, to file downloads, and to the library page. |
-| `Admin` | Access to the `Settings` and `Tasks` pages and everything that changes the configuration. Admins get the other two permissions automatically. |
+| `Admin` | Access to the `Settings` and `Tasks` pages and everything that changes the configuration. Admins get the other permissions automatically. |
+| `Collaborator` | Sees every admin page - Dashboard, Files, Tasks, Statistics, Services, Settings - and may upload games, but changes nothing else: no settings, services, deleting, cleaning the database, compressing or verifying. Settings come without their secrets (tokens, passwords, webhook addresses), and backups and the settings export stay with admins. An admin is never also a collaborator. |
 | `Backup` | The save vault: JKSV uploads and the Saves page (see [Save vault](#save-vault)). |
 
 You can also create users from [environment variables](./Install.md#environment-variables) at startup, which is handy to avoid ever running an instance without an admin.

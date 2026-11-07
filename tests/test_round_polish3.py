@@ -31,7 +31,8 @@ def test_the_library_section_has_one_save():
 def test_up_to_date_needs_the_update_and_every_dlc():
     js = _read("app", "static", "js", "library.js")
     assert "upToDate: {update: 'Up to date', completion: 'Complete', ownership: 'Owned'}" in js
-    assert "owned: true, upToDate: true, complete: true, console: $console, page: 1, pageSize: 1" in js
+    # The list view takes the same pair: the latest update and every DLC.
+    assert "filter.complete = activeCompletionFilter === 'Complete'" in js
     assert "100 * stats.currentTitles / owned" in js
 
 

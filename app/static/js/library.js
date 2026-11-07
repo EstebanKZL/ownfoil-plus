@@ -19,6 +19,9 @@ function storageRemove(key) {
 let itemsPerPage = 20;      // the page size in use: pageTarget fitted to the columns shown
 let pageTarget = 20;        // what was chosen: 10, 20 ... 100
 let currentPage = 1;
+// Only the signed-in user's favourites (the star), on top of the other filters.
+let onlyFavorites = storageGet('libraryFavorites') === '1';
+let favoriteIds = new Set();     // the user's starred title ids (/api/favorites)
 // The console the cards show: '' both, 'switch', 'switch2' (remembered per browser).
 let activeConsole = ['switch', 'switch2'].includes(storageGet('libraryConsole')) ? storageGet('libraryConsole') : '';
 let totalItems = 0;
@@ -30,11 +33,10 @@ let searchDebounce;
 let activeOwnershipFilter = "";
 let activeUpdateFilter = "";
 let activeCompletionFilter = "";
-let activeHealthFilter = "";
 
 // Sorting: the fields both the `apps` (cards, icons) and `titles` (list) queries sort
 // on. ADDED_AT exists in the schema but only applies to `files`.
-const SORT_FIELDS = ['NAME', 'RELEASE_DATE'];
+const SORT_FIELDS = ['NAME', 'RELEASE_DATE', 'REGION', 'SIZE', 'ADDED_AT', 'ID'];
 const SORT_DIRECTIONS = ['ASC', 'DESC'];
 let librarySort = {field: 'NAME', direction: 'ASC'};
 
@@ -52,13 +54,10 @@ function loadSortFromStorage() {
 
 function renderSortControls() {
     $('#sortField').val(librarySort.field);
-    const asc = librarySort.direction === 'ASC';
-    const kind = librarySort.field === 'NAME' ? 'alpha' : 'numeric';
-    $('#sortDirection')
-        .attr('data-direction', librarySort.direction)
-        .attr('title', asc ? I18N.sortAsc : I18N.sortDesc)
-        .attr('aria-label', asc ? I18N.sortAsc : I18N.sortDesc)
-        .find('i').attr('class', `bi bi-sort-${kind}-${asc ? 'down' : 'up'}`);
+    $('.sort-direction-btn').each(function () {
+        const on = this.dataset.direction === librarySort.direction;
+        $(this).toggleClass('active', on).attr('aria-pressed', on ? 'true' : 'false');
+    });
 }
 
 function setSort(field, direction) {
@@ -78,10 +77,10 @@ function setSort(field, direction) {
 const CARDS_QUERY = `
     query Cards($page: Int!, $pageSize: Int!, $appType: [AppType!], $search: String,
                 $owned: Boolean, $upToDate: Boolean, $complete: Boolean, $orderBy: OrderBy,
-                $console: String) {
+                $console: String, $favorite: Boolean) {
         apps(groupByAppId: true, orderBy: $orderBy, page: $page, pageSize: $pageSize,
              appType: $appType, search: $search, owned: $owned,
-             upToDate: $upToDate, complete: $complete, console: $console) {
+             upToDate: $upToDate, complete: $complete, console: $console, favorite: $favorite) {
             total
             items {
                 appId
@@ -101,10 +100,10 @@ const CARDS_QUERY = `
 const ICONS_QUERY = `
     query Icons($page: Int!, $pageSize: Int!, $appType: [AppType!], $search: String,
                 $owned: Boolean, $upToDate: Boolean, $complete: Boolean, $orderBy: OrderBy,
-                $console: String) {
+                $console: String, $favorite: Boolean) {
         apps(groupByAppId: true, orderBy: $orderBy, page: $page, pageSize: $pageSize,
              appType: $appType, search: $search, owned: $owned,
-             upToDate: $upToDate, complete: $complete, console: $console) {
+             upToDate: $upToDate, complete: $complete, console: $console, favorite: $favorite) {
             total
             items {
                 appId
@@ -128,11 +127,9 @@ const ICONS_QUERY = `
 // One row per game (title), with its full catalogue picture nested underneath -
 // every update and DLC titledb knows about, cross-referenced against what's
 // actually owned in `apps`. Deliberately always `owned: true` at the title level
-// (this lists games the library has *something* for). The toolbar's
-// type/ownership/update/completion filters don't apply here (those are Card/Icon-
-// only) - the List view's own filter is `libraryHealth` instead, which buckets a
-// title by the worst state among *every* app it owns (base, update, and DLC
-// together), not just the base. `files.id` is what a download button targets;
+// (this lists games the library has *something* for). It takes the same filters
+// and pills as the cards: ownership, updates and DLC (TitleFilter's upToDate and
+// complete). `files.id` is what a download button targets;
 // `files` itself is admin-only and reads null for a shop-only viewer.
 //
 // Updates come from `updateApps` (ownfoil's own tracked apps, owned or not) rather
@@ -145,8 +142,11 @@ const ICONS_QUERY = `
 // same version as Missing, because titledb's catalogue disagreed with what ownfoil
 // itself considers a real update.
 const LIST_QUERY = `
-    query TitlesList($page: Int!, $pageSize: Int!, $search: String, $libraryHealth: LibraryHealth, $orderBy: OrderBy) {
-        titles(owned: true, search: $search, libraryHealth: $libraryHealth, orderBy: $orderBy, page: $page, pageSize: $pageSize) {
+    query TitlesList($page: Int!, $pageSize: Int!, $search: String, $owned: Boolean, $filter: TitleFilter,
+                     $orderBy: OrderBy, $favorite: Boolean, $console: String) {
+        titles(owned: $owned, search: $search, filter: $filter, orderBy: $orderBy, favorite: $favorite,
+               console: $console,
+               page: $page, pageSize: $pageSize) {
             total
             items {
                 titleId name intro description developer publisher releaseDate
@@ -190,19 +190,30 @@ function queryVariables() {
         complete: activeCompletionFilter ? activeCompletionFilter === 'Complete' : null,
         orderBy: librarySort,
         console: activeConsole || null,
+        favorite: onlyFavorites || null,
     };
 }
 
-/** The List view ignores the toolbar's type/ownership/update/completion filters
- *  entirely - only paging, the search box, and its own health filter carry over. */
+/** The List view takes the same filters as the cards: what you have (or, with
+ *  "Missing", the catalogue's games you don't), up to date or not, complete or not. */
+function listFilter() {
+    const filter = {};
+    if (activeUpdateFilter) filter.upToDate = activeUpdateFilter === 'Up to date';
+    if (activeCompletionFilter) filter.complete = activeCompletionFilter === 'Complete';
+    return Object.keys(filter).length ? filter : null;
+}
+
 function listQueryVariables() {
     const search = ($('#textFilter').val() || '').trim();
     return {
         page: currentPage,
         pageSize: itemsPerPage,
         search: search || null,
-        libraryHealth: activeHealthFilter || null,
+        owned: activeOwnershipFilter !== 'Missing',
+        filter: listFilter(),
         orderBy: librarySort,
+        favorite: onlyFavorites || null,
+        console: activeConsole || null,
     };
 }
 
@@ -287,47 +298,40 @@ function renderLibraryStats(stats) {
 
     $('#libraryCount').text(owned.toLocaleString()).prop('hidden', false);
 
-    // (value, label, note, icon, tone, pill it applies or null, link or null). Pending
-    // updates count base games only - the same games the "up to date" bar below leaves
-    // out; DLC count only under missing DLC.
+    // "Up to date" means nothing missing: the latest update and every DLC.
+    const pct = Math.round(100 * stats.currentTitles / owned);
+
+    // (value, label, note, icon, tone, pill it applies, share for a small bar or null).
+    // Pending updates count base games only; DLC count only under missing DLC. The same
+    // for every role: no file figures here (they were admin only).
     const tiles = [
-        [owned.toLocaleString(), I18N.tileGames, null, 'bi-controller', 'ok', 'all', null],
+        [owned.toLocaleString(), I18N.tileGames, null, 'bi-controller', 'nav', 'all', null],
         [pending.toLocaleString(), I18N.tileUpdates, null, 'bi-arrow-up-circle', 'wait', 'outdated', null],
-        [stats.missingDlc.toLocaleString(), I18N.tileDlcMissing, null, 'bi-puzzle', 'nav', 'missingDlc', null],
+        [stats.missingDlc.toLocaleString(), I18N.tileDlcMissing, null, 'bi-puzzle', 'action', 'missingDlc', null],
+        [stats.currentTitles.toLocaleString(), I18N.tileUpToDate.replace('{pct}', pct), null,
+         'bi-check-circle', 'ok', 'upToDate', pct],
     ];
-    // File figures are admin only and read zero for every other role, which is what
-    // keeps the library's storage footprint off a shop user's screen. It leads to Stats.
-    if (stats.totalFiles) {
-        tiles.push([formatBytes(stats.totalSize), I18N.tileSize, null, 'bi-hdd-stack', 'action', null, '/admin/stats']);
-    }
 
     const box = $('#libraryTiles').empty();
-    tiles.forEach(([value, label, note, icon, tone, pill, link]) => {
-        const tile = $(pill ? '<button type="button">' : link ? '<a>' : '<div>').addClass(`stat-tile stat-tile--${tone}`);
-        if (link) tile.attr('href', link);
+    tiles.forEach(([value, label, note, icon, tone, pill, share]) => {
+        const tile = $('<button type="button">').addClass(`stat-tile stat-tile--${tone}`);
         tile.append($('<span class="stat-tile__icon">').append($('<i>').addClass(`bi ${icon}`)),
                     $('<div class="stat-tile__value">').text(value),
                     $('<div class="stat-tile__label">').text(label));
         if (note) tile.append($('<div class="stat-tile__note">').text(note));
+        if (share !== null) {
+            const bar = $('<div class="stat-tile__bar" role="img">').attr('aria-label', label);
+            bar.append($('<span class="stat-tile__bar-fill">').css('width', share + '%'));
+            tile.append(bar);
+        }
         if (pill) {
             tile.attr('data-pill', pill).on('click', () => {
-                // These filters belong to the cards and icons: leave the list view first.
-                if (currentView === 'list') $('#view-toggle-btn-card').trigger('click');
                 applyPill(pill);
             });
         }
         box.append(tile);
     });
     box.prop('hidden', false);
-
-    // "Up to date" means nothing missing: the latest update and every DLC.
-    const pct = Math.round(100 * stats.currentTitles / owned);
-    $('#libraryProgressLabel').text(I18N.progress
-        .replace('{pct}', pct).replace('{n}', stats.currentTitles.toLocaleString())
-        .replace('{total}', owned.toLocaleString()));
-    $('#libraryProgress .progress').attr('aria-valuenow', pct);
-    $('#libraryProgress .progress-bar').css('width', pct + '%');
-    $('#libraryProgress').prop('hidden', false);
 }
 
 // What each card/icon pill sets: the update, completion and ownership filter groups.
@@ -342,29 +346,21 @@ const CARD_PILLS = {
     upToDate: {update: 'Up to date', completion: 'Complete', ownership: 'Owned'},
 };
 
-// What each list-view pill sets: the list's own health filter.
-const LIST_PILLS = {all: '', complete: 'COMPLETE', incomplete: 'INCOMPLETE', corrupt: 'CORRUPT', repack: 'REPACK'};
 
-// One request for every pill's count, with the grid's own variables minus the filter
-// the pills set - so each count is exactly what clicking that pill returns.
+// The console pills' counts (Both / Switch / Switch 2), with the view's own filters.
 const CARD_COUNTS_QUERY = `
-    query CardCounts($appType: [AppType!], $search: String, $owned: Boolean, $console: String) {
-        all: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, console: $console, page: 1, pageSize: 1) { total }
-        outdated: apps(groupByAppId: true, appType: $appType, search: $search, owned: true, upToDate: false, console: $console, page: 1, pageSize: 1) { total }
-        missingDlc: apps(groupByAppId: true, appType: $appType, search: $search, owned: true, complete: false, console: $console, page: 1, pageSize: 1) { total }
-        upToDate: apps(groupByAppId: true, appType: $appType, search: $search, owned: true, upToDate: true, complete: true, console: $console, page: 1, pageSize: 1) { total }
-        consoleAll: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, page: 1, pageSize: 1) { total }
-        consoleSwitch: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, console: "switch", page: 1, pageSize: 1) { total }
-        consoleSwitch2: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, console: "switch2", page: 1, pageSize: 1) { total }
+    query CardCounts($appType: [AppType!], $search: String, $owned: Boolean, $upToDate: Boolean,
+                     $complete: Boolean, $favorite: Boolean) {
+        consoleAll: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, upToDate: $upToDate, complete: $complete, favorite: $favorite, page: 1, pageSize: 1) { total }
+        consoleSwitch: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, upToDate: $upToDate, complete: $complete, favorite: $favorite, console: "switch", page: 1, pageSize: 1) { total }
+        consoleSwitch2: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, upToDate: $upToDate, complete: $complete, favorite: $favorite, console: "switch2", page: 1, pageSize: 1) { total }
     }`;
 
 const LIST_COUNTS_QUERY = `
-    query ListCounts($search: String) {
-        all: titles(owned: true, search: $search, page: 1, pageSize: 1) { total }
-        complete: titles(owned: true, search: $search, libraryHealth: COMPLETE, page: 1, pageSize: 1) { total }
-        incomplete: titles(owned: true, search: $search, libraryHealth: INCOMPLETE, page: 1, pageSize: 1) { total }
-        corrupt: titles(owned: true, search: $search, libraryHealth: CORRUPT, page: 1, pageSize: 1) { total }
-        repack: titles(owned: true, search: $search, libraryHealth: REPACK, page: 1, pageSize: 1) { total }
+    query ListCounts($search: String, $owned: Boolean, $filter: TitleFilter, $favorite: Boolean) {
+        consoleAll: titles(owned: $owned, search: $search, filter: $filter, favorite: $favorite, page: 1, pageSize: 1) { total }
+        consoleSwitch: titles(owned: $owned, search: $search, filter: $filter, favorite: $favorite, console: "switch", page: 1, pageSize: 1) { total }
+        consoleSwitch2: titles(owned: $owned, search: $search, filter: $filter, favorite: $favorite, console: "switch2", page: 1, pageSize: 1) { total }
     }`;
 
 let pillSeq = 0;      // like fetchSeq: an older count request never overwrites a newer one
@@ -375,10 +371,12 @@ async function loadPillCounts() {
     const list = currentView === 'list';
     let vars;
     if (list) {
-        vars = {search: listQueryVariables().search};
+        const l = listQueryVariables();
+        vars = {search: l.search, owned: l.owned, filter: l.filter, favorite: l.favorite};
     } else {
-        const grid = queryVariables();
-        vars = {appType: grid.appType, search: grid.search, owned: grid.owned, console: grid.console};
+        const g = queryVariables();
+        vars = {appType: g.appType, search: g.search, owned: g.owned, upToDate: g.upToDate,
+                complete: g.complete, favorite: g.favorite};
     }
     let data;
     try {
@@ -396,9 +394,6 @@ async function loadPillCounts() {
 /** The pill matching the current filters, or null when the Filters menu holds a
  *  combination no pill stands for (e.g. "Complete"). */
 function activePill() {
-    if (currentView === 'list') {
-        return Object.keys(LIST_PILLS).find(k => LIST_PILLS[k] === activeHealthFilter) || null;
-    }
     const exact = Object.keys(CARD_PILLS).find(k =>
         CARD_PILLS[k].update === activeUpdateFilter && CARD_PILLS[k].completion === activeCompletionFilter
         && CARD_PILLS[k].ownership === activeOwnershipFilter);
@@ -418,7 +413,7 @@ function coverFormat(game) {
 }
 
 function renderConsolePills() {
-    const row = $('#libraryConsole').empty().prop('hidden', currentView === 'list');
+    const row = $('#libraryConsole').empty();
     [['', I18N.consoleAll, 'consoleAll', 'bi-collection'], ['switch', 'Switch', 'consoleSwitch', 'bi-nintendo-switch'],
      ['switch2', 'Switch 2', 'consoleSwitch2', 'bi-nintendo-switch']].forEach(([value, label, key, icon]) => {
         const pill = $('<button type="button" class="filter-pill filter-pill--console">')
@@ -437,38 +432,60 @@ function renderConsolePills() {
     });
 }
 
+/** The pills row holds the console choice only: every other filter is in the toolbar's
+ *  Filters menu (the tiles at the top still apply the common ones). */
 function renderPills() {
     renderConsolePills();
-    const names = currentView === 'list' ? Object.keys(LIST_PILLS) : Object.keys(CARD_PILLS);
-    const active = activePill();
-    const row = $('#libraryPills').empty();
-    names.forEach(name => {
-        const pill = $('<button type="button" class="filter-pill">')
-            .toggleClass('active', name === active)
-            .attr('aria-pressed', name === active ? 'true' : 'false')
-            .append($('<span>').text(I18N.pills[name]));
-        if (pillCounts[name] !== undefined) {
-            pill.append($('<span class="filter-pill__count">').text(pillCounts[name].toLocaleString()));
+}
+
+/** The star on a card: marks or unmarks the game as one of the user's favourites. */
+function favoriteButton(game) {
+    if (!CAN_FAVORITE || !game.title_id) return null;
+    const btn = $('<button type="button" class="library-fav">');
+    const paint = () => {
+        const on = favoriteIds.has(game.title_id);
+        btn.toggleClass('is-on', on).attr({'aria-pressed': on ? 'true' : 'false',
+                                           title: on ? I18N.favoriteRemove : I18N.favoriteAdd,
+                                           'aria-label': on ? I18N.favoriteRemove : I18N.favoriteAdd})
+            .html(`<i class="bi ${on ? 'bi-star-fill' : 'bi-star'}" aria-hidden="true"></i>`);
+    };
+    paint();
+    btn.on('click', async event => {
+        event.preventDefault();
+        event.stopPropagation();
+        const adding = !favoriteIds.has(game.title_id);
+        btn.prop('disabled', true);
+        try {
+            const r = adding
+                ? await fetch('/api/favorites', {method: 'POST', credentials: 'same-origin',
+                                                 headers: {'Content-Type': 'application/json'},
+                                                 body: JSON.stringify({title_id: game.title_id})})
+                : await fetch(`/api/favorites/${game.title_id}`, {method: 'DELETE', credentials: 'same-origin'});
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            if (adding) favoriteIds.add(game.title_id); else favoriteIds.delete(game.title_id);
+            paint();
+            loadPillCounts();
+            if (onlyFavorites && !adding) loadPage();
+        } catch (e) {
+            console.error(e);
+        } finally {
+            btn.prop('disabled', false);
         }
-        pill.on('click', () => applyPill(name));
-        row.append(pill);
     });
+    return btn;
+}
+
+async function loadFavorites() {
+    if (!CAN_FAVORITE) return;
+    try {
+        const r = await fetch('/api/favorites', {credentials: 'same-origin'});
+        if (r.ok) favoriteIds = new Set((await r.json()).title_ids || []);
+    } catch (e) { /* no stars this time */ }
 }
 
 /** Set the filters a pill (or a header tile) stands for, through the same radios the
  *  Filters menu uses, so both always agree. */
 function applyPill(name) {
-    if (currentView === 'list') {
-        if (!(name in LIST_PILLS)) return;
-        const health = LIST_PILLS[name];
-        $('#healthAll').prop('checked', !health);
-        $('#healthComplete').prop('checked', health === 'COMPLETE');
-        $('#healthIncomplete').prop('checked', health === 'INCOMPLETE');
-        $('#healthCorrupt').prop('checked', health === 'CORRUPT');
-        $('#healthRepack').prop('checked', health === 'REPACK');
-        onFilterChange();
-        return;
-    }
     const pill = CARD_PILLS[name];
     if (!pill) return;
     $('#updateAll').prop('checked', !pill.update);
@@ -636,6 +653,7 @@ function renderCardView(games) {
             badges.append(statusBadge('wait', 'bi-dash-circle', I18N.baseMissing).attr('title', I18N.baseMissing));
         }
         coverWrap.append(badges);
+        coverWrap.append(favoriteButton(game));
         // Along the cover's bottom: the file's format on the left, and on the right a
         // mark when the game has a newer update than the library's.
         if (game.format || game.switch2) coverWrap.append(coverFormat(game));
@@ -731,7 +749,7 @@ function renderCompactView(games) {
             $('<small class="library-card-id">').text(game.id),
             $('<small class="library-card-dlc">').text(dlcCountText(game.dlc_owned, game.dlc_total))));
 
-        gameGrid.append(card.append(cover, body));
+        gameGrid.append(card.append(cover, body, favoriteButton(game)));
     });
     adjustCompactSizes();
     markCardFirmware();
@@ -1181,7 +1199,6 @@ function saveFiltersToStorage() {
         ownership: activeOwnershipFilter,
         update: activeUpdateFilter,
         completion: activeCompletionFilter,
-        health: activeHealthFilter,
     }));
 }
 
@@ -1190,7 +1207,8 @@ function loadFiltersFromStorage() {
     try { filters = JSON.parse(storageGet('activeFilters') || 'null'); } catch (e) { /* unreadable: no filters */ }
     // What's stored is the whole state: the browser refills form fields by itself when
     // coming back to a page, and that must not bring back filters that were cleared.
-    ['#ownershipAll', '#updateAll', '#completionAll', '#healthAll'].forEach(id => $(id).prop('checked', true));
+    ['#ownershipAll', '#updateAll', '#completionAll'].forEach(id => $(id).prop('checked', true));
+    $(onlyFavorites ? '#favoriteOnly' : '#favoriteAll').prop('checked', true);
     if (filters && typeof filters === 'object') {
 
         $('#ownershipOwned').prop('checked', filters.ownership === 'Owned');
@@ -1201,11 +1219,6 @@ function loadFiltersFromStorage() {
 
         $('#completionComplete').prop('checked', filters.completion === 'Complete');
         $('#completionMissingDlc').prop('checked', filters.completion === 'Missing DLC');
-
-        $('#healthComplete').prop('checked', filters.health === 'COMPLETE');
-        $('#healthIncomplete').prop('checked', filters.health === 'INCOMPLETE');
-        $('#healthCorrupt').prop('checked', filters.health === 'CORRUPT');
-        $('#healthRepack').prop('checked', filters.health === 'REPACK');
 
     }
     updateFilter();
@@ -1235,23 +1248,14 @@ function updateFilter() {
     } else {
         activeUpdateFilter = '';
     }
+    onlyFavorites = CAN_FAVORITE && $('#favoriteOnly').is(':checked');
+    if (onlyFavorites) storageSet('libraryFavorites', '1'); else storageRemove('libraryFavorites');
     if ($('#completionComplete').is(":checked")) {
         activeCompletionFilter = 'Complete';
     } else if ($('#completionMissingDlc').is(":checked")) {
         activeCompletionFilter = 'Missing DLC';
     } else {
         activeCompletionFilter = '';
-    }
-    if ($('#healthComplete').is(":checked")) {
-        activeHealthFilter = 'COMPLETE';
-    } else if ($('#healthIncomplete').is(":checked")) {
-        activeHealthFilter = 'INCOMPLETE';
-    } else if ($('#healthCorrupt').is(":checked")) {
-        activeHealthFilter = 'CORRUPT';
-    } else if ($('#healthRepack').is(":checked")) {
-        activeHealthFilter = 'REPACK';
-    } else {
-        activeHealthFilter = '';
     }
 }
 
@@ -1266,14 +1270,16 @@ function showLibraryState(id) {
 /** Is anything narrowing the current view's results? */
 function anyFilterOrSearch() {
     const search = ($('#textFilter').val() || '').trim();
-    if (currentView === 'list') return !!(search || activeHealthFilter);
     return !!(search || activeOwnershipFilter || activeUpdateFilter || activeCompletionFilter);
 }
 
 /** "Clear filters": every filter group back to All, the search emptied - both
  *  remembered that way - and back to page 1. */
 function clearAllFilters() {
-    ['#ownershipAll', '#updateAll', '#completionAll', '#healthAll'].forEach(id => $(id).prop('checked', true));
+    ['#ownershipAll', '#updateAll', '#completionAll'].forEach(id => $(id).prop('checked', true));
+    onlyFavorites = false;
+    storageRemove('libraryFavorites');
+    $('#favoriteAll').prop('checked', true);
     $('#textFilter').val('');
     storageRemove('searchTerm');
     updateFilter();
@@ -1295,17 +1301,12 @@ function onFilterChange() {
 
 /** The Filters button's dot: some filter that applies to the current view is set. */
 function updateFiltersDot() {
-    const active = currentView === 'list'
-        ? !!activeHealthFilter
-        : !!(activeOwnershipFilter || activeUpdateFilter || activeCompletionFilter);
+    const active = !!(activeOwnershipFilter || activeUpdateFilter || activeCompletionFilter || onlyFavorites);
     $('#filtersActiveDot').prop('hidden', !active);
 }
 
-/** Show the toolbar parts that apply to the current view: card size for cards and
- *  icons, and each view's own filter groups. */
+/** Every view takes the same filters; the dot says whether one is set. */
 function applyViewToToolbar() {
-    $('#filterDropdownCol').toggleClass('d-none', currentView === 'list');
-    $('#listHealthFilterCol').toggleClass('d-none', currentView !== 'list');
     updateFiltersDot();
 }
 
@@ -1324,13 +1325,15 @@ $(document).ready(function () {
     }
 
     refitPageSize(false);
+    if (!CAN_FAVORITE) onlyFavorites = false;
 
     loadFiltersFromStorage();
     updateFiltersDot();
     loadSortFromStorage();
     $('#sortField').on('change', function () { setSort(this.value, librarySort.direction); });
-    $('#sortDirection').on('click', () => setSort(librarySort.field, librarySort.direction === 'ASC' ? 'DESC' : 'ASC'));
-    loadPage();
+    $('.sort-direction-btn').on('click', function () { setSort(librarySort.field, this.dataset.direction); });
+    // The stars first: the cards are drawn with them.
+    loadFavorites().finally(loadPage);
     loadLibraryStats();
     loadPillCounts();
     $('#clearFiltersBtn').on('click', clearAllFilters);
@@ -1358,7 +1361,7 @@ $(document).ready(function () {
         resetToFirstPage();
     });
 
-    $('.ownership-toggle, .update-toggle, .completion-toggle, .health-toggle').change(onFilterChange);
+    $('.ownership-toggle, .update-toggle, .completion-toggle, .favorite-toggle').change(onFilterChange);
 
     // Listen to input changes in the text filter input
     $("#textFilter").on("input", function () {

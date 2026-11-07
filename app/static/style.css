@@ -619,6 +619,23 @@ a.stat-tile:hover {
     font-size: .9rem;
 }
 
+/* A share under a tile's label: the up-to-date tile's percentage. */
+.stat-tile__bar {
+    grid-column: 2;
+    height: .35rem;
+    margin-top: .4rem;
+    border-radius: 999px;
+    background-color: var(--op-chart-track);
+    overflow: hidden;
+}
+
+.stat-tile__bar-fill {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--op-info), var(--op-ok));
+}
+
 .stat-tile__note {
     color: var(--op-text-muted);
     font-size: .78rem;
@@ -903,6 +920,12 @@ button.stat-tile:hover,
 a.stat-tile:hover {
     border-color: rgba(var(--tile-rgb), .55);
     transform: translateY(-2px);
+}
+
+.library-sort-direction .sort-direction-btn.active {
+    background-color: var(--op-surface-2);
+    border-color: rgba(var(--op-nav-rgb), .55);
+    color: var(--op-nav);
 }
 
 .library-toolbar .toolbar-search {
@@ -4368,6 +4391,60 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     outline-offset: 2px;
 }
 
+/* Collaborator (<html data-readonly>): sees the admin pages and changes nothing but
+   uploading games. The server refuses the writes anyway; these controls just don't show. */
+html[data-readonly] .admin-write,
+html[data-readonly] .task-cancel,
+html[data-readonly] #purgeFailed,
+html[data-readonly] #clearHistory,
+html[data-readonly] #verifyNowBtn,
+html[data-readonly] #clearDownloadsBtn,
+html[data-readonly] .stats-record-action,
+html[data-readonly] .files-delete,
+html[data-readonly] .users-actions,
+html[data-readonly] a[href^="/api/backups/"] {
+    display: none !important;
+}
+
+.readonly-notice {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin-bottom: 1rem;
+    padding: .6rem .9rem;
+    border: 1px solid rgba(var(--op-info-rgb), .45);
+    border-radius: var(--op-radius, .75rem);
+    background-color: rgba(var(--op-info-rgb), .1);
+    color: var(--op-text);
+    font-size: .9rem;
+}
+
+/* The star: a favourite of the signed-in user (top right of the cover). */
+.library-fav {
+    position: absolute;
+    top: .5rem;
+    right: .5rem;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: 0;
+    border-radius: 50%;
+    background-color: rgba(var(--op-surface-0-rgb), .72);
+    color: var(--op-text);
+}
+
+.game-fav-btn.is-on .bi,
+.library-fav.is-on {
+    color: var(--op-fav);
+}
+
+.compact-card {
+    position: relative;
+}
+
 .library-cover-format {
     position: absolute;
     left: .5rem;
@@ -4384,6 +4461,8 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
 
 .library-cover-update {
     position: absolute;
+    /* Over the card's stretched name link, so hovering it says "Update available". */
+    z-index: 2;
     right: .5rem;
     bottom: .5rem;
     display: grid;

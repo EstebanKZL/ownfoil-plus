@@ -317,6 +317,15 @@ class Wishlist(db.Model):
     added_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     __table_args__ = (db.UniqueConstraint('user_id', 'title_id', name='uq_wishlist_user_title'),)
 
+class Favorite(db.Model):
+    """A game a user marked as a favourite: their own list, a Library filter of their own."""
+    __tablename__ = 'favorite'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False, index=True)
+    title_id = db.Column(db.String(16), nullable=False)
+    added_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    __table_args__ = (db.UniqueConstraint('user_id', 'title_id', name='uq_favorite_user_title'),)
+
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user = db.Column(db.String(100), unique=True)
@@ -341,10 +350,21 @@ class User(UserMixin, db.Model):
     avatar = db.Column(db.String(64), nullable=True)
     google_id = db.Column(db.String(64), nullable=True, unique=True)
     pending = db.Column(db.Boolean, nullable=False, default=False, server_default='0')
+    # Collaborator: sees every admin page, changes nothing (auth.access_required lets
+    # them read; writes, settings, services and backups stay with admins).
+    collaborator_access = db.Column(db.Boolean, nullable=False, default=False, server_default='0')
 
     @property
     def is_admin(self):
         return self.admin_access
+
+    @property
+    def is_collaborator(self):
+        return bool(self.collaborator_access) and not self.admin_access
+
+    def can_view_admin(self):
+        """Admins, and collaborators (who only look)."""
+        return bool(self.admin_access) or self.is_collaborator
 
     def has_shop_access(self):
         return self.shop_access

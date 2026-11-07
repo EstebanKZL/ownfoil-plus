@@ -43,7 +43,7 @@ def test_the_page_state_comes_only_from_what_is_stored():
     by itself (it restores form fields), and the list stayed searched."""
     body = _function_body(_js("library.js"), "loadFiltersFromStorage")
     assert "$('#textFilter').val(savedSearch || '')" in body
-    assert "['#ownershipAll', '#updateAll', '#completionAll', '#healthAll'].forEach(" in body
+    assert "['#ownershipAll', '#updateAll', '#completionAll'].forEach(" in body
     html = _read("app", "templates", "index.html")
     assert re.search(r'<input type="search" id="textFilter"[^>]*autocomplete="off"', html)
 

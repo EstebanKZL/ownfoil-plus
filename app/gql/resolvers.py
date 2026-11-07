@@ -4,6 +4,7 @@ import json
 from typing import Dict, List, Optional
 
 import strawberry
+from .context import sees_admin
 from sqlalchemy import text
 
 import media
@@ -718,7 +719,7 @@ def resolve_title(title_id: str, ctx: GraphQLContext, info) -> Optional[Title]:
     files_sel = apps_sel.child("files")
     apps_titledb_sel = apps_sel.child("titledb")
     want_apps = ctx.can_shop and sel.has("apps")
-    want_apps_files = ctx.can_admin and want_apps and apps_sel.has("files")
+    want_apps_files = sees_admin(ctx) and want_apps and apps_sel.has("files")
     # downloadableFile/downloadUrl/downloadSize/downloadExtension are shop-visible
     # (not admin-only like files itself), but all four project out of the exact same
     # underlying fetch - a shop client reading this title's `apps` for its own detail
@@ -806,12 +807,27 @@ def _library_health_clause(health: LibraryHealth) -> str:
     return f"NOT ({is_corrupt}) AND NOT ({is_repack}) AND NOT ({is_complete})"  # INCOMPLETE
 
 
+def _favorite_clause(ctx, favorite, column, where, params):
+    """The signed-in caller's favourites (or everything else): `favorite: true` matches
+    nothing for an anonymous caller, who has none."""
+    user = getattr(ctx, 'user', None)
+    user_id = getattr(user, 'id', None)
+    if user_id is None:
+        if favorite:
+            where.append("0")
+        return
+    params["fav_user"] = int(user_id)
+    where.append(f"{'' if favorite else 'NOT '}EXISTS (SELECT 1 FROM main.favorite fv "
+                 f"WHERE fv.user_id = :fav_user AND fv.title_id = {column})")
+
+
 def resolve_titles(*, owned: Optional[bool], filter: Optional[TitleFilter],
                     search: Optional[str] = None, order_by: Optional[OrderBy] = None,
                     library_health: Optional[LibraryHealth] = None,
                     missing_app_type: Optional[AppType] = None,
                     library_path: Optional[str] = None,
-                    page: int, page_size: int, ctx: GraphQLContext, info) -> TitleConnection:
+                    page: int, page_size: int, ctx: GraphQLContext, info,
+                    favorite: Optional[bool] = None, console: Optional[str] = None) -> TitleConnection:
     if not ctx.can_shop:
         return TitleConnection(total=0, items=[])
     page = max(1, page)
@@ -824,7 +840,7 @@ def resolve_titles(*, owned: Optional[bool], filter: Optional[TitleFilter],
     apps_titledb_sel = apps_sel.child("titledb")
     want_items = sel.has("items")
     want_apps = want_items and items_sel.has("apps")
-    want_apps_files = ctx.can_admin and want_apps and apps_sel.has("files")
+    want_apps_files = sees_admin(ctx) and want_apps and apps_sel.has("files")
     # Same four-field check as resolve_apps' want_downloadable and resolve_title's
     # want_apps_downloadable - downloadUrl/downloadSize/downloadExtension project out
     # of the same underlying fetch as downloadableFile, so any of the four needs it.
@@ -906,6 +922,13 @@ def resolve_titles(*, owned: Optional[bool], filter: Optional[TitleFilter],
                 "JOIN libraries lib ON lib.id = fl.library_id "
                 "WHERE ap.title_id = ot.id AND lib.path = :library_path)")
             params["library_path"] = library_path
+    if favorite is not None:
+        _favorite_clause(ctx, favorite, "COALESCE(ot.title_id, td.id)", where, params)
+    # Nintendo Switch 2 titles have ids starting with 04.
+    if console == 'switch2':
+        where.append("COALESCE(ot.title_id, td.id) LIKE '04%'")
+    elif console == 'switch':
+        where.append("COALESCE(ot.title_id, td.id) NOT LIKE '04%'")
     order_by_sql = order_sql(order_by, TITLE_ORDER, default_order)
 
     where_sql = (" WHERE " + " AND ".join(where)) if where else ""
@@ -959,7 +982,8 @@ def resolve_apps(*, owned: Optional[bool], app_type: Optional[List[AppType]],
                   search: Optional[str] = None, order_by: Optional[OrderBy] = None,
                   group_by_app_id: bool = False,
                   page: int, page_size: int, ctx: GraphQLContext, info,
-                  only_pk: Optional[str] = None, console: Optional[str] = None) -> AppConnection:
+                  only_pk: Optional[str] = None, console: Optional[str] = None,
+                  favorite: Optional[bool] = None) -> AppConnection:
     if not ctx.can_shop:
         return AppConnection(total=0, items=[])
     page = max(1, page)
@@ -975,7 +999,7 @@ def resolve_apps(*, owned: Optional[bool], app_type: Optional[List[AppType]],
     files_sel = items_sel.child("files")
     titledb_sel = items_sel.child("titledb")
     title_sel = items_sel.child("title")
-    want_files = ctx.can_admin and want_items and items_sel.has("files")
+    want_files = sees_admin(ctx) and want_items and items_sel.has("files")
     # downloadableFile/downloadUrl/downloadSize/downloadExtension are shop-visible
     # (not admin-only like files itself), but all four project out of the exact same
     # underlying fetch - a shop client reading this top-level `apps` query for its
@@ -1025,6 +1049,8 @@ def resolve_apps(*, owned: Optional[bool], app_type: Optional[List[AppType]],
     if search:
         params["search"] = f"%{search}%"
         where.append(_APP_SEARCH)
+    if favorite is not None:
+        _favorite_clause(ctx, favorite, "ot.title_id", where, params)
     # Nintendo Switch 2 titles have ids starting with 04 (their DLC and updates too).
     if console == 'switch2':
         where.append("a.app_id LIKE '04%'")
@@ -1122,7 +1148,7 @@ def resolve_apps(*, owned: Optional[bool], app_type: Optional[List[AppType]],
 def resolve_files(*, filter: Optional[FileFilter], page: int, page_size: int,
                    ctx: GraphQLContext, info, order_by: Optional[OrderBy] = None,
                    only_pk: Optional[str] = None) -> FileConnection:
-    if not ctx.can_admin:
+    if not sees_admin(ctx):
         return FileConnection(total=0, items=[])
     page = max(1, page)
     page_size = max(1, min(page_size, 1000))
@@ -1224,7 +1250,7 @@ def _hydrate_file_libraries(files: List[File]) -> None:
 
 
 def resolve_libraries(*, ctx: GraphQLContext, info) -> List[Library]:
-    if not ctx.can_admin:
+    if not sees_admin(ctx):
         return []
     rows = db.session.execute(text(
         "SELECT id, path, last_scan FROM libraries ORDER BY id")).all()
@@ -1236,7 +1262,7 @@ def resolve_libraries(*, ctx: GraphQLContext, info) -> List[Library]:
 def resolve_task_history(*, limit: int, ctx: GraphQLContext, info) -> "List[TaskHistoryEntry]":
     """The most recent completed top-level operations, newest first. Admin only,
     like the live task queue itself."""
-    if not ctx.can_admin:
+    if not sees_admin(ctx):
         return []
     from .types import TaskHistoryEntry
     rows = db.session.execute(text(
@@ -1253,7 +1279,7 @@ def resolve_duplicate_file_groups(*, ctx: GraphQLContext, info) -> "List[Duplica
     itself - deliberately a plain ORM query rather than the selective-hydration
     machinery the rest of this module uses, since duplicate groups are normally few,
     not library-sized."""
-    if not ctx.can_admin:
+    if not sees_admin(ctx):
         return []
     import titles as titles_lib
     from library import duplicate_file_groups as _duplicate_file_groups
@@ -1313,7 +1339,7 @@ def resolve_outdated_update_groups(*, ctx: GraphQLContext, info) -> "List[Outdat
     """Titles with more than one owned Update version. Admin only, same shape of
     query as `resolve_duplicate_file_groups` - a plain ORM pass, since there are
     normally few groups, not library-sized."""
-    if not ctx.can_admin:
+    if not sees_admin(ctx):
         return []
     import titles as titles_lib
     from library import outdated_update_groups as _outdated_update_groups
@@ -1363,7 +1389,7 @@ def resolve_pending_files(*, ctx: GraphQLContext, info) -> "PendingFileList":
     pipeline itself uses, so this never drifts from what a scheduled pass would
     actually pick up."""
     from .types import PendingFileEntry, PendingFileList
-    if not ctx.can_admin:
+    if not sees_admin(ctx):
         return PendingFileList(total=0, items=[])
     import tasks as tasks_mod
     from db import Files
@@ -1461,7 +1487,7 @@ def resolve_tasks(*, status: Optional[TaskStatus], task_name: Optional[str],
                    include_children: bool, limit: int,
                    ctx: GraphQLContext, info) -> List[Task]:
     """Top-level tasks newest first, mirroring what /api/tasks lists."""
-    if not ctx.can_admin:
+    if not sees_admin(ctx):
         return []
     limit = max(1, min(limit, 500))
     sel = Selection.from_info(info)
@@ -1495,7 +1521,7 @@ def resolve_tasks(*, status: Optional[TaskStatus], task_name: Optional[str],
 
 
 def resolve_task(task_id: str, ctx: GraphQLContext, info) -> Optional[Task]:
-    if not ctx.can_admin:
+    if not sees_admin(ctx):
         return None
     sel = Selection.from_info(info)
     row = db.session.execute(text(f"SELECT {_TASK_COLS} {_TASK_FROM} WHERE t.id = :id"),
@@ -1513,7 +1539,7 @@ def resolve_workers(*, ctx: GraphQLContext, info) -> List[Worker]:
     """The worker pool as it stands in this process, with what each worker is running."""
     import app as app_mod
 
-    if not ctx.can_admin:
+    if not sees_admin(ctx):
         return []
     pool = app_mod.pool
     if pool is None:
@@ -1545,7 +1571,7 @@ def resolve_stats(*, ctx: GraphQLContext, info) -> LibraryStats:
     # Files: one scan covers every scalar file aggregate.
     if any(sel.has(f) for f in
            ("totalFiles", "totalSize", "identifiedFiles", "unidentifiedFiles")):
-        if ctx.can_admin:
+        if sees_admin(ctx):
             r = db.session.execute(text("""
             SELECT COUNT(*), COALESCE(SUM(size), 0), COALESCE(SUM(identified), 0)
             FROM files""")).first()
@@ -1582,7 +1608,7 @@ def resolve_stats(*, ctx: GraphQLContext, info) -> LibraryStats:
             "SELECT COUNT(*), COALESCE(SUM(owned), 0) FROM apps")).first()
         stats.total_apps, stats.owned_apps = int(r[0]), int(r[1])
 
-    if ctx.can_admin and sel.has("filesByExtension"):
+    if sees_admin(ctx) and sel.has("filesByExtension"):
         stats.files_by_extension = _sized_count_by(
             "SELECT COALESCE(extension, ''), COUNT(*), COALESCE(SUM(size), 0) "
             "FROM files GROUP BY extension ORDER BY COUNT(*) DESC")
@@ -1596,13 +1622,13 @@ def resolve_stats(*, ctx: GraphQLContext, info) -> LibraryStats:
                 "SELECT app_type, COUNT(*), COALESCE(SUM(owned), 0) FROM apps "
                 "GROUP BY app_type ORDER BY app_type")).all()]
 
-    if ctx.can_admin and sel.has("filesByLibrary"):
+    if sees_admin(ctx) and sel.has("filesByLibrary"):
         stats.files_by_library = _sized_count_by("""
         SELECT l.path, COUNT(f.id), COALESCE(SUM(f.size), 0)
         FROM libraries l LEFT JOIN files f ON f.library_id = l.id
         GROUP BY l.id, l.path ORDER BY l.id""")
 
-    if ctx.can_admin and sel.has("filesByVerificationStatus"):
+    if sees_admin(ctx) and sel.has("filesByVerificationStatus"):
         buckets = {status: [0, 0] for status in VerificationStatus}
         for sig, hashed, modified, count, size in db.session.execute(text("""
         SELECT signature_valid, hash_valid, hash_modified, COUNT(*),
@@ -1638,7 +1664,7 @@ def resolve_app(app_pk: str, ctx: GraphQLContext, info) -> Optional[App]:
 
 def resolve_file(file_pk: str, ctx: GraphQLContext, info) -> Optional[File]:
     """Single file by primary key, hydrated as under `files`."""
-    if not ctx.can_admin:
+    if not sees_admin(ctx):
         return None
     conn = resolve_files(filter=None, page=1, page_size=1, ctx=ctx, info=info,
                          only_pk=file_pk)

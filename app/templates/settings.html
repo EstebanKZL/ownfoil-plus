@@ -108,6 +108,7 @@
                                 <th scope="col">{{ t('auth.col_user') }}</th>
                                 <th scope="col" class="users-perm">{{ t('auth.shop') }}</th>
                                 <th scope="col" class="users-perm">{{ t('auth.backup') }}</th>
+                                <th scope="col" class="users-perm">{{ t('auth.collaborator') }}</th>
                                 <th scope="col" class="users-perm">{{ t('auth.admin') }}</th>
                                 <th scope="col" class="users-actions"><span class="visually-hidden">{{ t('auth.col_actions') }}</span></th>
                             </tr>
@@ -155,6 +156,11 @@
                                     <input class="form-check-input" type="checkbox" id="checkboxNewUserBackupAccess"
                                         checked>
                                     <label class="form-check-label" for="checkboxNewUserBackupAccess">{{ t('auth.backup_access') }}</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="checkboxNewUserCollaboratorAccess">
+                                    <label class="form-check-label" for="checkboxNewUserCollaboratorAccess"
+                                           title="{{ t('auth.collaborator_hint') }}">{{ t('auth.collaborator_access') }}</label>
                                 </div>
                                 <div class="form-check form-check-inline">
                                     <input class="form-check-input" type="checkbox" id="checkboxNewUserAdminAccess">
@@ -220,9 +226,14 @@
                                     <label class="form-check-label" for="checkboxEditUserBackupAccess">{{ t('auth.backup_access') }}</label>
                                 </div>
                                 <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="checkboxEditUserCollaboratorAccess">
+                                    <label class="form-check-label" for="checkboxEditUserCollaboratorAccess">{{ t('auth.collaborator_access') }}</label>
+                                </div>
+                                <div class="form-check form-check-inline">
                                     <input class="form-check-input" type="checkbox" id="checkboxEditUserAdminAccess">
                                     <label class="form-check-label" for="checkboxEditUserAdminAccess">{{ t('auth.admin_access') }}</label>
                                 </div>
+                                <div class="form-text">{{ t('auth.collaborator_hint') }}</div>
                                 <div class="alert alert-danger d-none mt-3 mb-0" id="editUserAlert" role="alert"></div>
                             </div>
                             <div class="modal-footer">
@@ -1148,6 +1159,7 @@
         shop: {{ t('auth.shop') | tojson }},
         backup: {{ t('auth.backup') | tojson }},
         admin: {{ t('auth.admin') | tojson }},
+        collaborator: {{ t('auth.collaborator') | tojson }},
         editTooltip: {{ t('auth.edit_tooltip') | tojson }},
         deleteTooltip: {{ t('auth.delete_user') | tojson }},
         usersCount: {{ t('users.count') | tojson }},

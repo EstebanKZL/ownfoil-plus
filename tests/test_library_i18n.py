@@ -64,36 +64,12 @@ def test_the_i18n_object_carries_spanish_values_for_the_list_view(client):
     assert '"No reconocido"' in html   # unrecognized
 
 
-def test_list_view_health_filter_dropdown_is_present_and_hidden_by_default(client):
-    """The dropdown for the List view's own Complete/Incomplete/Corrupt/Repack
-    filter - present in the DOM (server-rendered), but hidden by default since
-    Card/Icon is the default view; the JS toggles it visible when List is selected."""
-    resp = client.get("/")
-    html = resp.get_data(as_text=True)
-
-    assert 'id="listHealthFilterCol"' in html
-    col_tag = [line for line in html.splitlines() if 'id="listHealthFilterCol"' in line][0]
-    assert "d-none" in col_tag
-    assert 'id="healthComplete"' in html
-    assert 'id="healthIncomplete"' in html
-    assert 'id="healthCorrupt"' in html
-    assert 'id="healthRepack"' in html
-
-
-def test_list_view_health_filter_labels_are_translated(client):
-    resp = client.get("/")
-    html = resp.get_data(as_text=True)
-    assert "Complete" in html
-    assert "Incomplete" in html
-    assert "Corrupt" in html
-    assert "Repack" in html
-
-    client.set_cookie("ownfoil_lang", "es")
-    resp = client.get("/")
-    html = resp.get_data(as_text=True)
-    assert "Completos" in html
-    assert "Incompletos" in html
-    assert "Corruptos" in html
+def test_the_list_view_has_no_filters_of_its_own(client):
+    """The list view takes the cards' filters; its Complete/Incomplete/Corrupt/Repack
+    group is gone (it described files, not games)."""
+    html = client.get("/").get_data(as_text=True)
+    for gone in ('id="listHealthFilterCol"', 'id="healthComplete"', 'id="healthRepack"'):
+        assert gone not in html
 
 
 def test_game_detail_fields_are_translated(client):

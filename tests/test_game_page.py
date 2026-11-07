@@ -186,7 +186,8 @@ def test_downloads_follow_the_existing_gate():
 
 def test_file_names_are_for_admins_only():
     body = _function_body(_js("game.js"), "gameFiles")
-    assert "IS_ADMIN && a.files" in body and "downloadableFile" in body
+    # Admins and collaborators (who only look) see the files behind a game.
+    assert "CAN_VIEW_ADMIN && a.files" in body and "downloadableFile" in body
 
 
 def test_the_files_button_opens_a_dialog_with_native_downloads(shop_app):

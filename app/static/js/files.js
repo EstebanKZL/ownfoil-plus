@@ -321,7 +321,11 @@ const ACTIONS = {
              run: f => deleteOneCopy(f).then(ok => { if (ok) loadTab(true); })},
 };
 
+// A collaborator (<html data-readonly>) looks and changes nothing: no actions at all.
+const READ_ONLY = document.documentElement.hasAttribute('data-readonly');
+
 function actionButtons(f, className, label) {
+    if (READ_ONLY) return [];
     return Object.entries(ACTIONS).filter(([, a]) => !a.applies || a.applies(f)).map(([name, a]) => {
         const blocked = a.blocked && a.blocked();
         const b = el('button', {type: 'button', className: className + (a.danger ? ' files-fg-danger' : ''),
@@ -336,6 +340,7 @@ function actionButtons(f, className, label) {
 }
 
 function rowMenu(f) {
+    if (READ_ONLY) return el('span');
     const toggle = el('button', {type: 'button', className: 'icon-btn px-1', title: I18N.actionsMenuTitle},
                       el('i', {className: 'bi bi-three-dots'}));
     toggle.dataset.bsToggle = 'dropdown';
@@ -485,7 +490,7 @@ function copyHeader(c, g, tab) {
     const th = el('th', {scope: 'col'}, el('div', {className: 'd-flex flex-column gap-1'},
         el('div', {className: 'd-flex align-items-center gap-2'}, pillNode, reasonText ? muted(reasonText) : null,
             el('span', {className: 'ms-auto'}, rowMenu(c.file))),
-        el('div', {className: 'd-flex gap-2'}, keepBtn, delBtn)));
+        el('div', {className: 'd-flex gap-2 admin-write'}, keepBtn, delBtn)));
     th.dataset.id = c.file.id;
     return th;
 }

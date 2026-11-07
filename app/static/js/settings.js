@@ -179,7 +179,8 @@ function renderUserTable() {
                     user['pending'] ? I18N.userPending : verified ? I18N.userVerified : I18N.userUnverified)));
         }
         const row = $('<tr>').append($('<td>').append(name.append(text)));
-        [['shop_access', I18N.shop], ['backup_access', I18N.backup], ['admin_access', I18N.admin]].forEach(([key, label]) => {
+        [['shop_access', I18N.shop], ['backup_access', I18N.backup], ['collaborator_access', I18N.collaborator],
+         ['admin_access', I18N.admin]].forEach(([key, label]) => {
             const on = Boolean(user[key]);
             // data-label names the column where a phone stacks the row (no header there).
             row.append($('<td class="users-perm">').attr('data-label', label).append(
@@ -321,8 +322,9 @@ function syncEditUserAdminCheckbox() {
     const isAdmin = $('#checkboxEditUserAdminAccess').prop('checked');
     if (isAdmin) {
         $('#checkboxEditUserShopAccess, #checkboxEditUserBackupAccess').prop('checked', true);
+        $('#checkboxEditUserCollaboratorAccess').prop('checked', false);
     }
-    $('#checkboxEditUserShopAccess, #checkboxEditUserBackupAccess').prop('disabled', isAdmin);
+    $('#checkboxEditUserShopAccess, #checkboxEditUserBackupAccess, #checkboxEditUserCollaboratorAccess').prop('disabled', isAdmin);
 }
 $('#checkboxEditUserAdminAccess').on('change', syncEditUserAdminCheckbox);
 editUserModal.on('show.bs.modal', event => {
@@ -334,6 +336,7 @@ editUserModal.on('show.bs.modal', event => {
     $('#inputEditUserPassword').val('').removeClass('is-invalid');
     $('#checkboxEditUserShopAccess').prop('checked', Boolean(user['shop_access']));
     $('#checkboxEditUserBackupAccess').prop('checked', Boolean(user['backup_access']));
+    $('#checkboxEditUserCollaboratorAccess').prop('checked', Boolean(user['collaborator_access']));
     $('#checkboxEditUserAdminAccess').prop('checked', Boolean(user['admin_access']));
     syncEditUserAdminCheckbox();
     $('#editUserAlert').addClass('d-none').text('');
@@ -355,6 +358,7 @@ $('#editUserSaveBtn').on('click', () => {
             password: password,
             shop_access: $('#checkboxEditUserShopAccess').prop('checked'),
             backup_access: $('#checkboxEditUserBackupAccess').prop('checked'),
+            collaborator_access: $('#checkboxEditUserCollaboratorAccess').prop('checked'),
             admin_access: $('#checkboxEditUserAdminAccess').prop('checked'),
         }),
         contentType: "application/json",
@@ -398,10 +402,12 @@ $('#checkboxNewUserAdminAccess').change(function () {
     if (this.checked != false) {
         $('#checkboxNewUserShopAccess').prop('checked', true).attr("disabled", true);
         $('#checkboxNewUserBackupAccess').prop('checked', true).attr("disabled", true);
+        $('#checkboxNewUserCollaboratorAccess').prop('checked', false).attr("disabled", true);
 
     } else {
         $('#checkboxNewUserShopAccess').attr("disabled", false);
         $('#checkboxNewUserBackupAccess').attr("disabled", false);
+        $('#checkboxNewUserCollaboratorAccess').attr("disabled", false);
 
     }
 });
@@ -538,6 +544,7 @@ function submitNewUser() {
     shop_access = getCheckboxStatus("checkboxNewUserShopAccess")
     backup_access = getCheckboxStatus("checkboxNewUserBackupAccess")
     admin_access = getCheckboxStatus("checkboxNewUserAdminAccess")
+    collaborator_access = getCheckboxStatus("checkboxNewUserCollaboratorAccess")
 
     // Validate username
     const usernameValidation = validateUsername(user);
@@ -567,6 +574,7 @@ function submitNewUser() {
             password: password,
             shop_access: shop_access,
             backup_access: backup_access,
+            collaborator_access: collaborator_access,
             admin_access: admin_access,
         }
 
@@ -1600,3 +1608,15 @@ document.querySelectorAll('.list-dialog').forEach(dialog => {
         bootstrap.Modal.getOrCreateInstance(dialog).show();
     });
 });
+
+// A collaborator (<html data-readonly>) reads the settings and changes nothing: every
+// field and button of the panel is off (the server refuses the writes anyway), and
+// secrets come back empty from /api/settings.
+if (document.documentElement.hasAttribute('data-readonly')) {
+    const lock = () => document.querySelectorAll('.settings-panel input, .settings-panel select, '
+        + '.settings-panel textarea, .settings-panel button:not([data-bs-dismiss]):not(.settings-nav-btn)')
+        .forEach(el => { el.disabled = true; });
+    lock();
+    // Fields filled in later (users, backups, paths) get the same.
+    new MutationObserver(lock).observe(document.querySelector('.settings-panel'), {childList: true, subtree: true});
+}

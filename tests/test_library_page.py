@@ -66,11 +66,25 @@ def _gql(library, query, **variables):
 
 # --- sorting ---------------------------------------------------------------------------
 
-def test_sort_controls_offer_name_and_release_date(client):
+def test_sort_controls_offer_every_field_and_both_directions(client):
     html = client.get("/").get_data(as_text=True)
     sel = html.split('id="sortField"', 1)[1].split("</select>", 1)[0]
-    assert re.findall(r'value="(\w+)"', sel) == ["NAME", "RELEASE_DATE"]
-    assert 'id="sortDirection"' in html
+    assert re.findall(r'value="(\w+)"', sel) == ["NAME", "RELEASE_DATE", "REGION", "SIZE", "ADDED_AT", "ID"]
+    # One button per direction, the one in use lit.
+    assert 'class="btn btn-outline-secondary sort-direction-btn" data-direction="ASC"' in html
+    assert 'class="btn btn-outline-secondary sort-direction-btn" data-direction="DESC"' in html
+
+
+@pytest.mark.parametrize("field", ["REGION", "SIZE", "ADDED_AT", "ID"])
+@pytest.mark.parametrize("direction", ["ASC", "DESC"])
+def test_shipped_queries_sort_by_every_field(library, field, direction):
+    js = _library_js()
+    order = {"field": field, "direction": direction}
+    cards = _gql(library, _extract_query(js, "CARDS_QUERY"), page=1, pageSize=20,
+                 appType=["BASE", "DLC"], orderBy=order)
+    assert cards["apps"]["total"] == 2
+    listed = _gql(library, _extract_query(js, "LIST_QUERY"), page=1, pageSize=20, owned=True, orderBy=order)
+    assert listed["titles"]["total"] == 1
 
 
 def test_queries_take_order_by_and_stored_sort_is_validated():
@@ -89,7 +103,7 @@ def test_shipped_queries_sort_by_release_date(library, direction):
     cards = _gql(library, _extract_query(js, "CARDS_QUERY"), page=1, pageSize=20,
                  appType=["BASE", "DLC"], orderBy=order)
     assert cards["apps"]["total"] == 2
-    listed = _gql(library, _extract_query(js, "LIST_QUERY"), page=1, pageSize=20, orderBy=order)
+    listed = _gql(library, _extract_query(js, "LIST_QUERY"), page=1, pageSize=20, owned=True, orderBy=order)
     assert listed["titles"]["total"] == 1
 
 
@@ -105,11 +119,12 @@ def _function_body(js, name):
             return js[start:i]
 
 
-def test_header_tiles_and_progress_replace_the_stats_line(client):
+def test_header_tiles_replace_the_stats_line(client):
     html = client.get("/").get_data(as_text=True)
     assert 'class="page-head' in html and 'id="libraryCount"' in html
     assert re.search(r'id="libraryTiles"[^>]*hidden', html)
-    assert re.search(r'id="libraryProgress"[^>]*hidden', html)
+    # The big percentage bar is gone: the "Up to date" tile carries the share.
+    assert 'id="libraryProgress"' not in html
     assert 'id="libraryStats"' not in html
 
 
@@ -117,8 +132,9 @@ def test_tiles_are_computed_from_the_stats_query():
     body = _function_body(_library_js(), "renderLibraryStats")
     assert "ownedTitles - stats.upToDateTitles" in body
     assert "stats.missingDlc.toLocaleString()" in body
-    # The size tile is admin-only: totalFiles reads 0 for anyone else.
-    assert "if (stats.totalFiles)" in body
+    # No size tile (it was admin only): the same four tiles for everyone.
+    assert "stats.totalFiles" not in body and "I18N.tileUpToDate.replace('{pct}', pct)" in body
+    assert "stat-tile__bar-fill" in body
     # Pending updates and missing DLC tiles apply their filter.
     assert 'data-pill' in body or "dataset.pill" in body
 
@@ -126,8 +142,7 @@ def test_tiles_are_computed_from_the_stats_query():
 def test_library_header_strings_are_translated(client):
     import i18n
     for key in ("library.title", "library.subtitle", "library.tile_games", "library.tile_updates",
-                "library.tile_dlc_missing",
-                "library.tile_size", "library.progress"):
+                "library.tile_dlc_missing", "library.tile_up_to_date"):
         assert {"en", "es"} <= set(i18n.TRANSLATIONS[key]), key
 
 
@@ -136,75 +151,66 @@ def test_library_header_strings_are_translated(client):
 def test_toolbar_holds_search_sort_views_and_both_menus(client):
     html = client.get("/").get_data(as_text=True)
     bar = html.split('class="toolbar library-toolbar', 1)[1].split('<!-- Pagination controls (top)', 1)[0]
-    for needle in ('id="textFilter"', 'id="sortField"', 'id="sortDirection"', 'data-view="card"',
+    for needle in ('id="textFilter"', 'id="sortField"', 'sort-direction-btn', 'data-view="card"',
                    'data-view="icon"', 'data-view="list"', 'id="viewMenuBtn"', 'id="filtersMenuBtn"',
                    'id="pageSizeOptions"', 'id="filtersActiveDot"'):
         assert needle in bar, needle
-    # Every filter group lives in the one Filters menu now; the list view's own group
-    # is marked so the JS shows it only there.
+    # Every filter group lives in the one Filters menu, the same for every view.
     menu = bar.split('id="filtersMenuBtn"', 1)[1]
-    for group in ("Ownership filter", "Update filter", "Completion filter",
-                  "Library health filter"):
+    for group in ("Ownership filter", "Update filter", "Completion filter", "Favourites"):
         assert f'aria-label="{group}"' in menu, group
-    assert re.search(r'id="listHealthFilterCol" data-view-only="list"', menu)
+    assert 'listHealthFilterCol' not in menu
     assert "filterDropdownBtn" not in html and "listHealthDropdownBtn" not in html
 
 
-def test_filters_dot_follows_the_view():
+def test_filters_dot_counts_every_filter():
     body = _function_body(_library_js(), "updateFiltersDot")
-    assert "activeHealthFilter" in body and "activeCompletionFilter" in body
-    assert "currentView === 'list'" in body
+    assert "activeHealthFilter" not in body
+    for name in ("activeOwnershipFilter", "activeUpdateFilter", "activeCompletionFilter", "onlyFavorites"):
+        assert name in body, name
 
 
-# --- filter pills with exact counts ---------------------------------------------------
+# --- console pills with exact counts ------------------------------------------------
+#
+# The row under the toolbar holds the console choice only (the other filters are in the
+# Filters menu); its counts follow the view's own filters.
 
-CARD_PILL_FILTERS = (("all", {}), ("outdated", {"upToDate": False}),
-                     ("missingDlc", {"complete": False}), ("upToDate", {"upToDate": True, "complete": True}))
-HEALTH = (("all", None), ("complete", "COMPLETE"), ("incomplete", "INCOMPLETE"),
-          ("corrupt", "CORRUPT"), ("repack", "REPACK"))
+CONSOLES = (("consoleAll", None), ("consoleSwitch", "switch"), ("consoleSwitch2", "switch2"))
 
 
-@pytest.mark.parametrize("app_type,search", [(["BASE", "DLC"], None), (["BASE"], None),
-                                             (["BASE", "DLC"], "alpha"), (["DLC"], "nothing-matches")])
-def test_card_pill_counts_equal_the_grid_totals(library, app_type, search):
+@pytest.mark.parametrize("app_type,search,up_to_date", [(["BASE", "DLC"], None, None), (["BASE"], None, False),
+                                                        (["BASE", "DLC"], "alpha", None), (["DLC"], "nothing-matches", None)])
+def test_console_counts_equal_the_grid_totals(library, app_type, search, up_to_date):
     js = _library_js()
     counts = _gql(library, _extract_query(js, "CARD_COUNTS_QUERY"),
-                  appType=app_type, search=search, owned=None)
-    for alias, extra in CARD_PILL_FILTERS:
+                  appType=app_type, search=search, owned=None, upToDate=up_to_date)
+    for alias, console in CONSOLES:
         grid = _gql(library, _extract_query(js, "CARDS_QUERY"), page=1, pageSize=1,
-                    appType=app_type, search=search, owned=None,
-                    upToDate=extra.get("upToDate"), complete=extra.get("complete"),
+                    appType=app_type, search=search, owned=None, upToDate=up_to_date, console=console,
                     orderBy={"field": "NAME", "direction": "ASC"})
         assert counts[alias]["total"] == grid["apps"]["total"], alias
 
 
 @pytest.mark.parametrize("search", [None, "alpha"])
-def test_list_pill_counts_equal_the_list_totals(library, search):
+def test_list_console_counts_equal_the_list_totals(library, search):
     js = _library_js()
-    counts = _gql(library, _extract_query(js, "LIST_COUNTS_QUERY"), search=search)
-    for alias, health in HEALTH:
+    counts = _gql(library, _extract_query(js, "LIST_COUNTS_QUERY"), search=search, owned=True)
+    for alias, console in CONSOLES:
         listed = _gql(library, _extract_query(js, "LIST_QUERY"), page=1, pageSize=1, search=search,
-                      libraryHealth=health, orderBy={"field": "NAME", "direction": "ASC"})
+                      owned=True, console=console, orderBy={"field": "NAME", "direction": "ASC"})
         assert counts[alias]["total"] == listed["titles"]["total"], alias
 
 
-def test_pills_are_one_request_and_follow_the_grid_variables(client):
+def test_one_pill_row_left_the_console_one(client):
     html = client.get("/").get_data(as_text=True)
-    assert 'id="libraryPills"' in html
+    assert 'id="libraryConsole"' in html and 'id="libraryPills"' not in html
     js = _library_js()
     body = _function_body(js, "loadPillCounts")
     assert body.count("gqlFetch(") == 1
     assert "queryVariables()" in body and "listQueryVariables()" in body
-    assert "function applyPill" in js and "function renderPills" in js
-    assert "LIST_PILLS" in js
-
-
-def test_pill_strings_are_translated():
-    import i18n
-    for key in ("library.pill_all", "library.pill_outdated", "library.pill_missing_dlc",
-                "library.pill_up_to_date", "library.pill_complete", "library.pill_incomplete",
-                "library.pill_corrupt", "library.pill_repack"):
-        assert {"en", "es"} <= set(i18n.TRANSLATIONS[key]), key
+    # The tiles still apply the common filters.
+    assert "function applyPill" in js and "LIST_PILLS" not in js
+    assert "const row = $('#libraryConsole').empty();" in js   # every view, the list too
 
 
 # --- cards, icons and list rows ------------------------------------------------------
@@ -313,25 +319,13 @@ def test_cards_sort_by_the_catalogue_release_date(grouped):
 
 # --- final review fixes --------------------------------------------------------------
 
-def test_state_pills_and_tiles_only_cover_owned_games(library):
-    """The header tiles count owned games; the pills they apply must too, or "Games with
-    a pending update: 12" opens a grid of every unowned DLC ("Update pending 340")."""
+def test_state_tiles_only_cover_owned_games():
+    """The header tiles count owned games; the filters they apply must too, or "Games
+    with a pending update: 12" opens a grid of every unowned DLC."""
     js = _library_js()
     for name in ("outdated", "missingDlc", "upToDate"):
         assert re.search(rf"{name}: \{{[^}}]*ownership: 'Owned'", js), name
     assert re.search(r"all: \{[^}]*ownership: ''", js)
-    counts = _extract_query(js, "CARD_COUNTS_QUERY")
-    for alias in ("outdated", "missingDlc", "upToDate"):
-        line = next(l for l in counts.splitlines() if l.strip().startswith(alias + ":"))
-        assert "owned: true" in line, alias
-    # ...and the counts still equal the grid for what each pill sets.
-    data = _gql(library, counts, appType=["BASE", "DLC"], search=None, owned=None)
-    for alias, extra in CARD_PILL_FILTERS[1:]:
-        grid = _gql(library, _extract_query(js, "CARDS_QUERY"), page=1, pageSize=1,
-                    appType=["BASE", "DLC"], search=None, owned=True,
-                    upToDate=extra.get("upToDate"), complete=extra.get("complete"),
-                    orderBy={"field": "NAME", "direction": "ASC"})
-        assert data[alias]["total"] == grid["apps"]["total"], alias
 
 
 def test_page_sizes_fill_whole_rows_from_10_to_100(client):

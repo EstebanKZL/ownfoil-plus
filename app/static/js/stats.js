@@ -630,7 +630,7 @@ function buildLibraryDetailAppRow(app, title, label) {
     // confusable at a glance.
     const cleanBtn = document.createElement('button');
     cleanBtn.type = 'button';
-    cleanBtn.className = 'icon-btn';
+    cleanBtn.className = 'icon-btn stats-record-action';
     cleanBtn.title = I18N.cleanRecordTooltip;
     cleanBtn.innerHTML = '<i class="bi bi-database-x"></i>';
     cleanBtn.addEventListener('click', () => handleCleanClick(app, title));
@@ -638,7 +638,7 @@ function buildLibraryDetailAppRow(app, title, label) {
 
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
-    deleteBtn.className = 'icon-btn text-danger';
+    deleteBtn.className = 'icon-btn text-danger stats-record-action';
     deleteBtn.title = I18N.deleteRecordTooltip;
     deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
     deleteBtn.addEventListener('click', () => handleDeleteClick(app, title));

@@ -83,7 +83,7 @@ package - `tests/conftest.py` puts `app/` on `sys.path`.
   Basic Auth for console clients.
 - `db.py` - models (`Files`, `Apps`, `Titles`, `Task`, `TaskHistory`, `DownloadEvent`,
   ...) and DB helpers. Schema changes need an **Alembic migration** in
-  `app/migrations/versions/` (current head: `c3d4e5f6a7b9`) *and* the model change
+  `app/migrations/versions/` (current head: `e5f6a7b8c9d1`) *and* the model change
   (new installs use `create_all`). `tests/test_download_history.py` asserts the head.
 - `tasks.py` / `worker.py` / `worker_pool.py` - task registry (`@register_task`),
   enqueue/dedup, scheduled tasks via `run_after` (stored in **UTC**; use
@@ -142,7 +142,7 @@ package - `tests/conftest.py` puts `app/` on `sys.path`.
 Done through 6.2.5.49: security hardening, CI, health check, offline UI, notifications,
 daily maintenance + backups, download history, resumable web uploads, dashboard, PWA,
 light/dark theme, Ctrl+K search, mobile layout, DB indexes, Prometheus metrics, UI
-polish, dependency/image vulnerability fixes, Dependabot, the SLMW-inspired redesign
+polish, dependency/image vulnerability fixes, Dependabot, the redesign
 (tokens, three styles, flat nav, library, game page, stats/dashboard, admin pages,
 Settings index) with every big page's JS moved to `app/static/js/`; My account,
 upcoming releases and sagas, the per-user JKSV save vault, public registration (SMTP,
@@ -150,7 +150,10 @@ Google), Services control panel, profile pictures, one card per game; 6.2.5.50: 
 update sources and every catalogue DLC, firmware read from the files, NUP files, Organize
 taking NFO/SFV/proof files along, the Files dialog, 11 languages, Nintendo Switch 2
 games (ids 04...), the Dashboard's lists, the save vault's per-user game limit, and a
-round of Library/Sagas/Settings polish.
+round of Library/Sagas/Settings polish; 6.2.5.51: per-user favourites, the Collaborator
+role (reads every admin page, may upload games; `ctx.can_admin` = real admin,
+`can_view_admin` for reads), more Library sort fields, one filter set for every view,
+the Saves limits notice, and short release notes (credits only in NOTICE.md/README).
 
 Postponed - **remind the maintainer of these when a round of work wraps up**:
 

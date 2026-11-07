@@ -4,13 +4,68 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.51]
+
+The Library reads the same in every view and gets what people asked for most: their own
+favourites and more ways to sort. A new kind of user, the collaborator, looks after the
+server with an admin's eyes and none of an admin's buttons. Two migrations
+(`d4e5f6a7b8c0` favourites, `e5f6a7b8c9d1` collaborators), applied on start as usual.
+
+**Library**
+
+- **The list view takes the same filters as the cards** (ownership, updates, DLC,
+  favourites) and the *All / Switch / Switch 2* pills. Its own "Complete / Incomplete /
+  With errors / Repacks" filters are gone: they described files, not games.
+- **One row of pills, the console one.** The second row (*All*, *Update pending*,
+  *Missing DLC*, *Up to date*) repeated the Filters menu; it's gone from every view, and
+  the tiles at the top still apply those filters in one click.
+- **The update mark on a card says "Update available"** on hover - the card's name link
+  stretched over it and the tooltip showed the game's name.
+- **An "Up to date" tile with its share** (*Up to date · 64%*) replaces the total size,
+  which only admins could see, and the big percentage bar under the tiles. Every tile
+  is a button that shows its games.
+- **More ways to sort**: name, release date, region, size, date added and ID, with one
+  button for each direction (the one in use lit) instead of a single toggle. Sort
+  expressions are split at their own commas only, so one with a `COALESCE(a, b)` (the
+  list's ID) no longer breaks the query.
+- **Favourites, per user.** A star on each cover and an *Add to favourites* button on
+  the game page; *Favourites only* in the Filters menu shows just your games and
+  combines with the other filters. Each user keeps their own list (anonymous visitors have none). The
+  GraphQL answer depends on who asks now, so its cache key carries the user's
+  favourites too - a star changes the next answer instead of a stale 304.
+
+**Collaborators**
+
+- **A fourth permission, Collaborator** (Settings > Authentication): sees every admin
+  page and changes nothing but one thing - they may **upload games** (the web upload:
+  start, send, cancel). Admin routes answer them on GET only, GraphQL lets them read
+  like an admin (a separate read flag: `can_admin` still means a real admin, so any
+  write check fails closed) and refuses every mutation, and the pages hide or switch off what
+  changes something (services, settings, deleting, cleaning, compressing, verifying,
+  task cancelling, uploads), with a notice at the top. The settings they read come
+  without secrets, and backups, the settings export and other people's saves stay with
+  admins - those hold keys and private data.
+
+**Saves and Tasks**
+
+- **The Saves page says what the server keeps**, in an amber notice: how many backups
+  of each game (the oldest go first), and how many different games each user may keep
+  saves of, with how many they already use (Settings > Save vault).
+- **Tasks: Queue and Failed are independent.** The page got one window of 200 tasks
+  for both, oldest first, so a long list of failures crowded the queue down to one row
+  until Failed was cleared. Each now gets a window of its own.
+
+**Releases**
+
+- Release notes are short and plain from now on, and credits to other projects live in
+  `NOTICE.md` and the README's credits, not in the changelog.
+
 ## [6.2.5.50]
 
 A round on what the library knows and how it reads it - more update sources, every DLC of
 the catalogue, firmware read from the files themselves, NUP files - plus a pass of polish
 over the Library, the game page, Statistics, Settings and Services, nine more interface
-languages, and the security fixes
-of Switch Library Manager Web 1.71-2.0.1 that apply here. One migration
+languages, and a round of security fixes. One migration
 (`c3d4e5f6a7b9`), applied on start as usual.
 
 **What the library knows**
@@ -104,7 +159,7 @@ of Switch Library Manager Web 1.71-2.0.1 that apply here. One migration
 - **Top bar**: on narrow screens the search button no longer touches the menu button.
 - **Upload**: each destination library shows the free space of its disk.
 
-**Security** (from Switch Library Manager Web 1.71-2.0.1, where they apply)
+**Security**
 
 - A library file that is - or links to - something in the config folder (keys, session
   key, database, backups) is never served for download, by any route.
@@ -369,9 +424,8 @@ Housekeeping after the redesign: what it left behind, and the name where people 
 
 ## [6.2.5.46]
 
-A new design for the web UI, built in five stages, inspired by
-[Switch Library Manager Web](https://github.com/DeLFuS77/switch-library-manager-web)
-(AGPL-3.0, like Ownfoil; credited in the new `NOTICE.md`). Every page now looks like
+A new design for the web UI, built in five stages (credits in the new `NOTICE.md`).
+Every page now looks like
 one product instead of each page carrying its own colors, and every big page's
 JavaScript moved out of its template into `static/js/`. Nothing a setting does changed;
 no server, route or database changes beyond what each stage notes.
@@ -1219,8 +1273,7 @@ below was independently verified against the real code of both before changing a
   that tell the copies apart (version, verification, compressed, organized,
   added, size), the recommended copy's column marked green "Keep", a losing
   copy's column marked red "Delete" with the specific reason it lost, and the one
-  attribute cell that explains that reason highlighted amber - all ported
-  directly from upstream's own template/JS. A tied group with no recommended
+  attribute cell that explains that reason highlighted amber. A tied group with no recommended
   copy (this fork's own settings left the tie unresolved - the exact Torchlight
   III scenario reported) still renders every column neutrally with no fabricated
   winner, same as before. Also added the bottom summary bar's "Delete N file(s)"
@@ -1397,8 +1450,7 @@ below was independently verified against the real code of both before changing a
   own web UI benefits the same way for free. A dead or slow source URL is retried
   on its own backoff schedule (up to 3 attempts) without failing the rest of that
   title's artwork, and never blocks the next titledb refresh from trying again.
-  Simplified from upstream's version: one serving rendition (`client`) instead of
-  four, since this fork's GraphQL schema already exposes a single icon/banner URL
+  One serving rendition (`client`), since this fork's GraphQL schema already exposes a single icon/banner URL
   and screenshot list per title rather than several selectable sizes - so the
   substitution happens transparently inside the existing fields, with no schema
   change for any existing consumer. Known gap: unlike upstream, there is no
@@ -1472,15 +1524,13 @@ below was independently verified against the real code of both before changing a
   copy to keep when it's safe to say, and a one-click "keep this copy" per file) -
   the Stats page's own duplicate-resolution feature still works exactly as before and
   both act on the same data.
-  Not yet ported from upstream's 2.5.0 Files page, deliberately left for a follow-up
-  rather than rushed: the separate "Outdated updates" and "Pending" tiles/tabs, and
-  per-file Verify/Compress/Decompress/Retry actions - these reach deep into this
-  fork's own task-pipeline internals (different from upstream's), and porting them
-  safely needs its own pass rather than a blind copy.
+  Left for a follow-up rather than rushed: the separate "Outdated updates" and
+  "Pending" tiles/tabs, and per-file Verify/Compress/Decompress/Retry actions - these
+  reach deep into the task pipeline and need their own pass.
 
 ## [6.2.4.7]
 
-- New "Files" admin page, ported from upstream Ownfoil 2.5.0: a flat, searchable and
+- New "Files" admin page: a flat, searchable and
   filterable (by library, format, verification status) list of every tracked file,
   with clickable tiles for All files / Unidentified / Verification issues / Not
   organized, and a delete action per file. Duplicate files keep being reviewed and
@@ -1497,8 +1547,7 @@ below was independently verified against the real code of both before changing a
 - A new, configurable Shop name (Settings > Shop): replaces "Ownfoil-Plus" in the
   navigation bar, the browser tab, and the app name when added to a phone's home
   screen, and is handed to connected clients. Leave it empty to keep the default.
-- LAN discovery, ported from upstream Ownfoil 2.5.0 and adapted to this fork's own
-  settings/branding: a new "Services" admin page with a toggle so Sphaira and other
+- LAN discovery: a new "Services" admin page with a toggle so Sphaira and other
   compatible clients can find this shop on the local network automatically, with no
   address or port to type in on the console. Needs host networking in Docker to
   actually reach the LAN - see Install.md.

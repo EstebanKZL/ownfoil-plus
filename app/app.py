@@ -323,6 +323,8 @@ def library_page_context():
     # button should behave the same way the route it calls does.
     is_admin = (not admin_account_created()) or (
         current_user.is_authenticated and current_user.has_access('admin'))
+    # A collaborator sees what an admin sees (the files behind a game) but edits nothing.
+    can_view_admin = is_admin or (current_user.is_authenticated and current_user.can_view_admin())
     # Same leniency during the bootstrap phase, and an admin always qualifies too
     # (an admin account always carries shop access - see signup_post) - but this is
     # also true for a plain authenticated user who only has shop access, which
@@ -340,6 +342,7 @@ def library_page_context():
         console_firmware = current_user.console_firmware
     return dict(
         admin_account_created=admin_account_created(), is_admin=is_admin, is_shop=is_shop,
+        can_view_admin=can_view_admin,
         web_downloads_enabled=settings['library']['management'].get('web_downloads', {}).get('enabled', False),
         show_game_background_image=show_background, console_firmware=console_firmware,
         can_see_saves=current_user.is_authenticated and vault.may_use(current_user),
@@ -459,11 +462,14 @@ def inject_nav():
     """Who sees what in nav.html. Mirrors access_required: with no admin account
     created yet, auth is effectively off and everyone is treated as an admin. Only an
     admin's pages pay for the counters."""
-    nav_admin = (not admin_account_created()) or (
+    nav_manage = (not admin_account_created()) or (
         current_user.is_authenticated and bool(current_user.is_admin))
+    # A collaborator gets the admin pages too, read-only (<html data-readonly>).
+    is_collaborator = (not nav_manage) and current_user.is_authenticated and current_user.is_collaborator
+    nav_admin = nav_manage or is_collaborator
     nav_shop = nav_admin or (current_user.is_authenticated and bool(current_user.has_shop_access()))
-    return {'nav_admin': nav_admin, 'nav_shop': nav_shop,
-            'nav_counts': nav_counts.get_nav_counts() if nav_admin else {}}
+    return {'nav_admin': nav_admin, 'nav_manage': nav_manage, 'is_collaborator': is_collaborator,
+            'nav_shop': nav_shop, 'nav_counts': nav_counts.get_nav_counts() if nav_admin else {}}
 
 # --- Installable app (PWA) ---
 # Both live at the site root: a service worker only controls pages under its own path,
@@ -695,7 +701,7 @@ def search_api():
                   "WHERE t.have_base = 1 AND (td.name LIKE :p COLLATE NOCASE OR t.title_id LIKE :p COLLATE NOCASE) "
                   "ORDER BY td.name COLLATE NOCASE LIMIT 8"), {'p': pattern})]
     files = []
-    is_admin = (not admin_account_created()) or current_user.has_access('admin')
+    is_admin = (not admin_account_created()) or current_user.can_view_admin()
     if is_admin:
         files = [{'id': f.id, 'filename': f.filename, 'size': f.size}
                  for f in Files.query.filter(Files.filename.ilike(pattern))
@@ -1075,6 +1081,33 @@ def wishlist_remove_api(title_id):
     db.session.commit()
     return jsonify({'success': True})
 
+# --- Favourites: each user's own starred games (the Library's "Favourites" filter) --------
+
+@app.get('/api/favorites')
+@login_required
+def favorites_api():
+    rows = Favorite.query.filter_by(user_id=current_user.id).order_by(Favorite.added_at)
+    return jsonify({'title_ids': [f.title_id for f in rows]})
+
+@app.post('/api/favorites')
+@login_required
+def favorites_add_api():
+    title_id = str((request.get_json(silent=True) or {}).get('title_id') or '')
+    if not _TITLE_ID_ANY_CASE.fullmatch(title_id):
+        return jsonify({'success': False, 'error': 'invalid_title_id'}), 400
+    title_id = title_id.upper()
+    if not Favorite.query.filter_by(user_id=current_user.id, title_id=title_id).first():
+        db.session.add(Favorite(user_id=current_user.id, title_id=title_id))
+        db.session.commit()
+    return jsonify({'success': True})
+
+@app.delete('/api/favorites/<title_id>')
+@login_required
+def favorites_remove_api(title_id):
+    Favorite.query.filter_by(user_id=current_user.id, title_id=title_id.upper()).delete()
+    db.session.commit()
+    return jsonify({'success': True})
+
 @app.route('/setup')
 def setup_page():
     """Setup page showing client information and connection instructions."""
@@ -1146,7 +1179,27 @@ def get_settings_api():
             if 'hauth' in client_settings:
                 # Replace hauth dict with empty dict to keep it private
                 settings['shop']['clients'][client_name]['hauth'] = {}
+    if admin_account_created() and current_user.is_collaborator:
+        _redact_secrets(settings)
     return jsonify(settings)
+
+
+_SECRET_WORDS = ('password', 'secret', 'token', 'webhook', 'certkey')
+
+
+def _redact_secrets(node, path=()):
+    """A collaborator reads the settings, not their secrets: tokens, passwords,
+    webhook addresses and the shop's private key come back empty."""
+    if isinstance(node, dict):
+        for key, value in node.items():
+            here = path + (str(key).lower(),)
+            if isinstance(value, (dict, list)):
+                _redact_secrets(value, here)
+            elif any(w in here[-1] for w in _SECRET_WORDS) or here[-2:] == ('webhook', 'url'):
+                node[key] = ''
+    elif isinstance(node, list):
+        for value in node:
+            _redact_secrets(value, path)
 
 @app.post('/api/settings/titles')
 @access_required('admin')
@@ -1400,7 +1453,12 @@ def saves_access(view):
 @app.route('/saves')
 @saves_access
 def saves_page():
-    return render_template('saves.html', title='Saves')
+    # What this server keeps, said up front (Settings > Save vault): backups per game and
+    # how many different games each user may keep saves of.
+    return render_template('saves.html', title='Saves', vault_keep=vault.keep(),
+                           vault_max_games=vault.max_games(),
+                           vault_games_used=vault.games_used(current_user.id),
+                           vault_enabled=vault.enabled())
 
 def _saves_owner():
     """Whose backups a Saves request names: the signed-in user's own - or, for an admin,
