@@ -87,3 +87,15 @@ def test_a_switch2_nup_with_base_and_update_is_organized(env):
                  [(S2_ID, "0", APP_TYPE_BASE), (S2_UPD, "65536", APP_TYPE_UPD)])
     assert organize_file(f, str(env.lib_dir), SETTINGS)
     assert f.filepath.endswith("Nintendo Switch 2 Welcome Tour [04005A0021B8C000].nup")
+
+
+@pytest.mark.parametrize("template", ["{titleName}/{titleName} [{titleId}][v{appVersion}]",
+                                      "{titleName}/{appName} [{appId}][v{appVersion}]"])
+def test_a_bundle_takes_any_template_field(env, template):
+    """A file holding the base, the update and DLC together: the "multi" template may
+    use every field the single-content ones do, not only titleName and titleId."""
+    f = env.seed("Nintendo Switch 2 Welcome Tour.nup",
+                 [(S2_UPD, "65536", APP_TYPE_UPD), (S2_ID, "0", APP_TYPE_BASE)])
+    settings = {**SETTINGS, "templates": {**SETTINGS["templates"], "multi": template}}
+    assert organize_file(f, str(env.lib_dir), settings)
+    assert f.filepath.endswith("[04005A0021B8C000][v65536].nup")

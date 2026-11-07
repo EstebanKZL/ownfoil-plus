@@ -14,12 +14,17 @@ logger = logging.getLogger('main')
 def get_cnmts(container):
     cnmts = []
     if isinstance(container, Nsp.Nsp):
-        try:
-            cnmt = container.cnmt()
-            cnmts.append(cnmt)
-        except Exception as e:
-            logger.warning(f'CNMT section not found in Nsp: {e}')
-            raise
+        # Every CNMT, not only the first: an NSP that bundles a game with its update and
+        # DLC (Files > Combine makes them) holds one per content. nsz's Nsp.cnmt() stops
+        # at the first one, which read such a bundle as its base game alone.
+        cnmts = [f for f in container
+                 if isinstance(f, Nca.Nca) and f._path.lower().endswith('.cnmt.nca')]
+        if not cnmts:
+            try:
+                cnmts.append(container.cnmt())
+            except Exception as e:
+                logger.warning(f'CNMT section not found in Nsp: {e}')
+                raise
 
     elif isinstance(container, Xci.Xci):
         container = container.hfs0['secure']
