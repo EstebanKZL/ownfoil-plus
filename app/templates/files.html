@@ -16,7 +16,9 @@
                      (t('files.value_full_hash') if verification.depth == 'hash' else t('files.value_signature_only')) if verification.enabled else t('files.value_off'),
                      'success' if verification.enabled else 'secondary') }}{% endif %}
 {%- endmacro %}
-{% set tiles = [('all', t('files.tab_tile_all')), ('unidentified', t('files.tab_tile_unidentified')),
+{% set tiles = [('all', t('files.tab_tile_all')),
+                ('compress', t('files.pack_tile_compress')), ('combine', t('files.pack_tile_combine')),
+                ('unidentified', t('files.tab_tile_unidentified')),
                 ('verification', t('files.tab_tile_verification')), ('duplicates', t('files.tab_tile_duplicates')),
                 ('outdated', t('files.tile_outdated')), ('pending', t('files.tile_pending'))] %}
 
@@ -86,6 +88,31 @@
             {{ toggle('compressFilesCheck', t('files.label_compression'), management.compression.enabled) }}
         </div>
     </div>
+
+    {% set compression = management.compression %}
+    {% set level_names = {'fast': t('files.pack_level_fast'), 'balanced': t('files.pack_level_balanced'), 'max': t('files.pack_level_max')} %}
+    {% macro delete_originals_setting() -%}
+    {{ toggle('compressDeleteOriginalsCheck', t('files.pack_label_delete_originals'), compression.delete_originals is not false) }}
+    {%- endmacro %}
+    <div class="files-status" data-tab="compress">
+        <p>{{ t('files.pack_desc_compress') }}</p>
+        <div class="files-settings">
+            {{ setting('compressionLevelInput', t('files.pack_label_level'),
+                       compression.level ~ ' · ' ~ level_names[compression_level], 'success') }}
+            {{ delete_originals_setting() }}
+            {% if not keys_valid %}{{ setting('consoleKeysInput', t('files.label_console_keys'), t('files.value_missing'), 'warning') }}{% endif %}
+        </div>
+    </div>
+    <div class="files-status" data-tab="combine">
+        <p>{{ t('files.pack_desc_combine') }}</p>
+        <div class="files-settings">
+            {{ delete_originals_setting() }}
+            {% if not keys_valid %}{{ setting('consoleKeysInput', t('files.label_console_keys'), t('files.value_missing'), 'warning') }}{% endif %}
+        </div>
+    </div>
+
+    {# Files > Compress and Files > Combine (static/js/packing.js). #}
+    <div class="packing d-none" id="packingPanel"></div>
 
     <div class="files-toolbar" id="filesFlatToolbar">
         <div class="files-search">
@@ -222,6 +249,44 @@
         loading: {{ t('files.loading') | tojson }},
         emptyNoFiles: {{ t('files.empty_no_files') | tojson }},
         emptyFiltered: {{ t('files.empty_filtered') | tojson }},
+        pack: {
+            deletesOriginals: {{ (management.compression.delete_originals is not false) | tojson }},
+            showAll: {{ t('files.pack_show_all') | tojson }},
+            showFiles: {{ t('files.pack_show_files') | tojson }},
+            hideFiles: {{ t('files.pack_hide_files') | tojson }},
+            pickedOf: {{ t('files.pack_picked_of') | tojson }},
+            showRaw: {{ t('files.pack_show_raw') | tojson }},
+            showCompressed: {{ t('files.pack_show_compressed') | tojson }},
+            formatAll: {{ t('files.pack_format_all') | tojson }},
+            showLoose: {{ t('files.pack_show_loose') | tojson }},
+            showCombined: {{ t('files.pack_show_combined') | tojson }},
+            stateLoose: {{ t('files.pack_state_loose') | tojson }},
+            stateCombined: {{ t('files.pack_state_combined') | tojson }},
+            selectAll: {{ t('files.pack_select_all') | tojson }},
+            search: {{ t('files.pack_search') | tojson }},
+            selectedFiles: {{ t('files.pack_selected_files') | tojson }},
+            selectedGames: {{ t('files.pack_selected_games') | tojson }},
+            filesCount: {{ t('files.pack_files_count') | tojson }},
+            dlcCount: {{ t('files.pack_dlc_count') | tojson }},
+            kindBase: {{ t('files.pack_kind_base') | tojson }},
+            kindUpdate: {{ t('files.pack_kind_update') | tojson }},
+            kindDlc: {{ t('files.pack_kind_dlc') | tojson }},
+            kindMulti: {{ t('files.pack_kind_multi') | tojson }},
+            compressBtn: {{ t('files.pack_compress_btn') | tojson }},
+            decompressBtn: {{ t('files.pack_decompress_btn') | tojson }},
+            combineBtn: {{ t('files.pack_combine_btn') | tojson }},
+            splitBtn: {{ t('files.pack_split_btn') | tojson }},
+            compressNote: {{ t('files.pack_compress_note') | tojson }},
+            combineNote: {{ t('files.pack_combine_note') | tojson }},
+            combineConfirm: {{ t('files.pack_combine_confirm') | tojson }},
+            splitConfirm: {{ t('files.pack_split_confirm') | tojson }},
+            queued: {{ t('files.pack_queued') | tojson }},
+            openTasks: {{ t('files.pack_open_tasks') | tojson }},
+            noneCompress: {{ t('files.pack_none_compress') | tojson }},
+            noneCombine: {{ t('files.pack_none_combine') | tojson }},
+            tileCompressSub: {{ t('files.pack_tile_compress_sub') | tojson }},
+            tileCombineSub: {{ t('files.pack_tile_combine_sub') | tojson }},
+        },
         emptyUnidentified: {{ t('files.empty_unidentified') | tojson }},
         emptyVerification: {{ t('files.empty_verification') | tojson }},
         emptyDuplicates: {{ t('files.empty_duplicates') | tojson }},
@@ -272,5 +337,7 @@
         seeTasksPage: {{ t('files.see_tasks_page') | tojson }},
     };
 </script>
+<script src="{{ url_for('static', filename='js/title-list.js') }}"></script>
+<script src="{{ url_for('static', filename='js/packing.js') }}"></script>
 <script src="{{ url_for('static', filename='js/files.js') }}"></script>
 {% endblock %}

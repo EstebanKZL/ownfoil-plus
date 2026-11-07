@@ -353,8 +353,9 @@ function render() {
 
     // A full window means the server had more rows to give. Counting what arrived
     // avoids asking it for a total nothing else needs.
+    // Failed tasks have a window of their own, so only the rest count here.
     document.getElementById('queueTruncated').classList.toggle(
-        'd-none', Object.keys(tasks).length < MAX_TASKS);
+        'd-none', Object.values(tasks).filter(t => t.status !== 'failed').length < MAX_TASKS);
     renderWorkers();
 }
 

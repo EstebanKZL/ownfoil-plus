@@ -101,7 +101,15 @@ def graphql_dispatch():
         resp.headers["Vary"] = "Authorization, Cookie"
         return resp
 
-    etag = etag_for(query, variables, operation_name, role_key(ctx), world_hash())
+    role = role_key(ctx)
+    # Favourites are each user's own: a query that filters by them answers differently
+    # per user and changes when a star does, which the library's state doesn't show.
+    if "favorite" in (query or "") and getattr(ctx.user, "id", None) is not None:
+        from db import Favorite, db
+        count, newest = db.session.query(db.func.count(Favorite.id), db.func.max(Favorite.id)) \
+            .filter(Favorite.user_id == ctx.user.id).one()
+        role = f"{role}:u{ctx.user.id}:{count}:{newest}"
+    etag = etag_for(query, variables, operation_name, role, world_hash())
     etag_unquoted = etag.strip('"')
 
     if request.if_none_match and request.if_none_match.contains(etag_unquoted):

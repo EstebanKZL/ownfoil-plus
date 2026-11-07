@@ -108,11 +108,31 @@ def access_required(access: str):
                 # return unauthorized_json()
                 return login_manager.unauthorized()
 
-            if not current_user.has_access(access):
+            if not current_user.has_access(access) and not _collaborator_may_read(access):
                 return 'Forbidden', 403
             return f(*args, **kwargs)
         return decorated_view
     return _access_required
+
+
+# What a collaborator may not even read: backups and the settings export hold keys and
+# secrets. Uploaded saves they may download from the Dashboard, like an admin.
+COLLABORATOR_DENIED = frozenset({'download_backup_api', 'export_settings'})
+
+
+# The one thing a collaborator may change: they may upload games (the resumable web
+# upload - start, send chunks, cancel their own). Nothing else that writes.
+COLLABORATOR_WRITES = frozenset({'start_upload_api', 'upload_chunk_api', 'cancel_upload_api'})
+
+
+def _collaborator_may_read(access):
+    """A collaborator sees what an admin sees and changes nothing but uploads: admin
+    routes answer them on GET/HEAD, plus the game upload."""
+    if access != 'admin' or not getattr(current_user, 'is_collaborator', False):
+        return False
+    if request.endpoint in COLLABORATOR_WRITES:
+        return True
+    return request.method in ('GET', 'HEAD') and request.endpoint not in COLLABORATOR_DENIED
 
 
 def roles_required(roles: list, require_all=False):
@@ -369,6 +389,7 @@ def get_users():
     all_users = [
         {**dict(db_user._mapping), 'avatar_url': avatar_url(db_user)}
         for db_user in db.session.query(User.id, User.user, User.admin_access, User.shop_access, User.backup_access,
+                                        User.collaborator_access,
                                         User.email, User.email_verified, User.pending_email, User.pending,
                                         User.google_id, User.avatar).all()
     ]
@@ -419,6 +440,7 @@ def update_user():
     else:
         shop_access = bool(data.get('shop_access'))
         backup_access = bool(data.get('backup_access'))
+    collaborator_access = bool(data.get('collaborator_access')) and not admin_access
 
     if user.admin_access and not admin_access and admin_account_created() <= 1:
         return jsonify({'success': False, 'error': t('auth.last_admin_demote_error')})
@@ -433,6 +455,7 @@ def update_user():
     user.admin_access = admin_access
     user.shop_access = shop_access
     user.backup_access = backup_access
+    user.collaborator_access = collaborator_access
     db.session.commit()
     logger.info(f'Updated user {user.user}' + (' (password changed)' if password else ''))
     return jsonify({'success': True})
@@ -497,6 +520,9 @@ def signup_post():
     try:
         # create a new user with the form data. Hash the password so the plaintext version isn't saved.
         create_or_update_user(username, password, admin_access, shop_access, backup_access)
+        if data.get('collaborator_access') and not admin_access:
+            User.query.filter_by(user=username).update({'collaborator_access': True})
+            db.session.commit()
         logger.info(f'Successfully created user {username}.')
     except ValueError as e:
         # This should not happen since we validate above, but just in case

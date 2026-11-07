@@ -90,6 +90,11 @@ class Query:
         order_by: Order = None,
         page: Page = 1,
         page_size: TitlePageSize = 50,
+        favorite: Annotated[Optional[bool], _arg(
+            "Only the signed-in user's favourite titles (or, false, the others).")] = None,
+        console: Annotated[Optional[str], _arg(
+            "`switch2`: only Nintendo Switch 2 titles (ids starting with 04); `switch`: "
+            "only the others.")] = None,
     ) -> TitleConnection:
         """A page of titles, from the catalogue and the library together. Requires
         shop access; returns an empty page otherwise."""
@@ -97,8 +102,8 @@ class Query:
             owned=owned, filter=filter, search=search, order_by=order_by,
             library_health=library_health, missing_app_type=missing_app_type,
             library_path=library_path,
-            page=page, page_size=page_size, ctx=info.context, info=info,
-        )
+            page=page, page_size=page_size, ctx=info.context, info=info, favorite=favorite,
+            console=console)
 
     @described_field
     def apps(
@@ -127,6 +132,8 @@ class Query:
         console: Annotated[Optional[str], _arg(
             "`switch2`: only Nintendo Switch 2 titles (ids starting with 04); `switch`: "
             "only the others.")] = None,
+        favorite: Annotated[Optional[bool], _arg(
+            "Only the signed-in user's favourite titles (or, false, the others).")] = None,
     ) -> AppConnection:
         """A page of apps: base games, updates and DLC, owned or merely known.
         Requires shop access; returns an empty page otherwise.
@@ -143,6 +150,7 @@ class Query:
             up_to_date=up_to_date, complete=complete,
             search=search, order_by=order_by, group_by_app_id=group_by_app_id,
             page=page, page_size=page_size, ctx=info.context, info=info, console=console,
+            favorite=favorite,
         )
 
     @described_field

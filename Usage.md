@@ -64,7 +64,7 @@ The sun/moon icon in the navbar sets two things:
 
 Both are remembered per browser. The admin chooses the style everyone sees by default, also on the login page, in `Settings > Appearance`; a browser that picked its own keeps it until `Use the server's style` is chosen.
 
-**Search** from any page with `Ctrl+K` (`Cmd+K` on a Mac), `/`, or the magnifier in the navbar: type a game's name or title ID, a file name (admins), or a page or setting ("notifications", "backup", "users"...). Arrow keys move through the results and `Enter` opens one: a game opens the library filtered to it, a file opens the Files page filtered to it. Results only include what your account can access.
+**Search** from any page with `Ctrl+K` (`Cmd+K` on a Mac), `/`, or the magnifier in the navbar: type a game's name or title ID, a file name or a user's name or email (admins and collaborators), or a page - every page and panel is listed, Settings once (its sections' words, like "notifications" or "users", find it). Arrow keys move through the results and `Enter` opens one: a game opens its page, a file opens the Files page filtered to it, a user opens the users list searched for them. Results only include what your account can access.
 
 ## Installing as an app
 
@@ -82,9 +82,10 @@ The landing page of `Admin`. At the top, what needs attention, each linking to w
 
 The landing page: your whole library as cards, a compact grid or a list.
 
-- **At the top**, how the library is doing: the number of games; pending updates, of games and of DLC (*50 games and 16 DLC*); the DLC missing, and in how many games; the total size (admins only); and a bar with the share of games up to date. Clicking *Pending updates* or *DLC missing* shows those games.
-- **The toolbar**: search (by name or title ID), sort by **name** or **release date** in either direction, the view (cards, compact, list), the **View** menu (games per page - one for every view - and the card size, which Cards and Compact each remember) and the **Filters** menu (ownership, update, DLC; in the list view, the state of the files). A dot on *Filters* means some filter is on.
-- **The pills** under it are one-click filters, each with how many results it gives: *All*, *Update pending*, *Missing DLC*, *Up to date* (in the list view: *Complete*, *Incomplete*, *With errors*, *Repacks*). The counts follow the search and the Filters menu.
+- **At the top**, four tiles: the number of games, pending updates, missing DLC, and the games **up to date** with their share (*Up to date · 64%*, with a small bar). Each tile shows its games when clicked.
+- **The toolbar**: search (by name or title ID), sort by **name**, **release date**, **region**, **size**, **date added** or **ID**, with a button for each direction, the view (cards, compact, list), the **View** menu (games per page - one for every view - and the card size, which Cards and Compact each remember) and the **Filters** menu (ownership, update, DLC, favourites). A dot on *Filters* means some filter is on. Every view, the list too, takes the same filters.
+- **The pills** under it pick the console - *All*, *Switch*, *Switch 2* - each with how many games it gives, in every view. The other filters are in the Filters menu; the tiles at the top apply the common ones in one click.
+- **Favourites**: the star at the top right of a cover (or *Add to favourites* on the game's page) marks a game. Each user has their own list; *Favourites only* in the Filters menu shows just those games, on top of the other filters.
 - **Each card** is one game: its cover with the file's format (NSP, NSZ, XCI or XCZ) at the bottom left and an orange arrow at the bottom right when it has an update pending, then its name, publisher and year, title ID and DLC (*DLC 3/10*, or *No DLC*). A game you have only DLC or an update of shows in gray, with *Base game missing*. On a narrow card the state badges show just their icon. The **Compact** view has the same, smaller, five or six a row. The cover or the name opens the game's page.
 
 A DLC counts as missing only when no version of it is in the library; one with a newer version is a pending update.
@@ -132,9 +133,16 @@ Every signed-in user has `My account` (the person icon at the top right): your c
 
 `Upcoming` lists the games still to come to the eShop, by month, from TitleDB. The heart adds one to your wishlist (each user has their own); `For you` gathers your wishlist and the next games of the sagas you already have. `Sagas` lists the series you have games of, as "4 of 6", and opens each one with the games you have, the ones you're missing and the ones still to come. The series come from [Wikidata](https://www.wikidata.org): the server asks for them after a TitleDB refresh, at most once a week, and keeps them in `data/series.json`. Both pages follow the Library's access: anyone on a public shop, otherwise users with shop access.
 
+## Compress / Decompress and Combine / Split (Files)
+
+Two tiles on the Files page, admins only (collaborators see them without the buttons); both need the console keys. Under each, the settings it follows, each linking to its control: the compression level and **Delete the originals** (Settings > Library > Compression; on by default - off, both files stay and the next scan handles them as your duplicate settings say).
+
+- **Compress / Decompress**: each game with its NSP, NSZ, XCI and XCZ files (base, update, DLC or bundle). Filter by *Uncompressed* / *Compressed* or by format, tick files - a game's checkbox ticks all of its own - and press *Compress* (NSP to NSZ, XCI to XCZ) or *Decompress* (back). Each file becomes a task (see Tasks) and is converted in its own folder, checked before its original goes.
+- **Combine / Split**: *To combine* lists each game whose base is a separate NSP/NSZ file and that has its update and/or DLC as separate NSP/NSZ files; each becomes a task that writes one file next to the base, named `Game name [TitleID].nsp` (`.nsz` when a part is already compressed), with the base, the **latest** update and every DLC - older updates and delta fragments are left out. *Combined* lists the combined files; *Split* writes one file per content next to it (`Name [ID][vVersion].nsp`). Nothing is recompressed, and every new file is checked against its source before an original goes. XCI and NUP files aren't offered.
+
 ## Saves page
 
-Users with the `Backup` permission see their own backups JKSV uploaded to the save vault (see [Save vault](#save-vault)), by game, to download or delete. Admins see everyone's, each card saying whose.
+Users with the `Backup` permission see their own backups JKSV uploaded to the save vault (see [Save vault](#save-vault)), by game, to download or delete - only one's own, admins included. Every user's uploads are on the Dashboard's *Uploaded saves*, for admins and collaborators. An amber notice at the top says what the server keeps: how many backups of each game, and how many different games each user may keep saves of (with how many they already use).
 
 ## Services
 
@@ -207,12 +215,13 @@ Ownfoil-Plus requires an `admin` user to be created to enable authentication for
 
 The user list shows each user's picture, name and email, a column per permission and the edit and delete buttons, ten per page; the search box finds users by name or email.
 
-Each user has up to three permissions:
+Each user has up to four permissions:
 
 | Permission | Grants |
 | --- | --- |
 | `Shop` | Access to the shop from a client, to file downloads, and to the library page. |
-| `Admin` | Access to the `Settings` and `Tasks` pages and everything that changes the configuration. Admins get the other two permissions automatically. |
+| `Admin` | Access to the `Settings` and `Tasks` pages and everything that changes the configuration. Admins get the other permissions automatically. |
+| `Collaborator` | Sees every admin page - Dashboard, Files, Tasks, Statistics, Services, Settings - and may upload games, but changes nothing else: no settings, services, deleting, cleaning the database, compressing or verifying. Settings come without their secrets (tokens, passwords, webhook addresses), and backups and the settings export stay with admins. Like admins, they download every uploaded save from the Dashboard's *Uploaded saves*. An admin is never also a collaborator. |
 | `Backup` | The save vault: JKSV uploads and the Saves page (see [Save vault](#save-vault)). |
 
 You can also create users from [environment variables](./Install.md#environment-variables) at startup, which is handy to avoid ever running an instance without an admin.
@@ -254,6 +263,7 @@ Automated library management. Everything in this section shares the `Submit` but
 | --- | --- | --- |
 | `Compress files` | disabled | Compress files after they are added and organized. |
 | `Compression level` | `18` | zstandard level, `1` to `22`. Higher is smaller but slower. |
+| `Delete the originals` | enabled | Files > Compress / Decompress and Combine / Split: each original is deleted once its new file is verified. Disabled, both stay and the next scan handles them as your duplicate settings say. |
 
 Compression converts `nsp` to `nsz` and `xci` to `xcz`, which saves storage space depending on the game. Both formats install fine on all supported clients.
 
@@ -437,7 +447,7 @@ The section also shows whether email and Google are set up, and sends a test ema
 
 JKSV, the console's save manager, can upload its save backups to Ownfoil-Plus over WebDAV, at `/dav/` on the same address and port as the web UI. Off by default: an admin turns it on in Services (or here).
 
-Each user has their own space: nobody sees or downloads anyone else's backups, from the console or the web; admins see everyone's on the Saves page, each with whose it is. The vault is for users with the `Backup` permission and admins.
+Each user has their own space: nobody sees or downloads anyone else's backups, from the console or the web; admins and collaborators download every upload from the Dashboard's *Uploaded saves*. The vault is for users with the `Backup` permission and admins.
 
 | Setting | Default | What it does |
 |---|---|---|

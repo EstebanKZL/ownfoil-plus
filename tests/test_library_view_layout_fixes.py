@@ -43,9 +43,12 @@ def client(shop_app):
 
 def test_every_filter_group_is_a_titled_row_of_chips(client):
     html = client.get("/").get_data(as_text=True)
-    for aria_label in ("Ownership filter", "Update filter", "Completion filter", "Library health filter"):
+    # The same groups in every view (the list's own file-health group is gone); a
+    # signed-in user gets a fourth, Favourites.
+    for aria_label in ("Ownership filter", "Update filter", "Completion filter"):
         assert re.search(r'<div class="filter-chips" role="group" aria-label="%s"' % re.escape(aria_label), html), aria_label
-    assert html.count('<fieldset class="filter-group">') == 4
+    assert 'Library health filter' not in html
+    assert html.count('<fieldset class="filter-group">') in (3, 4)
     assert 'id="filtersClearBtn"' in html
 
 

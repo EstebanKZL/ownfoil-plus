@@ -126,15 +126,21 @@
     // library_page_context), so buttons only show where the routes behind them work.
     const TITLE_ID = {{ game_title_id | tojson }};
     const IS_ADMIN = {{ is_admin | tojson }};
+    // Admins and collaborators see the files behind a game (a collaborator edits nothing).
+    const CAN_VIEW_ADMIN = {{ can_view_admin | tojson }};
     const IS_SHOP = {{ is_shop | tojson }};
     const WEB_DOWNLOADS_ENABLED = {{ web_downloads_enabled | tojson }};
     // The signed-in user's console firmware (My account), or null.
     const CONSOLE_FIRMWARE = {{ console_firmware | tojson }};
     // Admins and users with the Backup permission see the game's save backups.
     const CAN_SEE_SAVES = {{ can_see_saves | tojson }};
+    // Signed-in users keep their own favourites (the Library's star).
+    const CAN_FAVORITE = {{ current_user.is_authenticated | tojson }};
 
     const I18N = {
         library: {{ t('nav.library') | tojson }},
+        favoriteAdd: {{ t('library.favorite_add') | tojson }},
+        favoriteRemove: {{ t('library.favorite_remove') | tojson }},
         unrecognized: {{ t('library.unrecognized') | tojson }},
         inLibrary: {{ t('game.in_library') | tojson }},
         notInLibrary: {{ t('game.not_in_library') | tojson }},

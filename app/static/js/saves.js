@@ -21,7 +21,7 @@ function backupRow(backup, game) {
     text.append(node('div', 'saves-backup__when', when(backup.time)),
                 node('div', 'saves-backup__file', `${backup.name} · ${formatBytes(backup.size)}`));
     const download = node('a', 'icon-btn');
-    const where = {path: backup.path, user: game.user_id};
+    const where = {path: backup.path};
     download.href = '/api/saves/download?' + new URLSearchParams(where);
     download.title = I18N.download;
     download.setAttribute('aria-label', I18N.download);
@@ -43,8 +43,6 @@ function backupRow(backup, game) {
     return li;
 }
 
-let ALL_USERS = false;   // an admin sees everyone's backups, each card saying whose
-
 function gameCard(game) {
     const card = node('section', 'surface saves-game');
     const head = node('div', 'saves-game__head');
@@ -52,8 +50,7 @@ function gameCard(game) {
     // The game itself, as every other list of games: icon, name, a line under it.
     const row = titleListRow({
         main: game.name, titleId: game.title_id || undefined, iconUrl: game.icon_url || undefined,
-        sub: (ALL_USERS ? I18N.owner.replace('{user}', game.user) + ' · ' : '')
-            + (game.backups.length === 1 ? I18N.backupsOne : I18N.backups)
+        sub: (game.backups.length === 1 ? I18N.backupsOne : I18N.backups)
                 .replace('{count}', game.backups.length).replace('{size}', formatBytes(game.size)),
         side: when(game.latest),
     });
@@ -67,11 +64,10 @@ function gameCard(game) {
 
 let allGames = [];
 
-/** The games that match the search: by name, and for an admin by whose they are too. */
+/** The games that match the search, by name. */
 function renderSaves() {
     const query = document.getElementById('savesSearch').value.trim().toLowerCase();
-    const shown = allGames.filter(g => !query || (g.name || '').toLowerCase().includes(query)
-                                       || (ALL_USERS && (g.user || '').toLowerCase().includes(query)));
+    const shown = allGames.filter(g => !query || (g.name || '').toLowerCase().includes(query));
     document.getElementById('savesGames').replaceChildren(...shown.map(gameCard));
     document.getElementById('savesNoMatch').hidden = !allGames.length || shown.length > 0;
     fillTitleIcons(document);
@@ -84,7 +80,6 @@ async function loadSaves() {
         const r = await fetch('/api/saves', {credentials: 'same-origin'});
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const data = await r.json();
-        ALL_USERS = data.all_users;
         allGames = data.games;
         document.getElementById('savesOff').hidden = data.enabled;
         document.getElementById('savesNone').hidden = data.games.length > 0 || !data.enabled;

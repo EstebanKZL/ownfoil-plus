@@ -117,10 +117,11 @@ def test_sagas_upcoming_and_saves_share_the_search_bar(template, field):
     assert f'id="{field}"' in bar[:600]
 
 
-def test_saves_are_searched_by_game_and_owner():
+def test_saves_are_searched_by_game():
+    """The Saves page is one's own for everyone now: no owner to search by."""
     js = _read("app", "static", "js", "saves.js")
     body = js[js.index("function renderSaves()"):js.index("async function loadSaves()")]
-    assert "g.name" in body and "g.user" in body and "savesNoMatch" in body
+    assert "g.name" in body and "g.user" not in body and "savesNoMatch" in body
 
 
 def test_saga_cards_keep_one_row_of_covers():

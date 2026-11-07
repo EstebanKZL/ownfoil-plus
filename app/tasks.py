@@ -28,7 +28,7 @@ from db import (
 import settings as settings_lib
 from settings import get_settings, local_media_enabled
 from constants import APP_TYPE_BASE, APP_TYPE_UPD
-from utils import interval_string_to_timedelta, delete_empty_folders, human_size
+from utils import interval_string_to_timedelta, delete_empty_folders, human_size, sanitized_path_parts
 from library import (
     add_missing_apps_for_title, update_title_flags,
     add_missing_apps_to_db, update_titles, organize_file,
@@ -125,6 +125,15 @@ def _file_label(file_id=None, **kwargs):
     return os.path.basename(filepath) if filepath else f'file #{file_id}'
 
 
+def _title_label(title_id):
+    """A game's name for a task label (its id when the catalogue doesn't know it)."""
+    try:
+        name = (titles_lib.get_game_info(title_id) or {}).get('name')
+    except Exception:
+        name = None
+    return name if name and name != 'Unrecognized' else title_id
+
+
 TASK_DISPLAY = {
     'startup': lambda **kw: 'Startup',
     'update_titledb': lambda **kw: 'Update TitleDB',
@@ -151,6 +160,8 @@ TASK_DISPLAY = {
     'verify_file': lambda **kw: f'Verify {_file_label(**kw)}',
     'compress_file': lambda **kw: f'Compress {_file_label(**kw)}',
     'decompress_file': lambda **kw: f'Decompress {_file_label(**kw)}',
+    'combine_title': lambda title_id, **kw: f'Combine {_title_label(title_id)}',
+    'split_file': lambda **kw: f'Split {_file_label(**kw)}',
     'add_missing_apps': lambda **kw: 'Add missing content',
     'remove_missing_files': lambda **kw: 'Remove missing files',
     'update_titles': lambda **kw: 'Update titles',
@@ -1455,21 +1466,25 @@ def verify_file_task(file_id, manual=False, **kwargs):
 
 
 # --- Compression pipeline ---
-def _finalize_conversion(file_obj, target, new_extension, compressed):
-    """Flip the Files row onto the verified output, then drop the now-redundant source."""
+def _finalize_conversion(file_obj, target, new_extension, compressed, keep_source=False):
+    """Flip the Files row onto the verified output, then drop the now-redundant source -
+    or, with `keep_source` (Files > Compress with "delete originals" off), leave it on
+    disk, untracked: the next scan picks it up and the duplicate settings decide."""
     source = file_obj.filepath
-    add_ignored_event(source, '')  # our own deletion of the source
+    remove = not keep_source and os.path.abspath(source) != os.path.abspath(target)
+    if remove:
+        add_ignored_event(source, '')  # our own deletion of the source
     file_obj.filepath = target
     file_obj.extension = new_extension
     file_obj.size = os.path.getsize(target)
     file_obj.mtime = os.path.getmtime(target)
     file_obj.compressed = compressed
     db.session.commit()
-    if os.path.abspath(source) != os.path.abspath(target):
+    if remove:
         os.remove(source)
 
 
-def _convert_file(file_obj, produce, new_extension, compressed):
+def _convert_file(file_obj, produce, new_extension, compressed, keep_source=False):
     """Run a (de)compression: produce the verified output at its final path, then finalize.
     Returns whether the row was flipped onto the new file - a caller that re-drives the
     pipeline must not do so after a no-op, or it delegates the same stage forever."""
@@ -1486,7 +1501,7 @@ def _convert_file(file_obj, produce, new_extension, compressed):
     add_temp_file(target)
     try:
         out = str(produce(source, os.path.dirname(source)))
-        _finalize_conversion(file_obj, out, new_extension, compressed)
+        _finalize_conversion(file_obj, out, new_extension, compressed, keep_source)
     finally:
         remove_temp_file(target)
         remove_temp_file(source)
@@ -1499,7 +1514,7 @@ def _convert_file(file_obj, produce, new_extension, compressed):
 
 
 @register_task('compress_file', group='io')
-def compress_file_task(file_id, manual=False, **kwargs):
+def compress_file_task(file_id, manual=False, keep_original=False, **kwargs):
     """Compress a single file in place: NSP->NSZ / XCI->XCZ, preserving its DB row. A
     `manual` run was asked for by hand (the Files admin page's own Compress button), so
     it goes ahead even with automatic compression off in Settings - that global toggle
@@ -1516,12 +1531,12 @@ def compress_file_task(file_id, manual=False, **kwargs):
     progress = _task_progress(_current_task_id)
     if _convert_file(file_obj,
                      lambda source, out_dir: compression.compress_to(source, out_dir, opts, progress=progress),
-                     COMPRESS_EXT[file_obj.extension], True):
+                     COMPRESS_EXT[file_obj.extension], True, keep_source=bool(keep_original)):
         enqueue_task('process_file', {'file_id': file_id})
 
 
 @register_task('decompress_file', group='io')
-def decompress_file_task(file_id, **kwargs):
+def decompress_file_task(file_id, keep_original=False, **kwargs):
     """Decompress a single file in place: NSZ->NSP / XCZ->XCI, preserving its DB row."""
     file_obj = db.session.get(Files, file_id)
     if not file_obj or not file_obj.compressed or file_obj.extension not in DECOMPRESS_EXT:
@@ -1529,9 +1544,11 @@ def decompress_file_task(file_id, **kwargs):
     if not os.path.exists(file_obj.filepath):
         return
     progress = _task_progress(_current_task_id)
+    # Not re-driven through the pipeline: with automatic compression on it would compress
+    # the file right back.
     _convert_file(file_obj,
                   lambda source, out_dir: compression.decompress_to(source, out_dir, progress=progress),
-                  DECOMPRESS_EXT[file_obj.extension], False)
+                  DECOMPRESS_EXT[file_obj.extension], False, keep_source=bool(keep_original))
 
 
 @register_cleanup('compress_file')
@@ -1550,6 +1567,138 @@ def _compression_cleanup(file_id, **kwargs):
             os.remove(target)
         remove_temp_file(target)
     pop_ignored_event(src_path=file_obj.filepath, dest_path='')
+
+# --- Combining (Files > Combine) ---
+
+def _combined_path(title_id, folder, extension, windows_compatible):
+    info = titles_lib.get_game_info(title_id) or {}
+    name = info.get('name')
+    name = name if name and name != 'Unrecognized' else title_id
+    filename = sanitized_path_parts(f'{name} [{title_id}].{extension}', windows_compatible)[-1]
+    return os.path.join(folder, filename)
+
+
+@register_task('combine_title', group='io')
+def combine_title_task(title_id, delete_parts=True, **kwargs):
+    """One game's base, latest update and DLC (loose NSP/NSZ files) into one combined
+    file next to the base, checked against its parts before anything is deleted. With
+    `delete_parts` off the loose files stay: the duplicate settings decide later."""
+    import packing
+    from containers import merge
+    from db import delete_file_record
+    title = Titles.query.filter_by(title_id=title_id).first()
+    parts = packing.combine_parts(title) if title else None
+    if parts is None:
+        logger.info(f'Nothing to combine for {title_id}.')
+        return
+    base, update, dlcs = parts
+    chosen = [base] + ([update] if update else []) + dlcs
+    files = [f for f, _ in chosen]
+    paths = [f.filepath for f in files]
+    missing = [p for p in paths if not os.path.exists(p)]
+    if missing:
+        raise FileNotFoundError(f'Missing: {", ".join(os.path.basename(p) for p in missing)}')
+    library_path = get_library_path(base[0].library_id)
+    mgmt = get_settings()['library']['management']
+    out = _combined_path(title_id, os.path.dirname(base[0].filepath), merge.output_extension(paths),
+                         mgmt['organizer'].get('windows_compatible', False))
+    if Files.query.filter_by(filepath=out).first() is not None or os.path.exists(out):
+        raise FileExistsError(f'{os.path.basename(out)} is already there.')
+    claimed = [p for p in paths if claim_temp_file(p)]
+    if len(claimed) != len(paths):
+        for p in claimed:
+            remove_temp_file(p)
+        logger.info(f'Combining {title_id} later: a part is busy.')
+        return
+    add_temp_file(out)
+    report = _task_progress(_current_task_id)
+    progress = (lambda f: report(int(f * 100))) if report else None
+    try:
+        logger.info(f'Combining {len(paths)} file(s) of {title_id} into {os.path.basename(out)}')
+        merge.combine(paths, out, updates=[update[0].filepath] if update else [], progress=progress)
+    finally:
+        remove_temp_file(out)
+        for p in paths:
+            remove_temp_file(p)
+    before = sum(f.size or 0 for f in files)
+    logger.info(f'Combined {os.path.basename(out)}: {human_size(before)} in {len(paths)} files -> '
+                f'{human_size(os.path.getsize(out))}')
+    if delete_parts:
+        for f in files:
+            delete_file_record(f.id)
+    enqueue_task('add_file', {'library_path': library_path, 'filepath': out})
+
+
+def _part_path(app_id, version, app_type, folder, extension, windows_compatible):
+    """Where a split part goes: the organizer's own naming, next to the combined file."""
+    info = titles_lib.get_game_info(app_id) or {}
+    name = info.get('name')
+    if not name or name == 'Unrecognized':
+        info = titles_lib.get_game_info(app_id[:-3] + '000') or {}
+        name = info.get('name') if info.get('name') != 'Unrecognized' else None
+    name = name or app_id
+    filename = sanitized_path_parts(f'{name} [{app_id}][v{version}].{extension}', windows_compatible)[-1]
+    return os.path.join(folder, filename)
+
+
+@register_task('split_file', group='io')
+def split_file_task(file_id, delete_original=True, **kwargs):
+    """A combined (multi-content) NSP/NSZ back into one file per content - base, update,
+    each DLC - next to it, each checked against the combined file before it goes."""
+    from containers import merge
+    from db import delete_file_record
+    f = db.session.get(Files, file_id)
+    if f is None or not f.multicontent or (f.extension or '').lower() not in ('nsp', 'nsz'):
+        return
+    if not os.path.exists(f.filepath):
+        raise FileNotFoundError(f.filepath)
+    library_path = get_library_path(f.library_id)
+    windows = get_settings()['library']['management']['organizer'].get('windows_compatible', False)
+    contents = merge.read_contents(f.filepath)
+    folder = os.path.dirname(f.filepath)
+    ext = f.extension.lower()
+    outputs = {(c['title_id'], c['version']): _part_path(c['title_id'], c['version'], c['type'], folder, ext, windows)
+               for c in contents}
+    if not claim_temp_file(f.filepath):
+        logger.info(f'Splitting {f.filename} later: the file is busy.')
+        return
+    for out in outputs.values():
+        add_temp_file(out)
+    report = _task_progress(_current_task_id)
+    try:
+        logger.info(f'Splitting {f.filename} into {len(outputs)} file(s)')
+        written = merge.split(f.filepath, outputs, contents=contents,
+                              progress=(lambda x: report(int(x * 100))) if report else None)
+    finally:
+        remove_temp_file(f.filepath)
+        for out in outputs.values():
+            remove_temp_file(out)
+    if delete_original:
+        delete_file_record(f.id)
+    for out in written:
+        enqueue_task('add_file', {'library_path': library_path, 'filepath': out})
+
+
+@register_cleanup('combine_title')
+def _combine_cleanup(title_id, **kwargs):
+    """Cancel/crash: a combined file that never made it into the library is a partial."""
+    import packing
+    from containers import merge
+    title = Titles.query.filter_by(title_id=title_id).first()
+    parts = packing.combine_parts(title) if title else None
+    if parts is None:
+        return
+    base = parts[0][0]
+    paths = [f.filepath for f, _ in [parts[0]] + ([parts[1]] if parts[1] else []) + parts[2]]
+    for p in paths:
+        remove_temp_file(p)
+    for ext in ('nsp', 'nsz'):
+        out = _combined_path(title_id, os.path.dirname(base.filepath), ext, False)
+        if Files.query.filter_by(filepath=out).first() is None and os.path.exists(out):
+            add_ignored_event(out, '')
+            os.remove(out)
+        remove_temp_file(out)
+
 
 # --- Batch maintenance ---
 @register_task('add_missing_apps')

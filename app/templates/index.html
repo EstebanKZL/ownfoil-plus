@@ -12,15 +12,6 @@
     </header>
 
     <div class="stat-grid library-tiles mb-3" id="libraryTiles" hidden></div>
-    <div class="library-progress mb-3" id="libraryProgress" hidden>
-        <div class="d-flex justify-content-between small mb-1">
-            <span class="fw-semibold">{{ t('library.progress_heading') }}</span>
-            <span class="text-secondary" id="libraryProgressLabel"></span>
-        </div>
-        <div class="progress" role="progressbar" aria-label="{{ t('library.progress_heading') }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-            <div class="progress-bar" style="width: 0%"></div>
-        </div>
-    </div>
 
     {# One toolbar: search, sort, view, the View menu (page size, card size) and the
        Filters menu (every filter group; the pills below are shortcuts into it). #}
@@ -35,9 +26,18 @@
             <select class="form-select" id="sortField">
                 <option value="NAME">{{ t('library.sort_name') }}</option>
                 <option value="RELEASE_DATE">{{ t('library.sort_release_date') }}</option>
+                <option value="REGION">{{ t('library.sort_region') }}</option>
+                <option value="SIZE">{{ t('library.sort_size') }}</option>
+                <option value="ADDED_AT">{{ t('library.sort_added') }}</option>
+                <option value="ID">{{ t('library.sort_id') }}</option>
             </select>
-            <button type="button" class="btn btn-outline-secondary" id="sortDirection" data-direction="ASC"
-                    title="{{ t('library.sort_asc') }}" aria-label="{{ t('library.sort_asc') }}"><i class="bi bi-sort-alpha-down"></i></button>
+        </div>
+        {# Which way: both buttons in view, the one in use lit. #}
+        <div class="btn-group library-sort-direction" role="group" aria-label="{{ t('library.sort_label') }}">
+            <button type="button" class="btn btn-outline-secondary sort-direction-btn" data-direction="ASC"
+                    title="{{ t('library.sort_asc') }}" aria-label="{{ t('library.sort_asc') }}"><i class="bi bi-sort-down-alt" aria-hidden="true"></i></button>
+            <button type="button" class="btn btn-outline-secondary sort-direction-btn" data-direction="DESC"
+                    title="{{ t('library.sort_desc') }}" aria-label="{{ t('library.sort_desc') }}"><i class="bi bi-sort-up" aria-hidden="true"></i></button>
         </div>
         <div class="btn-group library-views" role="group" aria-label="{{ t('library.view_menu') }}">
             <button id="view-toggle-btn-card" type="button" class="btn btn-outline-secondary view-toggle-btn active" data-view="card"
@@ -70,7 +70,7 @@
                     <span class="library-filters__title"><i class="bi bi-funnel" aria-hidden="true"></i> {{ t('library.filters_menu') }}</span>
                     <button type="button" class="btn btn-link btn-sm p-0" id="filtersClearBtn">{{ t('library.clear_filters') }}</button>
                 </div>
-                <div id="filterDropdownCol" data-view-only="card icon">
+                <div id="filterDropdownCol">
                     <fieldset class="filter-group">
                         <legend class="filter-group__label"><i class="bi bi-collection" aria-hidden="true"></i> {{ t('library.filter_group_ownership') }}</legend>
                         <div class="filter-chips" role="group" aria-label="Ownership filter">
@@ -104,31 +104,26 @@
                             <label class="filter-chip" for="completionMissingDlc">{{ t('library.filter_missing_dlc') }}</label>
                         </div>
                     </fieldset>
-                </div>
-                <div id="listHealthFilterCol" data-view-only="list" class="d-none">
+                    {% if current_user.is_authenticated %}
+                    {# Each user's own favourites (the star on a cover). #}
                     <fieldset class="filter-group">
-                        <legend class="filter-group__label"><i class="bi bi-shield-check" aria-hidden="true"></i> {{ t('library.filter_group_health') }}</legend>
-                        <div class="filter-chips" role="group" aria-label="Library health filter">
-                            <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthAll" autocomplete="off" checked>
-                            <label class="filter-chip" for="healthAll">{{ t('library.filter_all') }}</label>
-                            <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthComplete" autocomplete="off">
-                            <label class="filter-chip" for="healthComplete">{{ t('library.filter_health_complete') }}</label>
-                            <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthIncomplete" autocomplete="off">
-                            <label class="filter-chip" for="healthIncomplete">{{ t('library.filter_health_incomplete') }}</label>
-                            <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthCorrupt" autocomplete="off">
-                            <label class="filter-chip" for="healthCorrupt">{{ t('library.filter_health_corrupt') }}</label>
-                            <input type="radio" class="btn-check health-toggle" name="healthFilter" id="healthRepack" autocomplete="off">
-                            <label class="filter-chip" for="healthRepack">{{ t('library.filter_health_repack') }}</label>
+                        <legend class="filter-group__label"><i class="bi bi-star" aria-hidden="true"></i> {{ t('library.favorites') }}</legend>
+                        <div class="filter-chips" role="group" aria-label="{{ t('library.favorites') }}">
+                            <input type="radio" class="btn-check favorite-toggle" name="favoriteFilter" id="favoriteAll" autocomplete="off" checked>
+                            <label class="filter-chip" for="favoriteAll">{{ t('library.filter_all') }}</label>
+                            <input type="radio" class="btn-check favorite-toggle" name="favoriteFilter" id="favoriteOnly" autocomplete="off">
+                            <label class="filter-chip" for="favoriteOnly">{{ t('library.favorites_only') }}</label>
                         </div>
                     </fieldset>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
 
-    {# One-click filters with how many results each gives (library.js renders them). #}
+    {# Which console, with how many each gives (library.js renders it). The other filters
+       are in the Filters menu. #}
     <div class="pill-row mb-2" id="libraryConsole" role="group" aria-label="{{ t('library.console') }}"></div>
-    <div class="pill-row mb-2" id="libraryPills" role="group" aria-label="{{ t('library.filters_menu') }}"></div>
 
     <!-- Pagination controls (top) - mirrors the bottom one, same content, so paging
          doesn't require scrolling all the way down first. -->
@@ -186,6 +181,7 @@
     // this only controls whether the button is drawn, not the actual authorization.
     const IS_ADMIN = {{ is_admin | tojson }};
     const IS_SHOP = {{ is_shop | tojson }};
+    const CAN_FAVORITE = {{ current_user.is_authenticated | tojson }};
     const WEB_DOWNLOADS_ENABLED = {{ web_downloads_enabled | tojson }};
     // Library > Organizer > "Show game background image in Library list view" setting -
     // only gates the .list-banner-strip behind each row in renderListView; the cover
@@ -202,8 +198,9 @@
         consoleAll: {{ t('library.console_all') | tojson }},
         tileUpdates: {{ t('library.tile_updates') | tojson }},
         tileDlcMissing: {{ t('library.tile_dlc_missing') | tojson }},
-        tileSize: {{ t('library.tile_size') | tojson }},
-        progress: {{ t('library.progress') | tojson }},
+        tileUpToDate: {{ t('library.tile_up_to_date') | tojson }},
+        favoriteAdd: {{ t('library.favorite_add') | tojson }},
+        favoriteRemove: {{ t('library.favorite_remove') | tojson }},
         previous: {{ t('library.previous') | tojson }},
         next: {{ t('library.next') | tojson }},
         owned: {{ t('library.owned') | tojson }},
@@ -222,19 +219,7 @@
         detailsTooltip: {{ t('library.details_tooltip') | tojson }},
         downloadTooltip: {{ t('library.download_tooltip') | tojson }},
         downloadAria: {{ t('library.download_aria') | tojson }},
-        pills: {
-            all: {{ t('library.pill_all') | tojson }},
-            outdated: {{ t('library.pill_outdated') | tojson }},
-            missingDlc: {{ t('library.pill_missing_dlc') | tojson }},
-            upToDate: {{ t('library.pill_up_to_date') | tojson }},
-            complete: {{ t('library.pill_complete') | tojson }},
-            incomplete: {{ t('library.pill_incomplete') | tojson }},
-            corrupt: {{ t('library.pill_corrupt') | tojson }},
-            repack: {{ t('library.pill_repack') | tojson }},
-        },
         needsNewerFirmware: {{ t('library.needs_newer_firmware') | tojson }},
-        sortAsc: {{ t('library.sort_asc') | tojson }},
-        sortDesc: {{ t('library.sort_desc') | tojson }},
     };
 
 </script>

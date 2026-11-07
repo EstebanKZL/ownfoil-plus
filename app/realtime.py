@@ -127,8 +127,11 @@ def allowed_topics(requested):
         return known  # auth disabled entirely, same as access_required
     if not current_user.is_authenticated:
         return []
-    return [name for name in known
-            if TOPICS[name].access is None or current_user.has_access(TOPICS[name].access)]
+    # A collaborator watches what an admin watches (the streams only read).
+    def may(access):
+        return (access is None or current_user.has_access(access)
+                or (access == 'admin' and getattr(current_user, 'is_collaborator', False)))
+    return [name for name in known if may(TOPICS[name].access)]
 
 
 # --- Polling ---

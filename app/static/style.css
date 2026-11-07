@@ -619,6 +619,23 @@ a.stat-tile:hover {
     font-size: .9rem;
 }
 
+/* A share under a tile's label: the up-to-date tile's percentage. */
+.stat-tile__bar {
+    grid-column: 2;
+    height: .35rem;
+    margin-top: .4rem;
+    border-radius: 999px;
+    background-color: var(--op-chart-track);
+    overflow: hidden;
+}
+
+.stat-tile__bar-fill {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--op-info), var(--op-ok));
+}
+
 .stat-tile__note {
     color: var(--op-text-muted);
     font-size: .78rem;
@@ -705,6 +722,7 @@ a.stat-tile:hover {
 .status-badge--dlc { --badge: var(--op-nav); --badge-rgb: var(--op-nav-rgb); }
 .status-badge--fav { --badge: var(--op-fav); --badge-rgb: var(--op-fav-rgb); }
 .status-badge--firmware { --badge: var(--op-firmware); --badge-rgb: var(--op-firmware-rgb); }
+.status-badge--info { --badge: var(--op-info); --badge-rgb: var(--op-info-rgb); }
 
 /* Empty state: an invitation, not an apology. */
 .empty-state {
@@ -903,6 +921,12 @@ button.stat-tile:hover,
 a.stat-tile:hover {
     border-color: rgba(var(--tile-rgb), .55);
     transform: translateY(-2px);
+}
+
+.library-sort-direction .sort-direction-btn.active {
+    background-color: var(--op-surface-2);
+    border-color: rgba(var(--op-nav-rgb), .55);
+    color: var(--op-nav);
 }
 
 .library-toolbar .toolbar-search {
@@ -1393,12 +1417,15 @@ a.stat-tile:hover {
 }
 
 /* One color per state, as on the Dashboard and the Library. */
+/* A color of its own per tile, so the row reads at a glance. */
 .files-tile[data-tile="all"] { --tile: var(--op-nav); --tile-rgb: var(--op-nav-rgb); }
 .files-tile[data-tile="unidentified"] { --tile: var(--op-wait); --tile-rgb: var(--op-wait-rgb); }
 .files-tile[data-tile="verification"] { --tile: var(--op-ok); --tile-rgb: var(--op-ok-rgb); }
-.files-tile[data-tile="duplicates"] { --tile: var(--op-wait); --tile-rgb: var(--op-wait-rgb); }
-.files-tile[data-tile="outdated"] { --tile: var(--op-wait); --tile-rgb: var(--op-wait-rgb); }
-.files-tile[data-tile="pending"] { --tile: var(--op-nav); --tile-rgb: var(--op-nav-rgb); }
+.files-tile[data-tile="duplicates"] { --tile: var(--op-info); --tile-rgb: var(--op-info-rgb); }
+.files-tile[data-tile="outdated"] { --tile: var(--op-firmware); --tile-rgb: var(--op-firmware-rgb); }
+.files-tile[data-tile="pending"] { --tile: var(--op-dlc); --tile-rgb: var(--op-dlc-rgb); }
+.files-tile[data-tile="compress"] { --tile: var(--op-action); --tile-rgb: var(--op-action-rgb); }
+.files-tile[data-tile="combine"] { --tile: var(--op-fav); --tile-rgb: var(--op-fav-rgb); }
 /* Broken files (corrupt, modified) turn the tile red, whatever its usual tone. */
 .files-tile[data-tone="danger"] { --tile: var(--op-danger); --tile-rgb: var(--op-danger-rgb); }
 
@@ -1442,6 +1469,16 @@ a.stat-tile:hover {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+/* A long name or subtitle (Compress / Decompress) takes two lines rather than an ellipsis. */
+.files-tile-label,
+.files-tile-sub {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
 }
 
 .files-tile-count {
@@ -4043,6 +4080,36 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     margin-bottom: .5rem;
 }
 
+.account-identity {
+    min-width: 0;
+}
+
+.account-identity__name {
+    font-size: 1.25rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.account-identity__email {
+    color: var(--op-text-muted);
+    font-size: .9rem;
+    overflow-wrap: anywhere;
+}
+
+.account-identity__roles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+    margin-top: .4rem;
+}
+
+/* Files > Compress / Combine: the bar with the buttons stands out from the page. */
+.packing-footer.surface {
+    background-color: var(--op-surface-2);
+    border: 1px solid rgba(var(--op-nav-rgb), .45);
+    box-shadow: 0 -6px 24px rgba(0, 0, 0, .35), 0 0 0 1px rgba(var(--op-nav-rgb), .12);
+}
+
 .avatar-preview {
     display: grid;
     place-items: center;
@@ -4368,6 +4435,60 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     outline-offset: 2px;
 }
 
+/* Collaborator (<html data-readonly>): sees the admin pages and changes nothing but
+   uploading games. The server refuses the writes anyway; these controls just don't show. */
+html[data-readonly] .admin-write,
+html[data-readonly] .task-cancel,
+html[data-readonly] #purgeFailed,
+html[data-readonly] #clearHistory,
+html[data-readonly] #verifyNowBtn,
+html[data-readonly] #clearDownloadsBtn,
+html[data-readonly] .stats-record-action,
+html[data-readonly] .files-delete,
+html[data-readonly] .users-actions,
+html[data-readonly] a[href^="/api/backups/"] {
+    display: none !important;
+}
+
+.readonly-notice {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin-bottom: 1rem;
+    padding: .6rem .9rem;
+    border: 1px solid rgba(var(--op-info-rgb), .45);
+    border-radius: var(--op-radius, .75rem);
+    background-color: rgba(var(--op-info-rgb), .1);
+    color: var(--op-text);
+    font-size: .9rem;
+}
+
+/* The star: a favourite of the signed-in user (top right of the cover). */
+.library-fav {
+    position: absolute;
+    top: .5rem;
+    right: .5rem;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: 0;
+    border-radius: 50%;
+    background-color: rgba(var(--op-surface-0-rgb), .72);
+    color: var(--op-text);
+}
+
+.game-fav-btn.is-on .bi,
+.library-fav.is-on {
+    color: var(--op-fav);
+}
+
+.compact-card {
+    position: relative;
+}
+
 .library-cover-format {
     position: absolute;
     left: .5rem;
@@ -4384,6 +4505,8 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
 
 .library-cover-update {
     position: absolute;
+    /* Over the card's stretched name link, so hovering it says "Update available". */
+    z-index: 2;
     right: .5rem;
     bottom: .5rem;
     display: grid;
@@ -4513,4 +4636,258 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     overflow: hidden;
     clip: rect(0 0 0 0);
     white-space: nowrap;
+}
+
+/* --- Files > Compress and Files > Combine (static/js/packing.js) ------------------- */
+
+.packing-filters {
+    display: grid;
+    gap: .5rem;
+    margin-bottom: .9rem;
+}
+
+.packing-notice {
+    margin-bottom: 1rem;
+}
+
+.packing-note {
+    margin: 0;
+    color: var(--op-text-muted);
+    font-size: .85rem;
+}
+
+.packing-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .75rem 1rem;
+    margin-bottom: .75rem;
+}
+
+.packing-select-all {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.packing-search {
+    position: relative;
+    flex: 0 1 18rem;
+}
+
+.packing-search .bi {
+    position: absolute;
+    left: .6rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--op-text-muted);
+}
+
+.packing-search input {
+    padding-left: 2rem;
+}
+
+.packing-summary {
+    color: var(--op-text-muted);
+    font-size: .9rem;
+}
+
+.packing-games {
+    display: grid;
+    gap: .75rem;
+    margin-bottom: 1rem;
+}
+
+.packing-game {
+    padding: .85rem 1rem;
+}
+
+.packing-game__head {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    cursor: pointer;
+}
+
+.packing-toggle {
+    flex: 0 0 auto;
+}
+
+.packing-icon {
+    width: 2.6rem;
+    height: 2.6rem;
+}
+
+.packing-game__text {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.packing-game__name {
+    display: block;
+    font-weight: 600;
+    color: var(--op-text);
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.packing-game__name:hover {
+    color: var(--op-nav);
+}
+
+.packing-game__sub {
+    color: var(--op-text-muted);
+    font-size: .85rem;
+}
+
+.packing-game__side {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+}
+
+.packing-files {
+    list-style: none;
+    margin: .7rem 0 0;
+    padding: .25rem 0 0;
+    border-top: 1px solid var(--op-border);
+}
+
+.packing-file {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .45rem 0;
+}
+
+.packing-file + .packing-file {
+    border-top: 1px solid rgba(var(--op-text-rgb), .06);
+}
+
+.packing-files--parts .packing-file {
+    padding-left: 3.4rem;
+}
+
+.packing-file__name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--bs-font-monospace);
+    font-size: .8rem;
+    color: var(--op-text-muted);
+}
+
+.packing-check {
+    flex: 0 0 auto;
+    margin: 0;
+}
+
+.packing-kind {
+    --kind: var(--op-nav);
+    --kind-rgb: var(--op-nav-rgb);
+    flex: 0 0 auto;
+    padding: .1rem .55rem;
+    border-radius: 2rem;
+    font-size: .72rem;
+    font-weight: 600;
+    color: var(--kind);
+    background-color: rgba(var(--kind-rgb), .14);
+    border: 1px solid rgba(var(--kind-rgb), .32);
+}
+
+.packing-kind--wait { --kind: var(--op-wait); --kind-rgb: var(--op-wait-rgb); }
+.packing-kind--dlc { --kind: var(--op-dlc); --kind-rgb: var(--op-dlc-rgb); }
+.packing-kind--info { --kind: var(--op-info); --kind-rgb: var(--op-info-rgb); }
+
+.packing-format {
+    flex: 0 0 auto;
+    padding: .05rem .4rem;
+    border-radius: .35rem;
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .03em;
+    color: var(--op-text);
+    background-color: var(--op-surface-2);
+    border: 1px solid var(--op-border);
+}
+
+.packing-size {
+    flex: 0 0 auto;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.packing-footer {
+    position: sticky;
+    bottom: .75rem;
+    z-index: 3;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .75rem 1rem;
+    box-shadow: var(--op-shadow);
+}
+
+.packing-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+}
+
+.packing-format.is-compressed {
+    color: var(--op-ok);
+    border-color: rgba(var(--op-ok-rgb), .4);
+    background-color: rgba(var(--op-ok-rgb), .1);
+}
+
+.packing-state {
+    flex: 0 0 auto;
+    padding: .1rem .55rem;
+    border-radius: 2rem;
+    font-size: .72rem;
+    font-weight: 600;
+    color: var(--op-text-muted);
+    border: 1px solid var(--op-border);
+}
+
+.packing-state--combined {
+    color: var(--op-fav);
+    border-color: rgba(var(--op-fav-rgb), .4);
+    background-color: rgba(var(--op-fav-rgb), .1);
+}
+
+@media (max-width: 767.98px) {
+    .packing-files--parts .packing-file {
+        padding-left: 0;
+    }
+
+    .packing-file {
+        flex-wrap: wrap;
+    }
+
+    .packing-file__name {
+        flex-basis: 100%;
+        order: 5;
+    }
+
+    .packing-footer {
+        bottom: 4.5rem;    /* above the phone's bottom bar */
+    }
+
+    .packing-actions,
+    .packing-footer .btn {
+        width: 100%;
+    }
+
+    .packing-game__head {
+        flex-wrap: wrap;
+    }
 }

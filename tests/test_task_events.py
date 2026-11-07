@@ -125,6 +125,19 @@ def test_a_long_queue_is_capped(queue, monkeypatch):
     assert len(snapshot) == 5
 
 
+def test_failures_do_not_crowd_the_queue_out(queue, monkeypatch):
+    """Seen on the Tasks page: a long list of failures left the queue showing one task,
+    and the rest appeared once Failed was cleared. Each gets a window of its own."""
+    monkeypatch.setattr(task_events, "MAX_TASKS", 3)
+    for n in range(6):
+        add_task(input_hash="f%d" % n, status="failed")
+    pending = [add_task(input_hash="p%d" % n).id for n in range(5)]
+
+    snapshot = task_events.tasks_snapshot()
+    assert [t["id"] for t in snapshot if t["status"] == "pending"] == pending[:3]
+    assert len([t for t in snapshot if t["status"] == "failed"]) == 3
+
+
 def test_the_window_holds_the_oldest_tasks(queue, monkeypatch):
     """Tasks are claimed oldest-first, so the window is what runs now and what is next."""
     monkeypatch.setattr(task_events, "MAX_TASKS", 3)
