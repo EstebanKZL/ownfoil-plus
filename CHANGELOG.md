@@ -4,6 +4,22 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.52]
+
+- **Bundles are organized with any template.** A file holding the base game with its
+  update and DLC (an NSP, XCI or NUP bundle - every Switch 2 NUP is one) only gave the
+  "multi" template `{titleName}`, `{titleId}` and `{extension}`: a template using
+  `{appVersion}`, `{appId}` or `{appName}` failed (`KeyError`) and the file stayed
+  unorganized, on Switch and Switch 2 alike. It now gets every field: the base game's id
+  and name, and the newest version it holds (its update's). A bundle is also named after
+  its base game whatever order its contents were read in.
+- **An NSP holding several contents is read whole.** Identification asked nsz for the
+  NSP's CNMT and got only the first one, so a combined NSP (Files > Combine) counted as
+  its base game alone: listed as a duplicate of the base, named like it, never offered to
+  split. Every `.cnmt.nca` is read now. A file identified before keeps its old reading
+  until *Identify again* (Files drawer), which now also organizes it again - its name
+  depends on what it holds.
+
 ## [6.2.5.51]
 
 The Library reads the same in every view and gets what people asked for most: their own

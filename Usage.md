@@ -337,7 +337,7 @@ Available in every template:
 | `{titleId}` | Title ID of the game |
 | `{titleName}` | Name of the game title |
 
-Available in the base, update and DLC templates:
+Available in every template too - in the multi-content one, for a file holding the base game, its update and DLC together, they are the base game's id and name and the newest version it holds:
 
 | Attribute | Description |
 | --- | --- |

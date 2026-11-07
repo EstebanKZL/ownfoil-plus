@@ -733,6 +733,9 @@ def reset_file_identification(file):
     file.identification_attempts = 0
     file.nb_content = 0
     file.multicontent = False
+    # What it holds may change its name (a bundle read as its base game before): it is
+    # organized again once identified.
+    file.organized = False
 
 def reset_file_verification(file):
     """Clear verification state on a Files row: the verdicts described the old bytes."""

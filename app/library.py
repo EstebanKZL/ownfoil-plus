@@ -34,8 +34,10 @@ def organize_file(file_obj, library_path, organizer_settings):
         
         current_filepath = file_obj.filepath
         
-        # Get the associated app for the file
-        app = file_obj.apps[0] if file_obj.apps else None
+        # Get the associated app for the file. A bundle (base + update + DLC in one
+        # file) is named after its base game when it holds one.
+        apps = list(file_obj.apps or [])
+        app = next((a for a in apps if a.app_type == APP_TYPE_BASE), apps[0] if apps else None)
         if not app:
             logger.warning(f"No app associated with file {file_obj.filename}. Skipping organization.")
             return
@@ -62,6 +64,16 @@ def organize_file(file_obj, library_path, organizer_settings):
                 format_data["appName"] = game_info['name']
             else:
                 format_data["appName"] = title_info['name']
+        else:
+            # A bundle takes every field a single file does, so any "multi" template
+            # works: the base game's id and name, and the newest version it holds (its
+            # update's). Without them a template using {appVersion} or {appName} failed
+            # and the bundle was never organized.
+            newest = max((int(a.app_version or 0) for a in apps), default=0)
+            format_data["appId"] = app.app_id
+            format_data["appVersion"] = str(newest)
+            format_data["patchLevel"] = titles_lib.get_update_number(str(newest))
+            format_data["appName"] = title_info['name']
 
         # Optionally rename in a language independent of the library's display locale
         # (Settings > Titles), so accents and other symbols the chosen language brings

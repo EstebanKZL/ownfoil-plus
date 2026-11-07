@@ -204,3 +204,35 @@ def test_a_combined_file_is_listed_and_split_on_request(shop_app, monkeypatch):
     r = client.post('/api/files/combine', json={'action': 'split', 'file_ids': [fid, 999999]})
     assert r.get_json()['queued'] == 1
     assert queued == [('split_file', {'file_id': fid, 'delete_original': True})]
+
+
+def test_every_cnmt_of_a_bundled_nsp_is_read():
+    """A combined NSP holds one CNMT per content; nsz's Nsp.cnmt() returns only the first,
+    which identified a bundle as its base game alone (seen: a combined file listed as a
+    duplicate of its base, named like it, and never offered to split)."""
+    from nsz.Fs import Nca, Nsp
+    from containers.cnmt import get_cnmts
+
+    def nca(path):
+        n = Nca.Nca.__new__(Nca.Nca)
+        n._path = path
+        return n
+
+    class Bundle(Nsp.Nsp):
+        def __init__(self, files):
+            self._files = files
+
+        def __iter__(self):
+            return iter(self._files)
+
+    files = [nca('aa.cnmt.nca'), nca('b1.nca'), nca('bb.cnmt.nca'), nca('u1.nca'), nca('cc.cnmt.nca')]
+    assert [c._path for c in get_cnmts(Bundle(files))] == ['aa.cnmt.nca', 'bb.cnmt.nca', 'cc.cnmt.nca']
+
+
+def test_identifying_again_organizes_again(shop_app):
+    from db import Files, db, reset_file_identification
+    with shop_app.app.app_context():
+        f = Files.query.first()
+        f.organized = True
+        reset_file_identification(f)
+        assert f.organized is False and f.multicontent is False
