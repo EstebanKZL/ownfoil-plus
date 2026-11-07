@@ -86,8 +86,10 @@ def test_the_cards_query_gives_format_update_and_dlc_counts(library):
 
 def test_a_card_shows_format_update_mark_and_dlc_count():
     body = _function_body(_js("library.js"), "renderCardView")
-    assert "coverFormat(game)" in body and "game.format" in body
-    assert "library-cover-format" in _function_body(_js("library.js"), "coverFormat")
+    assert "coverFormat(game)" in body
+    cover = _function_body(_js("library.js"), "coverFormat")
+    # Every game says its console ("Switch" or "Switch 2") next to its format.
+    assert "library-cover-format" in cover and "game.format" in cover and "'Switch'" in cover
     assert "library-cover-update" in body and "game.update_pending" in body
     assert "library-card-dlc" in body and "dlcCountText(" in body
     count = _function_body(_js("library.js"), "dlcCountText")
