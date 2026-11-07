@@ -81,7 +81,7 @@ def test_search_never_returns_files_to_a_non_admin(shopper_client):
 
 
 def test_search_needs_two_characters(admin_client):
-    assert admin_client.get("/api/search?q=t").get_json() == {"titles": [], "files": []}
+    assert admin_client.get("/api/search?q=t").get_json() == {"titles": [], "files": [], "users": []}
 
 
 def test_search_is_not_open_on_a_private_shop(shop_app):
@@ -91,7 +91,7 @@ def test_search_is_not_open_on_a_private_shop(shop_app):
 
 def test_search_is_safe_with_sql_wildcards(admin_client):
     body = admin_client.get("/api/search?q=%27%3B--").get_json()
-    assert body == {"titles": [], "files": []}
+    assert body == {"titles": [], "files": [], "users": []}
 
 
 # --- palette -----------------------------------------------------------------------------
@@ -99,8 +99,23 @@ def test_search_is_safe_with_sql_wildcards(admin_client):
 def test_admin_palette_lists_admin_pages(admin_client):
     config = _search_config(admin_client.get("/").get_data(as_text=True))
     urls = {p["url"] for p in config["pages"]}
-    assert {"/", "/admin", "/admin/files", "/admin/settings#Notifications"} <= urls
+    assert {"/", "/upcoming", "/sagas", "/account", "/admin", "/admin/files", "/admin/files#compress",
+            "/admin/files#combine", "/admin/tasks", "/admin/stats", "/admin/services", "/admin/settings"} <= urls
+    # Settings once: its sections no longer each have an entry, their words find it.
+    assert not any(url.startswith("/admin/settings#") for url in urls)
+    settings = next(p for p in config["pages"] if p["url"] == "/admin/settings")
+    assert "usuarios" in settings["keywords"] and "notifications" in settings["keywords"]
     assert config["admin"] is True
+
+
+def test_search_finds_users_for_an_admin_only(shop_app):
+    client = shop_app.client
+    _login(client, "admin")
+    users = client.get("/api/search?q=shopp").get_json()["users"]
+    assert [u["user"] for u in users] == ["shopper"]
+    client.get("/logout")
+    _login(client, "shopper")
+    assert client.get("/api/search?q=shop").get_json()["users"] == []
 
 
 def test_shopper_palette_has_no_admin_pages(shopper_client):

@@ -153,7 +153,11 @@ games (ids 04...), the Dashboard's lists, the save vault's per-user game limit, 
 round of Library/Sagas/Settings polish; 6.2.5.51: per-user favourites, the Collaborator
 role (reads every admin page, may upload games; `ctx.can_admin` = real admin,
 `can_view_admin` for reads), more Library sort fields, one filter set for every view,
-the Saves limits notice, and short release notes (credits only in NOTICE.md/README).
+the Saves limits notice, Files > Compress/Decompress and Combine/Split (`packing.py`,
+`containers/merge.py`: PFS0 copy, no recompression; `compression.delete_originals`
+setting), Ctrl+K with every page and users, and short release notes (credits only in
+NOTICE.md/README). Releases and tags before 6.2.5.51 were deleted for a fresh start.
+Not yet tried on real games: compressing/combining/splitting from those panels.
 
 Postponed - **remind the maintainer of these when a round of work wraps up**:
 

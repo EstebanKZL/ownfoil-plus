@@ -54,7 +54,7 @@ def test_may_upload_games(collab):
     assert collab.post('/api/upload').status_code == 403
 
 
-@pytest.mark.parametrize("path", ["/api/settings/export", "/api/backups/x.zip", "/api/admin/saves/download"])
+@pytest.mark.parametrize("path", ["/api/settings/export", "/api/backups/x.zip"])
 def test_reads_no_keys_or_other_peoples_saves(collab, path):
     assert collab.get(path).status_code == 403
 
@@ -127,3 +127,16 @@ def test_saves_page_states_the_vault_limits(shop_app, monkeypatch):
                                                    "admins": True, "users": True})
     html = client.get("/saves").get_data(as_text=True)
     assert "todas las copias de cada juego" in html and "todos los juegos que quieras" in html
+
+
+def test_downloads_uploaded_saves_from_the_dashboard_only(shop_app, collab, monkeypatch):
+    """The Saves page is one's own for everyone; a collaborator, like an admin, downloads
+    every upload from the Dashboard's "Uploaded saves"."""
+    import vault
+    with shop_app.app.app_context():
+        other = User.query.filter_by(user="admin").one().id
+    asked = []
+    monkeypatch.setattr(vault, "backup_path", lambda user, path: asked.append(user) or None)
+    assert collab.get(f"/api/admin/saves/download?user={other}&path=Game/a.zip").status_code == 404
+    assert asked == [other]                      # reached the download, not refused
+    assert collab.get("/saves").status_code == 403   # no Backup permission: no Saves page

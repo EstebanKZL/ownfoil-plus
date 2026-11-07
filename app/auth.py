@@ -116,8 +116,8 @@ def access_required(access: str):
 
 
 # What a collaborator may not even read: backups and the settings export hold keys and
-# secrets, and the save download is other people's saves.
-COLLABORATOR_DENIED = frozenset({'download_backup_api', 'admin_saves_download_api', 'export_settings'})
+# secrets. Uploaded saves they may download from the Dashboard, like an admin.
+COLLABORATOR_DENIED = frozenset({'download_backup_api', 'export_settings'})
 
 
 # The one thing a collaborator may change: they may upload games (the resumable web

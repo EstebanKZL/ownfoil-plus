@@ -631,7 +631,73 @@ def files_page():
                            verify_ext=sorted(VERIFY_EXT),
                            compress_ext=sorted(COMPRESS_EXT),
                            management=get_settings()['library']['management'],
+                           compression_level=__import__('packing').compression_level_name(
+                               get_settings()['library']['management']['compression'].get('level')),
                            admin_account_created=admin_account_created())
+
+# --- Files > Compression and Files > Combine (packing.py lists, tasks.py does the work) ---
+# The options are Settings': the compression level and "delete the originals".
+
+def _delete_originals():
+    return bool(get_settings()['library']['management']['compression'].get('delete_originals', True))
+
+@app.get('/api/files/compress')
+@access_required('admin')
+def compress_candidates_api():
+    import packing
+    return jsonify({'games': packing.compression_candidates(), 'keys_valid': bool(load_keys()[0])})
+
+@app.post('/api/files/compress')
+@access_required('admin')
+def compress_files_api():
+    """Queue a compress (or, with action "decompress", a decompress) task per file, in
+    its own folder; each original goes once the new file is verified unless Settings'
+    "delete the originals" is off."""
+    data = request.get_json(silent=True) or {}
+    decompress = data.get('action') == 'decompress'
+    keep = not _delete_originals()
+    ids = [int(i) for i in data.get('file_ids') or [] if str(i).isdigit()]
+    queued = 0
+    for f in Files.query.filter(Files.id.in_(ids)).all() if ids else []:
+        if decompress:
+            if not f.compressed or f.extension not in DECOMPRESS_EXT:
+                continue
+            tasks_mod.enqueue_task('decompress_file', {'file_id': f.id, 'keep_original': keep})
+        else:
+            if f.compressed or f.extension not in COMPRESS_EXT:
+                continue
+            tasks_mod.enqueue_task('compress_file', {'file_id': f.id, 'manual': True, 'keep_original': keep})
+        queued += 1
+    return jsonify({'success': True, 'queued': queued})
+
+@app.get('/api/files/combine')
+@access_required('admin')
+def combine_candidates_api():
+    import packing
+    return jsonify({'games': packing.combine_candidates(), 'keys_valid': bool(load_keys()[0])})
+
+@app.post('/api/files/combine')
+@access_required('admin')
+def combine_titles_api():
+    """Queue a combine task per game asked for (its base, latest update and DLC), or with
+    action "split", a split task per combined file."""
+    data = request.get_json(silent=True) or {}
+    remove = _delete_originals()
+    queued = 0
+    if data.get('action') == 'split':
+        ids = [int(i) for i in data.get('file_ids') or [] if str(i).isdigit()]
+        for f in Files.query.filter(Files.id.in_(ids)).all() if ids else []:
+            if f.multicontent and (f.extension or '').lower() in ('nsp', 'nsz'):
+                tasks_mod.enqueue_task('split_file', {'file_id': f.id, 'delete_original': remove})
+                queued += 1
+        return jsonify({'success': True, 'queued': queued})
+    for title_id in data.get('title_ids') or []:
+        title_id = str(title_id).upper()
+        if not re.fullmatch(r'[0-9A-F]{16}', title_id):
+            continue
+        tasks_mod.enqueue_task('combine_title', {'title_id': title_id, 'delete_parts': remove})
+        queued += 1
+    return jsonify({'success': True, 'queued': queued})
 
 @app.route('/admin/tasks')
 @access_required('admin')
@@ -687,12 +753,13 @@ def prometheus_metrics():
 @app.get('/api/search')
 @access_required('shop')
 def search_api():
-    """Games in the library by name or title ID, and - for an admin - files by name.
-    Pages and settings sections are matched in the browser (nav.html lists them)."""
+    """Games in the library by name or title ID, and - for an admin (or a collaborator)
+    - files by name and users by name or email. Pages are matched in the browser
+    (nav.html lists them)."""
     from sqlalchemy import text
     query = (request.args.get('q') or '').strip()
     if len(query) < 2:
-        return jsonify({'titles': [], 'files': []})
+        return jsonify({'titles': [], 'files': [], 'users': []})
     pattern = f'%{query}%'
     titles = [{'title_id': title_id, 'name': name or title_id}
               for title_id, name in db.session.execute(text(
@@ -706,7 +773,12 @@ def search_api():
         files = [{'id': f.id, 'filename': f.filename, 'size': f.size}
                  for f in Files.query.filter(Files.filename.ilike(pattern))
                  .order_by(Files.filename).limit(6)]
-    return jsonify({'titles': titles, 'files': files})
+    users = []
+    if is_admin:
+        users = [{'id': u.id, 'user': u.user, 'email': u.email}
+                 for u in User.query.filter(db.or_(User.user.ilike(pattern), User.email.ilike(pattern)))
+                 .order_by(User.user).limit(6)]
+    return jsonify({'titles': titles, 'files': files, 'users': users})
 
 # --- Dashboard (/admin) ---
 
@@ -1461,18 +1533,16 @@ def saves_page():
                            vault_enabled=vault.enabled())
 
 def _saves_owner():
-    """Whose backups a Saves request names: the signed-in user's own - or, for an admin,
-    the user in ?user= (the Saves page lists everyone's for them)."""
-    if current_user.is_admin and request.args.get('user', '').isdigit():
-        return int(request.args['user'])
+    """Whose backups a Saves request names: always the signed-in user's own. Nobody,
+    admins included, sees anyone else's saves on the Saves page; admins and collaborators
+    get every upload on the Dashboard's "Uploaded saves" (admin_saves_download_api)."""
     return current_user.id
 
 def _save_games():
-    """The backups one sees grouped by user and game (newest first), with each game's name
-    and icon: one's own, or everyone's for an admin."""
+    """One's own backups grouped by game (newest first), with each game's name and icon."""
     names = {u.id: u.user for u in User.query.with_entities(User.id, User.user)}
     games = {}
-    for b in vault.backups(None if current_user.is_admin else [current_user.id]):
+    for b in vault.backups([current_user.id]):
         key = (b['user_id'], b['title_id'] or b['folder'])
         game = games.setdefault(key, {'title_id': b['title_id'], 'folder': b['folder'], 'backups': [],
                                       'size': 0, 'latest': b['time'], 'user_id': b['user_id'],
@@ -1495,13 +1565,12 @@ def _save_games():
 def saves_api():
     # Only the games that have backups: the list of library games without one was
     # dropped (Phase 8) - on a big library it buried the backups under hundreds of rows.
-    return jsonify({'enabled': vault.enabled(), 'games': _save_games(),
-                    'all_users': bool(current_user.is_admin)})
+    return jsonify({'enabled': vault.enabled(), 'games': _save_games()})
 
 @app.get('/api/admin/saves/download')
 @access_required('admin')
 def admin_saves_download_api():
-    """Dashboard > Uploaded saves: any user's backup, for an admin."""
+    """Dashboard > Uploaded saves: any user's backup, for an admin or a collaborator."""
     if not request.args.get('user', '').isdigit():
         return jsonify({'error': 'not_found'}), 404
     path = vault.backup_path(int(request.args['user']), request.args.get('path'))

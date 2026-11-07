@@ -160,7 +160,8 @@ async function loadSaga() {
                 .toLocaleDateString(LANG, {day: 'numeric', month: 'short', year: 'numeric'}))
             : I18N.missing;
         const art = cover(game.icon_url);
-        if (game.switch2) art.append(node('span', 'release-card__console', 'Switch 2'));
+        // Each game says its console: "Switch 2", or plain "Switch" for the first one.
+        art.append(node('span', 'release-card__console', game.switch2 ? 'Switch 2' : 'Switch'));
         link.append(art, node('div', 'release-card__name', game.name),
                     node('div', 'release-card__date', state));
         card.append(link);

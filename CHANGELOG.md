@@ -19,6 +19,8 @@ server with an admin's eyes and none of an admin's buttons. Two migrations
 - **One row of pills, the console one.** The second row (*All*, *Update pending*,
   *Missing DLC*, *Up to date*) repeated the Filters menu; it's gone from every view, and
   the tiles at the top still apply those filters in one click.
+- **Every game says its console**: cards, compact covers and Sagas show "Switch" for
+  the first console's games, as they already showed "Switch 2", next to the format.
 - **The update mark on a card says "Update available"** on hover - the card's name link
   stretched over it and the tooltip showed the game's name.
 - **An "Up to date" tile with its share** (*Up to date · 64%*) replaces the total size,
@@ -43,8 +45,55 @@ server with an admin's eyes and none of an admin's buttons. Two migrations
   write check fails closed) and refuses every mutation, and the pages hide or switch off what
   changes something (services, settings, deleting, cleaning, compressing, verifying,
   task cancelling, uploads), with a notice at the top. The settings they read come
-  without secrets, and backups, the settings export and other people's saves stay with
-  admins - those hold keys and private data.
+  without secrets, and backups and the settings export stay with admins (they hold
+  keys). Saves: like an admin, a collaborator downloads every upload from the
+  Dashboard's *Uploaded saves*.
+- **The Saves page is one's own, for everyone.** Admins used to see every user's
+  backups there; now nobody sees anyone else's on that page (paths name only one's own
+  space), and every upload is reached from the Dashboard's *Uploaded saves*.
+
+**Files: Compress / Decompress and Combine / Split**
+
+- **Compress / Decompress** (a new tile in Files): every game with its NSP, NSZ, XCI and
+  XCZ files under its icon - base, update, DLC or bundle, each with a checkbox. Filters
+  for *Uncompressed* / *Compressed* and per format, a search, and two buttons: compress
+  the uncompressed ones picked, decompress the compressed ones. Each file becomes a task
+  and is converted in its own folder.
+- **Combine / Split** (another tile): each game whose base is a loose NSP/NSZ with its
+  latest update and/or DLC as loose NSP/NSZ files, to join into one file next to the
+  base (NSP, or NSZ when a part is already compressed) - and every combined file, to
+  split back into one file per content. Nothing is decrypted or recompressed: NCAs,
+  tickets and certificates are copied into new PFS0 files (`containers/merge.py`), the
+  update's delta fragments and the loose XML metadata are left out, and every NCA is
+  checked against its source (content hash) before an original goes. XCI and NUP files
+  aren't offered.
+- **The options are Settings'**, shown under each panel like the other Files views: the
+  compression level, and a new **Delete the originals** switch (Settings > Library >
+  Compression, on by default) - off, both stay and the next scan handles them as the
+  duplicate settings say. The automatic compression of a scan keeps deleting as before.
+- Collaborators see both panels and run neither; both need the console keys.
+- **Each Files tile has a color of its own** (they were mostly the same), and a long name
+  takes two lines instead of an ellipsis. Compress and Combine come right after *All
+  files*.
+- **Games are folded to one line** in both panels - icon, name, how many files and their
+  formats - and open with the arrow (or a click on the line) to pick single files; a
+  game's checkbox picks all of its own either way.
+
+- The bar with the buttons stands out from the page (a lighter surface with an accent
+  border), and the Compression panel no longer lists the automatic compression switch -
+  that's a scan's, these panels are run by hand.
+
+**My account** says who is signed in: the user name next to the profile picture, the
+email, and the role (Admin, Collaborator or User) with the shop and backup permissions.
+
+**Search (Ctrl+K)**
+
+- **Every page and panel**: Upcoming, Sagas, Saves, My account, each Files view
+  (Compress, Combine, Duplicates...), Tasks, Statistics, Services - and **Settings once**:
+  its sections no longer have an entry each, their words (users, notifications...) find
+  Settings.
+- **Users by name or email**, for admins and collaborators: a result opens the users
+  list already searched for them.
 
 **Saves and Tasks**
 

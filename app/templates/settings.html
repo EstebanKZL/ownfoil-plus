@@ -429,6 +429,11 @@
                                 <div class="form-text">{{ t('compression.level_help') | safe }}</div>
                             </div>
                         </div>
+                        <div class="mb-3 form-check form-switch">
+                            <input type="checkbox" class="form-check-input" id="compressDeleteOriginalsCheck">
+                            <label class="form-check-label" for="compressDeleteOriginalsCheck">{{ t('compression.delete_originals') }}</label>
+                            <div class="form-text">{{ t('compression.delete_originals_help') }}</div>
+                        </div>
                         <div class="accordion mb-3" id="compressionAdvancedAccordion">
                             <div class="accordion-item">
                                 <h2 class="accordion-header">

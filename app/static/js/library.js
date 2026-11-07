@@ -403,11 +403,10 @@ function activePill() {
     return !activeUpdateFilter && !activeCompletionFilter ? 'all' : null;
 }
 
-/** Both / Switch / Switch 2, with how many of each the view holds (cards and compact). */
-/** The cover's bottom-left: the file's format, and "Switch 2" for its games. */
+/** The cover's bottom-left: the console ("Switch" or "Switch 2") and the file's format. */
 function coverFormat(game) {
     const box = $('<span class="library-cover-format">');
-    if (game.switch2) box.append($('<span class="library-cover-console">').text('Switch 2'));
+    box.append($('<span class="library-cover-console">').text(game.switch2 ? 'Switch 2' : 'Switch'));
     if (game.format) box.append($('<span>').text(game.format));
     return box;
 }
@@ -656,7 +655,7 @@ function renderCardView(games) {
         coverWrap.append(favoriteButton(game));
         // Along the cover's bottom: the file's format on the left, and on the right a
         // mark when the game has a newer update than the library's.
-        if (game.format || game.switch2) coverWrap.append(coverFormat(game));
+        coverWrap.append(coverFormat(game));
         if (game.update_pending) {
             coverWrap.append($('<span class="library-cover-update">')
                 .attr({title: I18N.updateAvailable, role: 'img', 'aria-label': I18N.updateAvailable})
@@ -733,7 +732,7 @@ function renderCompactView(games) {
             badges.append(statusBadge('wait', 'bi-dash-circle', I18N.baseMissing).attr('title', I18N.baseMissing));
         }
         cover.append(badges);
-        if (game.format || game.switch2) cover.append(coverFormat(game));
+        cover.append(coverFormat(game));
         if (game.update_pending) {
             cover.append($('<span class="library-cover-update">')
                 .attr({title: I18N.updateAvailable, role: 'img', 'aria-label': I18N.updateAvailable})

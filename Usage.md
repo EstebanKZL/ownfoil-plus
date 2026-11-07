@@ -64,7 +64,7 @@ The sun/moon icon in the navbar sets two things:
 
 Both are remembered per browser. The admin chooses the style everyone sees by default, also on the login page, in `Settings > Appearance`; a browser that picked its own keeps it until `Use the server's style` is chosen.
 
-**Search** from any page with `Ctrl+K` (`Cmd+K` on a Mac), `/`, or the magnifier in the navbar: type a game's name or title ID, a file name (admins), or a page or setting ("notifications", "backup", "users"...). Arrow keys move through the results and `Enter` opens one: a game opens the library filtered to it, a file opens the Files page filtered to it. Results only include what your account can access.
+**Search** from any page with `Ctrl+K` (`Cmd+K` on a Mac), `/`, or the magnifier in the navbar: type a game's name or title ID, a file name or a user's name or email (admins and collaborators), or a page - every page and panel is listed, Settings once (its sections' words, like "notifications" or "users", find it). Arrow keys move through the results and `Enter` opens one: a game opens its page, a file opens the Files page filtered to it, a user opens the users list searched for them. Results only include what your account can access.
 
 ## Installing as an app
 
@@ -133,9 +133,16 @@ Every signed-in user has `My account` (the person icon at the top right): your c
 
 `Upcoming` lists the games still to come to the eShop, by month, from TitleDB. The heart adds one to your wishlist (each user has their own); `For you` gathers your wishlist and the next games of the sagas you already have. `Sagas` lists the series you have games of, as "4 of 6", and opens each one with the games you have, the ones you're missing and the ones still to come. The series come from [Wikidata](https://www.wikidata.org): the server asks for them after a TitleDB refresh, at most once a week, and keeps them in `data/series.json`. Both pages follow the Library's access: anyone on a public shop, otherwise users with shop access.
 
+## Compress / Decompress and Combine / Split (Files)
+
+Two tiles on the Files page, admins only (collaborators see them without the buttons); both need the console keys. Under each, the settings it follows, each linking to its control: the compression level and **Delete the originals** (Settings > Library > Compression; on by default - off, both files stay and the next scan handles them as your duplicate settings say).
+
+- **Compress / Decompress**: each game with its NSP, NSZ, XCI and XCZ files (base, update, DLC or bundle). Filter by *Uncompressed* / *Compressed* or by format, tick files - a game's checkbox ticks all of its own - and press *Compress* (NSP to NSZ, XCI to XCZ) or *Decompress* (back). Each file becomes a task (see Tasks) and is converted in its own folder, checked before its original goes.
+- **Combine / Split**: *To combine* lists each game whose base is a separate NSP/NSZ file and that has its update and/or DLC as separate NSP/NSZ files; each becomes a task that writes one file next to the base, named `Game name [TitleID].nsp` (`.nsz` when a part is already compressed), with the base, the **latest** update and every DLC - older updates and delta fragments are left out. *Combined* lists the combined files; *Split* writes one file per content next to it (`Name [ID][vVersion].nsp`). Nothing is recompressed, and every new file is checked against its source before an original goes. XCI and NUP files aren't offered.
+
 ## Saves page
 
-Users with the `Backup` permission see their own backups JKSV uploaded to the save vault (see [Save vault](#save-vault)), by game, to download or delete. Admins see everyone's, each card saying whose. An amber notice at the top says what the server keeps: how many backups of each game, and how many different games each user may keep saves of (with how many they already use).
+Users with the `Backup` permission see their own backups JKSV uploaded to the save vault (see [Save vault](#save-vault)), by game, to download or delete - only one's own, admins included. Every user's uploads are on the Dashboard's *Uploaded saves*, for admins and collaborators. An amber notice at the top says what the server keeps: how many backups of each game, and how many different games each user may keep saves of (with how many they already use).
 
 ## Services
 
@@ -214,7 +221,7 @@ Each user has up to four permissions:
 | --- | --- |
 | `Shop` | Access to the shop from a client, to file downloads, and to the library page. |
 | `Admin` | Access to the `Settings` and `Tasks` pages and everything that changes the configuration. Admins get the other permissions automatically. |
-| `Collaborator` | Sees every admin page - Dashboard, Files, Tasks, Statistics, Services, Settings - and may upload games, but changes nothing else: no settings, services, deleting, cleaning the database, compressing or verifying. Settings come without their secrets (tokens, passwords, webhook addresses), and backups and the settings export stay with admins. An admin is never also a collaborator. |
+| `Collaborator` | Sees every admin page - Dashboard, Files, Tasks, Statistics, Services, Settings - and may upload games, but changes nothing else: no settings, services, deleting, cleaning the database, compressing or verifying. Settings come without their secrets (tokens, passwords, webhook addresses), and backups and the settings export stay with admins. Like admins, they download every uploaded save from the Dashboard's *Uploaded saves*. An admin is never also a collaborator. |
 | `Backup` | The save vault: JKSV uploads and the Saves page (see [Save vault](#save-vault)). |
 
 You can also create users from [environment variables](./Install.md#environment-variables) at startup, which is handy to avoid ever running an instance without an admin.
@@ -256,6 +263,7 @@ Automated library management. Everything in this section shares the `Submit` but
 | --- | --- | --- |
 | `Compress files` | disabled | Compress files after they are added and organized. |
 | `Compression level` | `18` | zstandard level, `1` to `22`. Higher is smaller but slower. |
+| `Delete the originals` | enabled | Files > Compress / Decompress and Combine / Split: each original is deleted once its new file is verified. Disabled, both stay and the next scan handles them as your duplicate settings say. |
 
 Compression converts `nsp` to `nsz` and `xci` to `xcz`, which saves storage space depending on the game. Both formats install fine on all supported clients.
 
@@ -439,7 +447,7 @@ The section also shows whether email and Google are set up, and sends a test ema
 
 JKSV, the console's save manager, can upload its save backups to Ownfoil-Plus over WebDAV, at `/dav/` on the same address and port as the web UI. Off by default: an admin turns it on in Services (or here).
 
-Each user has their own space: nobody sees or downloads anyone else's backups, from the console or the web; admins see everyone's on the Saves page, each with whose it is. The vault is for users with the `Backup` permission and admins.
+Each user has their own space: nobody sees or downloads anyone else's backups, from the console or the web; admins and collaborators download every upload from the Dashboard's *Uploaded saves*. The vault is for users with the `Backup` permission and admins.
 
 | Setting | Default | What it does |
 |---|---|---|

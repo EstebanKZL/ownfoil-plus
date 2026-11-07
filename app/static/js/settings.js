@@ -132,7 +132,20 @@ function fillUserTable() {
         allUsers = Array.isArray(result) ? result : [];
         allUsernames = allUsers.map(u => u['user']);
         renderUserTable();
+        openUsersFor();
     })
+}
+
+/** ?user=<name> (a user picked in the Ctrl+K search): the users list, searched for
+ *  them - once, when the users have loaded. */
+function openUsersFor() {
+    const wanted = new URLSearchParams(location.search).get('user');
+    const dialog = document.getElementById('usersDialog');
+    if (!wanted || !dialog || openUsersFor.done) return;
+    openUsersFor.done = true;
+    $('#userSearch').val(wanted);
+    renderUserTable();
+    bootstrap.Modal.getOrCreateInstance(dialog).show();
 }
 
 /** The users matching the search box: by name or email, ignoring case. */
@@ -817,7 +830,8 @@ function submitLibraryManagementSettings() {
             long_distance: getCheckboxStatus("compressLongDistanceCheck"),
             mode: getInputVal("compressModeSelect"),
             block_size_exponent: parseInt(getInputVal("compressBlockSizeInput")),
-            threads: parseInt(getInputVal("compressThreadsInput"))
+            threads: parseInt(getInputVal("compressThreadsInput")),
+            delete_originals: getCheckboxStatus("compressDeleteOriginalsCheck")
         },
         verification: {
             enabled: getCheckboxStatus("verifyFilesCheck"),
@@ -1374,6 +1388,7 @@ $(document).ready(function () {
         $("#compressFilesCheck").prop("checked", compression['enabled']);
         setInputVal("compressionLevelInput", compression['level']);
         $("#compressLongDistanceCheck").prop("checked", compression['long_distance']);
+        $("#compressDeleteOriginalsCheck").prop("checked", compression['delete_originals'] !== false);
         setInputVal("compressModeSelect", compression['mode']);
         setInputVal("compressBlockSizeInput", compression['block_size_exponent']);
         setInputVal("compressThreadsInput", compression['threads']);
@@ -1620,3 +1635,4 @@ if (document.documentElement.hasAttribute('data-readonly')) {
     // Fields filled in later (users, backups, paths) get the same.
     new MutationObserver(lock).observe(document.querySelector('.settings-panel'), {childList: true, subtree: true});
 }
+

@@ -184,17 +184,18 @@ def test_each_user_sees_only_their_own_backups(shop_app, on, other, space):
     assert client.delete("/api/saves", query_string={"path": "Mario/m.zip", "user": other}).status_code == 404
 
 
-def test_an_admin_sees_everyones_backups_by_user(shop_app, on, other, keeper):
+def test_the_saves_page_is_ones_own_even_for_an_admin(shop_app, on, other, keeper):
+    """Nobody sees anyone else's saves on the Saves page; an admin (or a collaborator)
+    downloads every upload from the Dashboard's "Uploaded saves" instead."""
     _dav(on, "MKCOL", "/dav/JKSV/Zelda")
     _dav(on, "PUT", "/dav/JKSV/Zelda/b.zip", data=_meta_zip())
     admin = _login(shop_app, "admin")
-    data = admin.get("/api/saves").get_json()
-    owners = {(g["user_id"], g["user"]) for g in data["games"]}
-    assert owners == {(keeper, "keeper"), (other, "other")}
-    resp = admin.get("/api/saves/download", query_string={"path": "Mario/m.zip", "user": other})
+    assert admin.get("/api/saves").get_json()["games"] == []
+    assert admin.get("/api/saves/download", query_string={"path": "Mario/m.zip", "user": other}).status_code == 404
+    assert admin.delete("/api/saves", query_string={"path": "Mario/m.zip", "user": other}).status_code == 404
+    resp = admin.get("/api/admin/saves/download", query_string={"path": "Mario/m.zip", "user": other})
     assert resp.status_code == 200
     resp.close()      # Windows won't delete a file a response still holds open
-    assert admin.delete("/api/saves", query_string={"path": "Mario/m.zip", "user": other}).status_code == 200
 
 
 def test_backups_from_before_go_to_the_first_admin(shop_app, saves_dir, keeper):
@@ -208,7 +209,7 @@ def test_backups_from_before_go_to_the_first_admin(shop_app, saves_dir, keeper):
     with shop_app.app.app_context():
         admin_id = User.query.filter_by(user="admin").one().id
     games = admin.get("/api/saves").get_json()["games"]
-    assert games and games[0]["user"] == "admin" and games[0]["folder"] == "Zelda"
+    assert games and games[0]["user_id"] == admin_id and games[0]["folder"] == "Zelda"
     assert (saves_dir / "users" / str(admin_id) / "JKSV" / "Zelda" / "old.zip").exists()
     assert not (saves_dir / "JKSV").exists()
 

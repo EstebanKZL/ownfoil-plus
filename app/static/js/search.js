@@ -83,7 +83,7 @@
         const id = ++requestId;
         timer = setTimeout(() => {
             fetch('/api/search?q=' + encodeURIComponent(query), {credentials: 'same-origin'})
-                .then(r => r.ok ? r.json() : {titles: [], files: []})
+                .then(r => r.ok ? r.json() : {titles: [], files: [], users: []})
                 .then(result => {
                     if (id !== requestId) return;   // a newer keystroke already searched
                     const games = result.titles.map(g => ({
@@ -91,7 +91,11 @@
                     const files = result.files.map(f => ({
                         title: f.filename, url: '/admin/files?q=' + encodeURIComponent(f.filename),
                         icon: 'bi-file-earmark', detail: typeof formatBytes === 'function' ? formatBytes(f.size) : ''}));
-                    render([[config.games, games], [config.files, files], [config.pagesLabel, pages]]);
+                    // A user leads to the users list (Settings > Authentication), searched for them.
+                    const users = (result.users || []).map(u => ({
+                        title: u.user, url: '/admin/settings?user=' + encodeURIComponent(u.user) + '#Authentication',
+                        icon: 'bi-person', detail: u.email || ''}));
+                    render([[config.games, games], [config.users, users], [config.files, files], [config.pagesLabel, pages]]);
                 })
                 .catch(() => {});
         }, 150);

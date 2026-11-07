@@ -201,6 +201,9 @@ const TABS = {
     duplicates: {kind: 'groups', field: 'duplicates'},
     outdated: {kind: 'groups', field: 'outdated'},
     pending: {kind: 'pending', detail: r => r._stages.map(humanizeStage).join(' · ')},
+    // Files > Compress / Combine: their own panels (packing.js).
+    compress: {kind: 'packing'},
+    combine: {kind: 'packing'},
 };
 Object.values(TABS).forEach(t => Object.assign(t, {
     filters: {}, chips: [], search: '', page: 1, rows: null, skipped: new Set(),
@@ -578,6 +581,8 @@ const TILES = {
     duplicates: () => groupStats.duplicates && [groupStats.duplicates.files, I18N.freeTemplate.replace('{size}', formatBytes(groupStats.duplicates.size)), 'warning'],
     outdated: () => groupStats.outdated && [groupStats.outdated.files, I18N.freeTemplate.replace('{size}', formatBytes(groupStats.outdated.size)), 'warning'],
     pending: () => groupStats.pending != null && [groupStats.pending, I18N.tileProcessingDue, 'info'],
+    compress: () => Packing.figures('compress'),
+    combine: () => Packing.figures('combine'),
 };
 
 function paintTiles() {
@@ -616,6 +621,10 @@ function loadStats() {
         groupStats.pending = d.pendingFiles.total;
         paintTiles();
     }).catch(() => {});
+    ['compress', 'combine'].forEach(kind => Packing.load(kind, true).then(() => {
+        paintTiles();
+        if (current === kind) Packing.render(kind);
+    }).catch(() => {}));
 }
 
 // --- filters ---
@@ -737,6 +746,13 @@ function visibleRows() {
 
 async function loadTab(force) {
     const tab = TABS[current];
+    if (tab.kind === 'packing') {
+        const kind = current;
+        renderBody();
+        try { await Packing.load(kind, force); notice(''); } catch (e) { notice(e.message); }
+        if (current === kind) { Packing.render(kind); paintTiles(); }
+        return;
+    }
     renderBody();
     if (tab.rows && !force) return;
     const button = $('#refreshFiles').prop('disabled', true);
@@ -803,6 +819,14 @@ const EMPTY = {unidentified: I18N.emptyUnidentified, verification: I18N.emptyVer
 
 function renderBody() {
     const tab = TABS[current];
+    const packing = tab.kind === 'packing';
+    $('#packingPanel').toggleClass('d-none', !packing);
+    $('#filesBody').toggleClass('d-none', packing);
+    if (packing) {
+        $('#filesFlatToolbar').addClass('d-none');
+        Packing.render(current);
+        return;
+    }
     const groups = tab.kind === 'groups';
     const filtered = Object.keys(tab.filters).length || tab.search;
     const empty = filtered ? I18N.emptyFiltered : EMPTY[current] || I18N.emptyNoFiles;
