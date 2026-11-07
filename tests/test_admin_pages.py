@@ -67,11 +67,15 @@ def test_tasks_sections_are_surfaces(admin_client):
         assert f'id="{kept}"' in html, kept
 
 
-def test_services_section_is_a_surface(admin_client):
+def test_services_are_cards_and_discovery_is_explained_in_settings(admin_client):
     html = admin_client.get("/admin/services").get_data(as_text=True)
-    assert re.search(r'<section class="surface[^"]*" id="servicesDiscovery"', html)
-    # Discovery's switch is a card of the Services panel, saved as it's flipped.
+    # Discovery's switch is a card of the Services panel, saved as it's flipped; what
+    # it does and the Docker/Windows note live in Settings > Server network.
     assert 'id="serviceSwitch-discovery"' in html and 'id="servicesPanel"' in html
+    assert 'id="servicesDiscovery"' not in html
+    settings = admin_client.get("/admin/settings").get_data(as_text=True)
+    assert re.search(r'<section class="surface[^"]*" id="Network"', settings)
+    assert 'id="discoverySwitch"' in settings
 
 
 # --- Files: tokens, tile tones, game link ---------------------------------------------------
@@ -226,7 +230,7 @@ def test_no_admin_yet_forces_the_new_user_access_boxes():
         assert box in block, box
 
 
-SETTINGS_IDS = ["Authentication", "Registration", "Library", "Titles", "Media", "Shop", "Scheduler", "Maintenance",
+SETTINGS_IDS = ["Authentication", "Registration", "Library", "Titles", "Media", "Shop", "Network", "Scheduler", "Maintenance",
                 "Vault", "Notifications", "Workers", "Appearance", "Backup", "Danger"]
 
 
@@ -265,7 +269,7 @@ def test_links_into_settings_still_land(admin_client):
     assert not missing, missing
 
 
-SETTINGS_ICONS = ["bi-people", "bi-person-plus", "bi-folder", "bi-translate", "bi-image", "bi-shop", "bi-clock", "bi-archive",
+SETTINGS_ICONS = ["bi-people", "bi-person-plus", "bi-folder", "bi-translate", "bi-image", "bi-shop", "bi-hdd-network", "bi-clock", "bi-archive",
                   "bi-safe", "bi-bell", "bi-cpu", "bi-palette", "bi-box-arrow-down", "bi-exclamation-triangle"]
 
 

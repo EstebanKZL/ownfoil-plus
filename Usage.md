@@ -31,6 +31,30 @@ Three features need valid keys and are unavailable without them:
 
 The top bar links every page: `Library` and `Setup` for everyone with shop access, and for admins `Files`, `Tasks`, `Stats` and the `Admin` menu (dashboard, settings, services). `Files` shows how many files are not identified yet and `Tasks` how many are running. On a phone, admins get a bottom bar instead (`Library`, `Files`, `Tasks`, `Stats` and `More`, which holds the rest: setup, admin pages, theme, language and logout).
 
+## Upcoming releases
+
+`Upcoming releases` lists the games coming to the eShop by month, with `For you` (your wishlist and the next games of your sagas) and `Just released`: the games out in the last 30 days, newest first, in a row that scrolls sideways. Nintendo Switch and Switch 2 games both show, the latter marked. It comes from TitleDB, refreshed on the `TitleDB update interval` (Settings > Scheduler, 12 hours by default).
+
+## Nintendo Switch 2
+
+Switch 2 games (their title ids start with `04`) carry a `Switch 2` mark, and the Library's `Both` / `Switch` / `Switch 2` selector shows one console or both. `Settings > Library > I have a Nintendo Switch 2` (off by default) also shows the Switch 2 games you don't have in Sagas; the ones you have always show, and Upcoming releases always shows both consoles.
+
+## Settings lists
+
+The users, the library paths, the backups and the artwork disk usage open in a dialog from their `View ... (n)` button (the number is how many there are), so the Settings page keeps its length however many there are. Editing or deleting a user or path from the dialog comes back to it when done.
+
+## Sagas
+
+`Sagas` lists the series you have games of, from Wikidata: a search, `To complete` and `Complete` tabs, and a card per saga with how many you have, a cover strip with every game out so far (the missing ones greyed) and `View the saga`. A crossover stays only in the series its name carries (Fire Emblem Warriors in Fire Emblem, not in Dynasty Warriors), a game the catalogue lists twice under the same name (another region or edition) counts once, and a series whose every game is already in a bigger saga (Pokémon Legends inside the Pokémon main series) isn't listed apart.
+
+## Language
+
+The language menu in the navbar offers **Automatic (browser language)** - the default, which follows the language your browser asks for and falls back to English - and English, Español, Français, Deutsch, Italiano, Português, Nederlands, Русский, 日本語, 한국어 and 简体中文. The choice is kept in this browser. Notifications have their own language, in `Settings > Notifications`.
+
+## Library view options
+
+`Vista` sets how many games a page shows: 10 to 100, each rounded to whole rows of the cards that fit at the window's width (with four cards a row: 12, 20, 32 ... 100), so no row is left short; resizing the window refits it. The Cards view shows at most four cards a row, the Compact view more, smaller ones. `Filtros` groups the filters by ownership, updates and DLC (by the state of the files in the List view), with `Clear filters` at the top.
+
 ## Theme, style and search
 
 The sun/moon icon in the navbar sets two things:
@@ -50,30 +74,32 @@ Browsers only allow this over **HTTPS** (see [Remote access and HTTPS](./Install
 
 ## Dashboard
 
-The landing page of `Admin`. At the top, what needs attention, each linking to where to fix it: missing console keys, an unreachable library, low disk space, corrupt or unidentified files, duplicates, failed tasks, no backups yet. Then the figures that matter (games and how many are complete and up to date, files and total size, downloads this week, running and queued tasks), a bar per library with the space used and free (amber below 15 % free, red below 5 %), the latest added files and downloads - each opens its game's page - and the state of maintenance, backups, notifications and shop access.
+The landing page of `Admin`. At the top, what needs attention, each linking to where to fix it: missing console keys, an unreachable library, low disk space, corrupt or unidentified files, duplicates, failed tasks, no backups yet. Then the figures that matter (games and how many are complete and up to date, files and total size, downloads this week, running and queued tasks), a bar per library with the space used and free (amber below 15 % free, red below 5 %), the recently added files across the page, and below the uploaded saves - every user's, each with a download button - and the latest downloads (file, size, address, user and client); each list shows ten rows and scrolls the rest. Each service's state (maintenance, notifications, the shop...) is under [Services](#services).
 
-`Upload files`, on the dashboard next to `Storage`, adds games from the browser: pick the destination library, then drop `nsp`, `nsz`, `xci` or `xcz` files (or click to choose them). They go up in chunks, one file at a time, with progress and speed, and can be paused, resumed or cancelled. If the connection drops, the tab is closed or the server restarts, choosing the same file again continues from where it stopped; unfinished uploads are listed in the same window and removed after 7 days without activity. While uploading, the file is a hidden `.part` file in the library folder that scans ignore; once complete it's renamed into place and identified like any other new file. A file whose name is already in the library is refused.
+`Upload files`, on the dashboard next to `Storage`, adds games from the browser: pick the destination library (each one shows the free space of its disk), then drop `nsp`, `nsz`, `xci`, `xcz` or `nup` files (or click to choose them). An unfinished upload belongs to the user who started it: nobody else can add to it or cancel it. They go up in chunks, one file at a time, with progress and speed, and can be paused, resumed or cancelled. If the connection drops, the tab is closed or the server restarts, choosing the same file again continues from where it stopped; unfinished uploads are listed in the same window and removed after 7 days without activity. While uploading, the file is a hidden `.part` file in the library folder that scans ignore; once complete it's renamed into place and identified like any other new file. A file whose name is already in the library is refused.
 
 ## Library view
 
-The landing page: your whole library as cards, icons or a list.
+The landing page: your whole library as cards, a compact grid or a list.
 
-- **At the top**, how the library is doing: the number of games, how many have an update pending, how many are missing DLC, the total size (admins only), and a bar with the share of games up to date. Clicking *Pending updates* or *Missing DLC* shows those games.
-- **The toolbar**: search (by name or title ID), sort by **name** or **release date** in either direction, the view (cards, icons, list), the **View** menu (games per page, card size) and the **Filters** menu (type, ownership, update, DLC; in the list view, the state of the files). A dot on *Filters* means some filter is on.
+- **At the top**, how the library is doing: the number of games; pending updates, of games and of DLC (*50 games and 16 DLC*); the DLC missing, and in how many games; the total size (admins only); and a bar with the share of games up to date. Clicking *Pending updates* or *DLC missing* shows those games.
+- **The toolbar**: search (by name or title ID), sort by **name** or **release date** in either direction, the view (cards, compact, list), the **View** menu (games per page - one for every view - and the card size, which Cards and Compact each remember) and the **Filters** menu (ownership, update, DLC; in the list view, the state of the files). A dot on *Filters* means some filter is on.
 - **The pills** under it are one-click filters, each with how many results it gives: *All*, *Update pending*, *Missing DLC*, *Up to date* (in the list view: *Complete*, *Incomplete*, *With errors*, *Repacks*). The counts follow the search and the Filters menu.
-- **Each card** shows the cover, the name, the publisher and year, and badges for its state: update available, missing DLC, or complete. Games you don't have are dimmed. The clock button lists every known version of the title with its release date and whether you own it; the cover or the name opens the game's page.
+- **Each card** is one game: its cover with the file's format (NSP, NSZ, XCI or XCZ) at the bottom left and an orange arrow at the bottom right when it has an update pending, then its name, publisher and year, title ID and DLC (*DLC 3/10*, or *No DLC*). A game you have only DLC or an update of shows in gray, with *Base game missing*. On a narrow card the state badges show just their icon. The **Compact** view has the same, smaller, five or six a row. The cover or the name opens the game's page.
 
-Search, sort, view, filters and page size are remembered per browser. When nothing matches, *Clear filters* resets them.
+A DLC counts as missing only when no version of it is in the library; one with a newer version is a pending update.
+
+Search, sort, view, filters and page size are remembered per browser. Opening a game clears the filters and the search, so coming back shows the whole library under *All*. When nothing matches, *Clear filters* resets them.
 
 ## Game page
 
 Every game has its own page, `/game/<title ID>`, opened from its card in the Library, its name in the list view, or a search with `Ctrl+K`. A DLC opens its game's page, scrolled to that DLC.
 
-- **At the top**, the cover over the game's own artwork, whether you have it (and whether it's up to date and complete), the publisher and year, and the actions: *Download all* (when web downloads are on in Settings, for users with shop access), *Edit metadata* (admins) and *Copy title ID*.
+- **At the top**, the cover over the game's own artwork, whether you have it (and whether it's up to date and complete), the publisher and year, and the actions: *Files* (when web downloads are on in Settings, for users with shop access), *Edit metadata* (admins) and *Copy title ID*. *Files* opens a dialog with every file of the game you may download - its name for admins, what it holds for everyone else, with its size and verification - each with its own download button and *Download all* at the foot. Downloads are the browser's own, saved like any other download.
 - **The details**: title ID, release date, region, languages, genre, players, rating, size, the version you have and the latest one. Details the catalogue doesn't have aren't shown.
-- **The sections**: the description; the screenshots (click one to see it full size); the updates, with a notice when you don't have the latest; the DLC, the ones you have and the ones missing; and, for admins, every file of the game with its verification and download.
+- **The sections**: the description; the screenshots (click one to see it full size); the updates, with a notice when you don't have the latest; and the DLC, the ones you have and the ones missing. Each update says the firmware it needs: from TitleDB, or, for the updates you have, read from the file itself when TitleDB doesn't know it.
 
-*Edit metadata* corrects the name, developer, publisher, release date or description for this shop; an empty field keeps the catalogue's value, and *Back to the catalogue data* undoes your changes. The *Library* link at the top goes back to the Library as you left it.
+*Edit metadata* corrects the name, developer, publisher, release date or description for this shop; an empty field keeps the catalogue's value, and *Back to the catalogue data* undoes your changes. The *Library* link at the top, or the browser's Back, goes back to the Library as you left it: the same page, filters, search and scroll.
 
 ## Setup page
 
@@ -94,9 +120,9 @@ The worker section shows what each worker process is doing right now. How many t
 
 ## Stats page
 
-Admin only. An overview of the library: games, files, total size and unidentified files; the space each format takes (a donut) and each library (bars - click one for its titles); how much of the library is verified (a ring, with a row per status that lists its files); how much you own of each kind of content (base, updates, DLC); the ten largest files, each linking to its game; the duplicates; and, under `Downloads`, the download history: how many downloads and how much data over the last 7, 30, 90 or 365 days, a per-day chart, the most downloaded titles, counts per user and per client (Tinfoil, Sphaira, CyberFoil or the web UI), and the 50 latest downloads with who took them and from which address.
+Admin only. An overview of the library: games, files, total size and unidentified files; the space each format takes (a donut) and each library (bars - click one for its titles); how much of the library is verified (a ring, with a row per status that lists its files); how much you own of each kind of content (base, updates, DLC); the ten largest files, each linking to its game; and, under `Downloads`, the download history: how many downloads and how much data over the last 7, 30, 90 or 365 days, a per-day chart, the most downloaded titles, counts per user and per client (Tinfoil, Sphaira, CyberFoil or the web UI), and the 50 latest downloads with who took them and from which address.
 
-A file taken again by the same address within a minute counts once, so a console resuming or probing a download isn't counted twice. The history is kept for a year, survives deleting the file it refers to, and can be cleared from the same section (the per-file download counters are kept).
+A file taken again by the same address within a minute counts once, so a console resuming or probing a download isn't counted twice. The history is kept for good (nothing is pruned), survives deleting the file it refers to, and can be cleared from the same section (the per-file download counters are kept).
 
 ## My account
 
@@ -108,15 +134,15 @@ Every signed-in user has `My account` (the person icon at the top right): your c
 
 ## Saves page
 
-Users with the `Backup` permission see their own backups JKSV uploaded to the save vault (see [Save vault](#save-vault)), by game, to download or delete, and the library's games without any. Admins see everyone's, each card saying whose.
+Users with the `Backup` permission see their own backups JKSV uploaded to the save vault (see [Save vault](#save-vault)), by game, to download or delete. Admins see everyone's, each card saying whose.
 
 ## Services
 
-`Admin > Services` shows each service with its state, `Active` or `Inactive`, a switch that turns it on or off at once, and a link to where it's set up: user registration, the store, maintenance and backups, notifications, the save vault and LAN discovery. The store's switch closes the shop to consoles: Tinfoil, Sphaira and CyberFoil are told the shop is closed, and the web library keeps working for whoever may see it.
+`Admin > Services` shows each service with its state, `Active` or `Inactive`, a switch that turns it on or off at once, and a link to where it's set up: user registration, the store, the public shop, the file watcher, maintenance and backups, notifications, the save vault and LAN discovery. The store's switch closes the shop to consoles: Tinfoil, Sphaira and CyberFoil are told the shop is closed, and the web library keeps working for whoever may see it. `Public shop` lets consoles in without a user and password (the same switch as in [Shop](#shop)); `File watcher` picks up new, moved and deleted files as they happen (the same as in [File watcher](#file-watcher)). What LAN discovery does, and what Docker and Windows need for it, is explained in `Settings > Server network`.
 
 ## Settings page
 
-Admin only, and a single scrolling page with its twelve sections as cards. An index beside them (a row of chips under the top bar on phones) marks the section you're reading and takes you to any of them; the address follows, so `/admin/settings#Notifications` - or any other section's name - opens the page right there.
+Admin only, and a single scrolling page with its sections as cards. An index beside them (a row of chips under the top bar on phones) marks the section you're reading and takes you to any of them; the address follows, so `/admin/settings#Notifications` - or any other section's name - opens the page right there.
 
 # Clients
 
@@ -177,7 +203,9 @@ The sections below follow the order of the `Settings` page.
 
 ## Authentication
 
-Ownfoil-Plus requires an `admin` user to be created to enable authentication for your Shop. Create the first one here, it will have admin rights, then you can add more users to your shop the same way.
+Ownfoil-Plus requires an `admin` user to be created to enable authentication for your Shop. Create the first one here, it will have admin rights, then you can add more users to your shop the same way. A new user starts with `Shop` and `Backup` checked and `Admin` unchecked - the same for accounts people make themselves, with the form or Google.
+
+The user list shows each user's picture, name and email, a column per permission and the edit and delete buttons, ten per page; the search box finds users by name or email.
 
 Each user has up to three permissions:
 
@@ -185,7 +213,7 @@ Each user has up to three permissions:
 | --- | --- |
 | `Shop` | Access to the shop from a client, to file downloads, and to the library page. |
 | `Admin` | Access to the `Settings` and `Tasks` pages and everything that changes the configuration. Admins get the other two permissions automatically. |
-| `Backup` | Reserved for a future feature, it currently grants nothing. |
+| `Backup` | The save vault: JKSV uploads and the Saves page (see [Save vault](#save-vault)). |
 
 You can also create users from [environment variables](./Install.md#environment-variables) at startup, which is handy to avoid ever running an instance without an admin.
 
@@ -276,6 +304,7 @@ Verification is disabled entirely, with the controls greyed out, when no valid [
 | `Enable organizer` | disabled | Move identified files into the paths built from the templates below. |
 | `Remove empty folders` | disabled | Remove folders left empty after files are moved out of them. |
 | `Windows compatible filenames` | disabled | Use filenames a Windows system can read. |
+| `Take NFO, SFV and proof files along` | enabled | A file named as the game (`game.nfo` next to `game.nsp`) takes its new name, and a folder left holding only notes, checksums, images and a `Proof` folder (as a release comes) hands them all over, so it is left empty. A name already taken where it would go stays where it is. |
 
 Once a file is identified, the organizer renders the matching template, and moves the file there if it isn't already. Paths are relative to the library path the file is in, and the extension is added automatically.
 
@@ -337,6 +366,16 @@ Setting `Shop URL` lets Ownfoil-Plus tell the client which address the shop is s
 
 It only works on secure requests: if your reverse proxy still answers on plain `http`, or doesn't send `X-Forwarded-Proto`, none of this applies and your shop is unprotected. See [Remote access and HTTPS](./Install.md#remote-access-and-https).
 
+NUP files are never listed to consoles: Tinfoil, Sphaira and CyberFoil can't install them. They stay in the web library, to download from the browser.
+
+## Server network
+
+LAN discovery lets Sphaira and other compatible clients find the shop on your network with no address to type in. It answers on UDP port `8465`, which has to be reachable on the LAN: in Docker the container must use the host's network (`network_mode: host`), and on Windows the firewall must allow the app on private networks. Its switch here is the same as its card in [Services](#services).
+
+## NUP files
+
+A NUP (`.nup`) holds a decrypted game, its updates and its DLC in one file. Ownfoil-Plus reads it without console keys: it shows as one file holding each part (in the game page's *Files* dialog), it is verified by checking every file inside against its SHA-256, Organize moves it as one file (the `multi` template when it holds more than one part), and a NUP and an NSP or XCI of the same game are both kept - they are never duplicates of each other, nor outdated updates to remove.
+
 ### Client access
 
 | Setting | Default | Description |
@@ -359,6 +398,8 @@ Disabling a client makes Ownfoil-Plus refuse it with a message.
 The interval is a number followed by a unit: `s`, `m`, `h` or `d`, so `30m`, `2h` and `1d` are all valid. Set it to `0` to disable the periodic run entirely.
 
 TitleDB is updated upstream once per day, this scheduled task will sync your local reference and add the new titles, updates and DLCs. Libraries will be re-processed after the update, for example to identify files to titles that were not available before.
+
+A game's DLC are every DLC the catalogue lists for it (a DLC's title ID is its game's plus `0x1000` and an index), not only the ones whose technical data was dumped - a game is `Complete` only with all of them. Update versions come from the TitleDB release and, since its source can go weeks without changes, also from [borntohonk/titledb](https://github.com/borntohonk/titledb) and [nx-versions](https://github.com/16BitWonder/nx-versions): the server downloads them from `raw.githubusercontent.com` with each refresh, only when they changed, and keeps the last good copy in `data/titledb/extra/` if they can't be reached. The first refresh after adding these doesn't announce what they add as new.
 
 ## Maintenance & backups
 
@@ -401,7 +442,10 @@ Each user has their own space: nobody sees or downloads anyone else's backups, f
 | Setting | Default | What it does |
 |---|---|---|
 | `Turn on the save vault` | Off | Lets JKSV in, for everyone. |
-| `Backups kept per game` | All | 5, 10, 20 or 50 delete the oldest backups of a game beyond that. |
+| `Backups kept per game` | All | 2, 5, 10, 20 or 50 delete the oldest backups of a game beyond that. |
+| `Games with saves per user` | All | 10 to 50: how many different games each user may keep saves of. Counts games, not their copies: at the limit, saves of a new game are refused until the user deletes every save of another one (that game then leaves the Saves page). Nothing is deleted to make room. |
+| `Admins can keep saves` | On | Admins may use the vault: JKSV signs in, the Saves page and the vault in My account show. |
+| `Users who aren't admins can keep saves` | On | The same for users with the `Backup` permission. |
 
 To set up a console, each user goes to **My account > Save vault**: saves a vault password (at least 10 characters, kept hashed; not the web password), checks the server's address (the one the console reaches on your network, not `localhost`), downloads `webdav.json` and copies it to the SD card as `sdmc:/config/JKSV/webdav.json`. JKSV signs in with the web user name and that vault password, and then says WebDAV is ready.
 

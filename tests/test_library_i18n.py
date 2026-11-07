@@ -48,7 +48,7 @@ def test_library_page_renders_in_spanish(client):
     assert ">Poseído<" in html
     assert ">Faltante<" in html
     assert "Falta update" in html
-    assert "Falta DLC" in html
+    assert "Faltan DLC" in html
 
 
 def test_the_i18n_object_carries_spanish_values_for_the_list_view(client):

@@ -68,17 +68,20 @@ function fillLibraryTable() {
             }
         }
         paths = result.paths;
+        $('#pathsViewBtn span').text(I18N.pathsView.replace('{n}', (paths || []).length));
         if (paths === null || !paths.length) {
             $('#pathsTable tbody').append(
-                '<tr><td>-</td><td>-</td><td>');
+                '<tr><td>-</td><td></td></tr>');
         } else {
             paths.forEach(path => {
                 // The path is set with .text()/.attr(): concatenating it into markup, or into an
                 // inline handler, makes the browser eat backslashes in Windows paths (issue #297).
-                const scanBtn = $('<button type="button" class="btn btn-outline-info btn-sm scanBtn"><i class="bi bi-arrow-clockwise"></i></button>').attr('data-bs-path', path);
-                const deleteBtn = $('<button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deletePathModal"><i class="bi bi-x-circle"></i></button>').attr('data-bs-path', path);
+                const scanBtn = $('<button type="button" class="icon-btn scanBtn"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>')
+                    .attr({'data-bs-path': path, title: I18N.scanPath, 'aria-label': I18N.scanPath});
+                const deleteBtn = $('<button type="button" class="icon-btn icon-btn--danger" data-bs-toggle="modal" data-bs-target="#deletePathModal"><i class="bi bi-trash" aria-hidden="true"></i></button>')
+                    .attr({'data-bs-path': path, title: I18N.deletePath, 'aria-label': I18N.deletePath});
                 $('#pathsTable tbody').append(
-                    $('<tr>').append($('<td>').text(path), $('<td>').append(scanBtn, ' ', deleteBtn)));
+                    $('<tr>').append($('<td>').text(path), $('<td class="list-table__actions">').append(scanBtn, deleteBtn)));
             })
         }
         const watcher = result.watcher || { enabled: true, polling_interval: 60 };
@@ -89,7 +92,6 @@ function fillLibraryTable() {
 }
 
 function submitWatcherSettings() {
-    $('#submitWatcherSettingsBtn').prop('disabled', true);
     data = {
         enabled: getCheckboxStatus("watcherEnabledCheck"),
         polling_interval: parseInt($('#watcherIntervalInput').val(), 10)
@@ -112,13 +114,14 @@ function submitWatcherSettings() {
                 $('#watcherIntervalFeedback').text('').removeClass('invalid-feedback d-block');
                 $("#watcherIntervalInput").removeClass('is-invalid').addClass('is-valid');
             }
-            $('#submitWatcherSettingsBtn').prop('disabled', false);
         }
     });
 }
 
+const USERS_PER_PAGE = 10;
+let usersPage = 0;
+
 function fillUserTable() {
-    $('#userTable tbody').empty();
     $.getJSON("/api/users", function (result) {
         if (!result['success']) {
             if (result['status_code'] == '302') {
@@ -126,48 +129,80 @@ function fillUserTable() {
                 return
             }
         }
-        allUsers = result;
-        allUsernames = [];
-        if (!result.length) {
-            $('#userTable tbody').append(
-                '<tr><td>-</td><td>-</td><td>-</td></tr>');
-        }
-        result.forEach(user => {
-            allUsernames.push(user['user']);
-            // Built as nodes, not concatenated markup: a username is free text.
-            const perms = $('<td>');
-            [['shop_access', I18N.shop], ['backup_access', I18N.backup], ['admin_access', I18N.admin]]
-                .forEach(([key, label]) => {
-                    perms.append($('<div class="form-check form-check-inline">').append(
-                        $('<input class="form-check-input" type="checkbox" onclick="return false">')
-                            .prop('checked', Boolean(user[key])),
-                        $('<label class="form-check-label">').text(label)));
-                });
-            const actions = $('<td>').append(
-                $('<button type="button" class="btn btn-outline-info btn-sm me-1" data-bs-toggle="modal" data-bs-target="#editUserModal"><i class="bi bi-pencil-square"></i></button>')
-                    .attr({'data-bs-id': user['id'], 'title': I18N.editTooltip}),
-                $('<button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteUserModal"><i class="bi bi-x-circle"></i></button>')
-                    .attr({'data-bs-id': user['id'], 'data-bs-user': user['user']}));
-            // The user's email (if any) under the name, with its state: waiting for its
-            // registration to be verified, verified, or not yet (a new address waiting
-            // for its link shows instead of the verified one until it's opened).
-            const name = $('<div class="user-name">');
-            if (user['avatar_url']) name.append($('<img class="user-avatar" alt="" width="24" height="24">').attr('src', user['avatar_url']));
-            const who = $('<td>').append(name.append($('<span>').text(user['user'])));
-            const shown = user['pending_email'] || user['email'];
-            if (shown) {
-                const verified = !user['pending_email'];
-                const tone = user['pending'] ? 'status-badge--wait' : verified ? 'status-badge--ok' : '';
-                who.append($('<div class="small text-secondary user-email">').text(shown).append(
-                    user['google_id'] ? $('<i class="bi bi-google ms-1" aria-hidden="true">') : null,
-                    $('<span class="status-badge ms-1">').addClass(tone).text(
-                        user['pending'] ? I18N.userPending : verified ? I18N.userVerified : I18N.userUnverified)));
-            }
-            $('#userTable tbody').append($('<tr>').append(who, perms, actions));
-        });
+        allUsers = Array.isArray(result) ? result : [];
+        allUsernames = allUsers.map(u => u['user']);
+        renderUserTable();
     })
-
 }
+
+/** The users matching the search box: by name or email, ignoring case. */
+function filteredUsers() {
+    const q = ($('#userSearch').val() || '').trim().toLowerCase();
+    if (!q) return allUsers || [];
+    return (allUsers || []).filter(u => [u['user'], u['email'], u['pending_email']]
+        .some(v => v && String(v).toLowerCase().includes(q)));
+}
+
+/** One page of the (searched) users: name, avatar and email, a column per permission
+ *  and the edit / delete buttons. Built as nodes, not concatenated markup: a username
+ *  is free text. */
+function renderUserTable() {
+    const body = $('#userTable tbody').empty();
+    const users = filteredUsers();
+    const pages = Math.max(1, Math.ceil(users.length / USERS_PER_PAGE));
+    usersPage = Math.min(usersPage, pages - 1);
+    $('#userCount').text(I18N.usersCount.replace('{n}', users.length));
+    $('#usersViewBtn span').text(I18N.usersView.replace('{n}', (allUsers || []).length));
+    if (!users.length) {
+        body.append($('<tr>').append($('<td colspan="5" class="text-secondary fst-italic">')
+            .text((allUsers || []).length ? I18N.usersNoMatch : '-')));
+    }
+    users.slice(usersPage * USERS_PER_PAGE, (usersPage + 1) * USERS_PER_PAGE).forEach(user => {
+        const name = $('<div class="user-name">');
+        if (user['avatar_url']) {
+            name.append($('<img class="user-avatar" alt="" width="32" height="32">').attr('src', user['avatar_url']));
+        } else {
+            name.append($('<span class="user-avatar user-avatar--glyph" aria-hidden="true">')
+                .append('<i class="bi bi-person"></i>'));
+        }
+        const text = $('<div class="user-name__text">').append($('<span class="fw-semibold">').text(user['user']));
+        // The user's email (if any) under the name, with its state: waiting for its
+        // registration to be verified, verified, or not yet (a new address waiting
+        // for its link shows instead of the verified one until it's opened).
+        const shown = user['pending_email'] || user['email'];
+        if (shown) {
+            const verified = !user['pending_email'];
+            const tone = user['pending'] ? 'status-badge--wait' : verified ? 'status-badge--ok' : '';
+            text.append($('<div class="small text-secondary user-email">').text(shown).append(
+                user['google_id'] ? $('<i class="bi bi-google ms-1" aria-hidden="true">') : null,
+                $('<span class="status-badge ms-1">').addClass(tone).text(
+                    user['pending'] ? I18N.userPending : verified ? I18N.userVerified : I18N.userUnverified)));
+        }
+        const row = $('<tr>').append($('<td>').append(name.append(text)));
+        [['shop_access', I18N.shop], ['backup_access', I18N.backup], ['admin_access', I18N.admin]].forEach(([key, label]) => {
+            const on = Boolean(user[key]);
+            // data-label names the column where a phone stacks the row (no header there).
+            row.append($('<td class="users-perm">').attr('data-label', label).append(
+                $('<i aria-hidden="true">').addClass(on ? 'bi bi-check-circle-fill users-perm--on' : 'bi bi-dash users-perm--off'),
+                $('<span class="visually-hidden">').text(on ? I18N.permYes : I18N.permNo)));
+        });
+        row.append($('<td class="users-actions">').append(
+            $('<button type="button" class="icon-btn" data-bs-toggle="modal" data-bs-target="#editUserModal"><i class="bi bi-pencil-square" aria-hidden="true"></i></button>')
+                .attr({'data-bs-id': user['id'], 'title': I18N.editTooltip, 'aria-label': I18N.editTooltip}),
+            $('<button type="button" class="icon-btn icon-btn--danger" data-bs-toggle="modal" data-bs-target="#deleteUserModal"><i class="bi bi-trash" aria-hidden="true"></i></button>')
+                .attr({'data-bs-id': user['id'], 'data-bs-user': user['user'],
+                       'title': I18N.deleteTooltip, 'aria-label': I18N.deleteTooltip})));
+        body.append(row);
+    });
+    $('#userPager').prop('hidden', pages < 2);
+    $('#userPageLabel').text(I18N.usersPage.replace('{page}', usersPage + 1).replace('{pages}', pages));
+    $('#userPrev').prop('disabled', usersPage === 0);
+    $('#userNext').prop('disabled', usersPage >= pages - 1);
+}
+
+$('#userSearch').on('input', () => { usersPage = 0; renderUserTable(); });
+$('#userPrev').on('click', () => { usersPage -= 1; renderUserTable(); });
+$('#userNext').on('click', () => { usersPage += 1; renderUserTable(); });
 
 function updateKeysElements(titlesSettings) {
     // Verification cannot run without keys: nstools needs them to open a container.
@@ -549,6 +584,8 @@ function submitNewUser() {
                     console.log('Signup Success!');
                     setInputVal("inputNewUser", "")
                     setInputVal("inputNewUserPassword", "")
+                    $('#checkboxNewUserShopAccess, #checkboxNewUserBackupAccess').prop('checked', true);
+                    $('#checkboxNewUserAdminAccess').prop('checked', false);
                     fillUserTable();
                 } else {
                     // Handle backend validation errors
@@ -673,7 +710,7 @@ const MEDIA_KINDS = { icon: I18N.mediaKindIcon, banner: I18N.mediaKindBanner, sc
 const MEDIA_SIZES = ['original', 'thumb', 'client', 'screen'];
 
 function usageRow(label, bytes, bold) {
-    const row = $(bold ? '<tr class="fw-semibold">' : '<tr>');
+    const row = $(bold ? '<tr class="list-table__total">' : '<tr>');
     const total = bytes.reduce((sum, used) => sum + used, 0);
     return row.append($('<td>').text(label), ...bytes.map(used => $('<td>').text(formatBytes(used))),
         $('<td>').text(formatBytes(total)));
@@ -695,10 +732,10 @@ function fillMediaUsage() {
         });
         rows.push(usageRow(I18N.mediaColTotal, totals, true));
         $('#mediaUsageTable tbody').empty().append(rows);
-        $('#mediaUsageCaption').text(I18N.mediaFilesStored.replace('{n}', files).replace(/\{s\}/g, files === 1 ? '' : 's'));
+        $('#mediaUsageCaption').text(I18N.mediaFilesStored.replace('{n}', files).replace(/\{s\}/g, pluralS(files)));
     });
 }
-$('#mediaUsage').on('show.bs.collapse', fillMediaUsage);
+$('#mediaUsage').on('show.bs.modal', fillMediaUsage);
 
 function submitLocalMediaSettings() {
     $('#submitLocalMediaSettingsBtn').prop('disabled', true);
@@ -708,7 +745,7 @@ function submitLocalMediaSettings() {
         data: JSON.stringify({ enabled: getCheckboxStatus("localMediaEnabledCheck") }),
         contentType: "application/json",
         success: function (result) {
-            if ($('#mediaUsage').hasClass('show')) {
+            if ($('#mediaUsage').hasClass('show')) {  // its dialog is open
                 fillMediaUsage();
             }
             $('#submitLocalMediaSettingsBtn').prop('disabled', false);
@@ -761,8 +798,11 @@ function submitShopSettings() {
 }
 
 function submitLibraryManagementSettings() {
+    // One Save for the whole Library section: the file watcher goes with it.
+    submitWatcherSettings();
     $('#submitLibraryManagementSettingsBtn').prop('disabled', true);
     data = {
+        switch2: getCheckboxStatus("switch2Check"),
         compression: {
             enabled: getCheckboxStatus("compressFilesCheck"),
             level: parseInt(getInputVal("compressionLevelInput")),
@@ -790,6 +830,7 @@ function submitLibraryManagementSettings() {
             remove_empty_folders: getCheckboxStatus("removeEmptyFoldersCheck"),
             windows_compatible: getCheckboxStatus("windowsCompatibleCheck"),
             clean_names: getCheckboxStatus("cleanNamesCheck"),
+            move_companions: getCheckboxStatus("moveCompanionsCheck"),
             show_background_image: getCheckboxStatus("showBackgroundImageCheck"),
             name_region: getInputVal("organizerNameRegionSelect"),
             name_language: getInputVal("organizerNameRegionSelect") ? getInputVal("organizerNameLanguageSelect") : "",
@@ -835,16 +876,18 @@ function showMaintNextRun(nextRun) {
 }
 
 function renderBackups(list) {
+    $('#backupsViewBtn span').text(I18N.backupsView.replace('{n}', list.length));
     const tbody = $('#backupsTable tbody').empty();
     if (!list.length) {
         tbody.append($('<tr>').append($('<td colspan="3" class="text-secondary">').text(I18N.maintNoBackups)));
         return;
     }
     list.forEach(b => {
-        const actions = $('<td>').append(
-            $('<a class="btn btn-outline-info btn-sm me-1"><i class="bi bi-download"></i></a>')
+        const actions = $('<td class="list-table__actions">').append(
+            $('<a class="icon-btn"><i class="bi bi-download" aria-hidden="true"></i></a>')
                 .attr({href: '/api/backups/' + encodeURIComponent(b.name), title: b.name}),
-            $('<button type="button" class="btn btn-outline-danger btn-sm"><i class="bi bi-x-circle"></i></button>')
+            $('<button type="button" class="icon-btn icon-btn--danger"><i class="bi bi-trash" aria-hidden="true"></i></button>')
+                .attr({title: I18N.deleteTooltip, 'aria-label': I18N.deleteTooltip})
                 .on('click', () => deleteBackup(b.name)));
         tbody.append($('<tr>').append(
             $('<td>').text(new Date(b.created).toLocaleString([], {dateStyle: 'medium', timeStyle: 'short'})),
@@ -1075,6 +1118,9 @@ $('#registrationTestEmail').on('click', function () {
 function fillVaultSettings(v) {
     $('#vaultEnabled').prop('checked', Boolean(v.enabled));
     $('#vaultKeep').val(String(v.keep || 0));
+    $('#vaultMaxGames').val(String(v.max_games || 0));
+    $('#vaultAdmins').prop('checked', v.admins !== false);
+    $('#vaultUsers').prop('checked', v.users !== false);
 }
 
 // For everyone: on/off (also in Services) and how many backups each game keeps. Each
@@ -1083,7 +1129,9 @@ function submitVaultSettings() {
     const feedback = $('#vaultFeedback').removeClass('text-success text-danger').text('');
     fetch('/api/settings/vault', {
         method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({enabled: $('#vaultEnabled').prop('checked'), keep: Number($('#vaultKeep').val())}),
+        body: JSON.stringify({enabled: $('#vaultEnabled').prop('checked'), keep: Number($('#vaultKeep').val()),
+                              max_games: Number($('#vaultMaxGames').val()),
+                              admins: $('#vaultAdmins').prop('checked'), users: $('#vaultUsers').prop('checked')}),
     }).then(r => r.json().then(body => ({ok: r.ok, body}))).then(({ok, body}) => {
         if (ok && body.success) feedback.addClass('text-success').text(I18N.vaultSaved);
         else feedback.addClass('text-danger').text(I18N.vaultInvalid);
@@ -1335,6 +1383,8 @@ $(document).ready(function () {
         $("#removeEmptyFoldersCheck").prop("checked", librarySettings['management']['organizer']['remove_empty_folders']);
         $("#windowsCompatibleCheck").prop("checked", librarySettings['management']['organizer']['windows_compatible']);
         $("#cleanNamesCheck").prop("checked", librarySettings['management']['organizer']['clean_names']);
+        $("#switch2Check").prop("checked", Boolean(librarySettings['management']['switch2']));
+        $("#moveCompanionsCheck").prop("checked", librarySettings['management']['organizer']['move_companions'] !== false);
         $("#showBackgroundImageCheck").prop("checked",
             librarySettings['management']['organizer']['show_background_image'] !== false);
         setInputVal("baseTemplateInput", librarySettings['management']['organizer']['templates']['base']);
@@ -1512,3 +1562,41 @@ function initSettingsIndex() {
 }
 
 $(initSettingsIndex);
+
+// Settings > Server network: LAN discovery's switch, the same one as its Services card.
+$('#discoverySwitch').on('change', function () {
+    const box = $(this).prop('disabled', true);
+    const enabled = box.prop('checked');
+    fetch('/api/services/discovery', {
+        method: 'POST', credentials: 'same-origin',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({enabled}),
+    }).then(r => r.json()).then(result => {
+        if (!result.success) throw new Error('not saved');
+        box.prop('checked', result.enabled);
+        $('#discoveryFeedback').removeClass('text-danger').addClass('text-success').text(I18N.discoverySaved);
+    }).catch(() => {
+        box.prop('checked', !enabled);
+        $('#discoveryFeedback').removeClass('text-success').addClass('text-danger').text(I18N.discoveryFailed);
+    }).finally(() => box.prop('disabled', false));
+});
+
+// A list dialog (users, paths) hands over to the edit / delete dialog its buttons open
+// (Bootstrap closes the open one), and comes back once that one closes.
+let listDialogToReopen = null;
+document.querySelectorAll('.list-dialog').forEach(dialog => {
+    dialog.addEventListener('click', event => {
+        const trigger = event.target.closest('[data-bs-toggle="modal"]');
+        if (trigger && trigger.closest('.list-dialog') === dialog) listDialogToReopen = dialog;
+    });
+});
+['editUserModal', 'deleteUserModal', 'deletePathModal'].forEach(id => {
+    const modal = document.getElementById(id);
+    if (!modal) return;
+    modal.addEventListener('hidden.bs.modal', () => {
+        if (!listDialogToReopen) return;
+        const dialog = listDialogToReopen;
+        listDialogToReopen = null;
+        bootstrap.Modal.getOrCreateInstance(dialog).show();
+    });
+});

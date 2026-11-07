@@ -146,6 +146,7 @@ function contentLabel(a) {
 }
 
 const IDENTIFIED = {cnmt: ['files-fg-success', I18N.identifiedCnmtTooltip],
+                    nup: ['files-fg-success', I18N.identifiedNupTooltip],
                     filename: ['files-fg-warning', I18N.identifiedFilenameTooltip]};
 
 function stateIcons(r) {
@@ -179,7 +180,8 @@ const FILTERS = {
     status: {label: I18N.labelVerification, field: 'verificationStatus', choices: () => options.status,
              gql: v => ({verificationStatus: v}), match: (r, v) => v.includes(r.verificationStatus)},
     identifiedBy: {label: I18N.filterIdentifiedByLabel,
-                   choices: () => [['cnmt', I18N.filterIdentifiedByCnmt], ['filename', I18N.filterIdentifiedByFilename]],
+                   choices: () => [['cnmt', I18N.filterIdentifiedByCnmt], ['nup', I18N.filterIdentifiedByNup],
+                                   ['filename', I18N.filterIdentifiedByFilename]],
                    gql: v => ({identificationType: {in: v}}), match: (r, v) => v.includes(r.identificationType)},
     compressed: {label: I18N.labelCompressed, single: true, choices: () => YES_NO,
                  gql: v => ({compressed: v[0] === 'true'}), match: (r, v) => String(r.compressed) === v[0]},
@@ -922,7 +924,7 @@ function renderDrawer(f) {
             el('dt', null, I18N.dtPath), el('dd', null, pathParts(f)),
             el('dt', null, I18N.dtFormat), el('dd', null, `${f.extension}${f.compressed ? I18N.compressedSuffix : ''}`),
             el('dt', null, I18N.labelSize), el('dd', null, formatBytes(f.size)),
-            el('dt', null, I18N.dtIdentified), el('dd', null, f.identificationType ? (f.identificationType === 'cnmt' ? I18N.fromCnmt : I18N.fromFilename) : I18N.no),
+            el('dt', null, I18N.dtIdentified), el('dd', null, f.identificationType ? ({cnmt: I18N.fromCnmt, nup: I18N.fromNup}[f.identificationType] || I18N.fromFilename) : I18N.no),
             el('dt', null, I18N.labelAdded), el('dd', null, when(parseDate(f.addedAt, true))),
             el('dt', null, I18N.dtModified), el('dd', null, f.mtime ? when(new Date(f.mtime * 1000)) : '…'),
             el('dt', null, I18N.dtDownloads), el('dd', null, f.downloadCount == null ? '…' : String(f.downloadCount)))));

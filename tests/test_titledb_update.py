@@ -94,6 +94,9 @@ def remote(tmp_path, monkeypatch):
         return FakeResponse(body)
 
     monkeypatch.setattr(update_mod.requests, "get", fake_get)
+    # The extra version sources are requests of their own (test_extra_versions.py):
+    # these tests count the release's.
+    monkeypatch.setattr(update_mod.extra_versions, "refresh", lambda folder: False)
     return state
 
 

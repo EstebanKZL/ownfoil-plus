@@ -287,13 +287,13 @@ def test_a_file_that_is_not_a_jksv_backup_tells_nothing(tmp_path):
 
 # --- settings and My account -----------------------------------------------------------------
 
-def test_the_admin_sets_only_on_off_and_how_many_are_kept(shop_app, saves_dir):
+def test_the_admin_sets_on_off_how_many_are_kept_and_who_may_use_it(shop_app, saves_dir):
     admin = _login(shop_app, "admin")
     assert admin.post("/api/settings/vault", json={"enabled": True, "keep": 0}).status_code == 200
     assert admin.post("/api/settings/vault", json={"enabled": False, "keep": 3}).status_code == 400
     from settings import get_settings
     stored = get_settings()["vault"]
-    assert set(stored) == {"enabled", "keep"}
+    assert set(stored) == {"enabled", "keep", "max_games", "admins", "users"}
 
 
 def test_the_vault_password_is_kept_hashed_on_the_user(shop_app, keeper):
@@ -440,17 +440,19 @@ def test_small_disks_can_still_take_backups():
     assert vault.MIN_FREE <= 512 << 20
 
 
-def test_backup_only_users_dont_see_the_library_list(shop_app, on, saves_dir):
+def test_saves_page_lists_only_games_with_backups(shop_app, on, saves_dir):
+    # Phase 8: the "library games without a backup" list is gone, for every user.
     _user(shop_app, "vaultonly", "vaultonlypass1", shop_access=False, backup_access=True)
     _vault_password(shop_app, "vaultonly", "vaultonlypass1")
     headers = _auth("vaultonly")
     shop_app.client.open("/dav/JKSV/Zelda", method="MKCOL", headers=headers)
     shop_app.client.open("/dav/JKSV/Zelda/b.zip", method="PUT", data=_meta_zip(), headers=headers)
     _login(shop_app, "vaultonly", "vaultonlypass1")
-    assert shop_app.client.get("/api/saves").get_json()["missing"] == []
-    src = open(os.path.join(os.path.dirname(__file__), "..", "app", "app.py"), encoding="utf-8").read()
-    body = src[src.index("def saves_api"):src.index("def saves_download_api")]
-    assert "current_user.has_access('shop')" in body
+    body = shop_app.client.get("/api/saves").get_json()
+    assert "missing" not in body
+    assert [g["folder"] for g in body["games"]] == ["Zelda"]
+    html = shop_app.client.get("/saves").get_data(as_text=True)
+    assert "savesMissing" not in html
 
 
 def test_discord_never_pings_from_names_in_messages():
@@ -476,5 +478,53 @@ def test_a_migration_adds_the_vault_password_and_avatar_and_is_the_head():
     cfg = Config()
     cfg.set_main_option("script_location", os.path.join(os.path.dirname(__file__), "..", "app", "migrations"))
     script = ScriptDirectory.from_config(cfg)
-    assert script.get_heads() == ["b2c3d4e5f6a8"]
+    assert script.get_heads() == ["c3d4e5f6a7b9"]
     assert script.get_revision("b2c3d4e5f6a8").down_revision == "a1b2c3d4e5f7"
+
+
+# --- how many different games each user keeps --------------------------------------------
+
+def _limit_games(shop_app, n, keep=0):
+    admin = _login(shop_app, "admin")
+    resp = admin.post("/api/settings/vault", json={"enabled": True, "keep": keep, "max_games": n})
+    assert resp.status_code == 200, resp.get_data(as_text=True)
+    admin.get("/logout")
+
+
+def test_two_backups_per_game_can_be_kept(shop_app, saves_dir):
+    _limit_games(shop_app, 0, keep=2)
+    from settings import get_settings
+    assert get_settings()["vault"]["keep"] == 2 and 2 in vault.KEEP_CHOICES
+
+
+def test_the_game_limit_counts_games_not_copies_and_never_deletes(shop_app, keeper, space):
+    _limit_games(shop_app, 10)
+    from settings import set_vault_settings
+    set_vault_settings({"max_games": 2})        # 2 to keep the test short (the UI offers 10-50)
+    client = shop_app.client
+    for game in ("A", "B", "C"):
+        assert _dav(client, "MKCOL", f"/dav/JKSV/{game}").status_code == 201
+    assert _dav(client, "PUT", "/dav/JKSV/A/1.zip", data=_meta_zip()).status_code == 201
+    assert _dav(client, "PUT", "/dav/JKSV/B/1.zip", data=_meta_zip()).status_code == 201
+    # More copies of a game already kept: always.
+    assert _dav(client, "PUT", "/dav/JKSV/A/2.zip", data=_meta_zip()).status_code == 201
+    # A third game: refused, and nothing older goes to make room.
+    assert _dav(client, "PUT", "/dav/JKSV/C/1.zip", data=_meta_zip()).status_code == 507
+    assert sorted(p.name for p in (space / "JKSV" / "A").iterdir()) == ["1.zip", "2.zip"]
+    assert not (space / "JKSV" / "C" / "1.zip").exists()
+    # A move into the new game is refused the same way.
+    moved = _dav(client, "MOVE", "/dav/JKSV/A/2.zip", headers={"Destination": "http://localhost/dav/JKSV/C/2.zip"})
+    assert moved.status_code == 507
+    # Deleting every save of a game frees its place.
+    assert vault.delete_backup(keeper, "B/1.zip")
+    assert not (space / "JKSV" / "B").exists()      # the emptied game goes from the list too
+    assert _dav(client, "PUT", "/dav/JKSV/C/1.zip", data=_meta_zip()).status_code == 201
+
+
+def test_the_settings_offer_the_limit_and_refuse_other_values(shop_app, saves_dir):
+    admin = _login(shop_app, "admin")
+    assert admin.post("/api/settings/vault", json={"enabled": True, "keep": 0, "max_games": 30}).status_code == 200
+    assert admin.post("/api/settings/vault", json={"enabled": True, "keep": 0, "max_games": 7}).status_code == 400
+    html = admin.get("/admin/settings").get_data(as_text=True)
+    assert 'id="vaultMaxGames"' in html
+    assert vault.GAME_CHOICES == (0, 10, 20, 30, 40, 50)

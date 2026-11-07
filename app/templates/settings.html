@@ -8,6 +8,7 @@
     ('Titles', 'sections.titles', 'bi-translate'),
     ('Media', 'sections.media', 'bi-image'),
     ('Shop', 'sections.shop', 'bi-shop'),
+    ('Network', 'sections.network', 'bi-hdd-network'),
     ('Scheduler', 'sections.scheduler', 'bi-clock'),
     ('Maintenance', 'sections.maintenance', 'bi-archive'),
     ('Vault', 'sections.vault', 'bi-safe'),
@@ -17,6 +18,23 @@
     ('Backup', 'backup.heading', 'bi-box-arrow-down'),
     ('Danger', 'danger.heading', 'bi-exclamation-triangle'),
 ] %}
+{#- A list shown in its own dialog, so the section stays short however long it grows. -#}
+{%- macro list_dialog(id, title, icon) -%}
+<div class="modal fade list-dialog" id="{{ id }}" tabindex="-1" aria-labelledby="{{ id }}Title" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="{{ id }}Title"><i class="bi {{ icon }}" aria-hidden="true"></i> {{ title }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ t('nav.close') }}"></button>
+            </div>
+            <div class="modal-body">{{ caller() }}</div>
+        </div>
+    </div>
+</div>
+{%- endmacro %}
+{%- macro view_button(id, target, label) -%}
+<button type="button" class="btn btn-outline-primary" id="{{ id }}" data-bs-toggle="modal" data-bs-target="#{{ target }}"><i class="bi bi-list-ul" aria-hidden="true"></i> <span>{{ label }}</span></button>
+{%- endmacro %}
 {%- macro section_title(section_id) -%}
 {%- for id, key, icon in SETTINGS_SECTIONS if id == section_id -%}
 <h2 class="admin-section__title"><i class="bi {{ icon }}" aria-hidden="true"></i> <span>{{ t(key) }}</span></h2>
@@ -71,22 +89,44 @@
                 <section class="surface admin-section settings-section" id="Authentication" tabindex="-1">
                     {{ section_title('Authentication') }}
 
-                <div class="table-responsive">
-                    <table class="table table-hover caption-top" id="userTable">
-                        <caption>{{ t('auth.user_list_caption') }}</caption>
+                {# The users: in their own dialog (searched, ten per page, static/js/settings.js). #}
+                {% call list_dialog('usersDialog', t('users.title'), 'bi-people') %}
+                {# The users: searched and shown ten per page by static/js/settings.js. #}
+                <div class="users-toolbar">
+                    <div class="users-search">
+                        <i class="bi bi-search" aria-hidden="true"></i>
+                        <input type="search" class="form-control form-control-sm" id="userSearch"
+                            placeholder="{{ t('users.search_placeholder') }}" aria-label="{{ t('users.search_placeholder') }}" autocomplete="off">
+                    </div>
+                    <span class="text-secondary small" id="userCount" aria-live="polite"></span>
+                </div>
+                <div class="table-responsive users-table-wrap">
+                    <table class="table users-table align-middle mb-0" id="userTable">
+                        <caption class="visually-hidden">{{ t('auth.user_list_caption') }}</caption>
                         <thead>
                             <tr>
                                 <th scope="col">{{ t('auth.col_user') }}</th>
-                                <th scope="col">{{ t('auth.col_permissions') }}</th>
-                                <th scope="col">{{ t('auth.col_actions') }}</th>
+                                <th scope="col" class="users-perm">{{ t('auth.shop') }}</th>
+                                <th scope="col" class="users-perm">{{ t('auth.backup') }}</th>
+                                <th scope="col" class="users-perm">{{ t('auth.admin') }}</th>
+                                <th scope="col" class="users-actions"><span class="visually-hidden">{{ t('auth.col_actions') }}</span></th>
                             </tr>
                         </thead>
                         <tbody>
                         </tbody>
                     </table>
                 </div>
+                <nav class="users-pager" id="userPager" aria-label="{{ t('auth.col_user') }}" hidden>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="userPrev">
+                        <i class="bi bi-chevron-left" aria-hidden="true"></i> {{ t('common.previous') }}</button>
+                    <span class="small text-secondary" id="userPageLabel"></span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="userNext">
+                        {{ t('common.next') }} <i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+                </nav>
+                {% endcall %}
 
-                <p class="d-inline-flex gap-1">
+                <p class="d-inline-flex flex-wrap gap-2">
+                    {{ view_button('usersViewBtn', 'usersDialog', t('users.view', n='…')) }}
                     <button class="btn btn-primary" type="button" data-bs-toggle="collapse"
                         data-bs-target="#collapseNewUser" aria-expanded="false" aria-controls="collapseNewUser">
                         {{ t('auth.add_new_user') }}
@@ -112,7 +152,8 @@
                                     <label class="form-check-label" for="checkboxNewUserShopAccess">{{ t('auth.shop_access') }}</label>
                                 </div>
                                 <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="checkbox" id="checkboxNewUserBackupAccess">
+                                    <input class="form-check-input" type="checkbox" id="checkboxNewUserBackupAccess"
+                                        checked>
                                     <label class="form-check-label" for="checkboxNewUserBackupAccess">{{ t('auth.backup_access') }}</label>
                                 </div>
                                 <div class="form-check form-check-inline">
@@ -229,23 +270,28 @@
 
                 <h3 class="settings-subhead">{{ t('lib.paths_heading') }}</h3>
                 <p class="mb-2">{{ t('lib.paths_desc') }}</p>
-                <div class="table-responsive">
-                    <table class="table table-hover caption-top" id="pathsTable">
+                {% call list_dialog('pathsDialog', t('lib.paths_heading'), 'bi-folder') %}
+                <div class="table-responsive list-table-wrap">
+                    <table class="table list-table align-middle mb-0" id="pathsTable">
                         <thead>
                             <tr>
                                 <th scope="col">{{ t('lib.col_path') }}</th>
-                                <th scope="col">{{ t('lib.col_actions') }}</th>
+                                <th scope="col" class="list-table__actions"><span class="visually-hidden">{{ t('lib.col_actions') }}</span></th>
                             </tr>
                         </thead>
                         <tbody>
                         </tbody>
                     </table>
                 </div>
+                {% endcall %}
 
                 <div class="alert alert-danger d-none" id="pathsAlert" role="alert"></div>
 
                 <!-- Library buttons -->
                 <div class="row g-3">
+                    <div class="col-auto">
+                        {{ view_button('pathsViewBtn', 'pathsDialog', t('lib.view_paths', n='…')) }}
+                    </div>
                     <div class="col-auto">
                         <button class="btn btn-primary" type="button" data-bs-toggle="collapse"
                             data-bs-target="#collapseNewPath" aria-expanded="false" aria-controls="collapseNewPath">
@@ -314,8 +360,6 @@
                         <div id="watcherIntervalFeedback"></div>
                     </div>
                 </div>
-                <button type="button" id="submitWatcherSettingsBtn" class="btn btn-primary mb-3"
-                    onClick='submitWatcherSettings()'>{{ t('lib.save') }}</button>
 
                 <h3 class="settings-subhead">{{ t('lib.management_heading') }}</h3>
                 <p>{{ t('lib.management_desc') }}</p>
@@ -469,6 +513,16 @@
                             <div class="form-text">{{ t('organizer.windows_compat_help') }}</div>
                         </div>
                         <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="switch2Check">
+                            <label class="form-check-label" for="switch2Check">{{ t('lib.switch2_label') }}</label>
+                            <div class="form-text">{{ t('lib.switch2_help') }}</div>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="moveCompanionsCheck">
+                            <label class="form-check-label" for="moveCompanionsCheck">{{ t('organizer.move_companions_label') }}</label>
+                            <div class="form-text">{{ t('organizer.move_companions_help') }}</div>
+                        </div>
+                        <div class="mb-3 form-check">
                             <input type="checkbox" class="form-check-input" id="cleanNamesCheck">
                             <label class="form-check-label" for="cleanNamesCheck">{{ t('organizer.clean_names_label') }}</label>
                             <div class="form-text">{{ t('organizer.clean_names_help') }}</div>
@@ -589,14 +643,10 @@
                     <input type="checkbox" class="form-check-input" id="localMediaEnabledCheck">
                     <label class="form-check-label" for="localMediaEnabledCheck">{{ t('media.enabled_label') }}</label>
                 </div>
-                <div class="mb-3">
-                    <a class="link-secondary" data-bs-toggle="collapse" href="#mediaUsage" role="button"
-                        aria-expanded="false" aria-controls="mediaUsage">{{ t('media.disk_usage_label') }}</a>
-                </div>
-                <div class="collapse" id="mediaUsage">
-                    <div class="table-responsive">
-                        <table class="table table-hover caption-top" id="mediaUsageTable">
-                            <caption id="mediaUsageCaption"></caption>
+                {% call list_dialog('mediaUsage', t('media.disk_usage_label'), 'bi-hdd') %}
+                    <p class="text-secondary small mb-2" id="mediaUsageCaption"></p>
+                    <div class="table-responsive list-table-wrap">
+                        <table class="table list-table align-middle mb-0" id="mediaUsageTable">
                             <thead>
                                 <tr>
                                     <th scope="col">{{ t('media.col_type') }}</th>
@@ -611,8 +661,9 @@
                             </tbody>
                         </table>
                     </div>
-                </div>
-                <div class="mb-3">
+                {% endcall %}
+                <div class="mb-3 d-flex flex-wrap gap-2">
+                    {{ view_button('mediaViewBtn', 'mediaUsage', t('media.view_usage')) }}
                     <button type="button" id="submitLocalMediaSettingsBtn" class="btn btn-primary"
                         onClick='submitLocalMediaSettings()'>{{ t('media.submit') }}</button>
                 </div>
@@ -687,6 +738,22 @@
                 
                 </section>
 
+                <section class="surface admin-section settings-section" id="Network" tabindex="-1">
+                    {{ section_title('Network') }}
+                    {# LAN discovery: the same switch as its card under Services. #}
+                    <h3 class="settings-subhead"><i class="bi bi-wifi" aria-hidden="true"></i> {{ t('sections.discovery') }}</h3>
+                    <p>{{ t('services.discovery_desc') }} {{ t('services.discovery_enabled_help', port=discovery_port) }}</p>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" role="switch" id="discoverySwitch"{% if discovery_enabled %} checked{% endif %}>
+                        <label class="form-check-label" for="discoverySwitch">{{ t('network.discovery_switch') }}</label>
+                        <span class="small ms-2" id="discoveryFeedback" role="status"></span>
+                    </div>
+                    <div class="alert alert-warning mb-0" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+                        {{ t('services.discovery_docker_note') | safe }}
+                    </div>
+                </section>
+
                 <section class="surface admin-section settings-section" id="Scheduler" tabindex="-1">
                     {{ section_title('Scheduler') }}
                 <p>{{ t('scheduler.desc') | safe }}</p>
@@ -758,23 +825,26 @@
                 </div>
 
                 <h3 class="settings-subhead">{{ t('maint.backups_heading') }}</h3>
-                <div class="mb-2">
-                    <button type="button" id="backupNowBtn" class="btn btn-outline-secondary btn-sm"><i class="bi bi-archive"></i> {{ t('maint.backup_now') }}</button>
-                    <span id="backupFeedback" class="small ms-2"></span>
+                <div class="mb-2 d-flex flex-wrap align-items-center gap-2">
+                    {{ view_button('backupsViewBtn', 'backupsDialog', t('maint.view_backups', n='…')) }}
+                    <button type="button" id="backupNowBtn" class="btn btn-outline-secondary"><i class="bi bi-archive"></i> {{ t('maint.backup_now') }}</button>
+                    <span id="backupFeedback" class="small"></span>
                 </div>
-                <div class="table-responsive">
-                    <table class="table table-sm table-hover" id="backupsTable">
+                {% call list_dialog('backupsDialog', t('maint.backups_heading'), 'bi-archive') %}
+                <div class="table-responsive list-table-wrap">
+                    <table class="table list-table align-middle mb-0" id="backupsTable">
                         <thead>
                             <tr>
                                 <th scope="col">{{ t('maint.col_date') }}</th>
                                 <th scope="col">{{ t('maint.col_size') }}</th>
-                                <th scope="col">{{ t('maint.col_actions') }}</th>
+                                <th scope="col" class="list-table__actions"><span class="visually-hidden">{{ t('maint.col_actions') }}</span></th>
                             </tr>
                         </thead>
                         <tbody></tbody>
                     </table>
                 </div>
-                <p class="form-text">{{ t('maint.restore_hint') | safe }}</p>
+                <p class="form-text mt-3 mb-0">{{ t('maint.restore_hint') | safe }}</p>
+                {% endcall %}
 
                 </section>
 
@@ -785,13 +855,34 @@
                     <input class="form-check-input" type="checkbox" role="switch" id="vaultEnabled">
                     <label class="form-check-label" for="vaultEnabled">{{ t('vault.enabled') }}</label>
                 </div>
+                {# Who may keep saves: the Saves page and the vault in My account follow it. #}
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="vaultAdmins">
+                        <label class="form-check-label" for="vaultAdmins">{{ t('vault.allow_admins') }}</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="vaultUsers">
+                        <label class="form-check-label" for="vaultUsers">{{ t('vault.allow_users') }}</label>
+                    </div>
+                    <div class="form-text">{{ t('vault.allow_help') }}</div>
+                </div>
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <label for="vaultKeep" class="form-label">{{ t('vault.keep') }}</label>
-                        <select class="form-select" id="vaultKeep">
+                        <select class="form-select" id="vaultKeep" aria-describedby="vaultKeepHelp">
                             <option value="0">{{ t('vault.keep_all') }}</option>
-                            {% for n in [5, 10, 20, 50] %}<option value="{{ n }}">{{ n }}</option>{% endfor %}
+                            {% for n in [2, 5, 10, 20, 50] %}<option value="{{ n }}">{{ n }}</option>{% endfor %}
                         </select>
+                        <div class="form-text" id="vaultKeepHelp">{{ t('vault.keep_help') }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="vaultMaxGames" class="form-label">{{ t('vault.max_games') }}</label>
+                        <select class="form-select" id="vaultMaxGames" aria-describedby="vaultMaxGamesHelp">
+                            {% for n in [10, 20, 30, 40, 50] %}<option value="{{ n }}">{{ n }}</option>{% endfor %}
+                            <option value="0">{{ t('vault.keep_all') }}</option>
+                        </select>
+                        <div class="form-text" id="vaultMaxGamesHelp">{{ t('vault.max_games_help') }}</div>
                     </div>
                 </div>
                 <p class="form-text mb-3"><i class="bi bi-person-circle" aria-hidden="true"></i> {{ t('vault.users_hint') }}</p>
@@ -816,8 +907,9 @@
                     </div>
                     <div class="col-auto">
                         <select class="form-select form-select-sm" id="notifLanguageSelect">
-                            <option value="en">English</option>
-                            <option value="es">Español</option>
+                            {% for lang in SUPPORTED_LANGUAGES %}
+                            <option value="{{ lang }}">{{ LANGUAGE_NAMES[lang] }}</option>
+                            {% endfor %}
                         </select>
                     </div>
                 </div>
@@ -1057,6 +1149,19 @@
         backup: {{ t('auth.backup') | tojson }},
         admin: {{ t('auth.admin') | tojson }},
         editTooltip: {{ t('auth.edit_tooltip') | tojson }},
+        deleteTooltip: {{ t('auth.delete_user') | tojson }},
+        usersCount: {{ t('users.count') | tojson }},
+        usersNoMatch: {{ t('users.no_match') | tojson }},
+        usersPage: {{ t('users.page') | tojson }},
+        permYes: {{ t('users.perm_yes') | tojson }},
+        usersView: {{ t('users.view') | tojson }},
+        scanPath: {{ t('lib.scan_library') | tojson }},
+        deletePath: {{ t('lib.delete_library_path') | tojson }},
+        pathsView: {{ t('lib.view_paths') | tojson }},
+        backupsView: {{ t('maint.view_backups') | tojson }},
+        discoverySaved: {{ t('network.saved') | tojson }},
+        discoveryFailed: {{ t('services.failed') | tojson }},
+        permNo: {{ t('users.perm_no') | tojson }},
         maintSaved: {{ t('maint.saved') | tojson }},
         maintNextRun: {{ t('maint.next_run', when='__WHEN__') | tojson }},
         maintNotScheduled: {{ t('maint.not_scheduled') | tojson }},

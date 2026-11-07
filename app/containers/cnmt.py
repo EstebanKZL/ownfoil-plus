@@ -35,7 +35,28 @@ def get_cnmts(container):
     return cnmts
 
 
+# A base game's and an update's CNMT carry, in their extended header (at 0x20), the id
+# they point at (8 bytes) and then the console firmware they need: RequiredSystemVersion.
+# nsz's Cnmt only reads the common header, so it is read here by offset.
+_EXTENDED_HEADER = 0x20
+_TYPES_WITH_REQUIRED_SYSTEM_VERSION = (0x80, 0x81)   # application, patch
+
+
+def required_system_version(cnmt, title_type):
+    """The firmware a base game or update needs (as stored: a u32), or None."""
+    if title_type not in _TYPES_WITH_REQUIRED_SYSTEM_VERSION:
+        return None
+    try:
+        cnmt.seek(_EXTENDED_HEADER + 8)
+        value = cnmt.readInt32() & 0xFFFFFFFF
+    except Exception as e:
+        logger.debug(f'Could not read RequiredSystemVersion: {e}')
+        return None
+    return value or None
+
+
 def extract_meta_from_cnmt(cnmt_sections):
+    """(type, title id, version, required system version or None) per CNMT."""
     contents = []
     for section in cnmt_sections:
         if isinstance(section, Pfs0.Pfs0):
@@ -43,7 +64,8 @@ def extract_meta_from_cnmt(cnmt_sections):
             titleType = APP_TYPE_MAP[Cnmt.titleType]
             titleId = Cnmt.titleId.upper()
             version = Cnmt.version
-            contents.append((titleType, titleId, version))
+            contents.append((titleType, titleId, version,
+                             required_system_version(Cnmt, Cnmt.titleType)))
     if not contents:
         raise ValueError("No Pfs0 sections found in CNMT container.")
     return contents

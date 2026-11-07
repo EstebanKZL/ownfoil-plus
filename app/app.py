@@ -542,22 +542,28 @@ def settings_page():
         'settings.html',
         title='Settings',
         languages_from_titledb=languages,
+        discovery_enabled=_service_state(get_settings(), ('services', 'discovery', 'enabled')),
+        discovery_port=DISCOVERY_PORT,
         admin_account_created=admin_account_created())
 
 # Services: each one's switch in settings.yaml, and the Settings section that sets it up.
 SERVICES = (
     ('registration', ('registration', 'enabled'), '/admin/settings#Registration'),
     ('shop', ('shop', 'enabled'), '/admin/settings#Shop'),
+    ('public_shop', ('shop', 'public'), '/admin/settings#Shop'),
+    ('watcher', ('library', 'watcher', 'enabled'), '/admin/settings#Library'),
     ('maintenance', ('maintenance', 'enabled'), '/admin/settings#Maintenance'),
     ('notifications', ('notifications', 'enabled'), '/admin/settings#Notifications'),
     ('vault', ('vault', 'enabled'), '/admin/settings#Vault'),
-    ('discovery', ('services', 'discovery', 'enabled'), '/admin/services#servicesDiscovery'),
+    ('discovery', ('services', 'discovery', 'enabled'), '/admin/settings#Network'),
 )
 
 # Each service's card: icon, name and description (spelled out, so unused strings show).
 SERVICE_CARDS = {
     'registration': ('bi-person-plus', 'services.name_registration', 'services.desc_registration'),
     'shop': ('bi-shop', 'services.name_shop', 'services.desc_shop'),
+    'public_shop': ('bi-globe2', 'services.name_public_shop', 'services.desc_public_shop'),
+    'watcher': ('bi-eye', 'services.name_watcher', 'services.desc_watcher'),
     'maintenance': ('bi-wrench-adjustable', 'services.name_maintenance', 'services.desc_maintenance'),
     'notifications': ('bi-bell', 'services.name_notifications', 'services.desc_notifications'),
     'vault': ('bi-safe', 'services.name_vault', 'services.desc_vault'),
@@ -590,6 +596,9 @@ def service_switch_api(name):
         discovery.reconcile()
     if name == 'maintenance':
         tasks_mod.reschedule_maintenance()
+    if name == 'watcher' and watcher is not None:
+        # Started or stopped now, as Settings > Library does.
+        watcher.reconcile()
     logger.info(f"Service {name} turned {'on' if enabled else 'off'} by {current_user.user}")
     return jsonify({'success': True, 'enabled': _service_state(get_settings(), entry[1])})
 
@@ -604,7 +613,6 @@ def services_page():
         'services.html',
         title='Services',
         services=services,
-        discovery_port=DISCOVERY_PORT,
         admin_account_created=admin_account_created())
 
 @app.route('/admin/files')
@@ -713,8 +721,10 @@ def dashboard_api():
     corrupt = sum(int(count) for sig, hashed, modified, count in db.session.execute(text(
         "SELECT signature_valid, hash_valid, hash_modified, COUNT(*) FROM files GROUP BY 1, 2, 3"))
         if status_of(sig, hashed, modified) == STATUS_CORRUPT)
+    # Same rule as library.duplicate_file_groups: a NUP is never a duplicate.
     duplicates = db.session.execute(text(
-        "SELECT COUNT(*) FROM (SELECT app_id FROM app_files GROUP BY app_id HAVING COUNT(*) > 1)")).scalar()
+        "SELECT COUNT(*) FROM (SELECT af.app_id FROM app_files af JOIN files f ON f.id = af.file_id "
+        "WHERE lower(coalesce(f.extension, '')) != 'nup' GROUP BY af.app_id HAVING COUNT(*) > 1)")).scalar()
     tasks_by_status = dict(db.session.execute(text(
         "SELECT status, COUNT(*) FROM tasks WHERE run_after IS NULL OR status != 'pending' "
         "GROUP BY status")).all())
@@ -748,11 +758,34 @@ def dashboard_api():
             'added_at': (f.added_at + offset).isoformat(timespec='minutes') if f.added_at else None,
         })
 
+    # The latest downloads, with what Stats used to show for each (file, size, address,
+    # who and with what): 50, ten in view and the rest a scroll away.
+    events = DownloadEvent.query.order_by(DownloadEvent.downloaded_at.desc()).limit(50).all()
+    from avatars import avatar_url
+    pictures = {u.user: avatar_url(u) for u in User.query.filter(
+        User.user.in_([e.user for e in events if e.user])).all()}
     recent_downloads = [{
         'name': name_of(e.title_id) or e.filename, 'filename': e.filename, 'user': e.user,
+        'user_avatar': pictures.get(e.user), 'size': e.size, 'address': e.address,
         'client': e.client, 'downloaded_at': (e.downloaded_at + offset).isoformat(timespec='minutes'),
         'title_id': e.title_id,   # the Dashboard links each row to its game page
-    } for e in DownloadEvent.query.order_by(DownloadEvent.downloaded_at.desc()).limit(30)]
+    } for e in events]
+
+    # Save backups everyone uploaded (admins see them all and may download any).
+    # (Listed even with the vault off: what was uploaded stays downloadable.)
+    recent_saves = []
+    names = {u.id: u for u in User.query.all()}
+    for b in vault.backups(None)[:50]:
+        owner = names.get(b['user_id'])
+        info = (titles_lib.get_game_info(b['title_id']) or {}) if b['title_id'] else {}
+        game = info.get('name')
+        recent_saves.append({
+            'user_id': b['user_id'], 'user': owner.user if owner else f"#{b['user_id']}",
+            'user_avatar': avatar_url(owner) if owner else None, 'path': b['path'],
+            'name': game if game and game != 'Unrecognized' else b['folder'],
+            'icon_url': info.get('iconUrl'), 'title_id': b['title_id'], 'file': b['name'],
+            'size': b['size'], 'time': b['time'],
+        })
 
     settings = get_settings()
     backup_list = backups.list_backups()
@@ -771,6 +804,7 @@ def dashboard_api():
         'downloads_week': downloads_week,
         'recent_files': recent_files,
         'recent_downloads': recent_downloads,
+        'recent_saves': recent_saves,
         'maintenance': {'enabled': settings['maintenance']['enabled'],
                         'next_run': _next_maintenance_run_local(),
                         'last_backup': backup_list[0]['created'] if backup_list else None},
@@ -788,8 +822,15 @@ def _upload_error(e):
 @app.get('/api/uploads')
 @access_required('admin')
 def list_uploads_api():
-    return jsonify({'uploads': uploads.list_sessions(), 'libraries': get_library_paths(),
-                    'chunk_size': UPLOAD_CHUNK_SIZE})
+    # Each library folder with the free space of its disk, to choose where a file goes.
+    space = {}
+    for path in get_library_paths():
+        try:
+            space[path] = shutil.disk_usage(path).free
+        except OSError:
+            space[path] = None
+    return jsonify({'uploads': uploads.list_sessions(current_user.user), 'libraries': get_library_paths(),
+                    'free_space': space, 'chunk_size': UPLOAD_CHUNK_SIZE})
 
 @app.post('/api/uploads')
 @access_required('admin')
@@ -797,7 +838,7 @@ def start_upload_api():
     data = request.json or {}
     try:
         state = uploads.start(data.get('library'), data.get('filename'), data.get('size'),
-                              get_library_paths())
+                              get_library_paths(), user=current_user.user)
     except uploads.UploadError as e:
         return _upload_error(e)
     return jsonify({'success': True, **state})
@@ -806,7 +847,7 @@ def start_upload_api():
 @access_required('admin')
 def upload_status_api(upload_id):
     try:
-        return jsonify({'success': True, **uploads.status(upload_id)})
+        return jsonify({'success': True, **uploads.status(upload_id, current_user.user)})
     except uploads.UploadError as e:
         return _upload_error(e)
 
@@ -819,7 +860,8 @@ def upload_chunk_api(upload_id):
     except ValueError:
         return jsonify({'success': False, 'error': 'bad_offset', 'message': 'Upload-Offset header required'}), 400
     try:
-        state, finished = uploads.append(upload_id, offset, request.stream, request.content_length)
+        state, finished = uploads.append(upload_id, offset, request.stream, request.content_length,
+                                         user=current_user.user)
     except uploads.UploadError as e:
         return _upload_error(e)
     if finished:
@@ -831,7 +873,7 @@ def upload_chunk_api(upload_id):
 @access_required('admin')
 def cancel_upload_api(upload_id):
     try:
-        uploads.cancel(upload_id)
+        uploads.cancel(upload_id, current_user.user)
     except uploads.UploadError as e:
         return _upload_error(e)
     return jsonify({'success': True})
@@ -1298,7 +1340,14 @@ def set_vault_settings_api():
         keep = -1
     if keep not in vault.KEEP_CHOICES:
         return jsonify({'success': False, 'errors': ['keep']}), 400
-    set_vault_settings({'enabled': bool(data.get('enabled')), 'keep': keep})
+    try:
+        max_games = int(data.get('max_games') or 0)
+    except (TypeError, ValueError):
+        max_games = -1
+    if max_games not in vault.GAME_CHOICES:
+        return jsonify({'success': False, 'errors': ['max_games']}), 400
+    set_vault_settings({'enabled': bool(data.get('enabled')), 'keep': keep, 'max_games': max_games,
+                        'admins': bool(data.get('admins', True)), 'users': bool(data.get('users', True))})
     return jsonify({'success': True})
 
 # The vault answers JKSV before (and without) the web login: the user's own vault password.
@@ -1386,18 +1435,23 @@ def _save_games():
 @app.get('/api/saves')
 @saves_access
 def saves_api():
-    games = _save_games()
-    saved = {g['title_id'] for g in games if g['title_id'] and g['user_id'] == current_user.id}
-    missing = []
-    # The library's games without a backup: only for those who may see the library.
-    library_ids = _owned_title_ids() if current_user.has_access('shop') else set()
-    for title_id in sorted(library_ids - saved):
-        info = titles_lib.get_game_info(title_id) or {}
-        if info.get('name') and info['name'] != 'Unrecognized':
-            missing.append({'title_id': title_id, 'name': info['name'], 'icon_url': info.get('iconUrl')})
-    missing.sort(key=lambda g: g['name'].lower())
-    return jsonify({'enabled': vault.enabled(), 'games': games, 'missing': missing,
+    # Only the games that have backups: the list of library games without one was
+    # dropped (Phase 8) - on a big library it buried the backups under hundreds of rows.
+    return jsonify({'enabled': vault.enabled(), 'games': _save_games(),
                     'all_users': bool(current_user.is_admin)})
+
+@app.get('/api/admin/saves/download')
+@access_required('admin')
+def admin_saves_download_api():
+    """Dashboard > Uploaded saves: any user's backup, for an admin."""
+    if not request.args.get('user', '').isdigit():
+        return jsonify({'error': 'not_found'}), 404
+    path = vault.backup_path(int(request.args['user']), request.args.get('path'))
+    if path is None:
+        return jsonify({'error': 'not_found'}), 404
+    folder = os.path.basename(os.path.dirname(path))
+    return send_file(path, mimetype='application/zip', as_attachment=True,
+                     download_name=f'{folder} - {os.path.basename(path)}')
 
 @app.get('/api/saves/download')
 @saves_access
@@ -1588,7 +1642,7 @@ app.add_url_rule(
 def serve_game(id):
     """Serve a game file to authenticated clients."""
     filepath = db.session.query(Files.filepath).filter_by(id=id).scalar()
-    if not filepath:
+    if not filepath or not servable_library_file(filepath):
         return jsonify({'error': f'No file with id {id}.'}), 404
     filedir, filename = os.path.split(filepath)
     # Count only once the response exists: clients probe files with a Range before taking
@@ -1615,7 +1669,7 @@ def download_library_file(file_id):
     if not get_settings()['library']['management'].get('web_downloads', {}).get('enabled', False):
         return jsonify({'error': 'Web downloads are disabled in Settings > Library.'}), 403
     file_obj = db.session.get(Files, file_id)
-    if not file_obj or not os.path.isfile(file_obj.filepath):
+    if not file_obj or not os.path.isfile(file_obj.filepath) or not servable_library_file(file_obj.filepath):
         return jsonify({'error': f'No file with id {file_id}.'}), 404
     filedir, filename = os.path.split(file_obj.filepath)
     response = send_from_directory(filedir, filename, as_attachment=True)

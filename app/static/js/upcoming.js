@@ -40,6 +40,7 @@ function releaseCard(game) {
     } else {
         cover.append(node('i', 'bi bi-controller'));
     }
+    if (game.switch2) cover.append(node('span', 'release-card__console', 'Switch 2'));
     link.append(cover, node('div', 'release-card__name', game.name), node('div', 'release-card__date', formatDay(game.release_date)));
     const sagas = (game.series || []).filter(s => s.name);
     if (sagas.length) {
@@ -76,6 +77,7 @@ function heartButton(game) {
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
             // The same game may be on screen twice (for you and its month): keep both in step.
             upcomingData.months.forEach(m => m.games.forEach(g => { if (g.title_id === game.title_id) g.wishlisted = adding; }));
+            (upcomingData.recent || []).forEach(g => { if (g.title_id === game.title_id) g.wishlisted = adding; });
             render();
         } catch (e) {
             button.disabled = false;
@@ -84,7 +86,23 @@ function heartButton(game) {
     return button;
 }
 
+/** A just-released game: its card, with the day it came out over the cover. */
+function recentCard(game) {
+    const card = releaseCard(game);
+    card.classList.add('release-card--recent');
+    const day = new Date(game.release_date + 'T00:00').toLocaleDateString(LANG, {day: 'numeric', month: 'short'});
+    const chip = node('span', 'release-card__day');
+    chip.append(node('i', 'bi bi-calendar-event'), document.createTextNode(' ' + day));
+    card.querySelector('.release-card__cover').append(chip);
+    return card;
+}
+
 function render() {
+    const recent = upcomingData.recent || [];
+    document.getElementById('upcomingRecentStrip').replaceChildren(...recent.map(recentCard));
+    document.getElementById('upcomingRecentCount').textContent = recent.length;
+    document.getElementById('upcomingRecent').hidden = !recent.length;
+
     const forYou = upcomingData.months.flatMap(m => m.games).filter(g => g.wishlisted || g.sequel);
     const forYouGrid = document.getElementById('upcomingForYouGrid');
     forYouGrid.replaceChildren(...forYou.map(releaseCard));
@@ -111,6 +129,10 @@ function applySearch() {
     document.querySelectorAll('.release-card').forEach(card => {
         card.hidden = Boolean(text) && !card.dataset.name.includes(text);
     });
+    const strip = document.getElementById('upcomingRecent');
+    if (upcomingData.recent && upcomingData.recent.length) {
+        strip.hidden = !document.querySelector('#upcomingRecentStrip .release-card:not([hidden])');
+    }
     let shown = 0;
     document.querySelectorAll('.release-month').forEach(month => {
         month.hidden = !month.querySelector('.release-card:not([hidden])');

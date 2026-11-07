@@ -168,6 +168,14 @@ p.game-description {
     display: none;
 }
 
+/* The search button beside the menu button (below lg): outside .navbar-nav it got no
+   padding of its own - a 16px target touching the menu button. */
+.op-topbar .op-search-btn.d-lg-none {
+    padding: .45rem .65rem;
+    margin-right: .5rem;
+    border-radius: var(--op-radius-sm);
+}
+
 .op-search-btn kbd {
     background-color: var(--op-surface-2);
     color: var(--op-text-muted);
@@ -696,6 +704,7 @@ a.stat-tile:hover {
 .status-badge--wait { --badge: var(--op-wait); --badge-rgb: var(--op-wait-rgb); }
 .status-badge--dlc { --badge: var(--op-nav); --badge-rgb: var(--op-nav-rgb); }
 .status-badge--fav { --badge: var(--op-fav); --badge-rgb: var(--op-fav-rgb); }
+.status-badge--firmware { --badge: var(--op-firmware); --badge-rgb: var(--op-firmware-rgb); }
 
 /* Empty state: an invitation, not an apology. */
 .empty-state {
@@ -878,15 +887,20 @@ a.stat-tile:hover {
     padding-bottom: 1.5rem;
 }
 
-/* Tiles that apply a filter are buttons: keep the tile look, lose the button chrome. */
-button.stat-tile {
+/* Tiles that apply a filter are buttons, and Total size a link to Stats: keep the tile
+   look, lose the button and link chrome. */
+button.stat-tile,
+a.stat-tile {
     width: 100%;
     font: inherit;
+    color: inherit;
     text-align: left;
+    text-decoration: none;
     cursor: pointer;
 }
 
-button.stat-tile:hover {
+button.stat-tile:hover,
+a.stat-tile:hover {
     border-color: rgba(var(--tile-rgb), .55);
     transform: translateY(-2px);
 }
@@ -961,11 +975,12 @@ button.stat-tile:hover {
     display: block;
 }
 
+/* At the top of the cover: its bottom is the format's and the update mark's. */
 .library-badges {
     position: absolute;
     left: .5rem;
     right: .5rem;
-    bottom: .5rem;
+    top: .5rem;
     display: flex;
     flex-wrap: wrap;
     gap: .3rem;
@@ -1028,22 +1043,9 @@ button.stat-tile:hover {
     opacity: .6;
 }
 
-.library-icon {
-    border-radius: var(--op-radius);
-    border: 1px solid var(--op-border);
-    margin: .3rem;
-    cursor: pointer;
-    transition: transform var(--op-dur) var(--op-ease), border-color var(--op-dur) var(--op-ease);
-}
-
-.library-icon:hover {
-    border-color: rgba(var(--op-nav-rgb), .6);
-    transform: translateY(-2px);
-}
-
 @media (prefers-reduced-motion: reduce) {
     .library-card:hover,
-    .library-icon:hover {
+    .compact-card:hover {
         transform: none;
     }
 }
@@ -2090,9 +2092,11 @@ button.stat-tile:hover {
     margin-bottom: 1rem;
 }
 
-/* Latest downloads takes the section's whole width; the short lists above keep theirs. */
-#downloadRecentScroll {
+/* Inside a card each list takes the card's whole width, so its scrollbar sits at the
+   card's right edge, the same in every card. */
+.dl-card .dl-scroll {
     max-width: none;
+    margin-bottom: 0;
 }
 
 /* A game in the library-detail modal: its icon before its name. */
@@ -2165,7 +2169,7 @@ button.stat-tile:hover {
 .game-hero {
     position: relative;
     display: grid;
-    grid-template-columns: minmax(0, 22rem) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
     gap: 1.75rem;
     align-items: center;
     padding: 1.75rem;
@@ -2197,7 +2201,7 @@ button.stat-tile:hover {
 }
 
 .game-hero__cover {
-    aspect-ratio: 16 / 9;
+    aspect-ratio: 1 / 1;
     border-radius: var(--op-radius);
     overflow: hidden;
     box-shadow: var(--op-shadow);
@@ -2320,6 +2324,11 @@ button.stat-tile:hover {
         grid-template-columns: 1fr;
         gap: 1rem;
         padding: 1rem;
+    }
+
+    /* The square cover, not the whole width of a phone. */
+    .game-hero__cover {
+        width: min(100%, 13rem);
     }
 
     .game-facts {
@@ -2571,15 +2580,6 @@ button.stat-tile:hover {
 .library-cover-link {
     display: block;
     height: 100%;
-}
-
-.library-icon-link {
-    display: inline-block;
-}
-
-.library-icon-link .library-icon {
-    width: 100%;
-    margin: 0;
 }
 
 .list-title-link {
@@ -3028,7 +3028,8 @@ a.dash-list__row:hover {
    left the content glued to every section title. A title that shares a row with its
    buttons (.mb-0) gets its space from that row instead. */
 .admin-section__title:not(.mb-0),
-.stats-section__title:not(.mb-0) {
+.stats-section__title:not(.mb-0),
+.game-section__title {
     margin-bottom: .9rem !important;
 }
 
@@ -3200,23 +3201,25 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
 
 /* ============== Console firmware (My account) ============== */
 
-/* A game or update the user's console is too old for: amber, "something waits for you". */
-.game-fact--warn {
-    border-color: rgba(var(--op-wait-rgb), .6);
+/* A game or update the user's console is too old for: violet, the firmware color, so it
+   is told apart from the amber of a pending update. */
+.game-fact--firmware {
+    border-color: rgba(var(--op-firmware-rgb), .6);
 }
 
-.game-fact--warn .game-fact__value {
-    color: var(--op-wait);
+.game-fact--firmware .game-fact__label,
+.game-fact--firmware .game-fact__value {
+    color: var(--op-firmware);
 }
 
 .game-fact__note {
     margin-top: .25rem;
     font-size: .78rem;
-    color: var(--op-wait);
+    color: var(--op-firmware);
 }
 
 .game-row--firmware {
-    box-shadow: inset 3px 0 0 var(--op-wait);
+    box-shadow: inset 3px 0 0 var(--op-firmware);
 }
 
 .account-page {
@@ -3227,11 +3230,20 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     max-width: 12rem;
 }
 
+/* The Save button, top right of the profile picture section. */
 .account-actions {
-    grid-column: 1 / -1;
-    display: flex;
     align-items: center;
     gap: .75rem;
+}
+
+@media (max-width: 575.98px) {
+    /* A phone: Save goes under the title instead of squeezing it. */
+    .page-head .account-actions {
+        grid-row: auto;
+        grid-column: 1 / -1;
+        justify-content: flex-end;
+        margin-top: .5rem;
+    }
 }
 
 /* ============== Upcoming releases and sagas ============== */
@@ -3394,28 +3406,183 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     opacity: .55;
 }
 
+/* Just released: one row of cards that scrolls sideways. */
+.release-strip {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(10rem, 11rem);
+    gap: .85rem;
+    overflow-x: auto;
+    padding-bottom: .5rem;
+    scroll-snap-type: x proximity;
+}
+
+.release-strip > .release-card {
+    scroll-snap-align: start;
+}
+
+.release-card__day {
+    position: absolute;
+    top: .4rem;
+    left: .4rem;
+    padding: .1rem .45rem;
+    border-radius: var(--op-radius-sm);
+    background-color: rgba(var(--op-surface-0-rgb), .82);
+    color: var(--op-text);
+    font-size: .7rem;
+    font-weight: 700;
+}
+
+.release-count {
+    margin-left: .35rem;
+    padding: .05rem .5rem;
+    border-radius: 2rem;
+    background-color: var(--op-surface-2);
+}
+
 .release-card.is-upcoming .release-card__date {
     color: var(--op-fav);
 }
 
+.saga-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+    margin-bottom: 1rem;
+}
+
+.saga-toolbar .filter-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+}
+
+/* The search bar of Sagas, Upcoming and Saves: a full-width surface, the field inside. */
+.discover-search--bar {
+    max-width: none;
+    padding: .35rem;
+}
+
+.discover-search--bar .form-control {
+    border: 0;
+    background: transparent;
+}
+
+.discover-search--bar .form-control:focus {
+    box-shadow: none;
+}
+
+.discover-search--bar:focus-within {
+    border-color: rgba(var(--op-nav-rgb), .55);
+}
+
 .saga-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr));
     gap: 1rem;
 }
 
+/* A saga: its cover on the left; name and count, the bar, every game, "View the saga". */
 .saga-card {
-    display: flex;
-    flex-direction: column;
-    gap: .6rem;
+    display: grid;
+    grid-template-columns: 5.5rem minmax(0, 1fr);
+    gap: 1rem;
     color: var(--op-text);
-    text-decoration: none;
     transition: border-color var(--op-dur) var(--op-ease);
 }
 
 .saga-card:hover {
+    border-color: rgba(var(--op-nav-rgb), .55);
+}
+
+.saga-card__cover .release-card__cover {
+    font-size: 1.6rem;
+}
+
+.saga-card__body {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .55rem;
+    min-width: 0;
+}
+
+.saga-card__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: .75rem;
+    width: 100%;
+}
+
+.saga-card__head .saga-card__name {
     color: var(--op-text);
-    border-color: var(--op-nav);
+    text-decoration: none;
+}
+
+.saga-card__head .saga-card__name:hover {
+    color: var(--op-nav);
+}
+
+.saga-card__count {
+    flex: 0 0 auto;
+    font-size: .85rem;
+    font-weight: 700;
+}
+
+.saga-card .saga-progress__bar {
+    width: 100%;
+}
+
+.saga-progress__bar--striped .saga-progress__fill {
+    background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, .22) 0 6px, transparent 6px 12px);
+}
+
+/* One row of covers, the same in every card (the rest as "+N"), so a saga with many
+   games never makes its card taller than the others. */
+.saga-card__strip {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: .25rem;
+    overflow: hidden;
+}
+
+.saga-thumb--more {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    aspect-ratio: 1;
+    border: 1px solid var(--op-border);
+    border-radius: var(--op-radius-sm);
+    background-color: var(--op-surface-2);
+    color: var(--op-text-muted);
+    font-size: .75rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.saga-card .saga-card__view {
+    margin-top: auto;
+}
+
+.saga-thumb {
+    flex: 0 0 auto;
+    width: 2.6rem;
+}
+
+.saga-thumb .release-card__cover {
+    font-size: .9rem;
+    border-radius: var(--op-radius-sm);
+}
+
+.saga-thumb.is-missing {
+    filter: grayscale(1);
+    opacity: .45;
+}
+
+.saga-card__view {
+    border-radius: 999px;
 }
 
 .saga-card__collage {
@@ -3457,9 +3624,13 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     background-color: var(--op-nav);
 }
 
+/* One saga's "4 of 6" and its bar, across the whole card. */
 .saga-summary {
-    max-width: 26rem;
     margin-bottom: 1.25rem;
+}
+
+.saga-summary .saga-progress__bar {
+    height: .6rem;
 }
 
 .game-saga-link {
@@ -3687,8 +3858,181 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
 }
 
 .user-avatar {
-    width: 1.5rem;
-    height: 1.5rem;
+    width: 2rem;
+    height: 2rem;
+    flex: 0 0 auto;
+}
+
+/* Settings > Authentication: the user list, searched and paged. */
+.users-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem 1rem;
+    margin-bottom: .75rem;
+}
+
+.users-search {
+    position: relative;
+    flex: 1 1 16rem;
+    max-width: 24rem;
+}
+
+.users-search .bi {
+    position: absolute;
+    left: .65rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--op-text-muted);
+    pointer-events: none;
+}
+
+.users-search .form-control {
+    padding-left: 2rem;
+}
+
+/* The users list, and the other lists of Settings' dialogs (paths, disk usage, backups)
+   in the same look: a framed block, small uppercase headers, quiet row lines. */
+.users-table-wrap,
+.list-table-wrap {
+    overflow-y: hidden;
+    border: 1px solid var(--op-border);
+    border-radius: var(--op-radius);
+    background-color: var(--op-surface-2);
+}
+
+.users-table,
+.list-table {
+    --bs-table-bg: transparent;
+}
+
+.users-table th,
+.list-table th {
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--op-text-muted);
+    white-space: nowrap;
+}
+
+.users-table td,
+.users-table th,
+.list-table td,
+.list-table th {
+    padding: .6rem .85rem;
+    border-color: var(--op-border);
+}
+
+.users-table tbody tr:last-child td,
+.list-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.list-table .list-table__actions {
+    width: 1%;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.list-table .list-table__actions .icon-btn + .icon-btn {
+    margin-left: .35rem;
+}
+
+.list-table tr.list-table__total td {
+    font-weight: 700;
+}
+
+.users-perm {
+    width: 1%;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.users-perm--on {
+    color: var(--op-ok);
+}
+
+.users-perm--off {
+    color: var(--op-text-muted);
+}
+
+.users-actions {
+    width: 1%;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.users-actions .icon-btn + .icon-btn {
+    margin-left: .35rem;
+}
+
+.user-name__text {
+    min-width: 0;
+}
+
+.user-avatar--glyph {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--op-text-muted);
+}
+
+@media (max-width: 575.98px) {
+    /* A phone: each user is a stacked row - the name on top, then each permission with
+       its own label and the buttons - instead of a table wider than the screen. */
+    .users-table thead {
+        display: none;
+    }
+
+    .users-table tr {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: .25rem .9rem;
+        padding: .65rem .75rem;
+        border-bottom: 1px solid var(--op-border);
+    }
+
+    .users-table tbody tr:last-child {
+        border-bottom: 0;
+    }
+
+    .users-table td {
+        display: flex;
+        align-items: center;
+        gap: .3rem;
+        width: auto;
+        padding: 0;
+        border: 0;
+    }
+
+    .users-table td:first-child {
+        flex: 1 1 100%;
+    }
+
+    .users-table td.users-perm::before {
+        content: attr(data-label);
+        font-size: .75rem;
+        color: var(--op-text-muted);
+    }
+
+    .users-table td.users-actions {
+        margin-left: auto;
+    }
+
+    .users-table .user-email {
+        overflow-wrap: anywhere;
+    }
+}
+
+.users-pager {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .75rem;
+    margin-top: .75rem;
 }
 
 .avatar-current {
@@ -3774,6 +4118,29 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
 
 .dl-card--wide {
     grid-row: span 2;
+}
+
+/* Dashboard: two lists side by side, equal and independent. */
+.dl-grid--even {
+    align-items: start;
+}
+
+.dl-card__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: .75rem;
+    margin-bottom: .75rem;
+}
+
+.dl-card__head .dl-card__title {
+    margin: 0;
+}
+
+/* An action at the end of a list row (an uploaded save's download). */
+.dash-list__action {
+    flex: 0 0 auto;
+    margin-left: .25rem;
 }
 
 @media (max-width: 767.98px) {
@@ -3864,4 +4231,286 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
         text-align: left;
         padding-left: 2.95rem;     /* under the name: past the icon and its gap */
     }
+}
+
+/* Library cards: the file's format (bottom left of the cover), a pending update (bottom
+   right), and the DLC count beside the title id. */
+/* Switch 2 games: a mark of their own, before the format. */
+.library-cover-console {
+    margin-right: .35rem;
+    padding-right: .35rem;
+    border-right: 1px solid var(--op-border);
+}
+
+.release-card__cover {
+    position: relative;
+}
+
+.release-card__console {
+    position: absolute;
+    left: .4rem;
+    bottom: .4rem;
+    padding: .05rem .4rem;
+    border-radius: var(--op-radius-sm);
+    background-color: rgba(var(--op-surface-0-rgb), .8);
+    color: var(--op-text);
+    font-size: .65rem;
+    font-weight: 700;
+}
+
+/* Vista: the page sizes as a small grid of choices. */
+.library-menu--view {
+    min-width: 15rem;
+}
+
+.page-size-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: .35rem;
+    padding: .25rem .75rem .5rem;
+}
+
+.page-size-option {
+    padding: .35rem 0;
+    border: 1px solid var(--op-border);
+    border-radius: var(--op-radius-sm);
+    background-color: var(--op-surface-1);
+    color: var(--op-text);
+    font-size: .85rem;
+    font-weight: 600;
+}
+
+.page-size-option:hover {
+    border-color: rgba(var(--op-nav-rgb), .55);
+}
+
+.page-size-option.active {
+    background-color: var(--op-nav);
+    border-color: var(--op-nav);
+    color: var(--op-surface-0);
+}
+
+/* Filters: a panel of titled groups, each a row of chips. */
+.library-filters {
+    min-width: 19rem;
+    padding: .85rem 1rem 1rem;
+}
+
+.library-filters__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: .75rem;
+}
+
+.library-filters__title {
+    font-weight: 700;
+}
+
+.library-filters__title .bi {
+    color: var(--op-nav);
+}
+
+.filter-group {
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.filter-group + .filter-group {
+    margin-top: .85rem;
+    padding-top: .85rem;
+    border-top: 1px solid var(--op-border);
+}
+
+.filter-group__label {
+    float: none;
+    width: auto;
+    margin-bottom: .45rem;
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--op-text-muted);
+}
+
+.filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+}
+
+.filter-chip {
+    padding: .3rem .75rem;
+    border: 1px solid var(--op-border);
+    border-radius: 2rem;
+    background-color: var(--op-surface-1);
+    color: var(--op-text);
+    font-size: .85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color var(--op-dur) var(--op-ease), border-color var(--op-dur) var(--op-ease);
+}
+
+.filter-chip:hover {
+    border-color: rgba(var(--op-nav-rgb), .55);
+}
+
+.btn-check:checked + .filter-chip {
+    background-color: var(--op-nav);
+    border-color: var(--op-nav);
+    color: var(--op-surface-0);
+}
+
+.btn-check:focus-visible + .filter-chip {
+    outline: 2px solid rgba(var(--op-nav-rgb), .6);
+    outline-offset: 2px;
+}
+
+.library-cover-format {
+    position: absolute;
+    left: .5rem;
+    bottom: .5rem;
+    padding: .1rem .45rem;
+    border-radius: var(--op-radius-sm);
+    background-color: rgba(var(--op-surface-0-rgb), .78);
+    color: var(--op-text);
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    pointer-events: none;
+}
+
+.library-cover-update {
+    position: absolute;
+    right: .5rem;
+    bottom: .5rem;
+    display: grid;
+    place-items: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 50%;
+    background-color: rgba(var(--op-surface-0-rgb), .78);
+    color: var(--op-wait);
+    font-size: 1.15rem;
+    line-height: 1;
+}
+
+.library-card-dlc {
+    flex: 0 0 auto;
+    color: var(--op-dlc);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+@media (max-width: 575.98px) {
+    /* Cover badges on a phone: two cards a row leave room for their icon only. The words
+       stay for screen readers, and as the tooltip. */
+    .library-badges .status-badge {
+        padding: .25rem;
+    }
+
+    .library-badges .status-badge > span {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+}
+
+/* Library > Compact view: narrower cards in a grid of their own, five or six a row on a
+   wide screen and two on a phone; the size slider sets the smallest card. */
+#gameGrid.compact-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(46%, var(--compact-min, 10rem)), 1fr));
+    gap: .85rem;
+    margin: 0;
+}
+
+#gameGrid.compact-grid > * {
+    width: auto;
+    padding: 0;
+    margin: 0;
+}
+
+.compact-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--op-radius);
+    transition: transform var(--op-dur) var(--op-ease), border-color var(--op-dur) var(--op-ease);
+}
+
+.compact-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(var(--op-nav-rgb), .6);
+}
+
+.compact-cover {
+    position: relative;
+    display: block;
+    aspect-ratio: 1 / 1;
+    background-color: var(--op-surface-2);
+}
+
+.compact-cover__img {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.compact-card.is-missing .compact-cover__img {
+    filter: grayscale(1);
+}
+
+.compact-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: .1rem;
+    padding: .55rem .65rem .6rem;
+}
+
+.compact-card .library-card-title {
+    margin: 0;
+    font-size: .9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.compact-card .library-card-meta {
+    margin: 0;
+    font-size: .75rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.compact-card .library-card-foot {
+    flex-wrap: wrap;
+    row-gap: 0;
+    font-size: .7rem;
+}
+
+/* A title id is read whole: without room beside it, the DLC count goes below. */
+.compact-card .library-card-id {
+    white-space: nowrap;
+}
+
+/* A narrow card: its state badges keep their icon only, as on a phone. */
+.compact-card .library-badges .status-badge {
+    padding: .25rem;
+}
+
+.compact-card .library-badges .status-badge > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
 }

@@ -4,6 +4,246 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.50]
+
+A round on what the library knows and how it reads it - more update sources, every DLC of
+the catalogue, firmware read from the files themselves, NUP files - plus a pass of polish
+over the Library, the game page, Statistics, Settings and Services, nine more interface
+languages, and the security fixes
+of Switch Library Manager Web 1.71-2.0.1 that apply here. One migration
+(`c3d4e5f6a7b9`), applied on start as usual.
+
+**What the library knows**
+
+- **Update versions from more sources.** The TitleDB release is built from
+  blawar/titledb, which can go weeks without changes while new updates come out.
+  borntohonk/titledb's `versions.json` and 16BitWonder's nx-versions (with its changelog
+  for the dates) now add the versions it lacks, each downloaded only when it changed and
+  checked before it's trusted; a source that fails keeps its last good copy
+  (`titledb/extra_versions.py`).
+- **Every DLC of the catalogue.** `cnmts.json` only lists the DLC someone dumped:
+  Biomutant's nine language packs were missing, so the game read as complete. A game's
+  DLC are now every catalogue entry under its title ID (game id + 0x1000 + index), with
+  `cnmts.json` adding what it knows. The first pass with this doesn't announce old DLC as
+  new.
+- **A file whose contents can't be read is identified by its name** (`[TitleID][vVersion]`)
+  instead of staying unidentified - a missing master key no longer hides a game.
+- **A DLC with a newer version is a pending update, not a missing DLC.**
+- **The firmware an update needs, read from its own file.** TitleDB has no
+  `requiredSystemVersion` for many older updates (Animal Crossing's up to v1245184, for
+  instance), so their row on the game page said nothing. Each base game's and update's
+  CNMT carries it: it's now read on identification and stored
+  (`apps.required_system_version`), and used whenever TitleDB has none. Files identified
+  before are read once, in the background, when keys are loaded. Updates you don't have
+  still depend on TitleDB.
+
+**NUP files**
+
+- **`.nup` files are read without keys** (`containers/nup.py`, format version 1 of
+  a55uka/nup): one file holding a decrypted game, its updates and its DLC, identified
+  from its table of contents (whose SHA-256 is checked first) and shown as one
+  multi-content file. Verification checks every file inside against its SHA-256 (the
+  "signature" level is the table of contents' own hash), no keys needed. They can be
+  uploaded and are organized as one file.
+- **Never offered to consoles**: Tinfoil, Sphaira and CyberFoil can't install them, so
+  the shops list only NSP, NSZ, XCI and XCZ; the web library keeps them.
+- **Never a duplicate**: a NUP and an NSP/XCI of the same game are different things to
+  keep, so NUP files stay out of the duplicate groups, the dashboard's duplicate alert
+  and the outdated-update cleanup.
+
+**Organize**
+
+- **NFO, SFV and proof files go with their game.** A file named as the game
+  (`game.nfo` next to `game.nsp`) takes its new name; a release folder left holding only
+  notes, checksums, images and a `Proof` folder hands them over, so it ends up empty. A
+  name already taken stays where it is. On by default, `Take NFO, SFV and proof files
+  along` in the organizer settings.
+
+**Library**
+
+- **The counts say the same thing everywhere.** "Pending updates" added the DLC with a
+  newer version to the games (54 = 50 games + 4 DLC) while the progress bar counted games
+  only: the tile now counts games ("of N games"), the same figure the "up to date" share
+  comes from. The "Games" tile is clickable and shows everything, with the `All` pill lit.
+- **Wording**: "DLC faltantes" for the tile and "Faltan DLC" for the pill and badge.
+- **One color per meaning, two new ones**: DLC counts in cyan (`--op-dlc`) on cards and in
+  the compact view; "needs firmware X" in violet (`--op-firmware`), as is the game page's
+  firmware box and an update the console is too old for.
+- **Cards** show the file format, a pending-update mark and "DLC 1/2"; the icon view is
+  now a Compact view; opening a game and coming back shows the whole library again.
+
+**Game page**
+
+- **Files** replaces *Download all* and the file list at the bottom: a dialog with every
+  file you may download (its name for admins, what it holds for everyone else, every part
+  of a NUP or multi-content file), each with its size, verification and its own download,
+  and *Download all* at its foot. Downloads are the browser's own.
+- More room under the section titles (Screenshots, Updates...), which a global heading
+  reset had swallowed.
+
+**Statistics**
+
+- The lists' scrollbars sit at each card's right edge, as in *Latest downloads*; *By user*
+  and *By client* show four rows, the rest a scroll away.
+- **Duplicate files left Statistics**: they're resolved under Files (its Duplicates tab),
+  which already had everything this widget did.
+- **The download history is kept for good.** It was pruned after a year; only *Clear*
+  empties it now.
+
+**Settings, Services and the rest**
+
+- **Users** (Settings > Authentication): a cleaner list - picture, name and email, a
+  column per permission, edit and delete - ten per page, with a search by name or email.
+  A new user starts with Shop and Backup checked and Admin unchecked.
+- **Services** gains two cards: *Public shop* (consoles without a user and password) and
+  *File watcher*. LAN discovery keeps its card; its explanation and the Docker/Windows
+  warning moved to a new **Server network** section in Settings, with its switch.
+- **Dashboard**: the "Status" chips are gone - each service's state is in Services.
+- **Saves**: the list of library games without a backup is gone; the page lists backups.
+- **My account**: *Save* sits at the top right of the profile picture section.
+- **Top bar**: on narrow screens the search button no longer touches the menu button.
+- **Upload**: each destination library shows the free space of its disk.
+
+**Security** (from Switch Library Manager Web 1.71-2.0.1, where they apply)
+
+- A library file that is - or links to - something in the config folder (keys, session
+  key, database, backups) is never served for download, by any route.
+- An unfinished upload belongs to the user who started it: nobody else can add to it,
+  read it or cancel it.
+- A saved ntfy token is not sent to another server when only the address changes: it has
+  to be written again. (SMTP and Google secrets live in the environment, never in the
+  settings.)
+- Sign-in redirects already refused `//host` and `/\host`.
+
+**A second pass**
+
+- **Library tiles**: just the figure under "Pending updates" and "Missing DLC" (the "of N
+  games" / "in N games" notes are gone), and "Total size" opens Statistics.
+- **Back from a game, the Library is as you left it**: the same page of the grid, filters,
+  search and scroll. (It used to start over on page 1 with everything showing.)
+- **DLC "35 / 32"**: the game page counted only the catalogue's DLC, while the card also
+  counts the ones you have that the catalogue doesn't list. Both count the same set now,
+  and those DLC show in the list too.
+- **My account**: *Save* is in the page header (under the title on phones).
+- **Save vault: who may use it** - two new checkboxes, admins and users who aren't admins
+  (with the Backup permission), both on by default. They decide who JKSV lets in, who sees
+  the Saves page and the vault in My account.
+- **Tasks**: Queue and Failed show ten rows and scroll the rest, counting every row - a
+  scan with hundreds of files under it showed them all, since only top-level rows counted.
+  "Interrupted by application restart" now shows in the page language.
+- **Settings stays short**: users, library paths, backups and the artwork disk usage open
+  in their own dialog from a "View ... (n)" button beside the section's other buttons;
+  editing or deleting from a list comes back to it.
+- **Firmware of older updates**: checked against the raw TitleDB data - its `cnmts.json`
+  has no `requiredSystemVersion` for many older updates (all of Dragon Ball FighterZ's
+  before v983040), so for updates you don't have there is nothing to show; the ones you
+  have are read from the file.
+
+**A third pass**
+
+- **"Up to date" means nothing missing**: the Library's "Games up to date" bar and its
+  "Up to date" pill counted games with the latest update even when they lacked DLC; they
+  now need the latest update *and* every DLC (new `stats.currentTitles`). "Pending
+  updates" still counts updates only.
+- **Settings > Library has one Save**: the file watcher's own button is gone, the
+  section's Save stores it too.
+- **Sign-up is offered whenever registration is open.** The link vanished when neither
+  email nor Google was set up; now the sign-up page says what an admin has to set up.
+  Every account made there still verifies its email (by link, or Google's verified
+  address); only an account an admin creates may have an unverified one.
+- **Sagas without borrowed crossovers**: Wikidata files crossovers under every series
+  they borrow from (Persona 5 Strikers and Fire Emblem Warriors under Dynasty Warriors).
+  When a game's name carries the whole name of some of its series, it stays in those.
+- **The same game once per saga**: a game the catalogue lists twice, from another region
+  or edition under the same name ("Skyrim" and "Skyrim®"), counts once - the copy you
+  have wins - so it no longer shows as missing.
+- **The Sagas page**: a search, "To complete" / "Complete" tabs with their counts, and a
+  card per saga with its cover, "4 of 6", a striped bar, every game out so far (the
+  missing ones greyed, each opening its page) and "View the saga".
+
+**A fourth pass**
+
+- **Every new account gets the shop and save backups** - signed up with the form, with
+  Google or made by an admin (who can still untick them); never the administration.
+- **The Dashboard's lists**: the latest downloads (moved from Statistics, in the same
+  look - file, size, address, user and client chips); the new **Uploaded saves** - every user's save backups, each with a download button for
+  the admin (`/api/admin/saves/download`) - and **Recently added** in that same look.
+  Each shows ten rows and scrolls the rest.
+- **Save vault**: 2 backups per game can be kept now (2 / 5 / 10 / 20 / 50 / All), and a
+  new **Games with saves per user** limit (10-50 / All). It counts different games, not
+  their copies: at the limit, saves of a new game are refused (WebDAV 507) until the
+  user deletes every save of another one, which also drops that game from Saves; nothing
+  is ever deleted to make room.
+- **Settings dialogs**: the paths, disk usage and backups tables share the users list's
+  look (framed block, small uppercase headers, icon buttons).
+
+**A fifth pass**
+
+- **One search bar**: Sagas, Upcoming releases and now **Saves** (by game, and for an
+  admin by whose) share the same full-width search bar.
+- **Saga cards keep one size**: one row of covers (the rest as "+N"), cards of a row as
+  tall as each other, "View the saga" at the bottom - a saga with many games no longer
+  stretches its card.
+- **No sub-saga twice**: a series whose every game is already in a bigger saga
+  (Pokémon Legends in the Pokémon main series, Minecraft: Story Mode in Minecraft) isn't
+  listed apart.
+- **A saga's bar** spans its whole card.
+- **Statistics**: the note under the downloads is gone.
+
+**A sixth pass**
+
+- **Nintendo Switch 2 games** (TitleDB lists them, with title ids starting 04): a
+  "Switch 2" mark on their cards (Library, Sagas, Upcoming), a **Both / Switch / Switch 2**
+  selector with counts above the Library's pills (`apps(console:)` in GraphQL), and the
+  setting **I have a Nintendo Switch 2** (Settings > Library, off by default): off, the
+  Switch 2 games you don't have stay out of Sagas and Upcoming releases; the ones you
+  have always show.
+- **Sagas take the games named after them**: Wikidata links "Football Manager Touch 2018"
+  to Football Manager but not "Football Manager 2019 Touch"; a game with no series of
+  its own now joins the series of two words or more its name starts with (one-word
+  series like "Mario" never take games by name).
+- **Sagas: an "All" tab**, first and the default, beside "To complete" and "Complete".
+- **Save vault**: a line under "Backups kept per game", and a shorter one under the games
+  limit.
+
+**A seventh pass**
+
+- **Sagas leave out Cloud versions and demos** ("Resident Evil Village Cloud", "... Online
+  Tournament Demo", "Pre-launch" events) - they aren't games of their own.
+- **Dashboard order**: Recently added across the whole width; below, Uploaded saves and
+  the latest downloads.
+- **Card sizes are fixed**: the Cards view shows at most four a row (two on a phone,
+  three on a tablet) and the Compact view one size; the size slider is gone.
+- **Page sizes fill whole rows**: Vista offers 10 to 100 - each rounded to whole rows of
+  the cards the window shows now (12, 20, 32 ... with four a row) - instead of fixed
+  values and a custom field, and follows when the window is resized, so the last row is
+  never left with one card. The List view takes 10, 20 ... 100.
+- **Upcoming releases: "Just released"**: the games out in the last 30 days, newest
+  first, in one row that scrolls sideways, each with its day over the cover. Upcoming
+  releases now always shows Nintendo Switch and Switch 2 games (the latter marked);
+  "I have a Nintendo Switch 2" only concerns Sagas.
+- **A cleaner Filters menu**: titled groups (Ownership, Updates, DLC; Files in the List
+  view) of chips, and "Clear filters" at its top.
+
+**Languages**
+
+- **The web UI in 11 languages**: to English and Spanish it adds French, German,
+  Italian, Portuguese (Brazil), Dutch, Russian, Japanese, Korean and Simplified Chinese,
+  each listed by its own name. The new ones live in `app/locales/<code>.json`, merged
+  into the same `t()` at start; a missing string falls back to English, and a test
+  checks every file keeps the English keys, `{placeholders}` and HTML tags. They are
+  machine translations, worth a native speaker's review.
+- **Automatic (browser language)** is the new default: without a choice, the page
+  follows the browser's `Accept-Language` (`pt-BR` → Portuguese, an unknown one →
+  English), and `<html lang>` says which. Notifications can be sent in any of them.
+
+**Docs**
+
+- Install.md has a step-by-step guide for public registration: the public address, SMTP
+  with Gmail, Outlook and other providers, and Google sign-in in the Google Cloud console.
+  README links it, and DOCKERHUB.md was rewritten with every feature, the environment
+  variables, volumes and ports, and the same quick setup.
+
 ## [6.2.5.49]
 
 A round of improvements: polish on the admin pages, things for each user (their console,

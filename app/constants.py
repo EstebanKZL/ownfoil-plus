@@ -58,11 +58,17 @@ DEFAULT_SETTINGS = {
                 "depth": "hash",
             },
             "delete_older_updates": False,
+            # "I have a Switch 2": its games (title ids 04...) show as missing in Sagas and
+            # Upcoming releases too. Off, only the ones you have show.
+            "switch2": False,
             "organizer": {
                 "enabled": False,
                 "remove_empty_folders": False,
                 "windows_compatible": False,
                 "clean_names": False,
+                # Take a game's NFO, SFV and proof files along when it is moved
+                # (library.move_companion_files).
+                "move_companions": True,
                 "show_background_image": True,
                 "name_region": "",
                 "name_language": "",
@@ -120,6 +126,12 @@ DEFAULT_SETTINGS = {
         # this install - set unconditionally on the first load so a deliberate,
         # later rename back to "Ownfoil" isn't wiped out again on every restart.
         "legacy_shop_name_migrated": False,
+        # The last catalogue revision the library ran with (library.CATALOGUE_REVISION):
+        # the first pass of a new one doesn't announce what it adds as new.
+        "catalogue_revision": 0,
+        # Whether tasks.backfill_required_firmware already read the firmware each owned
+        # base game / update needs from files identified before that was stored.
+        "required_firmware_backfilled": False,
     },
     "services": {
         "discovery": {
@@ -181,6 +193,12 @@ DEFAULT_SETTINGS = {
     "vault": {
         "enabled": False,
         "keep": 0,
+        # Different games each user may keep saves of (vault.game_limit_reached); 0: all.
+        "max_games": 0,
+        # Who may keep saves there (vault.may_use): admins, and users who aren't admins
+        # (with the Backup permission).
+        "admins": True,
+        "users": True,
     },
 }
 
@@ -190,7 +208,12 @@ ALLOWED_EXTENSIONS = [
     'nsz',
     'xci',
     'xcz',
+    # NUP: decrypted games (containers/nup.py). Read without keys; kept out of the
+    # console shops, which cannot install them (db.get_filtered_files).
+    'nup',
 ]
+# Formats the shop clients (Tinfoil, Sphaira, CyberFoil) can install.
+SHOP_EXTENSIONS = ('nsp', 'nsz', 'xci', 'xcz')
 COMPRESS_EXT = {'nsp': 'nsz', 'xci': 'xcz'}
 DECOMPRESS_EXT = {v: k for k, v in COMPRESS_EXT.items()}
 

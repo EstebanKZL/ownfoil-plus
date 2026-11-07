@@ -107,8 +107,12 @@ def test_japanese_names_show_for_a_japanese_interface(env):
 def test_sagas_list_the_ones_you_have_a_game_of(env):
     with env.app_context():
         sagas = discover.sagas(TODAY, "en", owned_ids={BOTW})
-    assert sagas == [{"id": "Q12395", "name": "The Legend of Zelda", "owned": 1, "total": 2,
-                      "upcoming": 1, "icons": sagas[0]["icons"]}]
+    assert len(sagas) == 1
+    saga = sagas[0]
+    assert {k: saga[k] for k in ("id", "name", "owned", "total", "upcoming")} == {
+        "id": "Q12395", "name": "The Legend of Zelda", "owned": 1, "total": 2, "upcoming": 1}
+    # The card's strip: every game out so far, yours first in colour (not the one to come).
+    assert [(g["title_id"], g["owned"]) for g in saga["games"]] == [(BOTW, True), (TOTK, False)]
 
 
 def test_a_saga_shows_owned_missing_and_upcoming_games(env):
@@ -216,3 +220,20 @@ def test_phones_show_two_games_per_row():
     """Seen at 375px: one game per row, each cover the width of the screen."""
     css = open(os.path.join(ROOT, "app", "static", "style.css"), encoding="utf-8").read()
     assert re.search(r"@media \(max-width: 575\.98px\) \{\s*\.release-grid \{[^}]*repeat\(2, minmax\(0, 1fr\)\)", css)
+
+
+def test_just_released_lists_the_last_month_newest_first(env):
+    """'Recién lanzados': out in the last 30 days, newest first; older games and the
+    ones still to come stay out."""
+    with env.app_context():
+        today = datetime.date(2023, 5, 20)       # TOTK came out on the 12th
+        data = discover.upcoming(today, "en", owned_ids=set(), wishlist_ids=set())
+    assert [g["title_id"] for g in data["recent"]] == [TOTK]
+    assert data["recent"][0]["switch2"] is False and "wishlisted" in data["recent"][0]
+
+
+def test_the_upcoming_page_has_the_just_released_row():
+    html = open(os.path.join(os.path.dirname(__file__), "..", "app", "templates", "upcoming.html"), encoding="utf-8").read()
+    assert 'id="upcomingRecentStrip"' in html and "t('upcoming.recent')" in html
+    js = open(os.path.join(os.path.dirname(__file__), "..", "app", "static", "js", "upcoming.js"), encoding="utf-8").read()
+    assert "function recentCard(" in js and "release-card__day" in js

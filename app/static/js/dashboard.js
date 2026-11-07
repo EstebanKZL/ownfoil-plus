@@ -106,41 +106,34 @@ function renderStorage(d) {
     });
 }
 
-/** Recent items: icon, name, detail, time - a row with a title id leads to its game
- *  page (title-list.js). Icons arrive afterwards, in one request for every visible game. */
-function renderList(id, items, render) {
+const clientName = c => D.clients[c] || c;
+const clientGlyph = c => (c === 'web' ? 'bi-globe' : c === 'other' ? 'bi-question-circle' : 'bi-nintendo-switch');
+const stamp = iso => new Date(iso).toLocaleString([], {dateStyle: 'short', timeStyle: 'short'});
+
+/** A list in the Stats look (title-list.js rows with chips): `rows` as titleListRow takes
+ *  them, plus an optional action link appended to each row. */
+function renderCardList(id, rows) {
     const list = document.getElementById(id);
     list.innerHTML = '';
-    if (!items.length) {
+    if (!rows.length) {
         list.append(titleListEmpty(D.nothingYet));
-        return;
     }
-    items.forEach(item => {
-        const [main, sub, side, titleId] = render(item);
-        list.append(titleListRow({main, sub, side, titleId}));
+    rows.forEach(({action, ...row}) => {
+        const li = titleListRow(row);
+        if (action) li.querySelector('.dash-list__row').append(action);
+        list.append(li);
     });
+    limitVisibleRows(document.getElementById(id + 'Scroll'), 'li', 10);
 }
 
-function renderStatus(d) {
-    // (tone, text, link): green fine, amber worth a look, muted off.
-    const badges = [
-        [d.maintenance.enabled ? 'ok' : '',
-         d.maintenance.enabled && d.maintenance.next_run ? fill(D.maintOn, {when: when(d.maintenance.next_run)}) : D.maintOff,
-         '/admin/settings#Maintenance'],
-        [d.maintenance.last_backup ? 'ok' : 'wait',
-         d.maintenance.last_backup ? fill(D.lastBackup, {when: when(d.maintenance.last_backup)}) : D.noBackup,
-         '/admin/settings#Maintenance'],
-        [d.notifications_enabled ? 'ok' : '', d.notifications_enabled ? D.notifOn : D.notifOff,
-         '/admin/settings#Notifications'],
-        [d.shop_public ? 'wait' : 'ok', d.shop_public ? D.shopPublic : D.shopPrivate, '/admin/settings'],
-    ];
-    const box = document.getElementById('dashStatus');
-    box.innerHTML = '';
-    badges.forEach(([tone, text, href]) => {
-        const a = el('a', 'status-badge dash-status' + (tone ? ` status-badge--${tone}` : ''), text);
-        a.href = href;
-        box.append(a);
-    });
+/** An admin's download of one uploaded save (any user's). */
+function saveDownloadLink(s) {
+    const a = el('a', 'btn btn-sm icon-btn dash-list__action');
+    a.href = '/api/admin/saves/download?' + new URLSearchParams({user: s.user_id, path: s.path});
+    a.title = D.downloadSave;
+    a.setAttribute('aria-label', `${D.downloadSave}: ${s.name}`);
+    a.innerHTML = '<i class="bi bi-download" aria-hidden="true"></i>';
+    return a;
 }
 
 function loadDashboard() {
@@ -150,17 +143,23 @@ function loadDashboard() {
             renderAlerts(d);
             renderTiles(d);
             renderStorage(d);
-            renderList('dashRecentFiles', d.recent_files, f => [
-                f.name || f.filename,
-                [D.types[f.app_type] || f.app_type, f.version && f.version !== '0' ? 'v' + f.version : '', formatBytes(f.size)]
-                    .filter(Boolean).join(' · '),
-                when(f.added_at), f.title_id]);
-            renderList('dashRecentDownloads', d.recent_downloads, e => [
-                e.name, [e.user || D.anonymous, D.clients[e.client] || e.client].join(' · '), when(e.downloaded_at),
-                e.title_id]);
-            renderStatus(d);
-            limitVisibleRows(document.getElementById('dashRecentFiles'), 'li', 10);
-            limitVisibleRows(document.getElementById('dashRecentDownloads'), 'li', 10);
+            renderCardList('dashRecentDownloads', d.recent_downloads.map(r => ({
+                main: r.name || r.title_id || r.filename,
+                sub: [r.filename, r.size ? formatBytes(r.size) : null, r.address].filter(Boolean).join(' · '),
+                chips: [{text: r.user || D.anonymous, avatarUrl: r.user_avatar || undefined, glyph: 'bi-person'},
+                        {text: clientName(r.client), glyph: clientGlyph(r.client)}],
+                side: stamp(r.downloaded_at), titleId: r.title_id})));
+            renderCardList('dashRecentSaves', (d.recent_saves || []).map(s => ({
+                main: s.name, sub: [s.file, s.size ? formatBytes(s.size) : null].filter(Boolean).join(' · '),
+                iconUrl: s.icon_url || undefined, glyph: 'bi-safe',
+                chips: [{text: s.user, avatarUrl: s.user_avatar || undefined, glyph: 'bi-person'}],
+                side: stamp(s.time), action: saveDownloadLink(s)})));
+            renderCardList('dashRecentFiles', d.recent_files.map(f => ({
+                main: f.name || f.filename, sub: f.filename,
+                chips: [{text: D.types[f.app_type] || f.app_type || '?', glyph: 'bi-box'},
+                        ...(f.version && f.version !== '0' ? [{text: 'v' + f.version, glyph: 'bi-arrow-up-circle'}] : []),
+                        {text: formatBytes(f.size), glyph: 'bi-hdd'}],
+                side: f.added_at ? stamp(f.added_at) : '', titleId: f.title_id})));
             fillTitleIcons(document);
         })
         .catch(err => console.error('Could not load the dashboard', err));

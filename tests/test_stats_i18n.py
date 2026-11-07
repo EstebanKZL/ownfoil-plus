@@ -260,55 +260,14 @@ def test_both_clean_and_delete_actions_are_always_available_no_settings_toggle(c
     assert "deleteTitleRecord" in html
 
 
-def test_duplicate_files_ui_is_always_visible_not_only_when_a_duplicate_exists(client):
-    """The section header, hint, and controls are discoverable at all times - the
-    feature exists whether or not there happens to be a duplicate right now. Only the
-    content area (an empty-state message vs. the actual cards) toggles at runtime,
-    handled entirely in JS since the server doesn't know at render time whether any
-    duplicates exist."""
+def test_duplicate_files_are_handled_on_the_files_page_not_in_stats(client):
+    """Stats only reports: duplicates are resolved under Files (its Duplicates tab)."""
     html = _page_and_js(client)
-
-    assert 'id="duplicatesSection"' in html
-    section_tag = [line for line in html.splitlines() if 'id="duplicatesSection"' in line][0]
-    assert "d-none" not in section_tag
-    assert "Duplicate files" in html
-    assert "const DUPLICATE_GROUPS_QUERY" in html
-    assert "const RESOLVE_DUPLICATE_MUTATION" in html
-    assert "const RESOLVE_BY_SIZE_MUTATION" in html
-    assert 'id="resolveBySizeBtn"' in html
-    assert "Resolve all by size" in html
-    assert 'id="bulkCompressionPreferenceSelect"' in html
-    assert "Prefer compressed (nsz/xcz)" in html
-    assert "Prefer uncompressed (nsp/xci)" in html
-
-
-def test_duplicate_files_ui_is_translated_in_spanish(client):
-    client.set_cookie("ownfoil_lang", "es")
-    html = _page_and_js(client)
-
-    assert "Archivos duplicados" in html
-    assert "Conservar este" in html
-    assert "Resolver todo por tamaño" in html  # static HTML, rendered as literal UTF-8
-    # This one lives inside a JS string literal (I18N.duplicateKeepLargest), rendered
-    # through |tojson - accented characters there appear \uXXXX-escaped in the raw
-    # HTML, which a browser decodes normally at parse time (see the equivalent note
-    # for the verification-status labels above).
-    assert "Conservar el m\\u00e1s grande" in html
-
-
-def test_stats_script_still_one_block_with_the_duplicates_ui_added(client):
-    """Same regression class as the earlier script-split bug: this round added a
-    second, much larger chunk of JS (loadDuplicateGroups, resolveDuplicate, the two
-    card-building helpers) to the same script tag."""
-    html = _page_and_js(client)
+    assert 'id="duplicatesSection"' not in html
+    assert "loadDuplicateGroups" not in html
 
     page = client.get("/admin/stats").get_data(as_text=True)
     script_blocks = re.findall(r"<script>(.*?)</script>", page, re.DOTALL)
-    assert len(script_blocks) == 1, (
-        f"Expected exactly one inline <script>...</script> block, found {len(script_blocks)}")
-    body = client.get("/static/js/stats.js").get_data(as_text=True)  # the logic, since stage 4
-    assert "function loadDuplicateGroups" in body
-    assert "function resolveDuplicate" in body
-    assert "function buildDuplicateGroupCard" in body
-    assert "function loadStats" in body  # earlier content of the same block, untouched
-    assert "resolveBySizeBtn" in body
+    assert len(script_blocks) == 1
+    body = client.get("/static/js/stats.js").get_data(as_text=True)
+    assert "function loadStats" in body

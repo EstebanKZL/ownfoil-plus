@@ -8,6 +8,12 @@
         <span class="page-head__icon"><i class="bi bi-person-circle" aria-hidden="true"></i></span>
         <h1 class="page-head__title">{{ t('account.title') }}</h1>
         <p class="page-head__desc">{{ t('account.desc', user=current_user.user) }}</p>
+        {# Saves the whole page (firmware, background, ...): in the page header, in view
+           without scrolling, and tied to the form by its form attribute. #}
+        <div class="page-head__actions account-actions">
+            <span id="accountFeedback" class="small" role="status"></span>
+            <button type="submit" form="accountForm" class="btn btn-primary" id="accountSave">{{ t('account.save') }}</button>
+        </div>
     </header>
 
     <form id="accountForm" class="admin-grid" novalidate>
@@ -110,10 +116,6 @@
             <div class="small mt-1" id="accountPasswordFeedback" role="status"></div>
         </section>
 
-        <div class="account-actions">
-            <button type="submit" class="btn btn-primary" id="accountSave">{{ t('account.save') }}</button>
-            <span id="accountFeedback" class="small" role="status"></span>
-        </div>
     </form>
 </div>
 

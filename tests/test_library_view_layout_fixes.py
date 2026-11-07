@@ -41,30 +41,18 @@ def client(shop_app):
 
 # --- 1. Filter dropdown rows should only highlight the hovered button --------------
 
-def test_every_filter_groups_wrapper_div_is_tagged_filter_group_item(client):
+def test_every_filter_group_is_a_titled_row_of_chips(client):
     html = client.get("/").get_data(as_text=True)
-    # Ownership, Update and Completion filters (inside #filterDropdownBtn's menu)...
-    for aria_label in ("Ownership filter", "Update filter", "Completion filter"):
-        # the wrapping dropdown-item sits directly above the aria-labelled btn-group
-        assert re.search(
-            r'<div class="dropdown-item filter-group-item">\s*<div class="btn-group[^"]*" role="group" aria-label="%s"'
-            % re.escape(aria_label),
-            html,
-        ), f"filter-group-item wrapper not found above the {aria_label!r} btn-group"
-    # ...and the library health filter (#listHealthDropdownBtn's menu).
-    assert re.search(
-        r'<div class="dropdown-item filter-group-item">\s*<div class="btn-group-vertical w-100" role="group" aria-label="Library health filter"',
-        html,
-    )
+    for aria_label in ("Ownership filter", "Update filter", "Completion filter", "Library health filter"):
+        assert re.search(r'<div class="filter-chips" role="group" aria-label="%s"' % re.escape(aria_label), html), aria_label
+    assert html.count('<fieldset class="filter-group">') == 4
+    assert 'id="filtersClearBtn"' in html
 
 
-def test_the_items_per_page_custom_input_row_is_not_tagged(client):
-    """Only the radio-button filter rows get the class - the custom items-per-page
-    input is a real interactive dropdown row and should keep Bootstrap's normal
-    hover/focus feedback."""
+def test_the_page_sizes_are_buttons_not_a_custom_field(client):
     html = client.get("/").get_data(as_text=True)
-    # Whitespace-agnostic: the row moved into the View menu in stage 2.
-    assert re.search(r'<div class="dropdown-item">\s*<input type="number" id="customItemsPerPage"', html)
+    assert '<div class="page-size-grid" id="pageSizeOptions"' in html
+    assert 'type="number" id="customItemsPerPage"' not in html
 
 
 def test_filter_group_item_hover_and_focus_have_no_background(client):

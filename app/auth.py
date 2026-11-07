@@ -450,8 +450,9 @@ def signup_post():
         shop_access = True
         backup_access = True
     else:
-        shop_access = data['shop_access']
-        backup_access = data['backup_access']
+        # A new user has the shop and backups unless the form says otherwise.
+        shop_access = bool(data.get('shop_access', True))
+        backup_access = bool(data.get('backup_access', True))
 
     # Validate username first
     is_valid, error_message = validate_username(username)

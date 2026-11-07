@@ -299,6 +299,9 @@ class Apps(db.Model):
     owned = db.Column(db.Boolean, default=False)
     release_date = db.Column(db.String)
     display_version = db.Column(db.String)
+    # The console firmware this base game or update needs, read from its own CNMT
+    # (RequiredSystemVersion, a u32). Fills in where titledb's cnmts.json has none.
+    required_system_version = db.Column(db.Integer)
 
     title = db.relationship('Titles', backref=db.backref('apps', lazy=True, cascade="all, delete-orphan"))
     files = db.relationship('Files', secondary=app_files, backref=db.backref('apps', lazy='select'))
@@ -391,7 +394,8 @@ class DownloadEvent(db.Model):
     """One row per counted download (same 60s per file+client throttle as
     Files.download_count, so a console probing with Range requests or resuming isn't
     logged twice). The file's name and title are copied in, so the history still reads
-    right after the file is deleted or renamed. Kept for DOWNLOAD_HISTORY_DAYS."""
+    right after the file is deleted or renamed. Kept for good: only Stats > Downloads >
+    Clear empties it."""
     __tablename__ = 'download_events'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -408,6 +412,8 @@ class DownloadEvent(db.Model):
                               default=datetime.datetime.utcnow)
 
 
+# The longest period Stats > Downloads charts day by day (the history itself is kept
+# for good).
 DOWNLOAD_HISTORY_DAYS = 365
 
 
@@ -588,11 +594,14 @@ def get_all_apps():
 def get_filtered_files(content_filter=None) -> list:
     """Get files from database with optional content type filtering."""
 
+    from constants import SHOP_EXTENSIONS
+    # Consoles can't install a NUP (decrypted game): only the formats they take.
+    shop_formats = db.func.lower(Files.extension).in_(SHOP_EXTENSIONS)
     if not content_filter:
         # No filter: get all files regardless of identification status
-        query = Files.query
+        query = Files.query.filter(shop_formats)
     else:
-        query = Files.query.filter_by(identified=True)
+        query = Files.query.filter_by(identified=True).filter(shop_formats)
 
         if content_filter == 'multi':
             query = query.filter_by(multicontent=True)
@@ -1199,7 +1208,7 @@ def increment_download_count(filepath):
         return False
 
 def record_download(filepath, host, user=None, client='other'):
-    """Append a DownloadEvent for this file, and drop events past the retention window.
+    """Append a DownloadEvent for this file. The history is permanent: nothing is pruned.
     Never raises: the history is a nice-to-have, the download itself must go through."""
     try:
         file_entry = Files.query.filter_by(filepath=filepath).first()
@@ -1213,8 +1222,6 @@ def record_download(filepath, host, user=None, client='other'):
             app_version=first_app.app_version if first_app and not file_entry.multicontent else None,
             user=user, client=client, address=host,
         ))
-        cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=DOWNLOAD_HISTORY_DAYS)
-        DownloadEvent.query.filter(DownloadEvent.downloaded_at < cutoff).delete()
         db.session.commit()
     except Exception as e:
         db.session.rollback()

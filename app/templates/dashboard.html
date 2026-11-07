@@ -28,27 +28,31 @@
     </section>
     {% include '_upload_modal.html' %}
 
-    <div class="stat-sections">
-        <section class="mb-4">
-            <div class="d-flex justify-content-between align-items-baseline mb-2">
-                <h4 class="mb-0">{{ t('dash.recent_files') }}</h4>
-                <a class="small" href="/admin/files">{{ t('dash.see_all') }}</a>
+    {# The recently added files across the whole width; below, the uploaded saves and the
+       latest downloads. Each shows ten rows, the rest by scrolling. #}
+    <div class="dl-card mb-3">
+        <div class="dl-card__head">
+            <div class="dl-card__title" role="heading" aria-level="4"><i class="bi bi-plus-circle" aria-hidden="true"></i> {{ t('dash.recent_files') }}</div>
+            <a class="small" href="/admin/files">{{ t('dash.see_all') }}</a>
+        </div>
+        <div class="dl-scroll" id="dashRecentFilesScroll"><ul class="dash-list dl-list dl-list--recent" id="dashRecentFiles"></ul></div>
+    </div>
+    <div class="dl-grid dl-grid--even mb-4">
+        <div class="dl-card">
+            <div class="dl-card__head">
+                <div class="dl-card__title" role="heading" aria-level="4"><i class="bi bi-safe" aria-hidden="true"></i> {{ t('dash.recent_saves') }}</div>
+                <a class="small" href="/saves">{{ t('dash.see_all') }}</a>
             </div>
-            <ul class="dash-list" id="dashRecentFiles"></ul>
-        </section>
-        <section class="mb-4">
-            <div class="d-flex justify-content-between align-items-baseline mb-2">
-                <h4 class="mb-0">{{ t('dash.recent_downloads') }}</h4>
+            <div class="dl-scroll" id="dashRecentSavesScroll"><ul class="dash-list dl-list dl-list--recent" id="dashRecentSaves"></ul></div>
+        </div>
+        <div class="dl-card">
+            <div class="dl-card__head">
+                <div class="dl-card__title" role="heading" aria-level="4"><i class="bi bi-clock-history" aria-hidden="true"></i> {{ t('dl.recent') }}</div>
                 <a class="small" href="/admin/stats#downloadsSection">{{ t('dash.see_all') }}</a>
             </div>
-            <ul class="dash-list" id="dashRecentDownloads"></ul>
-        </section>
+            <div class="dl-scroll" id="dashRecentDownloadsScroll"><ul class="dash-list dl-list dl-list--recent" id="dashRecentDownloads"></ul></div>
+        </div>
     </div>
-
-    <section class="mb-4">
-        <h4 class="mb-3">{{ t('dash.status') }}</h4>
-        <div class="d-flex flex-wrap gap-2" id="dashStatus"></div>
-    </section>
 </div>
 {% endblock %}
 
@@ -78,14 +82,7 @@
         offline: {{ t('dash.offline') | tojson }},
         nothingYet: {{ t('dash.nothing_yet') | tojson }},
         anonymous: {{ t('dl.anonymous') | tojson }},
-        maintOn: {{ t('dash.badge.maint_on') | tojson }},
-        maintOff: {{ t('dash.badge.maint_off') | tojson }},
-        lastBackup: {{ t('dash.badge.last_backup') | tojson }},
-        noBackup: {{ t('dash.badge.no_backup') | tojson }},
-        notifOn: {{ t('dash.badge.notif_on') | tojson }},
-        notifOff: {{ t('dash.badge.notif_off') | tojson }},
-        shopPublic: {{ t('dash.badge.shop_public') | tojson }},
-        shopPrivate: {{ t('dash.badge.shop_private') | tojson }},
+        downloadSave: {{ t('saves.download') | tojson }},
         types: {BASE: 'Base', UPDATE: 'Update', DLC: 'DLC', MULTI: 'Multi'},
         clients: {web: 'Web', tinfoil: 'Tinfoil', sphaira: 'Sphaira', cyberfoil: 'CyberFoil'},
     };

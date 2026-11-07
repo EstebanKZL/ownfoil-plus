@@ -442,6 +442,7 @@ def set_notification_settings(data):
     defaults = DEFAULT_SETTINGS['notifications']
     with settings_transaction() as settings:
         current = settings['notifications']
+        old_ntfy = dict(current.get('ntfy') or {})
         for key, default in defaults.items():
             if key not in data:
                 continue
@@ -454,6 +455,11 @@ def set_notification_settings(data):
                 current[key] = bool(data[key])
             else:
                 current[key] = str(data[key] or '').strip()
+        # A saved ntfy token is never handed to another server: when only the address
+        # changed, the token has to be written again.
+        ntfy = current.get('ntfy') or {}
+        if old_ntfy.get('token') and ntfy.get('server') != old_ntfy.get('server')                 and ntfy.get('token') == old_ntfy.get('token'):
+            ntfy['token'] = ''
 
 def set_maintenance_settings(data):
     """Already-validated values (see the /api/settings/maintenance route)."""
@@ -477,6 +483,26 @@ def set_registration_settings(data):
     """Already-validated values (see the /api/settings/registration route)."""
     with settings_transaction() as settings:
         settings.setdefault('registration', {}).update(data)
+
+def mark_catalogue_revision(revision):
+    """True the first time the library runs with this catalogue revision (see
+    library.add_missing_apps_to_db), and records it."""
+    with settings_transaction() as settings:
+        server = settings.setdefault('server', {})
+        if int(server.get('catalogue_revision') or 0) >= revision:
+            return False
+        server['catalogue_revision'] = revision
+        return True
+
+def mark_once(key):
+    """True the first time this one-time job (a server setting key) is claimed, and
+    records it so it never runs again - e.g. tasks.backfill_required_firmware."""
+    with settings_transaction() as settings:
+        server = settings.setdefault('server', {})
+        if server.get(key):
+            return False
+        server[key] = True
+        return True
 
 def set_service_enabled(path, enabled):
     """One service's on/off switch (app.py's SERVICES), e.g. ('shop', 'enabled')."""

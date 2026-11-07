@@ -5,46 +5,62 @@
 [![Docker Image Size](https://img.shields.io/docker/image-size/estebankzl/ownfoil-plus?sort=date&arch=amd64&color=fb8500)](https://hub.docker.com/r/estebankzl/ownfoil-plus/tags)
 [![Docker Pulls](https://img.shields.io/docker/pulls/estebankzl/ownfoil-plus?color=06b6d4)](https://hub.docker.com/r/estebankzl/ownfoil-plus)
 ![Platforms](https://img.shields.io/badge/platforms-amd64%20%7C%20arm64%2Fv8%20%7C%20arm%2Fv7%20%7C%20arm%2Fv6-8A2BE2)
-![Web UI language](https://img.shields.io/badge/Web%20UI-%F0%9F%87%AC%F0%9F%87%A7%20English%20%7C%20%F0%9F%87%AA%F0%9F%87%B8%20Espa%C3%B1ol-ffc107)
+![Web UI languages](https://img.shields.io/badge/Web%20UI-11%20languages-ffc107)
 
-Ownfoil-Plus turns a folder of game files into a fully organized, self-verified, self-hosted Nintendo Switch shop: it figures out what you have, flags what's missing or broken, keeps your files tidy, and serves everything to your console in your language - all from one web interface, no manual bookkeeping required.
+Ownfoil-Plus turns a folder of game files into a fully organized, self-verified, self-hosted Nintendo Switch library and shop: it figures out what you have, flags what's missing or broken, keeps your files tidy, and serves everything to your console and your browser - in your language, from one web interface, with no manual bookkeeping.
 
-It's a fork of [Ownfoil](https://github.com/a1ex4/ownfoil) by [@a1ex4](https://github.com/a1ex4), built for people who want the convenience of a managed shop without babysitting it: a bilingual interface instead of an English-only one, an admin toolkit deep enough to actually fix problems when they come up instead of just reporting them, and a Docker image that keeps itself patched instead of quietly accumulating known vulnerabilities between releases.
+It's a fork of [Ownfoil](https://github.com/a1ex4/ownfoil) by [@a1ex4](https://github.com/a1ex4), built for people who want a managed shop without babysitting it: an interface in 11 languages, an admin toolkit deep enough to fix problems instead of just reporting them, accounts for family and friends, and a Docker image that keeps itself patched.
 
 ## Why this image
 
-- **Rebuilt on a schedule, not just on release.** Every image is rebuilt weekly, pulling fresh base-image and OS security patches even on weeks with no code changes - a known CVE in the base layer doesn't just sit there published until someone happens to push a new feature.
-- **Built, not just copied.** Fixes here are verified against the real upstream source and real client behavior (Sphaira's actual GraphQL queries, actual access logs) before they ship, with an automated test suite guarding every change - see [CHANGELOG.md](https://github.com/EstebanKZL/ownfoil-plus/blob/main/CHANGELOG.md) for the specifics of every version.
-- **Multi-arch from day one**: `amd64`, `arm64/v8`, `arm/v7`, and `arm/v6` - runs the same on a NAS, a Raspberry Pi, or a full server.
+- **Rebuilt on a schedule, not just on release.** The `latest` tag is rebuilt every week from the newest release, pulling fresh base-image and OS security patches even on weeks with no code changes.
+- **Scanned before it ships.** Every change runs a full test suite (2,000+ tests), `pip-audit` on the Python dependencies and a Trivy scan of the built image that fails on fixable critical or high vulnerabilities. pip itself is removed from the final image.
+- **Multi-arch from day one**: `amd64`, `arm64/v8`, `arm/v7` and `arm/v6` - the same image on a NAS, a Raspberry Pi or a full server.
+- **Works offline on your LAN.** Every script, style and font is served by the container itself: no CDN, no tracking, nothing loaded from the internet to show a page.
+- **Health check and metrics built in**: `/api/health` for Docker and uptime monitors, `/metrics` for Prometheus.
 
-## What it does
+## Features
 
-- **Organizes** your library automatically into consistent folders and filenames, using templates you control.
-- **Verifies** file integrity (signature and hash) and flags anything corrupt or repacked.
-- **Detects missing content**: which updates or DLC exist for a title you already own but haven't downloaded yet.
-- **Resolves duplicate files** safely - it never deletes anything blindly. It only acts automatically when verification gives a clear, unambiguous answer, or when you pick which copy to keep yourself.
-- **Serves your library** as a real shop to Sphaira, Tinfoil, and CyberFoil, with LAN discovery so a console can find it with no IP address to type in.
-- **Full bilingual web interface** (English/Spanish), with live task monitoring, a dedicated Files admin page, and settings backup/restore.
+### Your library, understood
+- **Identifies** every NSP, NSZ, XCI, XCZ and **NUP** file by its own metadata (or its name when keys are missing): game, updates and DLC, with the version shown on the console.
+- **NUP files** (decrypted games) are read without keys: one file with its game, updates and DLC, the parts it holds listed on the game page, checked file by file by SHA-256, never offered to consoles that can't install them and never treated as a duplicate of an NSP.
+- **What's missing**: updates and DLC that exist for the games you own, with counters for missing DLC, pending updates and games up to date.
+- **Firmware**: the firmware each game and update needs - from TitleDB, and from your own files when TitleDB doesn't know it - marked against each user's console firmware.
+- **Verifies** files (signature and hash) and tells valid, repacked, modified and corrupt files apart.
+- **Organizes** files into folders and names you choose with templates, taking each game's NFO, SFV and proof files along.
+- **Duplicates and old updates** cleaned up safely: automatically only when verification gives a clear answer, otherwise you choose.
+- **Compression** to NSZ/XCZ and back, a file watcher that picks up new files as they arrive, and a scheduled daily maintenance with database backups.
 
-## What this fork adds on top of upstream Ownfoil
+### Game pages and browsing
+- A **game page** for every title: banner, artwork, description, screenshots, facts (size, players, rating, languages, firmware), its updates and DLC, and a **Files** dialog to download any file - or all of them - straight from the browser.
+- **One card per game** with clear badges (up to date, missing DLC, needs newer firmware), grid and list views, filters and sorting.
+- **Upcoming releases** with a wishlist per user, and **Sagas** showing which games of each series you own, miss, or are still to come.
+- Editable game info that survives catalogue updates, and local artwork that keeps working when the image host is down.
+- **Ctrl+K search** across games and admin pages.
 
-- 🇬🇧🇪🇸 A full Spanish/English web interface, switch anytime from the navbar
-- A List view showing every game with its updates and DLC in one place, including what's still missing from your library
-- A filter to quickly find titles that are complete, incomplete, or have a corrupt or repack file anywhere in them
-- A richer game info panel - genre, players, rating, languages, file size, screenshots - opens from any view by clicking the cover
-- Editable game info: fix or fill in a title's name, developer, description, and more by hand, and it stays that way even after the catalogue updates
-- Local caching of game artwork, so covers and banners keep working even if the remote image host is unreachable
-- A dedicated Files admin page: search, filter, and per-file retry/verify/compress/decompress/delete actions, plus one-click cleanup for duplicates and outdated updates
-- Duplicate file detection and resolution, automatic (your choice of preferring the larger file, the compressed one, or a multi-content bundle) and manual, one at a time or in bulk
-- A live view of what's actually happening in the background - task progress and what each worker is doing, in real time
-- A direct "Verify library now" action, and other library management improvements
-- Settings export/import from the web UI
-- Per-user console firmware: games and updates that need a newer firmware are marked
-- Upcoming releases with a wishlist per user, and Sagas showing which games of each series you own, miss, or are still to come
-- A save vault: JKSV uploads each user's save backups over WebDAV into their own space, and a Saves page to download or delete them
-- Optional public registration with email verification, password reset, and Google sign-in
-- A Services panel to switch the store, registration, maintenance, notifications and the save vault on and off
-- Profile pictures: a gallery of avatars or your own image
+### Shop for your consoles
+- Serves the library as a shop to **Tinfoil**, **Sphaira** and **CyberFoil**, private (user and password) or public.
+- **LAN discovery**: Sphaira finds the shop on your network with no address to type in.
+- Per-user **download history**, kept for good: per day, per title, per user and per client.
+
+### Users and accounts
+- Users with separate permissions: shop, save backups, administration.
+- **Public registration** (optional) with email verification and password reset over **SMTP**, and **Sign in with Google**.
+- **My account**: profile picture (a gallery or your own image), console firmware, email and password.
+- **Save vault**: JKSV uploads each user's save backups over WebDAV into their own space, with a Saves page to download or delete them.
+
+### Administration
+- A **dashboard** with alerts, storage per library, recent files and downloads, and **resumable web uploads** (choose the library folder, with its free space).
+- A **Services** panel to switch the store, public shop, file watcher, registration, maintenance, notifications, the save vault and LAN discovery on and off.
+- A **Files admin page** to search, filter, retry, verify, compress, decompress or delete any file, and live **Tasks** with what each worker is doing.
+- **Statistics**: space by format and library, verification status, largest files, downloads.
+- **Notifications** to Discord, Telegram, ntfy or any webhook: new files, available updates, corrupt files, failed tasks, save backups.
+- Settings backup and restore, Prometheus metrics, and a health check.
+
+### Interface
+- 🌐 The whole interface in **11 languages**: English, Español, Français, Deutsch, Italiano, Português, Nederlands, Русский, 日本語, 한국어 and 简体中文 - automatic from the browser's language, or picked from the menu. Notifications too.
+- **Light and dark** themes and three color styles; each browser can pick its own.
+- Works on phones (a real mobile layout) and installs as an app (**PWA**).
 
 ## Quick start
 
@@ -53,6 +69,7 @@ docker run -d -p 8465:8465 \
    -v /path/to/your/library:/games \
    -v ./config:/app/config \
    -v ./data:/app/data \
+   -e USER_ADMIN_NAME=admin -e USER_ADMIN_PASSWORD=change-me \
    --name ownfoil-plus \
    estebankzl/ownfoil-plus
 ```
@@ -65,29 +82,80 @@ services:
     container_name: ownfoil-plus
     image: estebankzl/ownfoil-plus:latest
     environment:
-      # - TZ=America/Argentina/Buenos_Aires
-      # For write permission in the config directory
-      - PUID=1000
+      - PUID=1000                 # owner of the files written in /app/config
       - PGID=1000
-      # To create/update an admin user at startup
-      # - USER_ADMIN_NAME=admin
-      # - USER_ADMIN_PASSWORD=asdvnf!546
-      # To create/update a regular user at startup
-      # - USER_GUEST_NAME=guest
-      # - USER_GUEST_PASSWORD=oerze!@8981
-      # - ROOT_DIR=/games
-      # - SAVE_ENABLED=true
+      - USER_ADMIN_NAME=admin     # created/updated at every start
+      - USER_ADMIN_PASSWORD=change-me
+      # - USER_GUEST_NAME=guest   # a regular user with shop access
+      # - USER_GUEST_PASSWORD=change-me-too
+      # Account emails (registration, password reset):
+      # - SMTP_HOST=smtp.gmail.com
+      # - SMTP_PORT=587
+      # - SMTP_SECURITY=TLS
+      # - SMTP_USER=shop@example.com
+      # - SMTP_PASSWORD=your-app-password
+      # - SMTP_FROM=Ownfoil-Plus <shop@example.com>
+      # Sign in with Google:
+      # - GOOGLE_CLIENT_ID=1234567890-abc.apps.googleusercontent.com
+      # - GOOGLE_CLIENT_SECRET=GOCSPX-...
+      # - GOOGLE_REDIRECT_URI=https://shop.example.com/login/google/callback
     volumes:
       - /path/to/your/library:/games
       - ./config:/app/config
       - ./data:/app/data
     ports:
       - "8465:8465"
+    # LAN discovery needs host networking (remove "ports" above if you use it):
+    # network_mode: host
+    restart: unless-stopped
 ```
 
-Once it's running, open `http://<your-server-ip>:8465` in your browser to set up your library.
+Then open `http://<your-server-ip>:8465`, sign in, add your library folder and upload your console keys in **Settings**.
 
-Full installation and configuration guide: https://github.com/EstebanKZL/ownfoil-plus
+> **Create the admin account first.** Until one exists, anyone who can reach the web UI can change the configuration - set `USER_ADMIN_NAME` / `USER_ADMIN_PASSWORD`, or create it in Settings right away.
+
+## Volumes and ports
+
+| Path / port | What it is |
+| --- | --- |
+| `/games` | Your library. Mount as many folders as you like and add each one in Settings. |
+| `/app/config` | Settings, database, keys, backups, save vault. **Back this one up.** |
+| `/app/data` | TitleDB cache and artwork. |
+| `8465/tcp` | Web UI, shop, WebDAV for JKSV (`/dav/`). |
+| `8465/udp` | LAN discovery (needs `network_mode: host`). |
+
+## Environment variables
+
+| Variable | What it does |
+| --- | --- |
+| `PUID` / `PGID` | User and group that own the files in `/app/config`. Default `1000:1000`. |
+| `USER_ADMIN_NAME` / `USER_ADMIN_PASSWORD` | Creates (or updates) an admin at every start. |
+| `USER_GUEST_NAME` / `USER_GUEST_PASSWORD` | Creates (or updates) a regular user with shop access at every start. |
+| `OWNFOIL_SECRET_KEY` | Signs login cookies and email links. Generated and kept in `config/.secret_key` when unset. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURITY`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | Mail server for account emails. `SMTP_SECURITY`: `TLS` (587), `SSL` (465) or `NONE`. |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` | Sign in with Google (OAuth web client). |
+| `OWNFOIL_METRICS_TOKEN` | Bearer token for Prometheus to read `/metrics` without an admin password. |
+
+## Public registration: SMTP and Google in five minutes
+
+1. Set **Settings > Registration > Server's public address** to the address people use, e.g. `https://shop.example.com` (behind a reverse proxy with HTTPS).
+2. **Email**: with Gmail, turn on 2-step verification, create an [app password](https://myaccount.google.com/apppasswords) and use `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=587`, `SMTP_SECURITY=TLS`, `SMTP_USER` = your address, `SMTP_PASSWORD` = the app password, `SMTP_FROM` = your address. Outlook: `smtp.office365.com`, same port and security. Any provider's SMTP works.
+3. **Google**: in the [Google Cloud console](https://console.cloud.google.com/) set up the OAuth consent screen (External, scopes `openid email profile`), then create an **OAuth client ID** of type *Web application* with the authorized redirect URI `https://shop.example.com/login/google/callback`. Put its client ID and secret in `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`, and that same URI in `GOOGLE_REDIRECT_URI`.
+4. Recreate the container, check that Settings > Registration shows both as **Set up**, send a test email, and turn on **Allow public registration**.
+
+Full guide: [Public registration in Install.md](https://github.com/EstebanKZL/ownfoil-plus/blob/main/Install.md#public-registration-email-smtp-and-google-sign-in).
+
+## Tags
+
+- `latest` - the newest release, rebuilt weekly with fresh security patches.
+- `6.2.5.N` - a specific release (see [releases](https://github.com/EstebanKZL/ownfoil-plus/releases)).
+
+## Documentation
+
+- Installation, reverse proxy, HTTPS, Prometheus: [Install.md](https://github.com/EstebanKZL/ownfoil-plus/blob/main/Install.md)
+- Every page and setting: [Usage.md](https://github.com/EstebanKZL/ownfoil-plus/blob/main/Usage.md)
+- What changed in each version: [CHANGELOG.md](https://github.com/EstebanKZL/ownfoil-plus/blob/main/CHANGELOG.md)
+- Source code, issues and releases: https://github.com/EstebanKZL/ownfoil-plus
 
 ## About this project
 

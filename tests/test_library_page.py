@@ -116,7 +116,7 @@ def test_header_tiles_and_progress_replace_the_stats_line(client):
 def test_tiles_are_computed_from_the_stats_query():
     body = _function_body(_library_js(), "renderLibraryStats")
     assert "ownedTitles - stats.upToDateTitles" in body
-    assert "ownedTitles - stats.completeTitles" in body
+    assert "stats.missingDlc.toLocaleString()" in body
     # The size tile is admin-only: totalFiles reads 0 for anyone else.
     assert "if (stats.totalFiles)" in body
     # Pending updates and missing DLC tiles apply their filter.
@@ -126,7 +126,8 @@ def test_tiles_are_computed_from_the_stats_query():
 def test_library_header_strings_are_translated(client):
     import i18n
     for key in ("library.title", "library.subtitle", "library.tile_games", "library.tile_updates",
-                "library.tile_missing_dlc", "library.tile_size", "library.progress"):
+                "library.tile_dlc_missing",
+                "library.tile_size", "library.progress"):
         assert {"en", "es"} <= set(i18n.TRANSLATIONS[key]), key
 
 
@@ -137,7 +138,7 @@ def test_toolbar_holds_search_sort_views_and_both_menus(client):
     bar = html.split('class="toolbar library-toolbar', 1)[1].split('<!-- Pagination controls (top)', 1)[0]
     for needle in ('id="textFilter"', 'id="sortField"', 'id="sortDirection"', 'data-view="card"',
                    'data-view="icon"', 'data-view="list"', 'id="viewMenuBtn"', 'id="filtersMenuBtn"',
-                   'id="customItemsPerPage"', 'id="cardSizeRange"', 'id="filtersActiveDot"'):
+                   'id="pageSizeOptions"', 'id="filtersActiveDot"'):
         assert needle in bar, needle
     # Every filter group lives in the one Filters menu now; the list view's own group
     # is marked so the JS shows it only there.
@@ -158,7 +159,7 @@ def test_filters_dot_follows_the_view():
 # --- filter pills with exact counts ---------------------------------------------------
 
 CARD_PILL_FILTERS = (("all", {}), ("outdated", {"upToDate": False}),
-                     ("missingDlc", {"complete": False}), ("upToDate", {"upToDate": True}))
+                     ("missingDlc", {"complete": False}), ("upToDate", {"upToDate": True, "complete": True}))
 HEALTH = (("all", None), ("complete", "COMPLETE"), ("incomplete", "INCOMPLETE"),
           ("corrupt", "CORRUPT"), ("repack", "REPACK"))
 
@@ -226,7 +227,7 @@ def test_cards_use_the_surface_look_and_status_badges():
 def test_card_styles_use_tokens_only():
     css = _read("app", "static", "style.css")
     for selector in (".library-card", ".library-badges", ".library-card.is-missing .library-cover", ".library-card-meta",
-                     ".library-icon"):
+                     ".compact-card"):
         body = _rule(css, selector)
         assert body.strip(), selector
         assert not re.search(r"#[0-9a-fA-F]{3,8}\b", body), selector
@@ -285,7 +286,7 @@ def test_remembered_preferences_are_guarded_and_validated():
     uses = [l.strip() for l in js.splitlines() if "localStorage." in l]
     assert len(uses) == 3 and all(u.startswith("try {") for u in uses), uses
     assert "['card', 'icon', 'list'].includes(savedCurrentView)" in js
-    assert "savedItemsPerPage > 0" in js and "savedCardSize >= 1" in js
+    assert "savedTarget >= 10 && savedTarget <= 100 && savedTarget % 10 === 0" in js
     load = _function_body(js, "loadFiltersFromStorage")
     assert "try { filters = JSON.parse(" in load
 
@@ -333,11 +334,12 @@ def test_state_pills_and_tiles_only_cover_owned_games(library):
         assert data[alias]["total"] == grid["apps"]["total"], alias
 
 
-def test_custom_page_size_is_a_whole_number_within_the_server_limit(client):
+def test_page_sizes_fill_whole_rows_from_10_to_100(client):
     html = client.get("/").get_data(as_text=True)
-    assert re.search(r'id="customItemsPerPage"[^>]*min="1"[^>]*max="500"[^>]*step="1"', html)
+    assert 'id="customItemsPerPage"' not in html and 'id="cardSizeRange"' not in html
     js = _library_js()
-    assert "function clampPageSize" in js
-    body = _function_body(js, "clampPageSize")
-    assert "Math.floor" in body and "500" in body
-    assert "clampPageSize(" in _function_body(js, "loadPage") or "clampPageSize($('#customItemsPerPage')" in js
+    options = _function_body(js, "pageSizeOptions")
+    assert "target <= 100; target += 10" in options and "Math.ceil(target / columns) * columns" in options
+    assert "Math.floor(100 / columns) * columns" in options
+    # A resize that changes the columns refits the page size.
+    assert "refitPageSize(true)" in js and "window.addEventListener('resize'" in js

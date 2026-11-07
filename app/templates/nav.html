@@ -79,11 +79,12 @@
                 </li>
                 <li class="nav-item dropdown me-lg-2">
                     <a class="nav-link dropdown-toggle" href="#" id="languageDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        {{ t('language.' ~ current_language()) }}
+                        {{ LANGUAGE_NAMES[current_language()] }}
                     </a>
-                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="languageDropdown">
+                    <ul class="dropdown-menu dropdown-menu-end op-language-menu" aria-labelledby="languageDropdown">
+                        <li><a class="dropdown-item{% if chosen_language() == 'auto' %} active{% endif %}" href="/set-language/auto">{{ t('language.auto') }}</a></li>
                         {% for lang in SUPPORTED_LANGUAGES %}
-                        <li><a class="dropdown-item{% if current_language() == lang %} active{% endif %}" href="/set-language/{{ lang }}">{{ t('language.' ~ lang) }}</a></li>
+                        <li><a class="dropdown-item{% if chosen_language() == lang %} active{% endif %}" href="/set-language/{{ lang }}" lang="{{ lang }}">{{ LANGUAGE_NAMES[lang] }}</a></li>
                         {% endfor %}
                     </ul>
                 </li>
@@ -146,8 +147,9 @@
             {% include '_theme_choices.html' %}
             <li><hr class="dropdown-divider"></li>
             <li><h6 class="dropdown-header">{{ t('nav.language') }}</h6></li>
+            <li><a class="dropdown-item{% if chosen_language() == 'auto' %} active{% endif %}" href="/set-language/auto"><i class="bi bi-translate me-2"></i>{{ t('language.auto') }}</a></li>
             {% for lang in SUPPORTED_LANGUAGES %}
-            <li><a class="dropdown-item{% if current_language() == lang %} active{% endif %}" href="/set-language/{{ lang }}"><i class="bi bi-translate me-2"></i>{{ t('language.' ~ lang) }}</a></li>
+            <li><a class="dropdown-item{% if chosen_language() == lang %} active{% endif %}" href="/set-language/{{ lang }}" lang="{{ lang }}"><i class="bi bi-translate me-2"></i>{{ LANGUAGE_NAMES[lang] }}</a></li>
             {% endfor %}
             {% if current_user.is_authenticated %}
             <li><hr class="dropdown-divider"></li>
@@ -176,6 +178,7 @@
     (t('settings_nav.settings') ~ ' › ' ~ t('sections.titles'), '/admin/settings#Titles', 'bi-translate', 'keys claves region language idioma'),
     (t('settings_nav.settings') ~ ' › ' ~ t('sections.media'), '/admin/settings#Media', 'bi-image', 'media artworks artes icons iconos banners screenshots capturas'),
     (t('settings_nav.settings') ~ ' › ' ~ t('sections.shop'), '/admin/settings#Shop', 'bi-shop', 'shop tienda clients public privada host'),
+    (t('settings_nav.settings') ~ ' › ' ~ t('sections.network'), '/admin/settings#Network', 'bi-hdd-network', 'network red discovery descubrimiento lan udp docker firewall'),
     (t('settings_nav.settings') ~ ' › ' ~ t('sections.scheduler'), '/admin/settings#Scheduler', 'bi-clock', 'scheduler programacion programación scan escaneo interval intervalo'),
     (t('settings_nav.settings') ~ ' › ' ~ t('sections.maintenance'), '/admin/settings#Maintenance', 'bi-archive', 'maintenance mantenimiento backup schedule'),
     (t('settings_nav.settings') ~ ' › ' ~ t('sections.vault'), '/admin/settings#Vault', 'bi-safe', 'vault boveda bóveda saves partidas jksv webdav'),
@@ -184,7 +187,7 @@
     (t('settings_nav.settings') ~ ' › ' ~ t('sections.appearance'), '/admin/settings#Appearance', 'bi-palette', 'appearance apariencia theme tema style estilo colors colores'),
     (t('settings_nav.settings') ~ ' › ' ~ t('backup.heading'), '/admin/settings#Backup', 'bi-box-arrow-down', 'export import exportar importar'),
     (t('settings_nav.settings') ~ ' › ' ~ t('danger.heading'), '/admin/settings#Danger', 'bi-exclamation-triangle', 'reset danger peligro limpiar clean'),
-    (t('settings_nav.services'), '/admin/services', 'bi-broadcast', 'services servicios discovery descubrimiento'),
+    (t('settings_nav.services'), '/admin/services', 'bi-broadcast', 'services servicios discovery descubrimiento public publica watcher vigilancia'),
     (t('settings_nav.files'), '/admin/files', 'bi-file-earmark', 'files archivos'),
     (t('settings_nav.tasks'), '/admin/tasks', 'bi-list-task', 'tasks tareas workers'),
     (t('settings_nav.stats'), '/admin/stats', 'bi-bar-chart', 'stats estadisticas'),

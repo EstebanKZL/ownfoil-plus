@@ -48,6 +48,25 @@
     </div>
 </div>
 
+{# Files: every file of the game the viewer may download (static/js/game.js openFiles). #}
+<div class="modal fade" id="gameFilesModal" tabindex="-1" aria-labelledby="gameFilesTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="gameFilesTitle"><i class="bi bi-hdd-stack" aria-hidden="true"></i> {{ t('game.files') }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ t('nav.close') }}"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="game-rows" id="gameFilesList"></ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ t('nav.close') }}</button>
+                <button type="button" class="btn btn-primary" id="gameFilesDownloadAll"><i class="bi bi-download" aria-hidden="true"></i><span> {{ t('game.download_all') }}</span></button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% if is_admin %}
 {# Admins: correct what the catalogue says about this game. #}
 <div class="modal fade" id="gameEditModal" tabindex="-1" aria-labelledby="gameEditTitle" aria-hidden="true">
@@ -158,6 +177,9 @@
         downloadTooltip: {{ t('library.download_tooltip') | tojson }},
         downloadAria: {{ t('library.download_aria') | tojson }},
         downloadAll: {{ t('game.download_all') | tojson }},
+        typeBase: {{ t('files.app_type_base') | tojson }},
+        typeUpdate: {{ t('files.app_type_update') | tojson }},
+        typeDlc: {{ t('files.app_type_dlc') | tojson }},
         editMetadata: {{ t('game.edit_metadata') | tojson }},
         copyTitleId: {{ t('game.copy_title_id') | tojson }},
         copied: {{ t('game.copied') | tojson }},

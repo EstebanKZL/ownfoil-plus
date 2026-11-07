@@ -60,12 +60,13 @@ def test_a_missing_base_game_is_fully_gray_like_in_sagas():
 
 # --- card sizes ---------------------------------------------------------------------------
 
-def test_card_and_icon_sizes_are_remembered_apart():
+def test_card_sizes_are_fixed_and_the_page_size_is_one_choice():
     js = _js("library.js")
-    assert "storageSet('cardSize.' + currentView" in js
-    assert "storageGet('cardSize.' + view)" in js
-    # One page size for every view.
-    assert js.count("storageSet('itemsPerPage'") == 2 and "itemsPerPage.' +" not in js
+    # Cards: at most four a row; Compact: one size. Nothing left to remember per view.
+    assert "cardSize" not in js
+    assert "return 'col-6 col-md-4 col-xl-3';" in js
+    # One page size choice for every view, fitted to each view's columns.
+    assert js.count("storageSet('pageTarget'") == 1
 
 
 # --- the game page ------------------------------------------------------------------------
@@ -108,3 +109,17 @@ def test_the_page_passes_the_new_strings(shop_app):
     game = client.get("/game/0100000000010000").get_data(as_text=True)
     for name in ("baseMissingNotice:", "ownedDlcCount:", "ownedUpdate:", "details:", "noDescription:"):
         assert name in game, name
+
+
+# --- the game page's square cover ----------------------------------------------------------
+
+def test_the_game_page_shows_the_square_cover_first():
+    """Like Switch Library Manager Web: the game's square cover (iconUrl), the banner only
+    when there's no cover; the banner stays as the blurred backdrop."""
+    hero = _function_body(_js("game.js"), "renderHero")
+    assert "const art = t.iconUrl || t.bannerUrl;" in hero
+    css = _read("app", "static", "style.css")
+    cover = re.search(r"\.game-hero__cover \{([^}]*)\}", css).group(1)
+    assert "aspect-ratio: 1 / 1" in cover
+    hero_rule = re.search(r"\.game-hero \{([^}]*)\}", css).group(1)
+    assert "minmax(0, 15rem)" in hero_rule

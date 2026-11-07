@@ -424,3 +424,17 @@ def human_size(n):
         if size < 1024 or unit == 'TB':
             return f'{size:.1f} {unit}'
         size /= 1024
+
+
+def servable_library_file(filepath):
+    """Whether a library file may be sent: never one that is (or links to) something in
+    the config folder - the console keys, the session key, the database or a backup -
+    whatever its name in the library says."""
+    import os
+    from constants import CONFIG_DIR
+    try:
+        real = os.path.normcase(os.path.realpath(filepath))
+        config = os.path.normcase(os.path.realpath(CONFIG_DIR))
+    except (OSError, ValueError):
+        return False
+    return real != config and not real.startswith(config + os.sep)

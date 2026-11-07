@@ -6,6 +6,7 @@ from db import *
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 import titles as titles_lib
+from settings import mark_catalogue_revision
 import sys
 from pathlib import Path
 from utils import *
@@ -139,6 +140,12 @@ def organize_file(file_obj, library_path, organizer_settings):
                 update_file_path(library_path_str, current_filepath, candidate)
                 rel = os.path.relpath(candidate, library_path_str)
                 logger.info(f'Organizing file: {original_filename} → {rel}')
+                if organizer_settings.get('move_companions', True):
+                    try:
+                        move_companion_files(current_filepath, candidate, library_path_str)
+                    except Exception as e:
+                        # The game itself is in place: its notes are a nice-to-have.
+                        logger.warning(f'Could not move the companion files of {original_filename}: {e}')
                 return True
             except (FileExistsError, IntegrityError) as e:
                 pop_ignored_event(src_path=src, dest_path=candidate)
@@ -156,6 +163,67 @@ def organize_file(file_obj, library_path, organizer_settings):
 
     except Exception as e:
         logger.error(f"An unexpected error occurred while organizing file {file_obj.filename}: {e}")
+
+# Files that travel with a game when Organize moves it: release notes, checksums and the
+# proof images a scene release comes with.
+COMPANION_EXT = frozenset({'nfo', 'sfv', 'md5', 'sha1', 'sha256', 'diz', 'txt', 'jpg', 'jpeg', 'png'})
+PROOF_DIRS = frozenset({'proof', 'proofs'})
+
+
+def _is_companion(name):
+    return os.path.splitext(name)[1][1:].lower() in COMPANION_EXT
+
+
+def move_companion_files(old_path, new_path, library_root):
+    """After a game moved from old_path to new_path: a companion named as the game
+    (game.nfo next to game.nsp) takes its new name, and a folder left holding only
+    companions (as a release comes: its NFO, SFV, images and Proof folder) hands them all
+    over, so it ends up empty. A name already taken where it would go stays where it is.
+    Returns (moved, skipped) lists of paths."""
+    old_dir, new_dir = os.path.dirname(old_path), os.path.dirname(new_path)
+    old_stem = os.path.splitext(os.path.basename(old_path))[0]
+    new_stem = os.path.splitext(os.path.basename(new_path))[0]
+    moved, skipped = [], []
+    if not os.path.isdir(old_dir):
+        return moved, skipped
+
+    def move(src, dest):
+        if os.path.exists(dest):
+            logger.info(f'Organize: {os.path.basename(src)} stays where it is, '
+                        f'{os.path.basename(dest)} already exists')
+            skipped.append(src)
+            return
+        try:
+            shutil.move(src, dest)
+            moved.append(dest)
+        except (shutil.Error, OSError) as e:
+            logger.warning(f'Organize: could not move {src}: {e}')
+            skipped.append(src)
+
+    # 1. Named as the game: renamed along with it.
+    for name in sorted(os.listdir(old_dir)):
+        src = os.path.join(old_dir, name)
+        stem, ext = os.path.splitext(name)
+        if os.path.isfile(src) and _is_companion(name) and stem == old_stem:
+            if old_dir != new_dir or stem != new_stem:
+                move(src, os.path.join(new_dir, new_stem + ext))
+
+    # 2. A release folder now holding only companions (never the library root, never
+    #    the folder the game went to): the rest goes too.
+    same = os.path.normcase(os.path.abspath(old_dir))
+    if same in (os.path.normcase(os.path.abspath(library_root)),
+                os.path.normcase(os.path.abspath(new_dir))):
+        return moved, skipped
+    entries = os.listdir(old_dir)
+    only_companions = all(
+        (os.path.isfile(os.path.join(old_dir, n)) and _is_companion(n))
+        or (os.path.isdir(os.path.join(old_dir, n)) and n.lower() in PROOF_DIRS)
+        for n in entries)
+    if entries and only_companions:
+        for name in sorted(entries):
+            move(os.path.join(old_dir, name), os.path.join(new_dir, name))
+    return moved, skipped
+
 
 def _get_template_for_file(file_obj, app, templates):
     """Helper function to determine the correct template for file organization."""
@@ -271,6 +339,12 @@ def add_missing_apps_for_title(title_id):
     return apps_upserted
 
 
+# What the library reads from the catalogue, by revision: 1, every DLC titles.json lists
+# (titledb.store.dlc_id_range), not only cnmts.json's; 2, update versions from more
+# sources (titledb/extra_versions.py). Each one adds content that was out there already.
+CATALOGUE_REVISION = 2
+
+
 def add_missing_apps_to_db():
     """Batch: expand missing apps for every title. Used post-titledb-update."""
     logger.info('Adding missing apps to database...')
@@ -282,11 +356,15 @@ def add_missing_apps_to_db():
         if (n + 1) % 100 == 0:
             logger.info(f'Processed {n + 1}/{len(titles)} titles, upserted {total} apps so far')
     logger.info(f'Finished adding missing apps to database. Total apps upserted: {total}')
+    # The first pass of a new catalogue revision adds what the catalogue always had (every
+    # DLC cnmts.json lacked, updates the release didn't know): old, not new - announced,
+    # it would be one message per DLC and update of every game. Later passes announce as before.
+    first_catalogue_pass = mark_catalogue_revision(CATALOGUE_REVISION)
     # Only this batch path (run after a TitleDB refresh) announces new versions: the
     # per-title one runs when a game is first added, where every existing update/DLC
     # is "new" to the database but not to the world. An empty database is the same
     # case at install scale.
-    if known_apps:
+    if known_apps and not first_catalogue_pass:
         notify_new_apps_available(known_apps)
 
 def notify_new_apps_available(known_apps):
@@ -399,7 +477,8 @@ def outdated_update_groups():
             if not app_obj:
                 continue
             remove_entries.extend((app_data['app_version'], f) for f in app_obj.files
-                                  if f.identified and not f.multicontent)
+                                  if f.identified and not f.multicontent
+                                  and (f.extension or '').lower() != 'nup')
 
         if not remove_entries:
             continue
@@ -438,8 +517,14 @@ def duplicate_file_groups():
     """Every owned app that currently has more than one physical file attached,
     paired with those files. This is the library-wide "what has duplicates right now"
     view both the automatic task and the manual resolution API work from."""
-    return [(app, list(app.files)) for app in Apps.query.filter_by(owned=True).all()
-            if len(app.files) > 1]
+    groups = []
+    for app in Apps.query.filter_by(owned=True).all():
+        # A NUP (decrypted) and an NSP/XCI of the same content are different things to
+        # keep, never duplicates of each other: NUP files stay out of the comparison.
+        files = [f for f in app.files if (f.extension or '').lower() != 'nup']
+        if len(files) > 1:
+            groups.append((app, files))
+    return groups
 
 
 def automatic_duplicate_winner(files):
@@ -660,12 +745,12 @@ def update_title_flags(title_id):
             "SELECT app_id, app_version, owned FROM apps WHERE title_id = ? AND app_type = ?",
             (title_db_id, APP_TYPE_DLC)
         )
-        dlc_by_id = {}
-        for dlc_app_id, version_str, owned in cursor.fetchall():
-            version = int(version_str)
-            if dlc_app_id not in dlc_by_id or version > dlc_by_id[dlc_app_id]['version']:
-                dlc_by_id[dlc_app_id] = {'version': version, 'owned': bool(owned)}
-        complete = all(d['owned'] for d in dlc_by_id.values()) if dlc_by_id else True
+        # A DLC is in the library when any version of it is: a newer one is a pending
+        # update of it (counted apart, see gql's stats.outdatedDlc), not a missing DLC.
+        dlc_owned = {}
+        for dlc_app_id, _version, owned in cursor.fetchall():
+            dlc_owned[dlc_app_id] = dlc_owned.get(dlc_app_id, False) or bool(owned)
+        complete = all(dlc_owned.values())
 
         cursor.execute(
             "UPDATE titles SET have_base = ?, up_to_date = ?, complete = ? WHERE id = ?",

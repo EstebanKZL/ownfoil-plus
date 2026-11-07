@@ -83,7 +83,8 @@ def test_services_page_requires_admin(shop_app):
 def test_services_page_renders_for_admin_with_discovery_toggle(client):
     html = client.get("/admin/services").get_data(as_text=True)
     assert "serviceSwitch-discovery" in html
-    assert "8465" in html  # the UDP port is shown in the help text
+    # The UDP port is shown in the help text, in Settings > Server network.
+    assert "8465" in client.get("/admin/settings").get_data(as_text=True)
 
 
 def test_services_page_shows_the_docker_note_as_a_warning_with_code_highlighting(client):
@@ -91,7 +92,8 @@ def test_services_page_shows_the_docker_note_as_a_warning_with_code_highlighting
     <code> highlighting on the Docker flags/compose key) - this had been downgraded to
     a plain blue alert with the markup stripped entirely, though the fork's own longer
     wording (which also covers the Windows firewall) was kept rather than replaced."""
-    html = client.get("/admin/services").get_data(as_text=True)
+    html = client.get("/admin/settings").get_data(as_text=True)
+    html = html[html.index('id="Network"'):]
     assert 'alert alert-warning' in html
     assert 'bi-exclamation-triangle-fill' in html
     assert '<code>network_mode: host</code>' in html

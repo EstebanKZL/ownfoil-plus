@@ -38,7 +38,8 @@ ORGANIZER_SETTINGS = {
 
 
 def test_all_four_formats_are_allowed_for_scanning():
-    assert set(ALLOWED_EXTENSIONS) == {"nsp", "nsz", "xci", "xcz"}
+    # NUP files (containers/nup.py) are scanned too, but never served to consoles.
+    assert set(ALLOWED_EXTENSIONS) == {"nsp", "nsz", "xci", "xcz", "nup"}
 
 
 def test_compress_and_decompress_maps_cover_both_container_types():
@@ -48,7 +49,7 @@ def test_compress_and_decompress_maps_cover_both_container_types():
 
 def test_verify_ext_covers_all_four_formats():
     """The set verification actually applies to - not just what gets discovered."""
-    assert VERIFY_EXT == {"nsp", "xci", "nsz", "xcz"}
+    assert VERIFY_EXT == {"nsp", "xci", "nsz", "xcz", "nup"}
 
 
 @pytest.fixture

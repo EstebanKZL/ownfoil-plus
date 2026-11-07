@@ -7,7 +7,7 @@ import requests
 import zstandard
 
 from constants import TITLEDB_DEFAULT_FILES, TITLEDB_DIR, TITLEDB_RELEASE_URL
-from titledb import store
+from titledb import extra_versions, store
 
 # Retrieve main logger
 logger = logging.getLogger('main')
@@ -117,12 +117,15 @@ def update_titledb(app_settings):
         os.makedirs(TITLEDB_DIR, exist_ok=True)
 
     downloaded, remote_commit = update_titledb_files(app_settings)
+    # Update versions from more sources than the release (extra_versions.py): they change
+    # on their own, and a change rebuilds titles.db like a new release does.
+    extra_changed = extra_versions.refresh(os.path.join(TITLEDB_DIR, 'extra'))
     locale = get_locale(app_settings)
     locale_changed = store.get_imported_locale() != locale
     # A full rebuild recreates every table, including organizer_names, so that table
     # needs repopulating whenever this ran - not only when the organizer's own locale
     # setting changed.
-    main_rebuilt = bool(downloaded or locale_changed)
+    main_rebuilt = bool(downloaded or locale_changed or extra_changed)
     if main_rebuilt:
         store.import_from_json(os.path.join(TITLEDB_DIR, get_region_titles_file(app_settings)), locale)
         if locale_changed:

@@ -11,7 +11,7 @@
     </header>
 
     <div class="discover-toolbar">
-        <div class="discover-search">
+        <div class="discover-search discover-search--bar surface">
             <i class="bi bi-search" aria-hidden="true"></i>
             <input type="search" class="form-control" id="upcomingSearch" placeholder="{{ t('upcoming.search') }}"
                    aria-label="{{ t('upcoming.search') }}">
@@ -20,6 +20,12 @@
 
     <p id="upcomingLoading" class="text-secondary fst-italic">{{ t('common.loading') }}</p>
     <p id="upcomingError" class="text-danger" hidden>{{ t('upcoming.load_failed') }}</p>
+
+    {# Out in the last month, newest first, in one row that scrolls sideways. #}
+    <section class="surface admin-section discover-section" id="upcomingRecent" hidden>
+        <h2 class="admin-section__title"><i class="bi bi-lightning-charge" aria-hidden="true"></i> {{ t('upcoming.recent') }} <span class="filter-pill__count release-count" id="upcomingRecentCount"></span></h2>
+        <div class="release-strip" id="upcomingRecentStrip"></div>
+    </section>
 
     <section class="surface admin-section discover-section" id="upcomingForYou" hidden>
         <h2 class="admin-section__title"><i class="bi bi-heart" aria-hidden="true"></i> {{ t('upcoming.for_you') }}</h2>
