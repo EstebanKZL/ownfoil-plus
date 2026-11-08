@@ -70,6 +70,19 @@ function bundleCounts(contents) {
 
 /** The "Bundle 1G+1U+2D" badge, in the favourites' gold with the box icon - or null for
  *  an ordinary file. */
+/** An app carried by a multi-content file (base + update + DLC in one): its row says
+ *  "Multi" instead of a size and a download - the file is downloaded whole, from the
+ *  Files dialog or the base game's row. */
+function inMulti(app) {
+    const f = app && app.downloadableFile;
+    return Boolean(f && f.contents && f.contents.length > 1);
+}
+
+/** The "Multi" chip for such a row, the bundle badge's icon and color. */
+function multiChip(label) {
+    return statusBadge('fav', 'bi-box-seam', label).addClass('bundle-badge');
+}
+
 function bundleBadge(contents, label) {
     if (!contents || contents.length < 2) return null;
     const text = `${label} ${bundleCounts(contents)}`;

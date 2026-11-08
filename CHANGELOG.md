@@ -4,6 +4,37 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.55]
+
+- **The Tasks cards keep their size**: each list sits in a frame of a fixed height - 10
+  rows for Queue and Failed, 5 for Scheduled and History - and scrolls past it. The
+  frames used to be sized from the rows, so the cards grew and shrank every time a task
+  came or went.
+- **The whole queue is shown**: the note "Showing the 200 oldest tasks" is gone, with the
+  cap behind it (a safety limit of 10,000 stays). Rows are diffed, not redrawn, so a long
+  queue costs little.
+- **A scrollbar that fits the cards** in those lists, and in the Stats and Dashboard
+  lists too: thin, rounded, in the border color, with room between it and the text.
+- **The Stats and Dashboard cards keep their size** as well: a list's frame holds its 10
+  (or 4) rows' height with fewer rows, empty included, measured from the rows as they
+  render (a `--row-pitch` until there is one).
+- **The Files tiles are the Library's**: an icon in the tile's color, the count, the label
+  and a note, two rows of four; the one in use is outlined in **its own color** with a
+  check (it took the accent color, whatever the tile), and a clean tile shows a green
+  check in its icon. New order: every file, unidentified, compress, combine, then the
+  rest as before.
+- **"Bundle" is now "Multi"** (*Paquete* in Spanish read like a repack, a different
+  thing): the same box icon and counts, `Multi 1G+1U`, on the game page, the cards and in
+  Files.
+- **What a Multi file holds is listed where it belongs**: its update and DLC show in the
+  game page's Updates and DLC and in the List view as *In the library* with a **Multi**
+  chip - no size and no download of their own, since they come in one file. That file is
+  downloaded from the Files dialog or the base game's row.
+- **Credits**: [NXPress](https://github.com/DeLFuS77/NXPress) (NSZ/XCZ compression) and
+  [NUP](https://github.com/a55uka/nup) (the NUP format) in NOTICE.md and the README.
+- **Library Cards view on a phone: one game a row** (two from 576px). Two side by side
+  cut the title short and broke the id over two lines; the Compact view keeps two.
+
 ## [6.2.5.54]
 
 - **`{packageContents}` is counted: `1G+1U+5D`**, as file names have always said it (it

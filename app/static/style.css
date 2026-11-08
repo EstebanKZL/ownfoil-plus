@@ -279,15 +279,47 @@ p.game-description {
     transition: opacity .5s ease-out;
 }
 
-/* The queue is unbounded — a library scan queues one task per file — so it scrolls
-   inside a fixed frame instead of running the page off the bottom of the screen.
-   The gutter and padding keep the scrollbar off the cancel button, which sits flush
-   right and is otherwise covered by an overlay scrollbar the moment the list overflows. */
+/* Each Tasks list scrolls inside a frame of a fixed height - --task-rows rows of
+   --task-row-h - so a card keeps its size while rows come and go (the queue is unbounded:
+   a scan queues one task per file). The gutter and padding keep a thin, rounded scrollbar
+   off the text and the cancel button. */
 .task-scroll {
+    --task-row-h: 2.05rem;
+    height: calc(var(--task-rows, 5) * var(--task-row-h));
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
-    padding-right: .75rem;
+    padding-right: 1rem;
+    margin-right: -.35rem;
+}
+
+/* Every list that scrolls inside a card (Tasks, Stats, Dashboard): a thin, rounded bar
+   in the border color, no arrows. */
+.task-scroll,
+.rows-limited {
+    scrollbar-width: thin;
+    scrollbar-color: var(--op-border-strong) transparent;
+}
+
+.task-scroll::-webkit-scrollbar,
+.rows-limited::-webkit-scrollbar {
+    width: 8px;
+}
+
+.task-scroll::-webkit-scrollbar-track,
+.rows-limited::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.task-scroll::-webkit-scrollbar-thumb,
+.rows-limited::-webkit-scrollbar-thumb {
+    border-radius: 8px;
+    background-color: var(--op-border-strong);
+}
+
+.task-scroll::-webkit-scrollbar-thumb:hover,
+.rows-limited::-webkit-scrollbar-thumb:hover {
+    background-color: var(--op-text-muted);
 }
 
 .task-row.task-fading {
@@ -1437,29 +1469,23 @@ a.stat-tile:hover {
 /* The tiles are the page's tabs: each is a preset view with its count. */
 .files-tiles {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
-    gap: .75rem;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: 1rem;
     margin-bottom: 1.25rem;
 }
 
-/* Label at the top, subtitle at the bottom, the count between them. */
+/* Eight tiles: two even rows of four once there is room. */
+@media (min-width: 992px) {
+    .files-tiles {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+/* The Library's stat tiles (.stat-tile): icon, count, label, a note; the color per view. */
 .files-tile {
     --tile: var(--op-nav);
     --tile-rgb: var(--op-nav-rgb);
-    position: relative;
-    display: grid;
-    grid-template-rows: auto 1fr auto;
-    align-items: center;
-    min-height: 8.5rem;
-    padding: .9rem 1rem;
     border-radius: var(--op-radius-lg);
-    border: 1px solid rgba(var(--tile-rgb), .25);
-    background:
-        radial-gradient(closest-side at 85% 50%, rgba(var(--tile-rgb), .12), transparent),
-        var(--op-surface-1);
-    color: var(--op-text);
-    text-decoration: none;
-    transition: border-color var(--op-dur) var(--op-ease), transform var(--op-dur) var(--op-ease);
 }
 
 /* One color per state, as on the Dashboard and the Library. */
@@ -1475,62 +1501,30 @@ a.stat-tile:hover {
 /* Broken files (corrupt, modified) turn the tile red, whatever its usual tone. */
 .files-tile[data-tone="danger"] { --tile: var(--op-danger); --tile-rgb: var(--op-danger-rgb); }
 
-.files-tile:hover {
-    color: var(--op-text);
-    border-color: rgba(var(--tile-rgb), .55);
-    transform: translateY(-2px);
-}
-
-.files-tile.active {
-    border-color: var(--op-nav);
-    box-shadow: inset 0 0 0 1px var(--op-nav);
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .files-tile:hover {
-        transform: none;
-    }
-}
-
-/* Nothing to report: a check mark takes the tile's free side. */
+/* Nothing to report: the icon turns into a green check. */
 .files-tile-ok {
     display: none;
-    position: absolute;
-    top: 50%;
-    right: 1rem;
-    transform: translateY(-50%);
-    font-size: 4rem;
-    line-height: 1;
-    color: var(--files-success);
 }
 
 .files-tile.ok .files-tile-ok {
-    display: block;
+    display: inline;
 }
 
-.files-tile-label,
-.files-tile-sub {
-    font-size: .8rem;
-    color: var(--bs-secondary-color);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+.files-tile.ok .files-tile-icon {
+    display: none;
 }
 
-/* A long name or subtitle (Compress / Decompress) takes two lines rather than an ellipsis. */
-.files-tile-label,
-.files-tile-sub {
-    white-space: normal;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
+.files-tile.ok .stat-tile__icon {
+    color: var(--op-ok);
+    background-color: rgba(var(--op-ok-rgb), .15);
+}
+
+/* The tile in use shows its check in that corner. */
+.files-tile.is-active .files-tile-dot {
+    display: none;
 }
 
 .files-tile-count {
-    font-size: 2rem;
-    font-weight: 600;
-    line-height: 1.1;
     font-variant-numeric: tabular-nums;
 }
 
@@ -2050,17 +2044,27 @@ a.stat-tile:hover {
 
     .files-tile {
         min-height: 0;
-        padding: .6rem .75rem;
+        column-gap: .55rem;
+        padding: .6rem .7rem;
         border-radius: .6rem;
     }
 
-    .files-tile-count {
-        font-size: 1.5rem;
+    .files-tile .stat-tile__icon {
+        width: 2rem;
+        height: 2rem;
+        font-size: 1rem;
     }
 
-    .files-tile-ok {
-        font-size: 1.75rem;
-        right: .6rem;
+    .files-tile-count {
+        font-size: 1.3rem;
+    }
+
+    .files-tile .stat-tile__label {
+        font-size: .8rem;
+    }
+
+    .files-tile .stat-tile__note {
+        font-size: .72rem;
     }
 
     .files-tile-dot {
@@ -2160,6 +2164,7 @@ a.stat-tile:hover {
 /* Lists capped to N visible rows by static/js/scroll-limit.js. */
 .rows-limited {
     overflow-y: auto;
+    overscroll-behavior: contain;
     scrollbar-gutter: stable;
 }
 
@@ -2178,8 +2183,12 @@ a.stat-tile:hover {
 /* Inside a card each list takes the card's whole width, so its scrollbar sits at the
    card's right edge, the same in every card. */
 .dl-card .dl-scroll {
+    --row-pitch: 3.15rem;          /* a row's height, until one is there to measure */
     max-width: none;
     margin-bottom: 0;
+    /* Room between the counts and the scrollbar, which sits at the card's edge. */
+    padding-right: .85rem;
+    margin-right: -.45rem;
 }
 
 /* A game in the library-detail modal: its icon before its name. */

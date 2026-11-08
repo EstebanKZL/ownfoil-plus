@@ -1,5 +1,5 @@
-// The Tasks admin page (templates/tasks.html). The page renders its I18N strings and
-// MAX_TASKS in its one inline script, then loads this file.
+// The Tasks admin page (templates/tasks.html). The page renders its I18N strings in its
+// one inline script, then loads this file.
 
 const CANCEL_MUTATION = `
     mutation Cancel($id: ID!) {
@@ -344,18 +344,8 @@ function render() {
     section('failedTasks', 'failedEmpty', failed);
     document.getElementById('purgeFailed').classList.toggle('d-none', !failed.length);
 
-    // Queue and Failed show 10 rows, Scheduled 5, the rest by scrolling. Every row
-    // counts, sub-tasks included (in the order they show): a scan with hundreds of
-    // files under it no longer shows them all.
-    limitVisibleRows(document.getElementById('queueScroll'), '.task-row', 10);
-    limitVisibleRows(document.getElementById('failedScroll'), '.task-row', 10);
-    limitVisibleRows(document.getElementById('scheduledScroll'), '.task-row', 5);
-
-    // A full window means the server had more rows to give. Counting what arrived
-    // avoids asking it for a total nothing else needs.
-    // Failed tasks have a window of their own, so only the rest count here.
-    document.getElementById('queueTruncated').classList.toggle(
-        'd-none', Object.values(tasks).filter(t => t.status !== 'failed').length < MAX_TASKS);
+    // Queue and Failed frame 10 rows, Scheduled and History 5 (--task-rows in the page),
+    // the rest by scrolling: the frames keep their height as rows come and go.
     renderWorkers();
 }
 
@@ -486,8 +476,6 @@ async function loadHistory() {
         entries.forEach(entry => list.appendChild(buildHistoryRow(entry)));
         document.getElementById('historyEmpty').classList.toggle('d-none', entries.length > 0);
         document.getElementById('clearHistory').classList.toggle('d-none', !entries.length);
-        // The 5 most recent in view, the rest of the (up to 50) by scrolling.
-        limitVisibleRows(document.getElementById('historyScroll'), '.task-row', 5);
     } catch (e) {
         console.error(e);
     }

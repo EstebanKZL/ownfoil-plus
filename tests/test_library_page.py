@@ -239,8 +239,9 @@ def test_card_styles_use_tokens_only():
         assert not re.search(r"#[0-9a-fA-F]{3,8}\b", body), selector
 
 
-def test_phones_get_two_card_columns():
-    assert "col-6 col-md-" in _function_body(_library_js(), "cardColumnClasses")
+def test_phones_get_one_card_a_row():
+    """Two cards side by side on a phone cut the title and broke the id; Compact keeps two."""
+    assert "col-12 col-sm-6 col-md-" in _function_body(_library_js(), "cardColumnClasses")
 
 
 def test_card_badge_strings_are_translated():

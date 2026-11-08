@@ -21,7 +21,7 @@ const GAME_QUERY = `
             }
             updateApps: apps(appType: [UPDATE]) {
                 appId appVersion releaseDate owned
-                downloadableFile { id size verificationStatus format }
+                downloadableFile { id size verificationStatus format contents }
             }
             availableDlc {
                 appId version
@@ -330,7 +330,10 @@ function contentRow({icon, iconUrl, name, sub, owned, file, dataAttrs, details})
     if (sub) text.append($('<div class="game-row__sub">').text(sub));
     lead.append(text);
     const tail = $('<div class="game-row__tail">').append(ownedBadge(owned));
-    if (owned && file) {
+    if (owned && file && file.contents && file.contents.length > 1) {
+        // Inside a Multi file: listed, but downloaded with the whole file.
+        tail.append(multiChip(I18N.bundle));
+    } else if (owned && file) {
         if (file.size) tail.append($('<span class="game-row__size">').text(formatBytes(file.size)));
         const ver = verificationBadge(file.verificationStatus);
         if (ver) tail.append(ver);

@@ -283,3 +283,22 @@ def test_two_copies_of_a_nup_are_duplicates_of_each_other_only(shop_app):
         groups = [{f.id for f in files} for _, files in library.duplicate_file_groups()]
         assert groups.count(set(nups)) == 1                      # one group for the pair
         assert not any(nsp.id in g and (g & set(nups)) for g in groups)   # never mixed with the NSP
+
+
+APP_DIR = os.path.join(os.path.dirname(__file__), "..", "app")
+
+
+def test_multi_label_and_its_contents_listed_without_their_own_download():
+    """'Bundle'/'Paquete' read like a repack: it is 'Multi'. An update or DLC inside a Multi
+    file is listed (game page, List view) with a Multi chip and no size or download - the
+    whole file comes from the Files dialog or the base game's row."""
+    import i18n
+    assert set(i18n.TRANSLATIONS['library.bundle'].values()) == {'Multi'}
+    common = open(os.path.join(APP_DIR, 'static', 'js', 'library-common.js'), encoding='utf-8').read()
+    assert 'function inMulti(app)' in common and 'function multiChip(label)' in common
+    game = open(os.path.join(APP_DIR, 'static', 'js', 'game.js'), encoding='utf-8').read()
+    assert 'downloadableFile { id size verificationStatus format contents }' in game
+    assert 'tail.append(multiChip(I18N.bundle));' in game
+    lib = open(os.path.join(APP_DIR, 'static', 'js', 'library.js'), encoding='utf-8').read()
+    assert lib.count('downloadableFile { id size verificationStatus contents }') == 2
+    assert 'multi: a.owned && inMulti(a),' in lib and 'multi: inMulti(ownedApp),' in lib

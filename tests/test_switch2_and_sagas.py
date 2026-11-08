@@ -79,7 +79,7 @@ def test_cloud_versions_and_demos_stay_out_of_sagas(name, out):
 
 def test_cards_go_up_to_four_a_row_and_compact_has_one_size():
     js = _read("app", "static", "js", "library.js")
-    assert "return 'col-6 col-md-4 col-xl-3';" in js
-    assert "if (currentView === 'card') return width >= 1200 ? 4 : width >= 768 ? 3 : 2;" in js
+    assert "return 'col-12 col-sm-6 col-md-4 col-xl-3';" in js
+    assert "if (currentView === 'card') return width >= 1200 ? 4 : width >= 768 ? 3 : width >= 576 ? 2 : 1;" in js
     assert "const COMPACT_CARD_MIN = '12rem';" in js
     assert "cardSizeRange" not in _read("app", "templates", "index.html")

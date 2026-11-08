@@ -91,7 +91,7 @@ def test_tasks_page_caps_history_to_five_and_offers_clearing(admin_client):
     html = (admin_client.get("/admin/tasks").get_data(as_text=True)
             + admin_client.get("/static/js/tasks.js").get_data(as_text=True))  # JS moved in stage 5a
     assert 'id="clearHistory"' in html
-    assert "limitVisibleRows(document.getElementById('historyScroll'), '.task-row', 5)" in html
+    assert 'id="historyScroll" style="--task-rows: 5"' in html
 
 
 # --- capped lists ----------------------------------------------------------------------------
@@ -138,3 +138,13 @@ def test_row_limiter_measures_rendered_rows():
     js = _read("app", "static", "js", "scroll-limit.js")
     assert "function limitVisibleRows(container, rowSelector, visible)" in js
     assert "getBoundingClientRect" in js and "ResizeObserver" in js
+
+
+def test_card_lists_keep_their_frame_and_a_card_scrollbar():
+    """Stats and Dashboard lists kept growing as rows arrived: the frame holds its rows'
+    height empty too, and every list that scrolls in a card has the thin card scrollbar."""
+    js = _read("app", "static", "js", "scroll-limit.js")
+    assert "--row-pitch" in js and "dash-list__empty" in js and "container.style.height" in js
+    css = _read("app", "static", "style.css")
+    assert re.search(r"\.task-scroll,\s*\.rows-limited \{\s*scrollbar-width: thin;", css)
+    assert re.search(r"\.dl-card \.dl-scroll \{[^}]*--row-pitch: [\d.]+rem;[^}]*padding-right", css)

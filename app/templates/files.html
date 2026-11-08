@@ -16,11 +16,16 @@
                      (t('files.value_full_hash') if verification.depth == 'hash' else t('files.value_signature_only')) if verification.enabled else t('files.value_off'),
                      'success' if verification.enabled else 'secondary') }}{% endif %}
 {%- endmacro %}
-{% set tiles = [('all', t('files.tab_tile_all')),
-                ('compress', t('files.pack_tile_compress')), ('combine', t('files.pack_tile_combine')),
-                ('unidentified', t('files.tab_tile_unidentified')),
-                ('verification', t('files.tab_tile_verification')), ('duplicates', t('files.tab_tile_duplicates')),
-                ('outdated', t('files.tile_outdated')), ('pending', t('files.tile_pending'))] %}
+{# (key, label, icon): the Library's tiles, in the order asked for - every file, the
+   unidentified ones, then the two packing views and the checks. #}
+{% set tiles = [('all', t('files.tab_tile_all'), 'bi-hdd-stack'),
+                ('unidentified', t('files.tab_tile_unidentified'), 'bi-question-circle'),
+                ('compress', t('files.pack_tile_compress'), 'bi-file-zip'),
+                ('combine', t('files.pack_tile_combine'), 'bi-union'),
+                ('verification', t('files.tab_tile_verification'), 'bi-shield-check'),
+                ('duplicates', t('files.tab_tile_duplicates'), 'bi-copy'),
+                ('outdated', t('files.tile_outdated'), 'bi-clock-history'),
+                ('pending', t('files.tile_pending'), 'bi-hourglass-split')] %}
 
 {% block panel %}
 <div class="settings-container container-fluid mt-3 files-page">
@@ -37,13 +42,13 @@
     </header>
 
     <nav class="files-tiles" id="filesTiles">
-        {% for key, label in tiles %}
-        <a class="files-tile" href="#{{ key }}" data-tile="{{ key }}">
+        {% for key, label, icon in tiles %}
+        <a class="stat-tile files-tile" href="#{{ key }}" data-tile="{{ key }}">
             <span class="files-tile-dot d-none"></span>
-            <i class="bi bi-check-lg files-tile-ok"></i>
-            <span class="files-tile-label">{{ label }}</span>
-            <span class="files-tile-count">…</span>
-            <span class="files-tile-sub">&nbsp;</span>
+            <span class="stat-tile__icon"><i class="bi {{ icon }} files-tile-icon" aria-hidden="true"></i><i class="bi bi-check-lg files-tile-ok" aria-hidden="true"></i></span>
+            <div class="stat-tile__value files-tile-count">…</div>
+            <div class="stat-tile__label files-tile-label">{{ label }}</div>
+            <div class="stat-tile__note files-tile-sub">&nbsp;</div>
         </a>
         {% endfor %}
     </nav>

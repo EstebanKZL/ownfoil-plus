@@ -589,7 +589,9 @@ const TILES = {
 function paintTiles() {
     document.querySelectorAll('.files-tile').forEach(tile => {
         const key = tile.dataset.tile;
+        // The tile in use: outlined in its own color with a check, as in the Library.
         tile.classList.toggle('active', key === current);
+        tile.classList.toggle('is-active', key === current);
         const figures = TILES[key](stats);
         if (!figures) return;
         const [count, sub, tone] = figures;
