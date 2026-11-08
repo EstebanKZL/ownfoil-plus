@@ -718,9 +718,7 @@ def combine_titles_api():
 @app.route('/admin/tasks')
 @access_required('admin')
 def tasks_page():
-    import task_events
     return render_template('tasks.html', title='Tasks',
-                           max_tasks=task_events.MAX_TASKS,
                            admin_account_created=admin_account_created())
 
 @app.route('/admin/stats')

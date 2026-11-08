@@ -104,6 +104,10 @@ The web UI's design is inspired by
 [Switch Library Manager Web](https://github.com/DeLFuS77/switch-library-manager-web) by
 [@DeLFuS77](https://github.com/DeLFuS77), also AGPL-3.0 - see [NOTICE.md](NOTICE.md).
 
+Compression to NSZ/XCZ takes [NXPress](https://github.com/DeLFuS77/NXPress) by
+[@DeLFuS77](https://github.com/DeLFuS77) as its reference, and NUP files follow the
+[NUP](https://github.com/a55uka/nup) format by [@a55uka](https://github.com/a55uka).
+
 Thanks also to the following projects and their maintainers for making Ownfoil
 possible in the first place:
 - [@blawar](https://github.com/blawar) for Tinfoil, Fs, the nsz format, TitleDB

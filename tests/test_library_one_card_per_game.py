@@ -64,7 +64,7 @@ def test_card_sizes_are_fixed_and_the_page_size_is_one_choice():
     js = _js("library.js")
     # Cards: at most four a row; Compact: one size. Nothing left to remember per view.
     assert "cardSize" not in js
-    assert "return 'col-6 col-md-4 col-xl-3';" in js
+    assert "return 'col-12 col-sm-6 col-md-4 col-xl-3';" in js
     # One page size choice for every view, fitted to each view's columns.
     assert js.count("storageSet('pageTarget'") == 1
 

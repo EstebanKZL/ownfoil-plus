@@ -29,7 +29,9 @@ logger = logging.getLogger('main')
 # oldest-N *and* every currently-running task together with its full ancestor chain,
 # guaranteeing a live task (and the parents whose rows the tree needs to nest it under)
 # is never excluded just for being "new" underneath an old backlog.
-MAX_TASKS = 200
+# A safety cap, not a page size: the Tasks page shows the whole queue (a scan's thousands
+# of file tasks included) and scrolls it; the rows are diffed, not redrawn, each tick.
+MAX_TASKS = 10000
 
 # The file tasks label themselves with a filename rather than a row id, so the path is
 # joined in here. Resolving it per task instead would mean a query per file task on every

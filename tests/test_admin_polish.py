@@ -78,17 +78,17 @@ def test_tasks_sections_read_queue_failed_then_scheduled_history(admin_client):
         assert f'id="{scroll}"' in html, scroll
 
 
-def test_tasks_lists_show_ten_or_five_rows_then_scroll():
-    body = re.search(r"function render\(\) \{(.*?)\n\}", _js("tasks.js"), re.S).group(1)
-    # Every row counts, sub-tasks included: a scan with hundreds of files under it showed
-    # them all when only the top-level rows counted.
-    assert "topLevel" not in body
-    for scroll, n in (("queueScroll", 10), ("failedScroll", 10), ("scheduledScroll", 5)):
-        assert f"limitVisibleRows(document.getElementById('{scroll}'), '.task-row', {n})" in body, scroll
-    assert "limitVisibleRows(document.getElementById('historyScroll'), '.task-row', 5)" in _js("tasks.js")
-    # The row limiter sizes them; a fixed max-height would cut a short list.
+def test_tasks_lists_keep_a_fixed_frame_of_ten_or_five_rows(admin_client):
+    """The cards grew and shrank as rows came and went: each list has a frame of a fixed
+    height now (10 rows for Queue and Failed, 5 for Scheduled and History), and scrolls."""
+    html = admin_client.get("/admin/tasks").get_data(as_text=True)
+    for scroll, n in (("queueScroll", 10), ("failedScroll", 10), ("scheduledScroll", 5), ("historyScroll", 5)):
+        assert f'class="task-scroll" id="{scroll}" style="--task-rows: {n}"' in html, scroll
     task_scroll = re.search(r"(?m)^\.task-scroll \{([^}]*)\}", _css()).group(1)
-    assert "max-height" not in task_scroll
+    assert "height: calc(var(--task-rows, 5) * var(--task-row-h))" in task_scroll
+    assert re.search(r"\.task-scroll,\s*\.rows-limited \{\s*scrollbar-width: thin;", _css())
+    # The whole queue, no "N oldest" note.
+    assert 'queueTruncated' not in html and 'MAX_TASKS' not in _js("tasks.js")
 
 
 # --- 1.4 Statistics lists: the Dashboard's rows, with each game's icon ---------------------

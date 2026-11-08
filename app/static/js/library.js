@@ -156,11 +156,11 @@ const LIST_QUERY = `
                 ownership { haveBase upToDate complete }
                 apps(owned: true) {
                     appId appType appVersion releaseDate
-                    downloadableFile { id size verificationStatus }
+                    downloadableFile { id size verificationStatus contents }
                 }
                 updateApps: apps(appType: [UPDATE]) {
                     appId appVersion releaseDate owned
-                    downloadableFile { id size verificationStatus }
+                    downloadableFile { id size verificationStatus contents }
                 }
                 availableDlc {
                     appId version
@@ -815,7 +815,7 @@ function metadataButton(meta) {
  *  Owned/Missing badge, size, verification, metadata and (when enabled) download
  *  controls on the right. All text goes through .text(), never raw HTML, since it
  *  can carry a game's real (untrusted) name. */
-function buildContentRow({label, sub, owned, size, verification, fileId, meta}) {
+function buildContentRow({label, sub, owned, size, verification, fileId, meta, multi}) {
     const li = $('<li class="list-group-item bg-transparent d-flex justify-content-between align-items-center flex-wrap gap-2"></li>');
     const left = $('<span class="text-break"></span>').text(label);
     if (sub) {
@@ -825,10 +825,17 @@ function buildContentRow({label, sub, owned, size, verification, fileId, meta}) 
     right.append($('<span class="badge rounded-pill"></span>')
         .addClass(owned ? 'text-bg-success' : 'text-bg-warning')
         .text(owned ? I18N.owned : I18N.missing));
+    if (multi) {
+        // An update or DLC inside a Multi file: no size or download of its own (the base
+        // game's row, or the Files dialog, downloads the whole file).
+        right.append(multiChip(I18N.bundle));
+        size = null;
+        fileId = null;
+    }
     if (size != null) {
         right.append($('<span class="badge text-bg-secondary"></span>').text(formatBytes(size)));
     }
-    if (owned) {
+    if (owned && !multi) {
         const verBadge = verificationBadge(verification);
         if (verBadge) right.append(verBadge);
     }
@@ -1006,6 +1013,7 @@ function renderListView(titles) {
                 size: appSize(a),
                 verification: appVerification(a),
                 fileId: appFileId(a),
+                multi: a.owned && inMulti(a),
             });
 
             const recentApps = highestOwned == null ? updateApps
@@ -1046,6 +1054,7 @@ function renderListView(titles) {
                         size: appSize(ownedApp),
                         verification: appVerification(ownedApp),
                         fileId: appFileId(ownedApp),
+                        multi: inMulti(ownedApp),
                         meta: {id: d.appId, url: `/game/${t.titleId}?dlc=${d.appId}`},
                     });
                 })));
@@ -1061,9 +1070,10 @@ function renderListView(titles) {
 /** The slider sets how many cards a row holds, but only from `md` up: below that
  *  the screen cannot carry six of them, and a card too narrow to fit its own title
  *  grows an overlay taller than the banner it sits on. */
-/** Cards: at most four a row - two on a phone, three on a tablet, four from 1200px. */
+/** Cards: at most four a row - one on a phone (two squeezed the title and wrapped the
+ *  id), two from 576px, three on a tablet, four from 1200px. */
 function cardColumnClasses() {
-    return 'col-6 col-md-4 col-xl-3';
+    return 'col-12 col-sm-6 col-md-4 col-xl-3';
 }
 
 /** How many cards a row of the current view holds at this width, the same rule the CSS
@@ -1071,7 +1081,7 @@ function cardColumnClasses() {
 function gridColumns() {
     if (currentView === 'list') return 1;
     const width = window.innerWidth;
-    if (currentView === 'card') return width >= 1200 ? 4 : width >= 768 ? 3 : 2;
+    if (currentView === 'card') return width >= 1200 ? 4 : width >= 768 ? 3 : width >= 576 ? 2 : 1;
     const grid = document.getElementById('gameGrid');
     const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
     const gap = .85 * rem;

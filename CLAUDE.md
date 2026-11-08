@@ -168,6 +168,11 @@ template fields refused on save (`library.template_errors`), per-user email rule
 save backups only; corrupt/failed-task to staff), size sort by files on disk, marked
 Library tiles, adaptive upload chunks (8-64 MiB), folded notification channel cards,
 My account in big-card + two-card rows.
+6.2.5.55: fixed-height list frames (Tasks via `--task-rows`, Stats/Dashboard via
+`limitVisibleRows`, which now keeps its height empty too) with a thin card scrollbar,
+the whole task queue (no 200 cap), Files tiles as Library stat tiles, one card a row on
+phones, "Bundle" renamed "Multi" and a Multi's update/DLC listed without their own
+download. Credits added for NXPress and NUP - the next rounds build on them.
 
 Postponed - **remind the maintainer of these when a round of work wraps up**:
 

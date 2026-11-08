@@ -375,3 +375,14 @@ def test_index_click_moves_keyboard_focus_into_the_section(admin_client):
 def test_phone_chips_sit_right_under_the_top_bar():
     """The top bar measures 57px; 4.25rem left an 11px gap content showed through."""
     assert re.search(r"\.settings-page \{\s*--settings-top: 3\.5625rem;", _css())
+
+
+def test_files_tiles_are_the_library_tiles_in_the_asked_order(admin_client):
+    """The Library's stat tiles (icon, count, label, note), the one in use outlined in its own
+    color with a check; every file first, then the unidentified ones, then packing."""
+    html = admin_client.get("/admin/files").get_data(as_text=True)
+    order = re.findall(r'<a class="stat-tile files-tile" href="#(\w+)"', html)
+    assert order == ["all", "unidentified", "compress", "combine", "verification", "duplicates",
+                     "outdated", "pending"]
+    assert html.count('class="stat-tile__icon"') >= 8
+    assert "tile.classList.toggle('is-active', key === current);" in _js("files.js")
