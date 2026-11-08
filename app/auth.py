@@ -412,6 +412,8 @@ def delete_user():
     try:
         User.query.filter_by(id=user_id).delete()
         db.session.commit()
+        import notifications
+        notifications.forget_subscribers()
         logger.info(f'Successfully deleted user with id {user_id}.')
     except Exception as e:
         logger.error(f'Could not delete user with id {user_id}: {e}')
@@ -457,6 +459,8 @@ def update_user():
     user.backup_access = backup_access
     user.collaborator_access = collaborator_access
     db.session.commit()
+    import notifications
+    notifications.forget_subscribers()     # who gets the news by email may have changed
     logger.info(f'Updated user {user.user}' + (' (password changed)' if password else ''))
     return jsonify({'success': True})
 

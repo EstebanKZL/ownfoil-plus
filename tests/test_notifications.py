@@ -416,3 +416,20 @@ def test_each_user_gets_the_email_in_their_language(shop_app, monkeypatch):
     title = TRANSLATIONS['notify.event.update_available.title']
     assert title['en'].split('{')[0].strip() in sent['boss@example.test']
     assert title['fr'].split('{')[0].strip() in sent['fan@example.test']
+
+
+def test_slack_escapes_names_that_could_ping_the_channel(shop_app, posts):
+    notifications.send({'slack': {'enabled': True, 'webhook_url': 'https://hooks.slack.test/s'}},
+                       'file_added', 'T', ['<!channel> Game & co'])
+    text = posts[0]['json']['text']
+    assert '<!channel>' not in text and '&lt;!channel&gt; Game &amp; co' in text
+
+
+def test_a_user_without_shop_access_gets_no_game_news(shop_app, monkeypatch):
+    from db import User, db
+    with shop_app.app.app_context():
+        u = User.query.filter_by(user='noshop').one()
+        u.email, u.email_verified, u.notify_email = 'nope@example.test', True, True
+        db.session.commit()
+        notifications.forget_subscribers()
+        assert 'nope@example.test' not in [e for e, _ in notifications._subscribers('update_available')]

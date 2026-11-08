@@ -221,7 +221,11 @@ def _send_slack(cfg, event, title, lines):
     url = (cfg.get('webhook_url') or '').strip()
     if not url:
         raise ValueError('missing webhook URL')
-    text = f'*{_shop_name()}: {title}*\n' + '\n'.join(f'• {line}' for line in lines)
+    # Slack reads <...> as links and mentions (<!channel>): names come from files and
+    # folders, so &, < and > are escaped as its formatting rules ask.
+    def esc(text):
+        return str(text).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+    text = f'*{esc(_shop_name())}: {esc(title)}*\n' + '\n'.join(f'• {esc(line)}' for line in lines)
     _check(requests.post(url, json={'text': text[:3000]}, timeout=TIMEOUT))
 
 
@@ -258,8 +262,11 @@ def _subscribers(event):
             from db import User
             users = User.query.filter(User.notify_email.is_(True), User.email_verified.is_(True),
                                       User.email.isnot(None), User.pending.is_(False)).all()
+            # Only who may see the library: game news to a user without shop access would
+            # tell them what they can't open. Admins always may.
             _subscribers_cache['users'] = [(u.email, u.language if u.language in SUPPORTED_LANGUAGES else None,
-                                            bool(u.admin_access)) for u in users if u.email]
+                                            bool(u.admin_access)) for u in users
+                                           if u.email and (u.admin_access or u.shop_access)]
         except Exception:
             _subscribers_cache['users'] = []
         _subscribers_cache['at'] = now

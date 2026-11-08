@@ -31,6 +31,9 @@ see the upstream project for its own history.
   gets them at that address - no channel to set up in Settings for it. A user gets the
   game news (games added, new updates and DLC); an admin also gets the housekeeping
   (corrupt files, failed tasks, saves). Each email is in the user's language.
+- Only users who may see the library (shop access, or admins) get the game news by email,
+  and the list is read again when a user's permissions change. Slack messages escape
+  `&`, `<` and `>`, so a file name like `<!channel>` can't ping the channel.
 - **The language is a setting of My account**, kept on the user (the nav's language menu
   changes it too, and a user who never chose gets the one they browse in): the web and
   the emails the server sends them are in it. Migration `f6a7b8c9d0e2` adds
