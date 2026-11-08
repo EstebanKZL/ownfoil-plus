@@ -4,7 +4,14 @@
 (function () {
     const UP = JSON.parse(document.getElementById('uploadStrings').textContent);
     const MIN_CHUNK = 512 * 1024;
+    // Chunks start at 8 MiB and double while each goes up quickly, to 64 MiB: every chunk
+    // waits for the server's answer before the next, so on a fast network (a gigabit LAN)
+    // small chunks spend more time waiting than sending. A proxy's 413 halves it again and
+    // sets the ceiling.
+    const MAX_CHUNK = 64 * 1024 * 1024;
+    const GROW_BELOW_SECONDS = 1.5;
     let uploadChunk = 8 * 1024 * 1024;
+    let chunkCeiling = MAX_CHUNK;
     const uploadItems = [];
     let uploadRunning = false;
 
@@ -108,6 +115,7 @@
         while (item.offset < item.file.size) {
             if (item.state !== 'uploading') return renderUploadItem(item);
             const end = Math.min(item.offset + uploadChunk, item.file.size);
+            const sentAt = performance.now();
             let resp = null;
             let body = null;
             try {
@@ -123,6 +131,11 @@
             }
 
             if (resp && resp.ok && body && body.success) {
+                // A full chunk that went up quickly: try a bigger one next.
+                const took = (performance.now() - sentAt) / 1000;
+                if (end - item.offset === uploadChunk && took < GROW_BELOW_SECONDS && uploadChunk < chunkCeiling) {
+                    uploadChunk = Math.min(chunkCeiling, uploadChunk * 2);
+                }
                 windowBytes += end - item.offset;
                 item.offset = body.offset;
                 failures = 0;
@@ -141,6 +154,7 @@
             }
             if (resp && resp.status === 413 && uploadChunk > MIN_CHUNK) {
                 uploadChunk = Math.max(MIN_CHUNK, Math.floor(uploadChunk / 2));   // a proxy's body limit
+                chunkCeiling = uploadChunk;                                          // never above it again
                 continue;
             }
             if (resp && resp.status >= 400 && resp.status < 500 && resp.status !== 408 && resp.status !== 429) {

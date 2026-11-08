@@ -241,7 +241,7 @@ def test_test_button_without_a_provider(admin_client, posts):
 def captured(monkeypatch):
     got = []
     monkeypatch.setattr(notifications, 'is_enabled', lambda event: True)
-    monkeypatch.setattr(notifications, 'notify', lambda event, item, title_id=None: got.append((event, item)))
+    monkeypatch.setattr(notifications, 'notify', lambda event, item, title_id=None, user=None: got.append((event, item)))
     return got
 
 
@@ -360,7 +360,7 @@ def test_users_who_asked_get_the_email_with_no_channel_set_up(shop_app, monkeypa
         assert sorted(sent) == ['boss@example.test', 'fan@example.test']     # not the unverified one
         sent.clear()
         _flush_with(monkeypatch, config, (notifications.EVENT_TASK_FAILED, 'Scan: boom'))
-        assert sent == ['boss@example.test']
+        assert sent == ['boss@example.test']                                 # housekeeping: staff only
         sent.clear()
         _flush_with(monkeypatch, {**config, 'enabled': False}, (notifications.EVENT_UPDATE_AVAILABLE, 'Zelda'))
         assert sent == []                                                     # notifications off: nothing
@@ -433,3 +433,53 @@ def test_a_user_without_shop_access_gets_no_game_news(shop_app, monkeypatch):
         db.session.commit()
         notifications.forget_subscribers()
         assert 'nope@example.test' not in [e for e, _ in notifications._subscribers('update_available')]
+
+
+
+def test_a_save_backup_goes_to_its_own_user_and_staff_get_the_housekeeping(shop_app, monkeypatch):
+    """A user gets their own save backups, never other people's; a collaborator, like an
+    admin, gets corrupt files and failed tasks; events turned off go to nobody."""
+    import accounts
+    from db import User, db
+    sent = []
+    monkeypatch.setattr(accounts, 'smtp_config', lambda: {'from': 'shop@example.test'})
+    monkeypatch.setattr(accounts, 'public_url', lambda: None)
+    monkeypatch.setattr(accounts, 'send_mail', lambda to, subject, body, html=None: sent.append((to, body)))
+    config = {'enabled': True, 'language': 'en', 'events': {'save_backup': True, 'file_corrupt': True,
+                                                            'task_failed': True, 'file_added': False}}
+    with shop_app.app.app_context():
+        for name, email in (('shopper', 'fan@example.test'), ('noshop', 'helper@example.test')):
+            u = User.query.filter_by(user=name).one()
+            u.email, u.email_verified, u.notify_email = email, True, True
+            if name == 'noshop':
+                u.collaborator_access = True
+        db.session.commit()
+        notifications._pending.clear()
+        notifications.forget_subscribers()
+        monkeypatch.setattr(notifications, '_ensure_sender', lambda: None)
+        monkeypatch.setattr(notifications, '_config', lambda: config)
+        notifications.notify(notifications.EVENT_SAVE_BACKUP, 'shopper: Zelda - a.zip', user='shopper')
+        notifications.notify(notifications.EVENT_SAVE_BACKUP, 'admin: Mario - b.zip', user='admin')
+        notifications.flush()
+        mine = dict(sent)
+        assert 'Zelda' in mine['fan@example.test'] and 'Mario' not in mine['fan@example.test']
+        assert 'Zelda' in mine['helper@example.test'] and 'Mario' in mine['helper@example.test']
+        sent.clear()
+        _flush_with(monkeypatch, config, (notifications.EVENT_FILE_CORRUPT, 'bad.nsp'))
+        assert [to for to, _ in sent] == ['helper@example.test']             # the collaborator, not the user
+        sent.clear()
+        _flush_with(monkeypatch, config, (notifications.EVENT_FILE_ADDED, 'Zelda'))
+        assert sent == []                                                     # turned off in the server
+
+
+def test_the_channel_cards_start_folded():
+    """Eight channels open at once made Settings > Notifications a long page: each card
+    shows its name and switch, and its name opens the fields."""
+    import os
+    root = os.path.join(os.path.dirname(__file__), '..', 'app')
+    html = open(os.path.join(root, 'templates', 'settings.html'), encoding='utf-8').read()
+    assert html.count('class="notif-channel__toggle" aria-expanded="false"') == 8
+    assert html.count('class="notif-channel__body" id="notifChannel_') == 8
+    assert html.count('" hidden>') >= 8
+    js = open(os.path.join(root, 'static', 'js', 'settings.js'), encoding='utf-8').read()
+    assert "'.notif-channel__toggle'" in js

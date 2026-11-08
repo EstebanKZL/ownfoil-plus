@@ -31,6 +31,30 @@ def package_contents(app_types):
     return ' + '.join(label for kind, label in PACKAGE_PARTS if kind in present)
 
 
+# Every field an organizer template may use (Settings > Library > Templates).
+TEMPLATE_FIELDS = frozenset({
+    'extension', 'titleId', 'titleName', 'appId', 'appVersion', 'patchLevel', 'appName',
+    'packageContents', 'packageCounts', 'packageNames', 'sizeGb', 'sizeMb'})
+
+
+def template_errors(templates):
+    """[(template, problem)] for templates that would fail: an unknown {field} (it used to
+    make the organizer skip every file silently), or braces that don't parse."""
+    import string
+    errors = []
+    for key, template in (templates or {}).items():
+        try:
+            fields = [f for _, f, _, _ in string.Formatter().parse(template or '') if f is not None]
+        except ValueError as e:
+            errors.append((key, str(e)))
+            continue
+        for field in fields:
+            name = field.split('.')[0].split('[')[0]
+            if name not in TEMPLATE_FIELDS:
+                errors.append((key, '{' + field + '}'))
+    return errors
+
+
 def package_counts(app_types):
     """{packageCounts}: how many of each the file holds, games first - "1G+1U+5D" (a part
     it lacks is left out: "1G+1U")."""
@@ -82,8 +106,11 @@ def organize_file(file_obj, library_path, organizer_settings):
         format_data["titleName"] = title_info['name']
         # Every template: what the file holds and how big it is, for names like
         # "Game [Base + Update + DLC] [3.23 GB]".
-        format_data["packageContents"] = package_contents([a.app_type for a in apps])
-        format_data["packageCounts"] = package_counts([a.app_type for a in apps])
+        # {packageContents}: "1G+1U+5D", as file names have always said it ({packageCounts}
+        # is the same); {packageNames}: "Base + Update + DLC".
+        format_data["packageContents"] = package_counts([a.app_type for a in apps])
+        format_data["packageCounts"] = format_data["packageContents"]
+        format_data["packageNames"] = package_contents([a.app_type for a in apps])
         format_data.update(size_fields(file_obj.size))
         if not file_obj.multicontent:
             format_data["appId"] = app.app_id

@@ -4,6 +4,53 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.54]
+
+- **`{packageContents}` is counted: `1G+1U+5D`**, as file names have always said it (it
+  read `Base + Update + DLC`, which surprised a template written for counts). The names
+  moved to the new `{packageNames}`; `{packageCounts}` stays, the same as
+  `{packageContents}`. A template already saved with `{packageContents}` renames its
+  bundles on the next organize.
+- **Who gets what by email**: of the events turned on in Settings, a user gets games
+  added, new updates and DLC, and **their own** save backups (not other people's); corrupt
+  files and failed tasks go only to admins and collaborators, who also get every backup.
+  `notify()` takes the user a backup belongs to.
+- **The language menu leaves the top bar for signed-in users**: it is in My account
+  (*Web language*). Visitors who aren't signed in keep it in the bar.
+- Shorter texts in My account for the language and the email news. **On a wide window
+  its two big cards (profile picture, save vault) each have two cards beside them** -
+  console and library, email and password - that share the big card's height between
+  them, instead of rows where a short card left a gap next to a tall one.
+- **A template with an unknown field is refused on save**, naming it. A field the server
+  didn't know (`{packageNames}` on 6.2.5.53) made the organizer skip every file without a
+  word, so a changed template renamed nothing.
+- **Sorting by size puts both consoles together**: the size is the bytes of the files
+  the library holds (the catalogue's figure only for games you don't have). The
+  catalogue's own size is missing or written differently for Switch 2 games, which sorted
+  them apart from the rest under *All*.
+- **The Library tile in use is marked** - outlined in its color, with a check; *Games*
+  too when nothing narrows the list - and a second click goes back to every game. On
+  hover a tile lifts gently, eased in and out (it used to jump), and not at all for
+  people who ask their system for less motion.
+- **Faster web uploads on a fast network**: chunks start at 8 MiB and double while each
+  goes up in under 1.5 s, to 64 MiB - each chunk waits for the server's answer before the
+  next, so on a gigabit LAN small chunks spent more time waiting than sending. A proxy's
+  413 still halves them, and caps them from then on. The server reads them in 4 MiB
+  blocks. Install.md: `client_max_body_size 64m;`, and the local address for LAN uploads.
+- **The list dialogs of Settings (users, paths, backups) are wider**, so the users table
+  fits whole in a full window; it still scrolls in a narrow one.
+- **Settings > Templates**: the fields listed compactly, one per line in two columns.
+- **Settings > Notifications: the channel cards start folded**, each showing its name,
+  icon and *Enabled* switch, in the same two columns; a click on the name opens its
+  fields. Eight cards open at once made a long page to scroll past for the one or two
+  channels in use. Two cards side by side keep one height when both are open (a short one
+  no longer ends halfway down its neighbour).
+- **The message language belongs to the channels**: *Channel language* sits by the
+  *Channels* heading and says what it covers - Discord, Telegram, the Email card... Each
+  user's own emails go in the language of their profile, as before. A shorter
+  introduction to the section.
+- **Settings > Workers in two columns**: the I/O limit, with its long help, on the right.
+
 ## [6.2.5.53]
 
 - **New template fields** in every organizer template: `{packageContents}` (`Base`,

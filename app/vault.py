@@ -515,7 +515,8 @@ def _after_upload(path, username):
     try:
         import notifications
         game = os.path.basename(os.path.dirname(path))
-        notifications.notify(notifications.EVENT_SAVE_BACKUP, f'{username}: {game} - {os.path.basename(path)}')
+        notifications.notify(notifications.EVENT_SAVE_BACKUP, f'{username}: {game} - {os.path.basename(path)}',
+                             user=username)
     except Exception:
         logger.exception('Could not notify a new save backup')
 

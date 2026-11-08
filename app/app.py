@@ -1445,6 +1445,11 @@ def set_library_watcher_settings_api():
 @access_required('admin')
 def set_library_management_settings_api():
     data = request.json
+    templates = ((data or {}).get('organizer') or {}).get('templates')
+    problems = template_errors(templates) if templates else []
+    if problems:
+        return jsonify({'success': False, 'errors': [
+            {'path': f'organizer/templates/{key}', 'error': problem} for key, problem in problems]})
     set_library_management_settings(data)
     tasks_mod.enqueue_task('process_library')
     resp = {

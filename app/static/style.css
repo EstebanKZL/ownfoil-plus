@@ -587,7 +587,6 @@ p.game-description {
 a.stat-tile:hover {
     color: var(--op-text);
     border-color: rgba(var(--tile-rgb), .55);
-    transform: translateY(-2px);
 }
 
 .stat-tile--ok { --tile: var(--op-ok); --tile-rgb: var(--op-ok-rgb); }
@@ -917,10 +916,43 @@ a.stat-tile {
     cursor: pointer;
 }
 
+/* A gentle lift on hover, eased in and out (it used to jump). */
+button.stat-tile,
+a.stat-tile {
+    transition: transform var(--op-dur) var(--op-ease), box-shadow var(--op-dur) var(--op-ease),
+                border-color var(--op-dur) var(--op-ease);
+}
+
 button.stat-tile:hover,
 a.stat-tile:hover {
     border-color: rgba(var(--tile-rgb), .55);
-    transform: translateY(-2px);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .28), 0 0 0 1px rgba(var(--tile-rgb), .25);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    button.stat-tile:hover,
+    a.stat-tile:hover {
+        transform: none;
+    }
+}
+
+/* The tile whose filter is in use: outlined in its color, a check in its corner. */
+.stat-tile.is-active,
+.stat-tile.is-active:hover {
+    border-color: var(--tile);
+    box-shadow: 0 0 0 1px var(--tile), 0 0 18px rgba(var(--tile-rgb), .18);
+}
+
+.stat-tile.is-active::after {
+    content: "\F26A";               /* bi-check-circle-fill */
+    position: absolute;
+    top: .55rem;
+    right: .65rem;
+    font-family: "bootstrap-icons";
+    font-size: .95rem;
+    line-height: 1;
+    color: var(--tile);
 }
 
 .library-sort-direction .sort-direction-btn.active {
@@ -3058,6 +3090,32 @@ a.dash-list__row:hover {
     }
 }
 
+/* My account on a wide window: each big card (picture, save vault) with two cards beside
+   it that share its height between them. */
+@media (min-width: 1200px) {
+    .account-layout {
+        grid-template-areas:
+            "avatar console"
+            "avatar library"
+            "email password";
+    }
+
+    .account-layout.has-vault {
+        grid-template-areas:
+            "avatar console"
+            "avatar library"
+            "vault email"
+            "vault password";
+    }
+
+    .account-layout #accountAvatar { grid-area: avatar; }
+    .account-layout #accountConsole { grid-area: console; }
+    .account-layout #accountLibrary { grid-area: library; }
+    .account-layout #accountVault { grid-area: vault; }
+    .account-layout #accountEmail { grid-area: email; }
+    .account-layout #accountPassword { grid-area: password; }
+}
+
 .admin-section__head {
     margin-bottom: .85rem;
 }
@@ -3276,6 +3334,7 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
 .account-page {
     max-width: 60rem;
 }
+
 
 .account-firmware {
     max-width: 12rem;
@@ -4906,27 +4965,26 @@ html[data-readonly] a[href^="/api/backups/"] {
     }
 }
 
-/* Settings > Library > Templates: every field as a grid of name and meaning. */
+/* Settings > Library > Templates: every field on one line, name then meaning, in
+   columns that fill top to bottom. */
 .template-attrs__grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
-    gap: .5rem 1.25rem;
-    margin: 0 0 .75rem;
+    columns: 2 22rem;
+    column-gap: 2rem;
+    margin: 0 0 .6rem;
 }
 
 .template-attrs__item {
     display: flex;
-    flex-direction: column;
-    gap: .15rem;
-    padding: .5rem .65rem;
-    border-radius: var(--op-radius-sm);
-    background-color: var(--op-surface-2);
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 .5rem;
+    padding: .2rem 0;
+    break-inside: avoid;
 }
 
 .template-attrs__item dt {
     display: flex;
-    flex-wrap: wrap;
-    gap: .35rem;
+    gap: .3rem;
     font-weight: 400;
 }
 
@@ -4947,6 +5005,69 @@ html[data-readonly] a[href^="/api/backups/"] {
 
 .notif-channel__head .settings-inner__title {
     margin: 0;
+    flex: 1;
+    min-width: 0;
+}
+
+/* The channels start folded: the name opens its fields, the switch stays in sight. */
+.notif-channel__head {
+    margin-bottom: 0;
+}
+
+.notif-channel__toggle {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+}
+
+.notif-channel__chevron {
+    margin: 0 .25rem 0 auto;
+    font-size: .8rem;
+    color: var(--op-text-muted);
+    transition: transform .2s ease;
+}
+
+.notif-channel__toggle[aria-expanded="true"] .notif-channel__chevron {
+    transform: rotate(180deg);
+}
+
+.notif-channel__body {
+    margin-top: .75rem;
+}
+
+/* Two cards side by side keep one height when both are open (a short one doesn't end
+   halfway down its neighbour); a folded card next to an open one stays folded. */
+.notif-pair {
+    align-items: flex-start;
+}
+
+.notif-pair:not(:has(.notif-channel__body[hidden])) {
+    align-items: stretch;
+}
+
+.notif-pair:has(.notif-channel__body[hidden]) .notif-channel {
+    height: auto !important;
+}
+
+.notif-channels-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .25rem 1rem;
+    margin-top: 1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .notif-channel__chevron {
+        transition: none;
+    }
 }
 
 .notif-channel__icon {

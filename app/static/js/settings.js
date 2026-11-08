@@ -872,7 +872,10 @@ function submitLibraryManagementSettings() {
         contentType: "application/json",
         success: function (result) {
             if (!result['success']) {
-                console.log('Not Success!');
+                // A template with an unknown field: said, not saved (it would leave
+                // every file unorganized).
+                const bad = (result.errors || []).filter(e => (e.path || '').startsWith('organizer/templates/'));
+                if (bad.length) alert(bad.map(e => I18N.templateUnknownField.replace('{field}', e.error)).join('\n'));
             }
             $('#submitLibraryManagementSettingsBtn').prop('disabled', false);
         }
@@ -982,6 +985,14 @@ $('#backupNowBtn').on('click', function () {
             .text((xhr.responseJSON && xhr.responseJSON.error) || ('HTTP ' + xhr.status)),
         complete: () => btn.prop('disabled', false),
     });
+});
+
+
+// Settings > Notifications: a channel's name opens and closes its fields.
+$(document).on('click', '.notif-channel__toggle', function () {
+    const open = this.getAttribute('aria-expanded') !== 'true';
+    this.setAttribute('aria-expanded', open ? 'true' : 'false');
+    document.getElementById(this.getAttribute('aria-controls')).hidden = !open;
 });
 
 function fillNotificationSettings(n) {

@@ -66,13 +66,14 @@ def is_enabled(event):
                 and (_active_providers(config) or _subscribers(event)))
 
 
-def notify(event, item, title_id=None):
+def notify(event, item, title_id=None, user=None):
     """Queue one line (`item`, already human-readable) under `event` - with the game it
-    is about, when there is one: the email shows its cover."""
+    is about, when there is one (the email shows its cover), and the user it is about (a
+    save backup goes by email to its own user only)."""
     if event not in EVENTS or not is_enabled(event):
         return
     with _lock:
-        _pending.setdefault(event, []).append((str(item), title_id))
+        _pending.setdefault(event, []).append((str(item), title_id, user))
     _ensure_sender()
     _wakeup.set()
 
@@ -108,7 +109,7 @@ def flush():
         if not items:
             continue
         title = _text(f'notify.event.{event}.title', lang, count=len(items))
-        entries = [{'text': text, 'title_id': tid} for text, tid in items[:MAX_ITEMS_LISTED]]
+        entries = [{'text': text, 'title_id': tid, 'user': user} for text, tid, user in items[:MAX_ITEMS_LISTED]]
         lines = [e['text'] for e in entries]
         if len(items) > MAX_ITEMS_LISTED:
             lines.append(_text('notify.more', lang, count=len(items) - MAX_ITEMS_LISTED))
@@ -242,19 +243,20 @@ def _cover(title_id):
     return url if url.startswith(('https://', 'http://')) else None
 
 
-# What a user who isn't an admin gets by email (My account): news about games, not the
-# server's housekeeping (corrupt files, failed tasks, other people's saves).
-USER_EVENTS = (EVENT_FILE_ADDED, EVENT_UPDATE_AVAILABLE)
+# What a user gets by email (My account), among the events the server has on: news about
+# games, and their own save backups. The housekeeping (corrupt files, failed tasks) goes
+# only to admins and collaborators, who also get everyone's backups.
+USER_EVENTS = (EVENT_FILE_ADDED, EVENT_UPDATE_AVAILABLE, EVENT_SAVE_BACKUP)
 
 
 _subscribers_cache = {'at': 0.0, 'users': []}
 SUBSCRIBERS_TTL = 30
 
 
-def _subscribers(event):
-    """The users who asked for the server's news by email (My account), with a verified
-    address, as (email, their language): admins for every event, the others for
-    USER_EVENTS only. Read at most every SUBSCRIBERS_TTL seconds - notify() asks for each
+def _subscriber_rows():
+    """Every user who asked for the news by email (My account) with a verified address
+    and access to the library: (email, language, staff, user name) - staff being an admin
+    or a collaborator. Read at most every SUBSCRIBERS_TTL seconds: notify() asks for each
     file of a scan."""
     now = time.monotonic()
     if now - _subscribers_cache['at'] > SUBSCRIBERS_TTL:
@@ -263,15 +265,22 @@ def _subscribers(event):
             users = User.query.filter(User.notify_email.is_(True), User.email_verified.is_(True),
                                       User.email.isnot(None), User.pending.is_(False)).all()
             # Only who may see the library: game news to a user without shop access would
-            # tell them what they can't open. Admins always may.
-            _subscribers_cache['users'] = [(u.email, u.language if u.language in SUPPORTED_LANGUAGES else None,
-                                            bool(u.admin_access)) for u in users
-                                           if u.email and (u.admin_access or u.shop_access)]
+            # tell them what they can't open. Admins and collaborators always may.
+            _subscribers_cache['users'] = [
+                (u.email, u.language if u.language in SUPPORTED_LANGUAGES else None,
+                 bool(u.admin_access or u.collaborator_access), u.user)
+                for u in users if u.email and (u.admin_access or u.collaborator_access or u.shop_access)]
         except Exception:
             _subscribers_cache['users'] = []
         _subscribers_cache['at'] = now
-    return [(email, lang) for email, lang, admin in _subscribers_cache['users']
-            if admin or event in USER_EVENTS]
+    return _subscribers_cache['users']
+
+
+def _subscribers(event):
+    """Who gets `event` by email, as (email, language): staff for every event, the other
+    users for USER_EVENTS."""
+    return [(email, lang) for email, lang, staff, _ in _subscriber_rows()
+            if staff or event in USER_EVENTS]
 
 
 def forget_subscribers():
@@ -337,15 +346,31 @@ def _send_email(cfg, event, title, lines, entries, lang, total=None):
 def _send_user_emails(config, event, title, lines, entries, lang, total):
     """Every user who asked for the news by email (My account) gets it at their verified
     address, in their language - with notifications on, whatever channels are set up.
-    An address the email channel already covers isn't sent twice."""
+    A save backup goes to its own user (staff get them all); an address the email
+    channel already covers isn't sent twice."""
     taken = {a.lower() for a in _channel_addresses(config)}
-    recipients = [(e, user_lang) for e, user_lang in _subscribers(event) if e.lower() not in taken]
-    if not recipients:
-        return
-    try:
-        _deliver_emails(recipients, event, title, lines, entries, lang, total)
-    except Exception as e:
-        logger.warning(f'Notification emails to users failed: {e}')
+    groups = {}          # (language, which entries) -> addresses
+    for email, user_lang, staff, name in _subscriber_rows():
+        if email.lower() in taken or not (staff or event in USER_EVENTS):
+            continue
+        if event == EVENT_SAVE_BACKUP and not staff:
+            mine = tuple(i for i, e in enumerate(entries) if e.get('user') == name)
+            if not mine:
+                continue
+        else:
+            mine = None
+        groups.setdefault((user_lang, mine), []).append(email)
+    for (user_lang, mine), addresses in groups.items():
+        if mine is None:
+            part, part_lines, count = entries, lines, total
+        else:
+            part = [entries[i] for i in mine]
+            part_lines, count = [e['text'] for e in part], len(part)
+        part_title = title if count == total else _text(f'notify.event.{event}.title', lang, count=count)
+        try:
+            _deliver_emails([(a, user_lang) for a in addresses], event, part_title, part_lines, part, lang, count)
+        except Exception as e:
+            logger.warning(f'Notification emails to users failed: {e}')
 
 SENDERS = {
     'discord': _send_discord,

@@ -264,7 +264,7 @@ def test_old_backups_beyond_the_kept_number_are_removed(shop_app, keeper, space)
 def test_a_new_backup_is_notified_with_its_user(on, monkeypatch):
     sent = []
     import notifications
-    monkeypatch.setattr(notifications, "notify", lambda event, item: sent.append((event, item)))
+    monkeypatch.setattr(notifications, "notify", lambda event, item, title_id=None, user=None: sent.append((event, item)))
     _dav(on, "MKCOL", "/dav/JKSV/Zelda")
     _dav(on, "PUT", "/dav/JKSV/Zelda/b.zip", data=_meta_zip())
     assert sent and sent[0][0] == "save_backup" and "Zelda" in sent[0][1] and "keeper" in sent[0][1]
