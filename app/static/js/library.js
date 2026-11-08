@@ -92,7 +92,7 @@ const CARDS_QUERY = `
                     screenshots { url }
                 }
                 title { titleId name ownership { haveBase upToDate complete dlcOwned dlcTotal } }
-                downloadableFile { format }
+                downloadableFile { format contents }
             }
         }
     }`;
@@ -114,7 +114,7 @@ const ICONS_QUERY = `
                     screenshots { url }
                 }
                 title { titleId name ownership { haveBase upToDate complete dlcOwned dlcTotal } }
-                downloadableFile { format }
+                downloadableFile { format contents }
             }
         }
     }`;
@@ -599,6 +599,7 @@ function cardModel(app) {
         iconUrl: meta.iconUrl || '',
         owned: ownership.haveBase,
         format: (app.downloadableFile || {}).format || null,
+        contents: (app.downloadableFile || {}).contents || null,
         switch2: /^04/i.test(title.titleId || app.appId || ''),
         update_pending: Boolean(ownership.haveBase) && ownership.upToDate === false,
         dlc_owned: ownership.dlcOwned || 0,
@@ -651,6 +652,8 @@ function renderCardView(games) {
         if (game.owned === false) {
             badges.append(statusBadge('wait', 'bi-dash-circle', I18N.baseMissing).attr('title', I18N.baseMissing));
         }
+        // A bundle (base + update + DLC in one file): "Bundle 1G+1U+5D".
+        badges.append(bundleBadge(game.contents, I18N.bundle));
         coverWrap.append(badges);
         coverWrap.append(favoriteButton(game));
         // Along the cover's bottom: the file's format on the left, and on the right a
@@ -731,6 +734,8 @@ function renderCompactView(games) {
         if (game.owned === false) {
             badges.append(statusBadge('wait', 'bi-dash-circle', I18N.baseMissing).attr('title', I18N.baseMissing));
         }
+        // A bundle (base + update + DLC in one file): "Bundle 1G+1U+5D".
+        badges.append(bundleBadge(game.contents, I18N.bundle));
         cover.append(badges);
         cover.append(coverFormat(game));
         if (game.update_pending) {

@@ -1088,7 +1088,7 @@ def _identify(file, mgmt):
         identified_title_ids = title_ids
         if not was_identified and notifications.is_enabled(notifications.EVENT_FILE_ADDED):
             for file_content in file_contents:
-                notifications.notify(notifications.EVENT_FILE_ADDED, notifications.app_label(
+                notifications.notify(notifications.EVENT_FILE_ADDED, title_id=file_content['title_id'], item=notifications.app_label(
                     file_content['title_id'], file_content['type'], file_content['version']))
     else:
         logger.warning(f"Error identifying file {file.filename}: {error}")

@@ -67,6 +67,17 @@
                 <option value="off"{% if bg is false %} selected{% endif %}>{{ t('account.background_off') }}</option>
             </select>
             <div id="accountBackgroundHelp" class="form-text">{{ t('account.background_help') }}</div>
+
+            {# The language: of the web on this browser, and of the emails sent to you. #}
+            <label for="accountLanguage" class="form-label mt-3">{{ t('account.language_label') }}</label>
+            {% set my_lang = current_user.language if chosen_language() != 'auto' else 'auto' %}
+            <select class="form-select" id="accountLanguage" aria-describedby="accountLanguageHelp">
+                <option value="auto"{% if my_lang == 'auto' %} selected{% endif %}>{{ t('account.language_auto') }}</option>
+                {% for lang in SUPPORTED_LANGUAGES %}
+                <option value="{{ lang }}"{% if my_lang == lang %} selected{% endif %}>{{ LANGUAGE_NAMES[lang] }}</option>
+                {% endfor %}
+            </select>
+            <div id="accountLanguageHelp" class="form-text">{{ t('account.language_help') }}</div>
         </section>
 
         <section class="surface admin-section" id="accountEmail">
@@ -81,6 +92,16 @@
             </div>
             <div class="form-text">{{ t('account.email_help') if auth_options.email else t('account.email_unavailable') }}</div>
             <div class="small mt-1" id="accountEmailFeedback" role="status"></div>
+                    {% if email_channel %}
+            {# The server's news by email (Settings > Notifications has the email channel on). #}
+            <div class="form-check form-switch mt-3">
+                <input class="form-check-input" type="checkbox" role="switch" id="accountNotifyEmail"
+                       {% if current_user.notify_email and current_user.email_verified %}checked{% endif %}
+                       {% if not current_user.email_verified %}disabled{% endif %}>
+                <label class="form-check-label" for="accountNotifyEmail">{{ t('account.notify_email') }}</label>
+                <div class="form-text">{{ t('account.notify_email_help') if current_user.email_verified else t('account.notify_email_needs_verified') }}</div>
+            </div>
+            {% endif %}
         </section>
 
         {% if can_use_vault %}

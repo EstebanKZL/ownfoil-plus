@@ -254,6 +254,17 @@ class LibraryStats:
         "runs at `signature` depth. Admin only; null for any other role.", default=None)
 
 
+def _bundle_contents(f):
+    """What a bundle holds, one entry per content - BASE, then UPDATE, then each DLC."""
+    from db import db
+    from sqlalchemy import text
+    kinds = [row[0] for row in db.session.execute(text(
+        "SELECT a.app_type FROM app_files af JOIN apps a ON a.id = af.app_id WHERE af.file_id = :f"),
+        {'f': int(f.id)})]
+    order = {'BASE': 0, 'UPDATE': 1, 'DLC': 2}
+    return sorted((k for k in kinds if k in order), key=order.get) or None
+
+
 @described(strawberry.type)
 class DownloadableFile:
     """The minimal, shop-safe slice of `File` a download button needs - see
@@ -266,6 +277,9 @@ class DownloadableFile:
         "Same computed verdict as `File.verificationStatus`.")
     format: Optional[str] = desc(
         "The file's format from its extension, upper case: NSP, NSZ, XCI or XCZ.", default=None)
+    contents: Optional[List[str]] = desc(
+        "For a file holding several contents (a bundle), one entry per content: BASE, "
+        "UPDATE, then each DLC. Null for an ordinary file.", default=None)
 
 
 @described(strawberry.type)
@@ -505,7 +519,8 @@ class App:
         f = self.files_loaded[0]
         return DownloadableFile(id=f.id, size=f.size,
                                 verification_status=VerificationStatus(verification_status(f)),
-                                format=(f.extension or '').upper() or None)
+                                format=(f.extension or '').upper() or None,
+                                contents=_bundle_contents(f) if getattr(f, 'multicontent', False) else None)
 
     @described_field
     def titledb(self) -> Optional["Title"]:

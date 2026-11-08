@@ -282,16 +282,35 @@ def app_id(pkg):
     return f'{tid:016X}'
 
 
+def _program_id(packages):
+    """The game's id as the other packages tell it: an update is stored with it (or with
+    its own id, 800 at the end), a DLC's id is the game's + 0x1000 + its number."""
+    for pkg in packages:
+        if pkg['title_id'] and pkg['kind'] in (KIND_BASE, KIND_UPDATE):
+            return pkg['title_id'] & ~0xFFF
+    for pkg in packages:
+        if pkg['title_id'] and pkg['kind'] == KIND_DLC:
+            return (pkg['title_id'] & ~0xFFF) - 0x1000
+    return None
+
+
 def contents(path):
     """What the NUP holds, as identify_file lists the contents of an NSP or XCI: one
     entry per game / update / DLC (an update stored twice keeps its newest version),
     each with the name, display version and bytes of the file it takes."""
     container = read(path)
     sizes = _stored_sizes(container)
+    program = _program_id(container['packages'])
     by_app = {}
     for i, pkg in enumerate(container['packages']):
-        if not pkg['title_id'] or pkg['kind'] not in (KIND_BASE, KIND_UPDATE, KIND_DLC):
-            continue        # no id (a dump without its NPDM), or a reserved kind
+        if pkg['kind'] not in (KIND_BASE, KIND_UPDATE, KIND_DLC):
+            continue        # a reserved kind
+        if not pkg['title_id']:
+            # A game dumped without its NPDM carries no id: it is the program the update
+            # or DLC beside it belong to (seen in Switch 2 NUPs, listed as "Update + DLC").
+            if pkg['kind'] != KIND_BASE or not program:
+                continue
+            pkg = {**pkg, 'title_id': program}
         aid = app_id(pkg)
         meta = pkg['meta']
         entry = by_app.get(aid)

@@ -1010,6 +1010,20 @@ a.stat-tile:hover {
     gap: .3rem;
 }
 
+/* On a cover the badges stack, one under the other, clear of the star at the top
+   right - and always in the same order: firmware, base game missing, bundle. */
+.library-cover-wrap .library-badges,
+.compact-cover .library-badges {
+    right: 3rem;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+}
+
+.library-badges .status-badge--firmware { order: 1; }
+.library-badges .status-badge--wait { order: 2; }
+.library-badges .bundle-badge { order: 3; }
+
 /* Over artwork the badges need their own backdrop to stay readable. */
 .library-badges .status-badge {
     background-color: rgba(var(--op-surface-0-rgb), .85);
@@ -4890,4 +4904,58 @@ html[data-readonly] a[href^="/api/backups/"] {
     .packing-game__head {
         flex-wrap: wrap;
     }
+}
+
+/* Settings > Library > Templates: every field as a grid of name and meaning. */
+.template-attrs__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+    gap: .5rem 1.25rem;
+    margin: 0 0 .75rem;
+}
+
+.template-attrs__item {
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+    padding: .5rem .65rem;
+    border-radius: var(--op-radius-sm);
+    background-color: var(--op-surface-2);
+}
+
+.template-attrs__item dt {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+    font-weight: 400;
+}
+
+.template-attrs__item dd {
+    margin: 0;
+    font-size: .85rem;
+    color: var(--op-text-muted);
+}
+
+/* Settings > Notifications: each channel's card, icon and switch in one row. */
+.notif-channel__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    margin-bottom: .6rem;
+}
+
+.notif-channel__head .settings-inner__title {
+    margin: 0;
+}
+
+.notif-channel__icon {
+    display: inline-grid;
+    place-items: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    margin-right: .4rem;
+    border-radius: var(--op-radius-sm);
+    background-color: var(--op-surface-2);
+    color: var(--op-nav);
 }

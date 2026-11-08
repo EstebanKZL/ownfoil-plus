@@ -138,9 +138,12 @@ def test_provider_requests(shop_app, posts):
         'telegram': {'enabled': True, 'bot_token': '123:abc', 'chat_id': '99'},
         'ntfy': {'enabled': True, 'server': 'https://ntfy.test/', 'topic': 'games', 'token': 'tk'},
         'webhook': {'enabled': True, 'url': 'https://hook.test/x'},
+        'gotify': {'enabled': True, 'server': 'https://gotify.test/', 'token': 'gk'},
+        'pushover': {'enabled': True, 'user_key': 'uk', 'app_token': 'at'},
+        'slack': {'enabled': True, 'webhook_url': 'https://hooks.slack.test/s'},
     }
     results = notifications.send(config, 'file_added', 'Título', ['Zelda v65536'])
-    assert results == {p: None for p in notifications.PROVIDERS}
+    assert results == {p: None for p in config}
 
     by_url = {p['url']: p for p in posts}
     assert 'Zelda v65536' in by_url['https://discord.test/hook']['json']['content']
@@ -151,6 +154,53 @@ def test_provider_requests(shop_app, posts):
     assert ntfy['headers']['Authorization'] == 'Bearer tk'
     assert by_url['https://hook.test/x']['json'] == {
         'shop': 'Ownfoil-Plus', 'event': 'file_added', 'title': 'Título', 'items': ['Zelda v65536']}
+    gotify = by_url['https://gotify.test/message']
+    assert gotify['headers'] == {'X-Gotify-Key': 'gk'} and 'Zelda' in gotify['json']['message']
+    push = by_url['https://api.pushover.net/1/messages.json']['data']
+    assert push['user'] == 'uk' and push['token'] == 'at' and 'Zelda' in push['message']
+    assert 'Zelda v65536' in by_url['https://hooks.slack.test/s']['json']['text']
+
+
+def test_the_email_channel_sends_html_with_covers(shop_app, monkeypatch):
+    import accounts
+    sent = []
+    monkeypatch.setattr(accounts, 'smtp_config', lambda: {'from': 'shop@example.test'})
+    monkeypatch.setattr(accounts, 'public_url', lambda: 'https://shop.example.test')
+    monkeypatch.setattr(accounts, 'send_mail', lambda to, subject, body, html=None: sent.append((to, subject, body, html)))
+    monkeypatch.setattr(notifications, '_cover', lambda tid: 'https://img.test/cover.jpg' if tid else None)
+    config = {'email': {'enabled': True, 'to': 'a@example.test, b@example.test'}}
+    results = notifications.send(config, 'update_available', 'New updates (1)', ['Zelda v65536'],
+                                 entries=[{'text': 'Zelda v65536', 'title_id': '01007EF00011E000'}], lang='en')
+    assert results == {'email': None}
+    assert [s[0] for s in sent] == ['a@example.test', 'b@example.test']
+    to, subject, body, html = sent[0]
+    assert subject == 'Ownfoil-Plus: New updates (1)' and 'Zelda v65536' in body
+    assert 'https://img.test/cover.jpg' in html and 'Open the library' in html and 'Zelda v65536' in html
+
+
+def test_the_email_channel_needs_smtp(shop_app, monkeypatch):
+    import accounts
+    monkeypatch.setattr(accounts, 'smtp_config', lambda: None)
+    results = notifications.send({'email': {'enabled': True, 'to': 'a@example.test'}}, 'test', 'T', ['x'])
+    assert 'SMTP' in results['email']
+
+
+def test_html_emails_escape_what_they_show():
+    import mail_html
+    html = mail_html.render('Shop <b>', 'Heading & co', ['<script>x</script>'], button=('Go', 'https://x.test/?a=1&b=2'),
+                            items=[{'text': '"Game"', 'image': 'https://i.test/a.jpg'}], footer='Sent')
+    assert '<script>x' not in html and '&lt;script&gt;' in html and 'Shop &lt;b&gt;' in html
+    assert 'href="https://x.test/?a=1&amp;b=2"' in html
+
+
+def test_an_account_email_puts_its_link_on_a_button():
+    import mail_html
+    body = ('Hi gamer,\n\nOpen this link to verify your email (it works for a day):\n'
+            'https://s.test/verify/abc\n\nIf you did not ask for this, ignore this email.')
+    html = mail_html.from_text('Shop', 'Verify your email', body, 'https://s.test/verify/abc', 'Verify my email',
+                               'If the button does not work:', 'Sent by Shop.')
+    assert '>Verify my email</a>' in html and 'href="https://s.test/verify/abc"' in html
+    assert 'Hi gamer,' in html and 'If you did not ask for this' in html
 
 
 def test_provider_errors_are_reported(shop_app, monkeypatch):
@@ -191,7 +241,7 @@ def test_test_button_without_a_provider(admin_client, posts):
 def captured(monkeypatch):
     got = []
     monkeypatch.setattr(notifications, 'is_enabled', lambda event: True)
-    monkeypatch.setattr(notifications, 'notify', lambda event, item: got.append((event, item)))
+    monkeypatch.setattr(notifications, 'notify', lambda event, item, title_id=None: got.append((event, item)))
     return got
 
 
@@ -278,3 +328,91 @@ def test_failed_task_is_announced(shop_app, captured, monkeypatch):
         tasks.TASK_REGISTRY.pop('_test_explodes', None)
     assert captured and captured[0][0] == notifications.EVENT_TASK_FAILED
     assert 'kaboom' in captured[0][1]
+
+
+def _flush_with(monkeypatch, config, *events):
+    notifications._pending.clear()
+    notifications.forget_subscribers()
+    monkeypatch.setattr(notifications, '_ensure_sender', lambda: None)
+    monkeypatch.setattr(notifications, '_config', lambda: config)
+    for event, item in events:
+        notifications.notify(event, item, title_id='01007EF00011E000')
+    notifications.flush()
+
+
+def test_users_who_asked_get_the_email_with_no_channel_set_up(shop_app, monkeypatch):
+    """Asked for: notifications on in the server and a user who wants them (My account,
+    verified email) is enough - the admin needn't turn on the email channel. A user gets
+    the game news; only an admin also gets the housekeeping."""
+    import accounts
+    from db import User, db
+    sent = []
+    monkeypatch.setattr(accounts, 'smtp_config', lambda: {'from': 'shop@example.test'})
+    monkeypatch.setattr(accounts, 'public_url', lambda: None)
+    monkeypatch.setattr(accounts, 'send_mail', lambda to, subject, body, html=None: sent.append(to))
+    config = {'enabled': True, 'language': 'en', 'events': {e: True for e in notifications.EVENTS}}
+    with shop_app.app.app_context():
+        for name, email in (('admin', 'boss@example.test'), ('shopper', 'fan@example.test'), ('noshop', 'nope@example.test')):
+            u = User.query.filter_by(user=name).one()
+            u.email, u.email_verified, u.notify_email = email, name != 'noshop', True
+        db.session.commit()
+        _flush_with(monkeypatch, config, (notifications.EVENT_UPDATE_AVAILABLE, 'Zelda v65536'))
+        assert sorted(sent) == ['boss@example.test', 'fan@example.test']     # not the unverified one
+        sent.clear()
+        _flush_with(monkeypatch, config, (notifications.EVENT_TASK_FAILED, 'Scan: boom'))
+        assert sent == ['boss@example.test']
+        sent.clear()
+        _flush_with(monkeypatch, {**config, 'enabled': False}, (notifications.EVENT_UPDATE_AVAILABLE, 'Zelda'))
+        assert sent == []                                                     # notifications off: nothing
+        # The test button: only the addresses set in Settings, never the users.
+        assert 'missing' in notifications.send({'email': {'enabled': True, 'to': ''}}, 'test', 'T', ['x'])['email']
+
+
+def test_my_account_keeps_the_choice_only_with_a_verified_email(shop_app):
+    import fixture
+    from db import User, db
+    client = shop_app.client
+    client.post('/login', data={'user': 'shopper', 'password': fixture.PASSWORDS['shopper']})
+    client.post('/api/account', json={'console_firmware': '', 'show_background_image': 'default', 'notify_email': True})
+    with shop_app.app.app_context():
+        assert User.query.filter_by(user='shopper').one().notify_email is False
+        u = User.query.filter_by(user='shopper').one()
+        u.email, u.email_verified = 'fan@example.test', True
+        db.session.commit()
+    client.post('/api/account', json={'console_firmware': '', 'show_background_image': 'default', 'notify_email': True})
+    with shop_app.app.app_context():
+        assert User.query.filter_by(user='shopper').one().notify_email is True
+
+
+def test_each_user_gets_the_email_in_their_language(shop_app, monkeypatch):
+    """Each user's email is in the language set in My account (or, until then, the one
+    they browse in)."""
+    import accounts
+    import fixture
+    from db import User, db
+    client = shop_app.client
+    client.post('/login', data={'user': 'shopper', 'password': fixture.PASSWORDS['shopper']})
+    client.set_cookie('ownfoil_lang', 'es')
+    client.get('/account')
+    with shop_app.app.app_context():
+        assert User.query.filter_by(user='shopper').one().language == 'es'   # filled in from the web
+    resp = client.post('/api/account', json={'console_firmware': '', 'show_background_image': 'default', 'language': 'fr'})
+    assert resp.get_json()['success'] and 'ownfoil_lang=fr' in resp.headers.get('Set-Cookie', '')
+    with shop_app.app.app_context():
+        assert User.query.filter_by(user='shopper').one().language == 'fr'   # My account's choice
+        for name, email in (('admin', 'boss@example.test'), ('shopper', 'fan@example.test')):
+            u = User.query.filter_by(user=name).one()
+            u.email, u.email_verified, u.notify_email = email, True, True
+            if name == 'admin':
+                u.language = 'en'
+        db.session.commit()
+        sent = {}
+        monkeypatch.setattr(accounts, 'smtp_config', lambda: {'from': 'shop@example.test'})
+        monkeypatch.setattr(accounts, 'public_url', lambda: None)
+        monkeypatch.setattr(accounts, 'send_mail', lambda to, subject, body, html=None: sent.__setitem__(to, subject))
+        _flush_with(monkeypatch, {'enabled': True, 'language': 'en', 'events': {'update_available': True}},
+                    (notifications.EVENT_UPDATE_AVAILABLE, 'Zelda v65536'))
+    from i18n import TRANSLATIONS
+    title = TRANSLATIONS['notify.event.update_available.title']
+    assert title['en'].split('{')[0].strip() in sent['boss@example.test']
+    assert title['fr'].split('{')[0].strip() in sent['fan@example.test']

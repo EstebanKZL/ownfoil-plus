@@ -66,8 +66,10 @@ def _check_password(password, confirm=None):
 
 
 def _verification(user):
+    """(to, subject, text, html) of a verification email."""
     link = f'{accounts.public_url()}/verify/{accounts.verify_token(user)}'
-    return user.pending_email, t('mail.verify_subject'), t('mail.verify_body', user=user.user, link=link)
+    subject, body = t('mail.verify_subject'), t('mail.verify_body', user=user.user, link=link)
+    return user.pending_email, subject, body, accounts.account_mail(subject, body, link, t('mail.button_verify'))
 
 
 @accounts_blueprint.app_context_processor
@@ -113,8 +115,10 @@ def signup():
     owner = _verified_owner(email)
     if owner is not None:
         # The same answer as a new account, and a word to whoever owns the address.
-        accounts.send_mail_later(owner.email, t('mail.exists_subject'),
-                                 t('mail.exists_body', user=owner.user, link=f'{accounts.public_url()}/forgot'))
+        link = f'{accounts.public_url()}/forgot'
+        body = t('mail.exists_body', user=owner.user, link=link)
+        accounts.send_mail_later(owner.email, t('mail.exists_subject'), body,
+                                 accounts.account_mail(t('mail.exists_subject'), body, link, t('mail.button_reset')))
         return checked
     user = User(user=username, password=generate_password_hash(password, method='scrypt'), pending_email=email,
                 email_verified=False, pending=True, admin_access=False, shop_access=True, backup_access=True)
@@ -176,7 +180,9 @@ def forgot():
     user = _verified_owner(email) if email else None
     if user and user.email_verified and accounts.email_ready():
         link = f'{accounts.public_url()}/reset/{accounts.reset_token(user)}'
-        accounts.send_mail_later(user.email, t('mail.reset_subject'), t('mail.reset_body', user=user.user, link=link))
+        body = t('mail.reset_body', user=user.user, link=link)
+        accounts.send_mail_later(user.email, t('mail.reset_subject'), body,
+                                 accounts.account_mail(t('mail.reset_subject'), body, link, t('mail.button_reset')))
     return _message(t('forgot.sent_heading'), t('forgot.sent'))
 
 

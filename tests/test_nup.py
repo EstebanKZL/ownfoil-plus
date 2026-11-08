@@ -18,7 +18,7 @@ def _tlv(kind, value):
     return struct.pack('<HHI', kind, 0, len(value)) + value
 
 
-def build_nup(path, corrupt_data=False):
+def build_nup(path, corrupt_data=False, packages=None):
     """A small, valid NUP: a game (raw file), its update stored with the program id
     (zstd file) and one DLC, each a root folder with one file."""
     payloads = [b'game exefs main' * 10, b'update romfs data' * 50, b'dlc romfs' * 7]
@@ -29,7 +29,7 @@ def build_nup(path, corrupt_data=False):
         _tlv(0x0005, b'Test Game') + _tlv(0x0004, b'1.2.0'),
         b'',
     ]
-    packages = [(GAME, 0, 0), (GAME, 65536, 1), (DLC, 0, 2)]
+    packages = packages or [(GAME, 0, 0), (GAME, 65536, 1), (DLC, 0, 2)]
 
     names = b''
     name_refs = []
@@ -111,6 +111,18 @@ def test_a_nup_lists_its_game_update_and_dlc(nup_file):
     update = parts['0100ABCD12340800']
     assert update['kind'] == nup.KIND_UPDATE and update['version'] == 65536
     assert all(p['stored_size'] > 0 for p in parts.values())
+
+
+def test_a_game_stored_without_its_id_takes_its_updates(tmp_path):
+    """Seen with Switch 2 NUPs: the game's package carries no title id (a dump without
+    its NPDM), only its update and DLC do - the game was dropped and the file listed as
+    "Update + DLC". Its id is the update's (or a DLC's) program id."""
+    path = build_nup(str(tmp_path / 'g.nup'), packages=[(0, 0, 0), (GAME, 65536, 1), (DLC, 0, 2)])
+    parts = {p['app_id']: p['kind'] for p in nup.contents(path)}
+    assert parts == {'0100ABCD12340000': nup.KIND_BASE, '0100ABCD12340800': nup.KIND_UPDATE,
+                     '0100ABCD12341001': nup.KIND_DLC}
+    only_dlc = build_nup(str(tmp_path / 'd.nup'), packages=[(0, 0, 0), (DLC, 0, 2), (DLC + 1, 0, 2)])
+    assert '0100ABCD12340000' in {p['app_id'] for p in nup.contents(only_dlc)}
 
 
 def test_paths_inside_each_package_are_walked(nup_file):

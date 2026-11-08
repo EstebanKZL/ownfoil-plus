@@ -1001,6 +1001,13 @@ function fillNotificationSettings(n) {
     $('#notifNtfyTopic').val(n.ntfy.topic);
     $('#notifNtfyToken').val(n.ntfy.token);
     $('#notifWebhookUrl').val(n.webhook.url);
+    const gotify = n.gotify || {}, pushover = n.pushover || {}, slack = n.slack || {}, email = n.email || {};
+    $('#notifGotifyServer').val(gotify.server || '');
+    $('#notifGotifyToken').val(gotify.token || '');
+    $('#notifPushoverUser').val(pushover.user_key || '');
+    $('#notifPushoverToken').val(pushover.app_token || '');
+    $('#notifSlackWebhook').val(slack.webhook_url || '');
+    $('#notifEmailTo').val(email.to || '');
 }
 
 function collectNotificationSettings() {
@@ -1017,6 +1024,11 @@ function collectNotificationSettings() {
         ntfy: {enabled: enabled('ntfy'), server: $('#notifNtfyServer').val(),
                topic: $('#notifNtfyTopic').val(), token: $('#notifNtfyToken').val()},
         webhook: {enabled: enabled('webhook'), url: $('#notifWebhookUrl').val()},
+        gotify: {enabled: enabled('gotify'), server: $('#notifGotifyServer').val(), token: $('#notifGotifyToken').val()},
+        pushover: {enabled: enabled('pushover'), user_key: $('#notifPushoverUser').val(),
+                   app_token: $('#notifPushoverToken').val()},
+        slack: {enabled: enabled('slack'), webhook_url: $('#notifSlackWebhook').val()},
+        email: {enabled: enabled('email'), to: $('#notifEmailTo').val()},
     };
 }
 

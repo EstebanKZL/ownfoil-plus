@@ -51,9 +51,14 @@ def _open(shop_app, public_url="http://shop.example.test"):
     return shop_app.client
 
 
+def _text(message):
+    """An email's plain-text part (account emails carry an HTML version beside it)."""
+    return message.get_body(preferencelist=('plain',)).get_content()
+
+
 def _link(message, path):
-    match = re.search(rf"(https?://[^\s]+{path}/[^\s]+)", message.get_content())
-    assert match, message.get_content()
+    match = re.search(rf"(https?://[^\s]+{path}/[^\s]+)", _text(message))
+    assert match, _text(message)
     return match.group(1).split("://", 1)[1].split("/", 1)[1]   # the path, for the test client
 
 
@@ -185,7 +190,7 @@ def test_a_new_account_waits_for_its_email_and_gets_shop_access_only(shop_app, o
 def test_the_email_link_uses_the_public_address(shop_app, outbox):
     client = _open(shop_app, public_url="https://shop.example.test/")
     _signup(client)
-    assert "https://shop.example.test/verify/" in outbox[0].get_content()
+    assert "https://shop.example.test/verify/" in _text(outbox[0])
 
 
 @pytest.mark.parametrize("fields,reason", [
@@ -211,7 +216,7 @@ def test_signup_with_a_verified_email_tells_nothing_and_warns_its_owner(shop_app
     with shop_app.app.app_context():
         assert User.query.filter_by(user="other").first() is None
     assert len(outbox) == 1 and outbox[0]["To"] == "newbie@example.test"
-    assert "/verify/" not in outbox[0].get_content()
+    assert "/verify/" not in _text(outbox[0])
 
 
 def test_an_unverified_claim_never_blocks_the_real_owner(shop_app, outbox):

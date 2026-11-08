@@ -20,6 +20,32 @@ def prepare_template_names(format_data, windows_compatible):
 
     return {**format_data, **names}
 
+# What a file holds, as its name says it: "Base", "Base + Update", "Base + Update + DLC"...
+PACKAGE_PARTS = ((APP_TYPE_BASE, 'Base'), (APP_TYPE_UPD, 'Update'), (APP_TYPE_DLC, 'DLC'))
+
+
+def package_contents(app_types):
+    """{packageContents}: the kinds of content a file holds, in a fixed order - every DLC
+    counts once ("Base + Update + DLC")."""
+    present = set(app_types)
+    return ' + '.join(label for kind, label in PACKAGE_PARTS if kind in present)
+
+
+def package_counts(app_types):
+    """{packageCounts}: how many of each the file holds, games first - "1G+1U+5D" (a part
+    it lacks is left out: "1G+1U")."""
+    types = list(app_types)
+    parts = [(types.count(kind), letter) for kind, letter in
+             ((APP_TYPE_BASE, 'G'), (APP_TYPE_UPD, 'U'), (APP_TYPE_DLC, 'D'))]
+    return '+'.join(f'{n}{letter}' for n, letter in parts if n)
+
+
+def size_fields(size):
+    """{sizeGb} and {sizeMb}: the file's size, 3.23 and 3307 (GiB and MiB, like the web)."""
+    size = size or 0
+    return {'sizeGb': f'{size / 1024 ** 3:.2f}', 'sizeMb': f'{size / 1024 ** 2:.0f}'}
+
+
 def organizer_name_locale(organizer_settings):
     """The organizer's naming locale (e.g. 'US.en'), or None when it should just use
     the library's display language - both `name_region` and `name_language` must be
@@ -54,6 +80,11 @@ def organize_file(file_obj, library_path, organizer_settings):
         format_data["extension"] = file_obj.extension
         format_data["titleId"] = app.title.title_id
         format_data["titleName"] = title_info['name']
+        # Every template: what the file holds and how big it is, for names like
+        # "Game [Base + Update + DLC] [3.23 GB]".
+        format_data["packageContents"] = package_contents([a.app_type for a in apps])
+        format_data["packageCounts"] = package_counts([a.app_type for a in apps])
+        format_data.update(size_fields(file_obj.size))
         if not file_obj.multicontent:
             format_data["appId"] = app.app_id
             format_data["appVersion"] = app.app_version
@@ -398,7 +429,7 @@ def notify_new_apps_available(known_apps):
         if (app_id, app_version) in known_apps:
             continue
         notifications.notify(notifications.EVENT_UPDATE_AVAILABLE, notifications.app_label(
-            title_id if app_type == APP_TYPE_UPD else app_id, app_type, app_version))
+            title_id if app_type == APP_TYPE_UPD else app_id, app_type, app_version), title_id=title_id)
 
 def remove_outdated_update_files():
     logger.info("Starting removal of outdated update files...")
@@ -534,11 +565,21 @@ def duplicate_file_groups():
     paired with those files. This is the library-wide "what has duplicates right now"
     view both the automatic task and the manual resolution API work from."""
     groups = []
+    seen = set()
     for app in Apps.query.filter_by(owned=True).all():
         # A NUP (decrypted) and an NSP/XCI of the same content are different things to
-        # keep, never duplicates of each other: NUP files stay out of the comparison.
-        files = [f for f in app.files if (f.extension or '').lower() != 'nup']
-        if len(files) > 1:
+        # keep, never duplicates of each other: NUPs are compared with NUPs only, every
+        # other format with the others.
+        for files in ([f for f in app.files if (f.extension or '').lower() != 'nup'],
+                      [f for f in app.files if (f.extension or '').lower() == 'nup']):
+            if len(files) < 2:
+                continue
+            # Two copies of a bundle share every app they hold: one group for them, not
+            # one per app (the game, its update and each DLC).
+            ids = frozenset(f.id for f in files)
+            if ids in seen:
+                continue
+            seen.add(ids)
             groups.append((app, files))
     return groups
 

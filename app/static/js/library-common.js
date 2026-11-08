@@ -60,6 +60,22 @@ function formatTitledbSize(raw) {
     return Number.isFinite(n) && n > 0 ? formatBytes(n) : raw;
 }
 
+/** A bundle's contents counted the way file names say it: ['BASE','UPDATE','DLC','DLC']
+ *  reads "1G+1U+2D" (a part it lacks is left out). */
+function bundleCounts(contents) {
+    const n = kind => (contents || []).filter(k => k === kind).length;
+    return [[n('BASE'), 'G'], [n('UPDATE'), 'U'], [n('DLC'), 'D']]
+        .filter(([count]) => count).map(([count, letter]) => `${count}${letter}`).join('+');
+}
+
+/** The "Bundle 1G+1U+2D" badge, in the favourites' gold with the box icon - or null for
+ *  an ordinary file. */
+function bundleBadge(contents, label) {
+    if (!contents || contents.length < 2) return null;
+    const text = `${label} ${bundleCounts(contents)}`;
+    return statusBadge('fav', 'bi-box-seam', text).addClass('bundle-badge').attr('title', text);
+}
+
 function statusBadge(tone, icon, label) {
     const badge = $('<span class="status-badge">').addClass(tone ? `status-badge--${tone}` : '');
     if (icon) badge.append($('<i aria-hidden="true">').addClass(`bi ${icon}`));
