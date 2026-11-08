@@ -573,14 +573,23 @@ class OrderBy:
 _TITLE_ADDED = ("(SELECT MAX(fl.added_at) FROM apps ap JOIN app_files af ON af.app_id = ap.id "
                 "JOIN files fl ON fl.id = af.file_id WHERE ap.title_id = ot.id)")
 
+# A title's size as the Library shows it: the bytes of every file it holds, else the
+# catalogue's figure (a game you don't have). The catalogue's own size alone is missing or
+# written differently for some games (Switch 2), which sorted them apart.
+_TITLE_SIZE = ("COALESCE((SELECT SUM(fl.size) FROM apps ap JOIN app_files af ON af.app_id = ap.id "
+               "JOIN files fl ON fl.id = af.file_id WHERE ap.title_id = ot.id), CAST(td.size AS INTEGER))")
+
 TITLE_ORDER = {
     "name": "td.name IS NULL, td.name COLLATE NOCASE",
     "release_date": "td.release_date IS NULL, td.release_date",
-    "size": "td.size IS NULL, CAST(td.size AS INTEGER)",
+    "size": f"{_TITLE_SIZE} IS NULL, {_TITLE_SIZE}",
     "region": "td.region IS NULL, td.region",
     "added_at": f"{_TITLE_ADDED} IS NULL, {_TITLE_ADDED}",
     "id": "COALESCE(ot.title_id, td.id)",
 }
+
+_APP_SIZE = ("COALESCE((SELECT SUM(fl.size) FROM apps ap JOIN app_files af ON af.app_id = ap.id "
+             "JOIN files fl ON fl.id = af.file_id WHERE ap.title_id = a.title_id), CAST(td.size AS INTEGER))")
 
 _APP_ADDED = ("(SELECT MAX(fl.added_at) FROM apps ap JOIN app_files af ON af.app_id = ap.id "
               "JOIN files fl ON fl.id = af.file_id WHERE ap.title_id = a.title_id)")
@@ -591,7 +600,7 @@ APP_ORDER = {
     # row's own release_date is empty for base games, which left them unsorted.
     "release_date": "td.release_date IS NULL, td.release_date",
     "version": "CAST(a.app_version AS INTEGER)",
-    "size": "td.size IS NULL, CAST(td.size AS INTEGER)",
+    "size": f"{_APP_SIZE} IS NULL, {_APP_SIZE}",
     "region": "td.region IS NULL, td.region",
     "added_at": f"{_APP_ADDED} IS NULL, {_APP_ADDED}",
     "id": "a.app_id",

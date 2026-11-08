@@ -21,7 +21,8 @@
 {#- A list shown in its own dialog, so the section stays short however long it grows. -#}
 {%- macro list_dialog(id, title, icon) -%}
 <div class="modal fade list-dialog" id="{{ id }}" tabindex="-1" aria-labelledby="{{ id }}Title" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    {# Wide enough for the whole table on a full window; it scrolls when the window is narrow. #}
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="{{ id }}Title"><i class="bi {{ icon }}" aria-hidden="true"></i> {{ title }}</h5>
@@ -576,11 +577,11 @@
                 <div class="settings-inner template-attrs mb-3">
                     <h4 class="settings-inner__title"><i class="bi bi-braces" aria-hidden="true"></i> {{ t('templates.attrs_all') }}</h4>
                     <dl class="template-attrs__grid">
-                        {% for code, key in [('{titleName}', 'templates.attr_title_name'), ('{titleId}', 'templates.attr_title_id'),
-                                             ('{appName}', 'templates.attr_app_name'), ('{appId}', 'templates.attr_app_id'),
-                                             ('{appVersion}', 'templates.attr_app_version'), ('{patchLevel}', 'templates.attr_patch_level'),
-                                             ('{packageContents}', 'templates.attr_package_contents'),
-                                             ('{packageCounts}', 'templates.attr_package_counts'),
+                        {% for code, key in [('{titleName}', 'templates.attr_title_name'), ('{appId}', 'templates.attr_app_id'),
+                                             ('{titleId}', 'templates.attr_title_id'), ('{appVersion}', 'templates.attr_app_version'),
+                                             ('{appName}', 'templates.attr_app_name'), ('{patchLevel}', 'templates.attr_patch_level'),
+                                             ('{packageContents}', 'templates.attr_package_counts'),
+                                             ('{packageNames}', 'templates.attr_package_contents'),
                                              ('{sizeGb} {sizeMb}', 'templates.attr_size'), ('{extension}', 'templates.attr_extension')] %}
                         <div class="template-attrs__item">
                             <dt>{% for c in code.split(' ') %}<code>{{ c }}</code>{% endfor %}</dt>
@@ -909,16 +910,6 @@
                             <label class="form-check-label" for="notifEnabledCheck">{{ t('notif.enabled') }}</label>
                         </div>
                     </div>
-                    <div class="col-auto">
-                        <label for="notifLanguageSelect" class="col-form-label">{{ t('notif.language') }}</label>
-                    </div>
-                    <div class="col-auto">
-                        <select class="form-select form-select-sm" id="notifLanguageSelect">
-                            {% for lang in SUPPORTED_LANGUAGES %}
-                            <option value="{{ lang }}">{{ LANGUAGE_NAMES[lang] }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
                 </div>
 
                 <h3 class="settings-subhead">{{ t('notif.events_heading') }}</h3>
@@ -931,174 +922,206 @@
                     {% endfor %}
                 </div>
 
-                <h3 class="settings-subhead">{{ t('notif.channels_heading') }}</h3>
-                <div class="row g-3 mb-3">
+                <div class="notif-channels-head">
+                    <h3 class="settings-subhead mb-0">{{ t('notif.channels_heading') }}</h3>
+                    <div class="d-flex align-items-center gap-2">
+                        <label for="notifLanguageSelect" class="col-form-label">{{ t('notif.language') }}</label>
+                        <select class="form-select form-select-sm w-auto" id="notifLanguageSelect" aria-describedby="notifLanguageHelp">
+                            {% for lang in SUPPORTED_LANGUAGES %}
+                            <option value="{{ lang }}">{{ LANGUAGE_NAMES[lang] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div id="notifLanguageHelp" class="form-text mt-0 mb-2">{{ t('notif.language_help') }}</div>
+                <div class="row g-3 mb-3 notif-pair">
                     <div class="col-12 col-xl-6">
                         <div class="settings-inner notif-channel h-100" data-channel="discord"><div>
                             <div class="notif-channel__head">
-                                <h4 class="settings-inner__title"><span class="notif-channel__icon"><i class="bi bi-discord" aria-hidden="true"></i></span>Discord</h4>
+                                <h4 class="settings-inner__title"><button type="button" class="notif-channel__toggle" aria-expanded="false" aria-controls="notifChannel_discord"><span class="notif-channel__icon"><i class="bi bi-discord" aria-hidden="true"></i></span>Discord<i class="bi bi-chevron-down notif-channel__chevron" aria-hidden="true"></i></button></h4>
                                 <div class="form-check form-switch mb-0">
                                     <input class="form-check-input notif-provider" type="checkbox" role="switch" id="notifDiscordEnabled" data-provider="discord">
                                     <label class="form-check-label" for="notifDiscordEnabled">{{ t('notif.provider_enabled') }}</label>
                                 </div>
                             </div>
-                            <div class="row g-2">
-                                <div class="col-12">
-                                    <label for="notifDiscordWebhook" class="form-label">{{ t('notif.discord_webhook') }}</label>
-                                    <input type="password" class="form-control" id="notifDiscordWebhook" autocomplete="off" placeholder="https://discord.com/api/webhooks/...">
+                            <div class="notif-channel__body" id="notifChannel_discord" hidden>
+                                <div class="row g-2">
+                                    <div class="col-12">
+                                        <label for="notifDiscordWebhook" class="form-label">{{ t('notif.discord_webhook') }}</label>
+                                        <input type="password" class="form-control" id="notifDiscordWebhook" autocomplete="off" placeholder="https://discord.com/api/webhooks/...">
+                                    </div>
                                 </div>
+                                <div class="form-text">{{ t('notif.discord_help') }}</div>
                             </div>
-                            <div class="form-text">{{ t('notif.discord_help') }}</div>
                         </div></div>
                     </div>
                     <div class="col-12 col-xl-6">
                         <div class="settings-inner notif-channel h-100" data-channel="telegram"><div>
                             <div class="notif-channel__head">
-                                <h4 class="settings-inner__title"><span class="notif-channel__icon"><i class="bi bi-telegram" aria-hidden="true"></i></span>Telegram</h4>
+                                <h4 class="settings-inner__title"><button type="button" class="notif-channel__toggle" aria-expanded="false" aria-controls="notifChannel_telegram"><span class="notif-channel__icon"><i class="bi bi-telegram" aria-hidden="true"></i></span>Telegram<i class="bi bi-chevron-down notif-channel__chevron" aria-hidden="true"></i></button></h4>
                                 <div class="form-check form-switch mb-0">
                                     <input class="form-check-input notif-provider" type="checkbox" role="switch" id="notifTelegramEnabled" data-provider="telegram">
                                     <label class="form-check-label" for="notifTelegramEnabled">{{ t('notif.provider_enabled') }}</label>
                                 </div>
                             </div>
-                            <div class="row g-2">
-                                <div class="col-12 col-sm-7">
-                                    <label for="notifTelegramToken" class="form-label">{{ t('notif.telegram_token') }}</label>
-                                    <input type="password" class="form-control" id="notifTelegramToken" autocomplete="off">
+                            <div class="notif-channel__body" id="notifChannel_telegram" hidden>
+                                <div class="row g-2">
+                                    <div class="col-12 col-sm-7">
+                                        <label for="notifTelegramToken" class="form-label">{{ t('notif.telegram_token') }}</label>
+                                        <input type="password" class="form-control" id="notifTelegramToken" autocomplete="off">
+                                    </div>
+                                    <div class="col-12 col-sm-5">
+                                        <label for="notifTelegramChat" class="form-label">{{ t('notif.telegram_chat') }}</label>
+                                        <input type="text" class="form-control" id="notifTelegramChat" autocomplete="off">
+                                    </div>
                                 </div>
-                                <div class="col-12 col-sm-5">
-                                    <label for="notifTelegramChat" class="form-label">{{ t('notif.telegram_chat') }}</label>
-                                    <input type="text" class="form-control" id="notifTelegramChat" autocomplete="off">
-                                </div>
+                                <div class="form-text">{{ t('notif.telegram_help') }}</div>
                             </div>
-                            <div class="form-text">{{ t('notif.telegram_help') }}</div>
                         </div></div>
                     </div>
+                </div>
+                <div class="row g-3 mb-3 notif-pair">
                     <div class="col-12 col-xl-6">
                         <div class="settings-inner notif-channel h-100" data-channel="ntfy"><div>
                             <div class="notif-channel__head">
-                                <h4 class="settings-inner__title"><span class="notif-channel__icon"><i class="bi bi-bell" aria-hidden="true"></i></span>ntfy</h4>
+                                <h4 class="settings-inner__title"><button type="button" class="notif-channel__toggle" aria-expanded="false" aria-controls="notifChannel_ntfy"><span class="notif-channel__icon"><i class="bi bi-bell" aria-hidden="true"></i></span>ntfy<i class="bi bi-chevron-down notif-channel__chevron" aria-hidden="true"></i></button></h4>
                                 <div class="form-check form-switch mb-0">
                                     <input class="form-check-input notif-provider" type="checkbox" role="switch" id="notifNtfyEnabled" data-provider="ntfy">
                                     <label class="form-check-label" for="notifNtfyEnabled">{{ t('notif.provider_enabled') }}</label>
                                 </div>
                             </div>
-                            <div class="row g-2">
-                                <div class="col-12 col-sm-7">
-                                    <label for="notifNtfyServer" class="form-label">{{ t('notif.ntfy_server') }}</label>
-                                    <input type="text" class="form-control" id="notifNtfyServer" autocomplete="off" placeholder="https://ntfy.sh">
+                            <div class="notif-channel__body" id="notifChannel_ntfy" hidden>
+                                <div class="row g-2">
+                                    <div class="col-12 col-sm-7">
+                                        <label for="notifNtfyServer" class="form-label">{{ t('notif.ntfy_server') }}</label>
+                                        <input type="text" class="form-control" id="notifNtfyServer" autocomplete="off" placeholder="https://ntfy.sh">
+                                    </div>
+                                    <div class="col-12 col-sm-5">
+                                        <label for="notifNtfyTopic" class="form-label">{{ t('notif.ntfy_topic') }}</label>
+                                        <input type="text" class="form-control" id="notifNtfyTopic" autocomplete="off">
+                                    </div>
+                                    <div class="col-12">
+                                        <label for="notifNtfyToken" class="form-label">{{ t('notif.ntfy_token') }}</label>
+                                        <input type="password" class="form-control" id="notifNtfyToken" autocomplete="off">
+                                    </div>
                                 </div>
-                                <div class="col-12 col-sm-5">
-                                    <label for="notifNtfyTopic" class="form-label">{{ t('notif.ntfy_topic') }}</label>
-                                    <input type="text" class="form-control" id="notifNtfyTopic" autocomplete="off">
-                                </div>
-                                <div class="col-12">
-                                    <label for="notifNtfyToken" class="form-label">{{ t('notif.ntfy_token') }}</label>
-                                    <input type="password" class="form-control" id="notifNtfyToken" autocomplete="off">
-                                </div>
+                                <div class="form-text">{{ t('notif.ntfy_help') }}</div>
                             </div>
-                            <div class="form-text">{{ t('notif.ntfy_help') }}</div>
                         </div></div>
                     </div>
                     <div class="col-12 col-xl-6">
                         <div class="settings-inner notif-channel h-100" data-channel="gotify"><div>
                             <div class="notif-channel__head">
-                                <h4 class="settings-inner__title"><span class="notif-channel__icon"><i class="bi bi-broadcast-pin" aria-hidden="true"></i></span>Gotify</h4>
+                                <h4 class="settings-inner__title"><button type="button" class="notif-channel__toggle" aria-expanded="false" aria-controls="notifChannel_gotify"><span class="notif-channel__icon"><i class="bi bi-broadcast-pin" aria-hidden="true"></i></span>Gotify<i class="bi bi-chevron-down notif-channel__chevron" aria-hidden="true"></i></button></h4>
                                 <div class="form-check form-switch mb-0">
                                     <input class="form-check-input notif-provider" type="checkbox" role="switch" id="notifGotifyEnabled" data-provider="gotify">
                                     <label class="form-check-label" for="notifGotifyEnabled">{{ t('notif.provider_enabled') }}</label>
                                 </div>
                             </div>
-                            <div class="row g-2">
-                                <div class="col-12 col-sm-7">
-                                    <label for="notifGotifyServer" class="form-label">{{ t('notif.gotify_server') }}</label>
-                                    <input type="text" class="form-control" id="notifGotifyServer" autocomplete="off" placeholder="https://gotify.example.com">
+                            <div class="notif-channel__body" id="notifChannel_gotify" hidden>
+                                <div class="row g-2">
+                                    <div class="col-12 col-sm-7">
+                                        <label for="notifGotifyServer" class="form-label">{{ t('notif.gotify_server') }}</label>
+                                        <input type="text" class="form-control" id="notifGotifyServer" autocomplete="off" placeholder="https://gotify.example.com">
+                                    </div>
+                                    <div class="col-12 col-sm-5">
+                                        <label for="notifGotifyToken" class="form-label">{{ t('notif.gotify_token') }}</label>
+                                        <input type="password" class="form-control" id="notifGotifyToken" autocomplete="off">
+                                    </div>
                                 </div>
-                                <div class="col-12 col-sm-5">
-                                    <label for="notifGotifyToken" class="form-label">{{ t('notif.gotify_token') }}</label>
-                                    <input type="password" class="form-control" id="notifGotifyToken" autocomplete="off">
-                                </div>
+                                <div class="form-text">{{ t('notif.gotify_help') }}</div>
                             </div>
-                            <div class="form-text">{{ t('notif.gotify_help') }}</div>
                         </div></div>
                     </div>
+                </div>
+                <div class="row g-3 mb-3 notif-pair">
                     <div class="col-12 col-xl-6">
                         <div class="settings-inner notif-channel h-100" data-channel="pushover"><div>
                             <div class="notif-channel__head">
-                                <h4 class="settings-inner__title"><span class="notif-channel__icon"><i class="bi bi-phone-vibrate" aria-hidden="true"></i></span>Pushover</h4>
+                                <h4 class="settings-inner__title"><button type="button" class="notif-channel__toggle" aria-expanded="false" aria-controls="notifChannel_pushover"><span class="notif-channel__icon"><i class="bi bi-phone-vibrate" aria-hidden="true"></i></span>Pushover<i class="bi bi-chevron-down notif-channel__chevron" aria-hidden="true"></i></button></h4>
                                 <div class="form-check form-switch mb-0">
                                     <input class="form-check-input notif-provider" type="checkbox" role="switch" id="notifPushoverEnabled" data-provider="pushover">
                                     <label class="form-check-label" for="notifPushoverEnabled">{{ t('notif.provider_enabled') }}</label>
                                 </div>
                             </div>
-                            <div class="row g-2">
-                                <div class="col-12 col-sm-6">
-                                    <label for="notifPushoverUser" class="form-label">{{ t('notif.pushover_user') }}</label>
-                                    <input type="password" class="form-control" id="notifPushoverUser" autocomplete="off">
+                            <div class="notif-channel__body" id="notifChannel_pushover" hidden>
+                                <div class="row g-2">
+                                    <div class="col-12 col-sm-6">
+                                        <label for="notifPushoverUser" class="form-label">{{ t('notif.pushover_user') }}</label>
+                                        <input type="password" class="form-control" id="notifPushoverUser" autocomplete="off">
+                                    </div>
+                                    <div class="col-12 col-sm-6">
+                                        <label for="notifPushoverToken" class="form-label">{{ t('notif.pushover_token') }}</label>
+                                        <input type="password" class="form-control" id="notifPushoverToken" autocomplete="off">
+                                    </div>
                                 </div>
-                                <div class="col-12 col-sm-6">
-                                    <label for="notifPushoverToken" class="form-label">{{ t('notif.pushover_token') }}</label>
-                                    <input type="password" class="form-control" id="notifPushoverToken" autocomplete="off">
-                                </div>
+                                <div class="form-text">{{ t('notif.pushover_help') }}</div>
                             </div>
-                            <div class="form-text">{{ t('notif.pushover_help') }}</div>
                         </div></div>
                     </div>
                     <div class="col-12 col-xl-6">
                         <div class="settings-inner notif-channel h-100" data-channel="slack"><div>
                             <div class="notif-channel__head">
-                                <h4 class="settings-inner__title"><span class="notif-channel__icon"><i class="bi bi-slack" aria-hidden="true"></i></span>Slack</h4>
+                                <h4 class="settings-inner__title"><button type="button" class="notif-channel__toggle" aria-expanded="false" aria-controls="notifChannel_slack"><span class="notif-channel__icon"><i class="bi bi-slack" aria-hidden="true"></i></span>Slack<i class="bi bi-chevron-down notif-channel__chevron" aria-hidden="true"></i></button></h4>
                                 <div class="form-check form-switch mb-0">
                                     <input class="form-check-input notif-provider" type="checkbox" role="switch" id="notifSlackEnabled" data-provider="slack">
                                     <label class="form-check-label" for="notifSlackEnabled">{{ t('notif.provider_enabled') }}</label>
                                 </div>
                             </div>
-                            <div class="row g-2">
-                                <div class="col-12">
-                                    <label for="notifSlackWebhook" class="form-label">{{ t('notif.slack_webhook') }}</label>
-                                    <input type="password" class="form-control" id="notifSlackWebhook" autocomplete="off" placeholder="https://hooks.slack.com/services/...">
+                            <div class="notif-channel__body" id="notifChannel_slack" hidden>
+                                <div class="row g-2">
+                                    <div class="col-12">
+                                        <label for="notifSlackWebhook" class="form-label">{{ t('notif.slack_webhook') }}</label>
+                                        <input type="password" class="form-control" id="notifSlackWebhook" autocomplete="off" placeholder="https://hooks.slack.com/services/...">
+                                    </div>
                                 </div>
+                                <div class="form-text">{{ t('notif.slack_help') }}</div>
                             </div>
-                            <div class="form-text">{{ t('notif.slack_help') }}</div>
                         </div></div>
                     </div>
+                </div>
+                <div class="row g-3 mb-3 notif-pair">
                     <div class="col-12 col-xl-6">
                         <div class="settings-inner notif-channel h-100" data-channel="email"><div>
                             <div class="notif-channel__head">
-                                <h4 class="settings-inner__title"><span class="notif-channel__icon"><i class="bi bi-envelope" aria-hidden="true"></i></span>{{ t('notif.email_title') }}</h4>
+                                <h4 class="settings-inner__title"><button type="button" class="notif-channel__toggle" aria-expanded="false" aria-controls="notifChannel_email"><span class="notif-channel__icon"><i class="bi bi-envelope" aria-hidden="true"></i></span>{{ t('notif.email_title') }}<i class="bi bi-chevron-down notif-channel__chevron" aria-hidden="true"></i></button></h4>
                                 <div class="form-check form-switch mb-0">
                                     <input class="form-check-input notif-provider" type="checkbox" role="switch" id="notifEmailEnabled" data-provider="email">
                                     <label class="form-check-label" for="notifEmailEnabled">{{ t('notif.provider_enabled') }}</label>
                                 </div>
                             </div>
-                            <div class="row g-2">
-                                <div class="col-12">
-                                    <label for="notifEmailTo" class="form-label">{{ t('notif.email_to') }}</label>
-                                    <input type="text" class="form-control" id="notifEmailTo" autocomplete="off" placeholder="admin@example.com">
+                            <div class="notif-channel__body" id="notifChannel_email" hidden>
+                                <div class="row g-2">
+                                    <div class="col-12">
+                                        <label for="notifEmailTo" class="form-label">{{ t('notif.email_to') }}</label>
+                                        <input type="text" class="form-control" id="notifEmailTo" autocomplete="off" placeholder="admin@example.com">
+                                    </div>
                                 </div>
+                                <div class="form-text">{{ t('notif.email_help') }}</div>
                             </div>
-                            <div class="form-text">{{ t('notif.email_help') }}</div>
                         </div></div>
                     </div>
                     <div class="col-12 col-xl-6">
                         <div class="settings-inner notif-channel h-100" data-channel="webhook"><div>
                             <div class="notif-channel__head">
-                                <h4 class="settings-inner__title"><span class="notif-channel__icon"><i class="bi bi-braces" aria-hidden="true"></i></span>Webhook</h4>
+                                <h4 class="settings-inner__title"><button type="button" class="notif-channel__toggle" aria-expanded="false" aria-controls="notifChannel_webhook"><span class="notif-channel__icon"><i class="bi bi-braces" aria-hidden="true"></i></span>Webhook<i class="bi bi-chevron-down notif-channel__chevron" aria-hidden="true"></i></button></h4>
                                 <div class="form-check form-switch mb-0">
                                     <input class="form-check-input notif-provider" type="checkbox" role="switch" id="notifWebhookEnabled" data-provider="webhook">
                                     <label class="form-check-label" for="notifWebhookEnabled">{{ t('notif.provider_enabled') }}</label>
                                 </div>
                             </div>
-                            <div class="row g-2">
-                                <div class="col-12">
-                                    <label for="notifWebhookUrl" class="form-label">{{ t('notif.webhook_url') }}</label>
-                                    <input type="password" class="form-control" id="notifWebhookUrl" autocomplete="off" placeholder="https://...">
+                            <div class="notif-channel__body" id="notifChannel_webhook" hidden>
+                                <div class="row g-2">
+                                    <div class="col-12">
+                                        <label for="notifWebhookUrl" class="form-label">{{ t('notif.webhook_url') }}</label>
+                                        <input type="password" class="form-control" id="notifWebhookUrl" autocomplete="off" placeholder="https://...">
+                                    </div>
                                 </div>
+                                <div class="form-text">{{ t('notif.webhook_help') }}</div>
                             </div>
-                            <div class="form-text">{{ t('notif.webhook_help') }}</div>
                         </div></div>
                     </div>
                 </div>
-
                 <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
                     <button type="button" id="submitNotifSettingsBtn" class="btn btn-primary">{{ t('notif.save') }}</button>
                     <button type="button" id="testNotifBtn" class="btn btn-outline-secondary"><i class="bi bi-send"></i> {{ t('notif.test') }}</button>
@@ -1110,16 +1133,21 @@
                 <section class="surface admin-section settings-section" id="Workers" tabindex="-1">
                     {{ section_title('Workers') }}
                 <p>{{ t('workers.desc') }}</p>
-                <div class="row mb-3">
+                <div class="row g-4 mb-3">
                     <div class="col-12 col-md-6">
-                        <label for="workerCountInput" class="form-label">{{ t('workers.count_label') }}</label>
-                        <input type="number" class="form-control" id="workerCountInput" min="1" step="1">
-                        <div id="workerCountFeedback"></div>
-                        <div id="workerCountHelp" class="form-text">{{ t('workers.count_help') }}</div>
+                        <div class="mb-3">
+                            <label for="workerCountInput" class="form-label">{{ t('workers.count_label') }}</label>
+                            <input type="number" class="form-control" id="workerCountInput" min="1" step="1">
+                            <div id="workerCountFeedback"></div>
+                            <div id="workerCountHelp" class="form-text">{{ t('workers.count_help') }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="netLimitInput" class="form-label">{{ t('workers.net_limit_label') }}</label>
+                            <input type="number" class="form-control" id="netLimitInput" min="1" step="1">
+                            <div id="netLimitFeedback"></div>
+                            <div id="netLimitHelp" class="form-text">{{ t('workers.net_limit_help') }}</div>
+                        </div>
                     </div>
-                </div>
-
-                <div class="row mb-3">
                     <div class="col-12 col-md-6">
                         <label for="ioLimitInput" class="form-label">{{ t('workers.io_limit_label') }}</label>
                         <input type="number" class="form-control" id="ioLimitInput" min="1" step="1">
@@ -1132,15 +1160,6 @@
                                 <li>{{ t('workers.io_limit_nvme') }}</li>
                             </ul>
                         </div>
-                    </div>
-                </div>
-
-                <div class="row mb-3">
-                    <div class="col-12 col-md-6">
-                        <label for="netLimitInput" class="form-label">{{ t('workers.net_limit_label') }}</label>
-                        <input type="number" class="form-control" id="netLimitInput" min="1" step="1">
-                        <div id="netLimitFeedback"></div>
-                        <div id="netLimitHelp" class="form-text">{{ t('workers.net_limit_help') }}</div>
                     </div>
                 </div>
 
@@ -1248,6 +1267,7 @@
 
     // Strings the JS below needs but can't hardcode in English.
     const I18N = {
+        templateUnknownField: {{ t('templates.unknown_field') | tojson }},
         shop: {{ t('auth.shop') | tojson }},
         backup: {{ t('auth.backup') | tojson }},
         admin: {{ t('auth.admin') | tojson }},

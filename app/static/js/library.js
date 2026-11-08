@@ -326,12 +326,15 @@ function renderLibraryStats(stats) {
         }
         if (pill) {
             tile.attr('data-pill', pill).on('click', () => {
-                applyPill(pill);
+                // A second click on the tile in use goes back to every game.
+                applyPill(tile.hasClass('is-active') && pill !== 'all' ? 'all' : pill);
+                markActiveTile();
             });
         }
         box.append(tile);
     });
     box.prop('hidden', false);
+    markActiveTile();
 }
 
 // What each card/icon pill sets: the update, completion and ownership filter groups.
@@ -435,6 +438,17 @@ function renderConsolePills() {
  *  Filters menu (the tiles at the top still apply the common ones). */
 function renderPills() {
     renderConsolePills();
+    markActiveTile();
+}
+
+/** The tile whose filter is in use shows it: outlined, with a check (one at a time). */
+function markActiveTile() {
+    const active = activePill();
+    document.querySelectorAll('#libraryTiles .stat-tile[data-pill]').forEach(tile => {
+        const on = tile.dataset.pill === active;     // "Games" too, when nothing narrows the list
+        tile.classList.toggle('is-active', on);
+        tile.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
 }
 
 /** The star on a card: marks or unmarks the game as one of the user's favourites. */

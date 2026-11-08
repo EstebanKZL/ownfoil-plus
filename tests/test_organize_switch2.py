@@ -109,9 +109,18 @@ def test_package_contents_and_size_in_the_name(env):
     f.size = int(3.23 * 1024 ** 3)
     db.session.commit()
     settings = {**SETTINGS, "templates": {**SETTINGS["templates"],
-                                          "multi": "{titleName}/{titleName} [{packageContents}] [{sizeGb} GB]"}}
+                                          "multi": "{titleName}/{titleName} [{packageNames}] [{sizeGb} GB]"}}
     assert organize_file(f, str(env.lib_dir), settings)
     assert f.filepath.endswith("Nintendo Switch 2 Welcome Tour [Base + Update] [3.23 GB].nup")
+
+
+def test_package_contents_is_counted(env):
+    """{packageContents} reads "1G+1U+5D", as file names have always said it."""
+    f = env.seed("tour.nup", [(S2_ID, "0", APP_TYPE_BASE), (S2_UPD, "65536", APP_TYPE_UPD)])
+    settings = {**SETTINGS, "templates": {**SETTINGS["templates"],
+                                          "multi": "{titleName}/{titleName} - [{appId}][{packageContents}]"}}
+    assert organize_file(f, str(env.lib_dir), settings)
+    assert f.filepath.endswith("Nintendo Switch 2 Welcome Tour - [04005A0021B8C000][1G+1U].nup")
 
 
 def test_package_contents_reads_like_its_parts():
@@ -126,3 +135,13 @@ def test_package_counts_read_like_switch_library_names():
     assert package_counts([APP_TYPE_BASE, APP_TYPE_UPD] + [APP_TYPE_DLC] * 5) == "1G+1U+5D"
     assert package_counts([APP_TYPE_UPD, APP_TYPE_BASE]) == "1G+1U"
     assert package_counts([APP_TYPE_UPD, APP_TYPE_DLC]) == "1U+1D"
+
+
+
+def test_a_template_with_an_unknown_field_is_named_on_save():
+    """Seen: {packageNames} saved on a version that didn't know it - every bundle stayed
+    unorganized and nothing said why. Settings refuses it now, naming the field."""
+    from library import template_errors
+    assert template_errors({'base': '{titleName} [{appId}]', 'multi': '{titleName} [{packageNames}]'}) == []
+    assert template_errors({'multi': '{titleName} [{packageNamez}]'}) == [('multi', '{packageNamez}')]
+    assert template_errors({'dlc': '{titleName'})[0][0] == 'dlc'

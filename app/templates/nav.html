@@ -77,6 +77,8 @@
                         {% include '_theme_choices.html' %}
                     </ul>
                 </li>
+                {# The language: a signed-in user picks it in My account. #}
+                {% if not current_user.is_authenticated %}
                 <li class="nav-item dropdown me-lg-2">
                     <a class="nav-link dropdown-toggle" href="#" id="languageDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         {{ LANGUAGE_NAMES[current_language()] }}
@@ -88,6 +90,7 @@
                         {% endfor %}
                     </ul>
                 </li>
+                {% endif %}
                 {% if current_user.is_authenticated %}
                 <li class="nav-item">
                     <a class="nav-link op-account-link{% if p == '/account' %} active{% endif %}" href="/account"
@@ -145,12 +148,14 @@
             <li><a class="dropdown-item{% if p.startswith('/admin/services') %} active{% endif %}" href="/admin/services"><i class="bi bi-broadcast me-2"></i>{{ t('settings_nav.services') }}</a></li>
             <li><hr class="dropdown-divider"></li>
             {% include '_theme_choices.html' %}
+            {% if not current_user.is_authenticated %}
             <li><hr class="dropdown-divider"></li>
             <li><h6 class="dropdown-header">{{ t('nav.language') }}</h6></li>
             <li><a class="dropdown-item{% if chosen_language() == 'auto' %} active{% endif %}" href="/set-language/auto"><i class="bi bi-translate me-2"></i>{{ t('language.auto') }}</a></li>
             {% for lang in SUPPORTED_LANGUAGES %}
             <li><a class="dropdown-item{% if chosen_language() == lang %} active{% endif %}" href="/set-language/{{ lang }}" lang="{{ lang }}"><i class="bi bi-translate me-2"></i>{{ LANGUAGE_NAMES[lang] }}</a></li>
             {% endfor %}
+            {% endif %}
             {% if current_user.is_authenticated %}
             <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item{% if p == '/account' %} active{% endif %}" href="/account"><i class="bi bi-person-circle me-2"></i>{{ t('nav.account') }}</a></li>

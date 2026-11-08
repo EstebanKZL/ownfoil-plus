@@ -153,3 +153,14 @@ def test_my_account_has_the_picture_picker(shop_app, avatar_dir):
     assert len(re.findall(r"<script>(.*?)</script>", html, re.S)) == 1
     for name in ("avatarSaved:", "avatarFailed:", "avatarTooLarge:"):
         assert name in html, name
+
+
+def test_my_account_pairs_two_cards_beside_each_big_one():
+    """Wide window: the picture card beside console + library, the save vault beside
+    email + password, the two sharing the big card's height."""
+    import os
+    root = os.path.join(os.path.dirname(__file__), '..', 'app')
+    html = open(os.path.join(root, 'templates', 'account.html'), encoding='utf-8').read()
+    assert 'class="admin-grid account-layout{% if can_use_vault %} has-vault{% endif %}"' in html
+    css = open(os.path.join(root, 'static', 'style.css'), encoding='utf-8').read()
+    assert '"avatar console"\n            "avatar library"\n            "vault email"\n            "vault password"' in css

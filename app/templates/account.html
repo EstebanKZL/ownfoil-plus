@@ -16,7 +16,7 @@
         </div>
     </header>
 
-    <form id="accountForm" class="admin-grid" novalidate>
+    <form id="accountForm" class="admin-grid account-layout{% if can_use_vault %} has-vault{% endif %}" novalidate>
         <section class="surface admin-section account-avatar" id="accountAvatar">
             <h2 class="admin-section__title"><i class="bi bi-person-badge" aria-hidden="true"></i> {{ t('avatar.heading') }}</h2>
             {% set my_avatar = avatar_url(current_user) %}
@@ -71,13 +71,12 @@
             {# The language: of the web on this browser, and of the emails sent to you. #}
             <label for="accountLanguage" class="form-label mt-3">{{ t('account.language_label') }}</label>
             {% set my_lang = current_user.language if chosen_language() != 'auto' else 'auto' %}
-            <select class="form-select" id="accountLanguage" aria-describedby="accountLanguageHelp">
+            <select class="form-select" id="accountLanguage">
                 <option value="auto"{% if my_lang == 'auto' %} selected{% endif %}>{{ t('account.language_auto') }}</option>
                 {% for lang in SUPPORTED_LANGUAGES %}
                 <option value="{{ lang }}"{% if my_lang == lang %} selected{% endif %}>{{ LANGUAGE_NAMES[lang] }}</option>
                 {% endfor %}
             </select>
-            <div id="accountLanguageHelp" class="form-text">{{ t('account.language_help') }}</div>
         </section>
 
         <section class="surface admin-section" id="accountEmail">

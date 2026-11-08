@@ -337,3 +337,28 @@ def test_page_sizes_fill_whole_rows_from_10_to_100(client):
     assert "Math.floor(100 / columns) * columns" in options
     # A resize that changes the columns refits the page size.
     assert "refitPageSize(true)" in js and "window.addEventListener('resize'" in js
+
+
+def test_size_sorts_by_what_the_library_holds():
+    """Sorting by size with both consoles mixed Switch 2 games in apart (their catalogue
+    size is missing or written differently): the size is the files' own now."""
+    from gql.filters import APP_ORDER, TITLE_ORDER
+    for order in (APP_ORDER, TITLE_ORDER):
+        assert "SUM(fl.size)" in order["size"] and "COALESCE" in order["size"]
+
+
+def test_the_tile_in_use_is_marked_and_lifts_smoothly():
+    js = _library_js()
+    assert "function markActiveTile()" in js and "tile.classList.toggle('is-active', on)" in js
+    assert "const on = tile.dataset.pill === active;" in js          # "Games" too
+    css = _read("app", "static", "style.css")
+    assert ".stat-tile.is-active" in css
+    assert re.search(r"button\.stat-tile,\s*a\.stat-tile \{\s*transition: transform", css)
+
+
+def test_a_template_with_an_unknown_field_is_refused(client, shop_app):
+    import fixture
+    shop_app.client.post("/login", data={"user": "admin", "password": fixture.PASSWORDS["admin"]})
+    body = shop_app.client.post('/api/settings/library/management', json={
+        'organizer': {'templates': {'multi': '{titleName} [{packageNamez}]'}}}).get_json()
+    assert body['success'] is False and body['errors'][0]['error'] == '{packageNamez}'

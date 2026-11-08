@@ -27,7 +27,7 @@ logger = logging.getLogger('main')
 
 SESSION_DIR = os.path.join(DATA_DIR, 'uploads')
 STALE_DAYS = 7
-READ_BLOCK = 1024 * 1024
+READ_BLOCK = 4 * 1024 * 1024   # bigger reads: fewer Python round trips per chunk
 
 # Characters no supported filesystem takes in a name (Windows is the strictest).
 _FORBIDDEN = set('<>:"/\\|?*')

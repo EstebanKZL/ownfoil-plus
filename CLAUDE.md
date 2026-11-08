@@ -163,6 +163,11 @@ Not yet tried on real games: compressing/combining/splitting from those panels.
 NUP-vs-NUP duplicates, a Bundle badge, Gotify/Pushover/Slack/email channels,
 HTML emails (`mail_html.py`), per-user email news and language (`user.notify_email`,
 `user.language`). Not yet tried with a real mail server.
+6.2.5.54: `{packageContents}` counts (`1G+1U+5D`, names in `{packageNames}`), unknown
+template fields refused on save (`library.template_errors`), per-user email rules (own
+save backups only; corrupt/failed-task to staff), size sort by files on disk, marked
+Library tiles, adaptive upload chunks (8-64 MiB), folded notification channel cards,
+My account in big-card + two-card rows.
 
 Postponed - **remind the maintainer of these when a round of work wraps up**:
 

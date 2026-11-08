@@ -195,7 +195,7 @@ helm upgrade --install ownfoil-plus ./ -n namespace -f values.yaml
 Exposing your shop to the internet is done with a reverse proxy in front of Ownfoil-Plus, and there are a few things it must get right.
 
 * Send the `X-Forwarded-Proto` header, and make sure it does __not__ serve the shop over plain `http` (or redirect it to `https`). Ownfoil-Plus only enforces host verification on secure requests, so a proxy that leaves `http` open means anyone who learns your URL can use your shop.
-* Don't set a small request body limit, clients download multi-GB files through it. Web uploads (Files page) send 8 MiB chunks and shrink them automatically down to 512 KiB if the proxy refuses them (nginx's default `client_max_body_size` is `1m`), but raising the limit to `16m` or more keeps uploads fast.
+* Don't set a small request body limit, clients download multi-GB files through it. Web uploads send 8 MiB chunks, grow them up to 64 MiB while the network keeps up, and shrink them down to 512 KiB if the proxy refuses them (nginx's default `client_max_body_size` is `1m`); `client_max_body_size 64m;` (or more) keeps uploads fast. On your own LAN, uploading through the server's local address (`http://192.168.x.x:8465`) skips the proxy and its TLS, and is usually much faster than through the public domain.
 
 Once that is done, set the `Shop URL` in the `Settings` to the same hostname - see [Shop](./Usage.md#shop) for what it does and how to configure it.
 
