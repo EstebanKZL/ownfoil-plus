@@ -83,7 +83,7 @@ package - `tests/conftest.py` puts `app/` on `sys.path`.
   Basic Auth for console clients.
 - `db.py` - models (`Files`, `Apps`, `Titles`, `Task`, `TaskHistory`, `DownloadEvent`,
   ...) and DB helpers. Schema changes need an **Alembic migration** in
-  `app/migrations/versions/` (current head: `e5f6a7b8c9d1`) *and* the model change
+  `app/migrations/versions/` (current head: `f6a7b8c9d0e2`) *and* the model change
   (new installs use `create_all`). `tests/test_download_history.py` asserts the head.
 - `tasks.py` / `worker.py` / `worker_pool.py` - task registry (`@register_task`),
   enqueue/dedup, scheduled tasks via `run_after` (stored in **UTC**; use
@@ -158,6 +158,11 @@ the Saves limits notice, Files > Compress/Decompress and Combine/Split (`packing
 setting), Ctrl+K with every page and users, and short release notes (credits only in
 NOTICE.md/README). Releases and tags before 6.2.5.51 were deleted for a fresh start.
 Not yet tried on real games: compressing/combining/splitting from those panels.
+6.2.5.52-53: every CNMT of an NSP is read, bundles organized with any template
+(`{packageContents}`, `{packageCounts}`, `{sizeGb}`), a NUP's id-less game recovered,
+NUP-vs-NUP duplicates, a Bundle badge, Gotify/Pushover/Slack/email channels,
+HTML emails (`mail_html.py`), per-user email news and language (`user.notify_email`,
+`user.language`). Not yet tried with a real mail server.
 
 Postponed - **remind the maintainer of these when a round of work wraps up**:
 

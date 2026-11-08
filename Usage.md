@@ -345,6 +345,11 @@ Available in every template too - in the multi-content one, for a file holding t
 | `{appVersion}` | Application version |
 | `{patchLevel}` | Patch level |
 | `{appName}` | Name of the application, the title or the DLC name |
+| `{packageContents}` | What the file holds: `Base`, `Update`, `DLC`, `Base + Update`, `Base + Update + DLC`... |
+| `{packageCounts}` | How many of each it holds, games first: `1G+1U+5D` (a part it lacks is left out: `1G+1U`) |
+| `{sizeGb}` / `{sizeMb}` | The file's size, e.g. `3.23` (GB) or `3307` (MB) |
+
+For example, a multi-content template `{titleName}/{titleName} [{packageContents}] [{sizeGb} GB]` names a bundle `Nintendo Switch 2 Welcome Tour [Base + Update] [3.23 GB].nup` - the extension is the file's own (nsp, nsz, xci, xcz or nup). The size is the one when the file is organized: compressing it later doesn't rename it.
 
 > [!CAUTION]
 > Make sure the templates contain `[{appId}][v{appVersion}]` for Tinfoil to recognize the apps.
@@ -479,7 +484,15 @@ Events are grouped: everything that happens within 20 seconds of the first event
 | Discord | A channel webhook URL: channel settings → Integrations → Webhooks. |
 | Telegram | A bot token from [@BotFather](https://t.me/BotFather) and your chat ID (send the bot a message first). |
 | ntfy | A server (`https://ntfy.sh` by default, or your own) and a topic; an access token for protected topics. On the public server anyone who knows the topic can read it, so pick a hard-to-guess name. |
+| Gotify | Your Gotify server's address and the token of an app made there (Apps → Create application). |
+| Pushover | Your user key (pushover.net dashboard) and the token of an application you create there. |
+| Slack | An incoming webhook of your workspace (Apps → Incoming Webhooks). |
+| Email | One or more addresses, separated by commas, in the `Message language` above. It uses the server's SMTP - the `SMTP_*` variables of [Install.md](./Install.md), like account emails - and sends an HTML email: the event as heading, a row per item with the game's cover, and a button to the library (when the public address is set in User registration). |
 | Webhook | Any URL; it receives a `POST` with `{"shop", "event", "title", "items": [...]}` as JSON. |
+
+Users get the news by email on their own, with no channel needed: with notifications on and SMTP set up, My account offers "Email me the server's news" to a user with a verified email - games added and new updates and DLC (admins also get the rest), in the language chosen in My account.
+
+Account emails (verify your email, reset your password, the SMTP test) go out as HTML too: the shop's name in a header, a heading, a short explanation and the link as a button - spelled out underneath for mail clients that block it - with the plain text beside it.
 
 ## Appearance
 

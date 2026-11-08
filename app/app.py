@@ -267,6 +267,22 @@ def _console_request(request):
         path == '/' or path == '/api/graphql' or path.startswith('/api/get_game/'))
 
 @app.before_request
+def remember_language():
+    """A signed-in user without a language yet gets the one they browse in, for the
+    emails sent to them (My account changes it). Only on pages."""
+    if request.method != 'GET' or request.path.startswith(('/static/', '/api/', '/dav')):
+        return None
+    try:
+        if current_user.is_authenticated:
+            from i18n import current_language
+            if not current_user.language:
+                current_user.language = current_language()
+                db.session.commit()
+    except Exception:
+        db.session.rollback()
+    return None
+
+@app.before_request
 def shop_closed():
     """The Store switch (Services): with the shop off, consoles get "closed"."""
     if get_settings()['shop'].get('enabled', True) or not _console_request(request):
@@ -1026,7 +1042,12 @@ def clear_download_history_api():
 def account_page():
     """My account: the signed-in user's own preferences (any user, admin or not)."""
     server_background = get_settings()['library']['management'].get('organizer', {})         .get('show_background_image', True)
+    # The news by email: offered with notifications on in the server and SMTP set up -
+    # no channel needed, each user's verified address is enough.
+    notif = get_settings().get('notifications', {})
+    email_channel = bool(notif.get('enabled')) and accounts.smtp_config() is not None
     return render_template('account.html', title='Account', server_background=server_background,
+                           email_channel=email_channel,
                            can_use_vault=vault.may_use(current_user), vault_on=vault.enabled(),
                            avatar_gallery=avatars_mod.GALLERY)
 
@@ -1065,8 +1086,24 @@ def account_api():
         return jsonify({'success': False, 'error': 'invalid_background'}), 400
     current_user.console_firmware = console_firmware or None
     current_user.show_background_image = _BACKGROUND_CHOICES[background]
+    if 'notify_email' in data:
+        # Only with a verified email: it is where the messages go.
+        current_user.notify_email = bool(data.get('notify_email')) and bool(current_user.email_verified)
+        notifications.forget_subscribers()
+    language = data.get('language')
+    if language is not None:
+        if language not in SUPPORTED_LANGUAGES and language != 'auto':
+            return jsonify({'success': False, 'error': 'invalid_language'}), 400
+        from i18n import browser_language
+        # "Automatic" keeps the browser's; the emails use what it resolves to now.
+        current_user.language = language if language != 'auto' else browser_language(request.headers.get('Accept-Language'))
+        notifications.forget_subscribers()
     db.session.commit()
-    return jsonify({'success': True})
+    response = jsonify({'success': True})
+    if language is not None:
+        from i18n import LANGUAGE_COOKIE
+        response.set_cookie(LANGUAGE_COOKIE, language, max_age=60 * 60 * 24 * 365, samesite='Lax')
+    return response
 
 # --- Upcoming releases, sagas, wishlist (discover.py, series.py) ---------------------
 
@@ -1502,7 +1539,8 @@ def registration_test_email_api():
     if not accounts.valid_email(to):
         return jsonify({'success': False, 'error': 'invalid_email'}), 400
     try:
-        accounts.send_mail(to, t('mail.test_subject'), t('mail.test_body'))
+        accounts.send_mail(to, t('mail.test_subject'), t('mail.test_body'),
+                           html=accounts.account_mail(t('mail.test_subject'), t('mail.test_body')))
     except Exception as e:
         logger.warning(f'Test email failed: {e}')
         return jsonify({'success': False, 'error': str(e)[:200]}), 502
@@ -1850,7 +1888,8 @@ def export_settings():
                 client_settings.pop(key, None)
         # Webhook URLs and bot tokens are credentials: anyone holding one can post.
         for provider, key in (('discord', 'webhook_url'), ('telegram', 'bot_token'),
-                              ('ntfy', 'token'), ('webhook', 'url')):
+                              ('ntfy', 'token'), ('webhook', 'url'), ('gotify', 'token'),
+                              ('pushover', 'app_token'), ('pushover', 'user_key'), ('slack', 'webhook_url')):
             settings.get('notifications', {}).get(provider, {}).pop(key, None)
     yaml_text = yaml.safe_dump(settings, sort_keys=False, allow_unicode=True)
     suffix = '' if include_secrets else '-shareable'

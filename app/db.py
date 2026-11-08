@@ -353,6 +353,11 @@ class User(UserMixin, db.Model):
     # Collaborator: sees every admin page, changes nothing (auth.access_required lets
     # them read; writes, settings, services and backups stay with admins).
     collaborator_access = db.Column(db.Boolean, nullable=False, default=False, server_default='0')
+    # My account: send me the server's notifications by email (needs a verified email and
+    # the email channel on in Settings > Notifications).
+    notify_email = db.Column(db.Boolean, nullable=False, default=False, server_default='0')
+    # The language the user last used the web in: their notification emails are in it.
+    language = db.Column(db.String(8), nullable=True)
 
     @property
     def is_admin(self):

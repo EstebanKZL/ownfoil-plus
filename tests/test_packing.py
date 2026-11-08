@@ -236,3 +236,50 @@ def test_identifying_again_organizes_again(shop_app):
         f.organized = True
         reset_file_identification(f)
         assert f.organized is False and f.multicontent is False
+
+
+def test_a_bundle_tells_the_library_what_it_holds(shop_app):
+    from db import Files, db
+    with shop_app.app.app_context():
+        f = Files.query.filter(Files.extension == 'nsp').first()
+        f.multicontent = True
+        db.session.commit()
+    client = _login(shop_app, "admin")
+    q = '{ apps(groupByAppId: true, appType: [BASE], page: 1, pageSize: 50) { items { downloadableFile { format contents } } } }'
+    items = client.post('/api/graphql', json={'query': q}).get_json()['data']['apps']['items']
+    contents = [i['downloadableFile']['contents'] for i in items if i['downloadableFile']]
+    assert any(c and c[0] == 'BASE' for c in contents)
+    js = open(os.path.join(os.path.dirname(__file__), '..', 'app', 'static', 'js', 'library.js'), encoding='utf-8').read()
+    # A badge inside the card ("Bundle 1G+1U+5D"), not text on the cover.
+    assert 'bundleBadge(game.contents, I18N.bundle)' in js and 'downloadableFile { format contents }' in js
+    assert 'library-cover-bundle' not in js
+    common = open(os.path.join(os.path.dirname(__file__), '..', 'app', 'static', 'js', 'library-common.js'), encoding='utf-8').read()
+    assert 'function bundleCounts(contents)' in common and "'G'" in common
+
+
+def test_two_copies_of_a_nup_are_duplicates_of_each_other_only(shop_app):
+    """Seen: "Donkey Kong Bananza [...].nup" and its "(3)" copy never showed under
+    Duplicates - NUPs were left out of the comparison. They're compared with NUPs now
+    (never with an NSP of the same game), and a bundle's copies make one group, not one
+    per app they hold."""
+    import library
+    from db import Apps, Files, db
+    with shop_app.app.app_context():
+        nsp = Files.query.filter(Files.extension == 'nsp').first()
+        apps = list(nsp.apps)
+        extra = Apps.query.filter(Apps.id.notin_([a.id for a in apps])).first()
+        nups = []
+        for n in (1, 2):
+            f = Files(library_id=nsp.library_id, filepath=f'{nsp.filepath}.{n}.nup', folder=nsp.folder,
+                      filename=f'copy{n}.nup', extension='nup', size=10, identified=True, multicontent=True)
+            db.session.add(f)
+            db.session.flush()
+            for a in apps + ([extra] if extra else []):
+                a.files.append(f)
+            nups.append(f.id)
+        if extra:
+            extra.owned = True
+        db.session.commit()
+        groups = [{f.id for f in files} for _, files in library.duplicate_file_groups()]
+        assert groups.count(set(nups)) == 1                      # one group for the pair
+        assert not any(nsp.id in g and (g & set(nups)) for g in groups)   # never mixed with the NSP

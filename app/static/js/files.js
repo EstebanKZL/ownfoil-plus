@@ -393,7 +393,8 @@ function duplicateDecides(file, keepFile) {
 }
 
 function normalizeDuplicateGroup(g) {
-    const key = `${g.appId}:${g.appType}`;
+    // A NUP pair and an NSP pair of the same app are separate groups: the files say which.
+    const key = `${g.appId}:${g.appType}:${g.files.map(f => f.id).join(',')}`;
     const keepFile = g.recommendedKeepId ? g.files.find(f => String(f.id) === String(g.recommendedKeepId)) : null;
     const keep = keepFile ? [keepFile] : [];
     const remove = g.files.filter(f => String(f.id) !== String(g.recommendedKeepId))

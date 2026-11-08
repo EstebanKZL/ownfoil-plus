@@ -117,7 +117,7 @@ def test_the_first_catalogue_pass_does_not_announce_old_dlc(catalogue, monkeypat
     from settings import get_settings
     sent = []
     monkeypatch.setattr(notifications, "is_enabled", lambda event: True)
-    monkeypatch.setattr(notifications, "notify", lambda event, item: sent.append(item))
+    monkeypatch.setattr(notifications, "notify", lambda event, item, title_id=None: sent.append(item))
     with catalogue.app.app_context():
         library.add_missing_apps_to_db()
         assert sent == []

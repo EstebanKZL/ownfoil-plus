@@ -31,11 +31,18 @@ document.getElementById('accountForm').addEventListener('submit', async event =>
             body: JSON.stringify({
                 console_firmware: firmware,
                 show_background_image: document.getElementById('accountBackground').value,
+                language: document.getElementById('accountLanguage').value,
+                // Only when offered (the email channel is on in Settings).
+                ...(document.getElementById('accountNotifyEmail')
+                    ? {notify_email: document.getElementById('accountNotifyEmail').checked} : {}),
             }),
         });
         const body = await r.json().catch(() => ({}));
         if (r.ok && body.success) {
             accountFeedback(I18N.saved, true);
+            // A new language shows once the page is drawn again in it.
+            const picked = document.getElementById('accountLanguage').value;
+            if (picked !== 'auto' && picked !== document.documentElement.lang) setTimeout(() => location.reload(), 400);
         } else {
             input.classList.toggle('is-invalid', body.error === 'invalid_firmware');
             accountFeedback(body.error === 'invalid_firmware' ? I18N.firmwareInvalid : I18N.saveFailed, false);

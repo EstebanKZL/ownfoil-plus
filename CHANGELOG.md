@@ -4,6 +4,52 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.53]
+
+- **New template fields** in every organizer template: `{packageContents}` (`Base`,
+  `Base + Update`, `Base + Update + DLC`...), `{packageCounts}` (`1G+1U+5D`, games first)
+  and `{sizeGb}` / `{sizeMb}`, so a bundle can be named `Nintendo Switch 2 Welcome Tour
+  [Base + Update] [3.23 GB].nup` or `... [1G+1U+5D].nsp` - with the file's own extension.
+  Settings' template help lists them, with an example.
+- **A bundle says so**, as a gold *Bundle 1G+1U+5D* badge among a card's badges (cards
+  and compact covers) and in the game page's header - not as text on the cover, which it
+  crowded. A cover's badges now stack one under the other, clear of the star, always in
+  the same order: firmware, base game missing, bundle. GraphQL's `downloadableFile` gains `contents` (one BASE / UPDATE / DLC entry
+  per content) for a file holding several.
+- **A NUP's game without an id is kept.** Some Switch 2 NUPs store the game's package
+  without its title id (a dump without its NPDM): it was skipped, and the file listed as
+  "Update + DLC" although the game runs. It takes the program id its update (or DLC)
+  carries.
+- **More notification channels: Gotify, Pushover, Slack and email.** Every channel in
+  Settings > Notifications is a card of the same shape - icon, name and switch on one
+  row, then its fields - instead of the previous mix. The email channel uses the server's
+  SMTP (`SMTP_*`) and sends an HTML email: a row per item with the game's cover (when
+  TitleDB has a web address for it) and a button to the library. `notify()` takes the
+  game's title id for that; the other channels are unchanged.
+- **Each user can get the news by email** (My account): with notifications on in the server
+  and SMTP set up, a user with a verified email turns on "Email me the server's news" and
+  gets them at that address - no channel to set up in Settings for it. A user gets the
+  game news (games added, new updates and DLC); an admin also gets the housekeeping
+  (corrupt files, failed tasks, saves). Each email is in the user's language.
+- Only users who may see the library (shop access, or admins) get the game news by email,
+  and the list is read again when a user's permissions change. Slack messages escape
+  `&`, `<` and `>`, so a file name like `<!channel>` can't ping the channel.
+- **The language is a setting of My account**, kept on the user (the nav's language menu
+  changes it too, and a user who never chose gets the one they browse in): the web and
+  the emails the server sends them are in it. Migration `f6a7b8c9d0e2` adds
+  `user.notify_email` and `user.language`. The email channel's addresses keep the
+  messages' language, and the test message goes only to them.
+- **Account emails are HTML** (`mail_html.py`): the shop's name in a header band, the
+  subject as heading, the explanation, and the link as a button - spelled out below it
+  for clients that block buttons - with the plain text still sent beside it. One layout,
+  inline styles only (mail clients drop stylesheets), every text escaped.
+- **Settings > Library > Templates reads in order**: the four templates in a 2 x 2 grid,
+  then every field in a grid of name and meaning, instead of a long column beside an
+  emptier one. The help showed `<code>` literally for the new fields; fixed.
+- **Two copies of a NUP are duplicates** of each other. NUPs were left out of the
+  comparison altogether; they're compared with NUPs now (never with an NSP or XCI of the
+  same game), and a bundle's copies make one group instead of one per content.
+
 ## [6.2.5.52]
 
 - **Bundles are organized with any template.** A file holding the base game with its

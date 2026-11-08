@@ -74,7 +74,7 @@ def test_a_compact_card_carries_cover_name_meta_id_and_badges():
 
 def test_the_compact_query_brings_what_the_cards_show():
     query = re.search(r"const ICONS_QUERY = `(.*?)`;", _js("library.js"), re.S).group(1)
-    for field in ("dlcOwned", "dlcTotal", "upToDate", "downloadableFile { format }", "publisher", "releaseDate", "iconUrl"):
+    for field in ("dlcOwned", "dlcTotal", "upToDate", "downloadableFile { format contents }", "publisher", "releaseDate", "iconUrl"):
         assert field in query, field
 
 

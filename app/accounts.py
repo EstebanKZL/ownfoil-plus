@@ -116,9 +116,9 @@ def _deliver(message, cfg):
         server.send_message(message)
 
 
-def send_mail(to, subject, body):
-    """Sends a plain-text email. Raises RuntimeError when SMTP isn't set up, and the
-    SMTP error when sending fails."""
+def send_mail(to, subject, body, html=None):
+    """Sends an email: the plain text, and an HTML version beside it when given. Raises
+    RuntimeError when SMTP isn't set up, and the SMTP error when sending fails."""
     cfg = smtp_config()
     if cfg is None:
         raise RuntimeError('SMTP is not configured')
@@ -127,23 +127,36 @@ def send_mail(to, subject, body):
     message['To'] = to
     message['Subject'] = subject
     message.set_content(body)
+    if html:
+        message.add_alternative(html, subtype='html')
     _deliver(message, cfg)
 
 
-def _send_logged(to, subject, body):
+def _send_logged(to, subject, body, html=None):
     try:
-        send_mail(to, subject, body)
+        send_mail(to, subject, body, html=html)
     except Exception as e:
         logger.warning(f'Could not send the email "{subject}": {e}')
 
 
-def send_mail_later(to, subject, body):
+def send_mail_later(to, subject, body, html=None):
     """Sends without waiting: a slow mail server doesn't hold the page up, and how long
     the page takes doesn't tell whether an address has an account. Failures are logged."""
     if not SEND_IN_BACKGROUND:
-        _send_logged(to, subject, body)
+        _send_logged(to, subject, body, html)
         return
-    threading.Thread(target=_send_logged, args=(to, subject, body), daemon=True).start()
+    threading.Thread(target=_send_logged, args=(to, subject, body, html), daemon=True).start()
+
+
+def account_mail(subject, body, link=None, button=None):
+    """An account email's HTML, built from its plain text: the shop's name in the header,
+    the subject as heading, and the link as a button."""
+    import mail_html
+    from i18n import t
+    from settings import get_settings
+    shop = get_settings()['shop'].get('name') or 'Ownfoil-Plus'
+    return mail_html.from_text(shop, subject, body, link, button or t('mail.button_open'),
+                               t('mail.fallback'), t('mail.footer', shop=shop))
 
 
 # --- signed links ---------------------------------------------------------------------

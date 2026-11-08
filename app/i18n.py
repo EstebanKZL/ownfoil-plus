@@ -70,6 +70,12 @@ TRANSLATIONS = {
     'nav.account': {'en': 'My account', 'es': 'Mi cuenta'},
     'account.title': {'en': 'My account', 'es': 'Mi cuenta'},
     'account.role_user': {'en': 'User', 'es': 'Usuario'},
+    'account.notify_email': {'en': "Email me the server's news", 'es': 'Avisarme por correo de las novedades del servidor'},
+    'account.notify_email_help': {'en': 'An email to your verified address when games are added to the library or new updates and DLC come out for them, in your language.', 'es': 'Un correo a tu dirección verificada cuando se agregan juegos a la biblioteca o salen actualizaciones y DLC nuevos para ellos, en tu idioma.'},
+    'account.notify_email_needs_verified': {'en': 'Verify your email to turn it on.', 'es': 'Verificá tu email para activarlo.'},
+    'account.language_label': {'en': 'Language', 'es': 'Idioma'},
+    'account.language_auto': {'en': 'Automatic (browser language)', 'es': 'Automático (idioma del navegador)'},
+    'account.language_help': {'en': 'The web and the emails the server sends you are in it.', 'es': 'La web y los correos que te manda el servidor están en este idioma.'},
     'account.desc': {'en': 'Your own preferences as {user}, on this server.', 'es': 'Tus preferencias como {user}, en este servidor.'},
     'account.console_heading': {'en': 'Your console', 'es': 'Tu consola'},
     'account.firmware_label': {'en': "Your console's firmware", 'es': 'Firmware de tu consola'},
@@ -725,6 +731,23 @@ TRANSLATIONS = {
     'notif.ntfy_help': {
         'en': 'Subscribe to the same topic in the ntfy app. On the public ntfy.sh server, anyone who knows the topic name can read it: pick a hard-to-guess one.',
         'es': 'Suscribite al mismo tema en la app de ntfy. En el servidor público ntfy.sh cualquiera que sepa el nombre del tema puede leerlo: elegí uno difícil de adivinar.'},
+    'notif.gotify_server': {'en': 'Server', 'es': 'Servidor'},
+    'notif.gotify_token': {'en': 'App token', 'es': 'Token de la app'},
+    'notif.gotify_help': {'en': 'Your Gotify server and the token of an app made there (Apps > Create application).', 'es': 'Tu servidor Gotify y el token de una app creada ahí (Apps > Create application).'},
+    'notif.pushover_user': {'en': 'User key', 'es': 'Clave de usuario'},
+    'notif.pushover_token': {'en': 'App token', 'es': 'Token de la app'},
+    'notif.pushover_help': {'en': 'Your user key (pushover.net dashboard) and the token of an application you create there.', 'es': 'Tu clave de usuario (panel de pushover.net) y el token de una aplicación que crees ahí.'},
+    'notif.slack_webhook': {'en': 'Webhook URL', 'es': 'URL del webhook'},
+    'notif.slack_help': {'en': 'An incoming webhook of your Slack workspace (Apps > Incoming Webhooks).', 'es': 'Un webhook entrante de tu espacio de Slack (Apps > Incoming Webhooks).'},
+    'notif.email_title': {'en': 'Email', 'es': 'Correo'},
+    'notif.email_to': {'en': 'Send to', 'es': 'Enviar a'},
+    'notif.email_help': {'en': "One or more addresses, separated by commas. Uses the server's SMTP (the SMTP_* variables, like account emails); each email shows the games with their covers.", 'es': 'Una o más direcciones, separadas por comas. Usa el SMTP del servidor (las variables SMTP_*, como los correos de cuentas); cada correo muestra los juegos con su portada.'},
+    'notif.email_open': {'en': 'Open the library', 'es': 'Abrir la biblioteca'},
+    'mail.button_verify': {'en': 'Verify my email', 'es': 'Verificar mi email'},
+    'mail.button_reset': {'en': 'Choose a new password', 'es': 'Elegir una contraseña nueva'},
+    'mail.button_open': {'en': 'Open', 'es': 'Abrir'},
+    'mail.fallback': {'en': 'If the button does not work, copy this link into your browser:', 'es': 'Si el botón no funciona, copiá este enlace en tu navegador:'},
+    'mail.footer': {'en': 'Sent by {shop}.', 'es': 'Enviado por {shop}.'},
     'notif.webhook_url': {'en': 'URL', 'es': 'URL'},
     'notif.webhook_help': {
         'en': 'Receives a JSON POST: {"shop", "event", "title", "items": [...]}. For Home Assistant, n8n, scripts...',
@@ -892,14 +915,18 @@ TRANSLATIONS = {
     'templates.tinfoil_note': {'en': 'Make sure the templates contain <code>[{appId}][v{appVersion}]</code> for Tinfoil to recognize the apps.',
                                 'es': 'Asegurate de que las plantillas contengan <code>[{appId}][v{appVersion}]</code> para que Tinfoil reconozca las apps.'},
     'templates.attrs_all': {'en': 'Available attributes for all templates:', 'es': 'Atributos disponibles para todas las plantillas:'},
-    'templates.attrs_base_update_dlc': {'en': 'Available attributes for Base, Update, and DLC templates:',
-                                         'es': 'Atributos disponibles para las plantillas de Base, Update y DLC:'},
+    'templates.attrs_base_update_dlc': {'en': "Also in every template (for a bundle: the base game's id and name, and the newest version it holds):", 'es': 'También en todas las plantillas (en un paquete: el ID y el nombre del juego base, y la versión más nueva que trae):'},
     'templates.attr_extension': {'en': 'File extension (e.g., <code>nsp</code>, <code>nsz</code>)', 'es': 'Extensión de archivo (ej: <code>nsp</code>, <code>nsz</code>)'},
     'templates.attr_title_id': {'en': 'Title ID of the game', 'es': 'Title ID del juego'},
     'templates.attr_title_name': {'en': 'Name of the game title', 'es': 'Nombre del juego'},
     'templates.attr_app_id': {'en': 'Application ID', 'es': 'Application ID'},
     'templates.attr_app_version': {'en': 'Application version', 'es': 'Versión de la aplicación'},
     'templates.attr_patch_level': {'en': 'Patch level', 'es': 'Nivel de parche'},
+    'templates.attr_package_contents': {'en': 'What the file holds: <code>Base</code>, <code>Base + Update</code>, <code>Base + Update + DLC</code>...', 'es': 'Lo que trae el archivo: <code>Base</code>, <code>Base + Update</code>, <code>Base + Update + DLC</code>...'},
+    'templates.attr_size': {'en': "The file's size in GB (<code>3.23</code>) or MB (<code>3307</code>)", 'es': 'El tamaño del archivo en GB (<code>3.23</code>) o MB (<code>3307</code>)'},
+    'templates.example': {'en': 'Example: <code>{titleName}/{titleName} [{packageContents}] [{sizeGb} GB]</code> gives <code>Game [Base + Update + DLC] [3.23 GB].nsp</code>', 'es': 'Ejemplo: <code>{titleName}/{titleName} [{packageContents}] [{sizeGb} GB]</code> da <code>Juego [Base + Update + DLC] [3.23 GB].nsp</code>'},
+    'library.bundle': {'en': 'Bundle', 'es': 'Paquete'},
+    'templates.attr_package_counts': {'en': 'How many of each, as <code>1G+1U+5D</code> (games, updates, DLC)', 'es': 'Cuántos de cada uno, como <code>1G+1U+5D</code> (juegos, updates, DLC)'},
     'templates.attr_app_name': {'en': 'Name of the application (title or DLC name)', 'es': 'Nombre de la aplicación (nombre del juego o del DLC)'},
 
     'titles.desc': {'en': 'Titles identification configuration.', 'es': 'Configuración de identificación de títulos.'},
@@ -1630,4 +1657,14 @@ def register_i18n(app):
         # A year is plenty for a UI preference; the cookie is not sensitive, so no
         # need for the shorter-lived, stricter handling session cookies get.
         resp.set_cookie(LANGUAGE_COOKIE, target, max_age=60 * 60 * 24 * 365, samesite='Lax')
+        # A signed-in user's emails follow the language they pick (My account has it too).
+        try:
+            from flask_login import current_user
+            from db import db
+            if current_user.is_authenticated:
+                current_user.language = target if target != AUTO_LANGUAGE else browser_language(
+                    flask_request.headers.get('Accept-Language'))
+                db.session.commit()
+        except Exception:
+            pass
         return resp

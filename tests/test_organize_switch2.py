@@ -8,7 +8,7 @@ import pytest
 import db as db_mod
 import titledb
 from app import create_app
-from constants import APP_TYPE_BASE, APP_TYPE_UPD
+from constants import APP_TYPE_BASE, APP_TYPE_DLC, APP_TYPE_UPD
 from db import Apps, Files, Libraries, Titles, db, init_db
 from library import organize_file
 
@@ -99,3 +99,30 @@ def test_a_bundle_takes_any_template_field(env, template):
     settings = {**SETTINGS, "templates": {**SETTINGS["templates"], "multi": template}}
     assert organize_file(f, str(env.lib_dir), settings)
     assert f.filepath.endswith("[04005A0021B8C000][v65536].nup")
+
+
+def test_package_contents_and_size_in_the_name(env):
+    """Asked for (as Switch Library Manager Web names them):
+    "Nintendo Switch 2 Welcome Tour [Base + Update] [3.23 GB].nup"."""
+    from db import db
+    f = env.seed("tour.nup", [(S2_ID, "0", APP_TYPE_BASE), (S2_UPD, "65536", APP_TYPE_UPD)])
+    f.size = int(3.23 * 1024 ** 3)
+    db.session.commit()
+    settings = {**SETTINGS, "templates": {**SETTINGS["templates"],
+                                          "multi": "{titleName}/{titleName} [{packageContents}] [{sizeGb} GB]"}}
+    assert organize_file(f, str(env.lib_dir), settings)
+    assert f.filepath.endswith("Nintendo Switch 2 Welcome Tour [Base + Update] [3.23 GB].nup")
+
+
+def test_package_contents_reads_like_its_parts():
+    from library import package_contents
+    assert package_contents([APP_TYPE_DLC, APP_TYPE_BASE, APP_TYPE_UPD, APP_TYPE_DLC]) == "Base + Update + DLC"
+    assert package_contents([APP_TYPE_BASE]) == "Base"
+    assert package_contents([APP_TYPE_UPD]) == "Update"
+
+
+def test_package_counts_read_like_switch_library_names():
+    from library import package_counts
+    assert package_counts([APP_TYPE_BASE, APP_TYPE_UPD] + [APP_TYPE_DLC] * 5) == "1G+1U+5D"
+    assert package_counts([APP_TYPE_UPD, APP_TYPE_BASE]) == "1G+1U"
+    assert package_counts([APP_TYPE_UPD, APP_TYPE_DLC]) == "1U+1D"

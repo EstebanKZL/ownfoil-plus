@@ -16,7 +16,7 @@ const GAME_QUERY = `
             ownership { haveBase upToDate complete }
             apps(owned: true) {
                 appId appType appVersion releaseDate
-                downloadableFile { id size verificationStatus format }
+                downloadableFile { id size verificationStatus format contents }
                 files { id filename size extension }
             }
             updateApps: apps(appType: [UPDATE]) {
@@ -142,6 +142,9 @@ function renderHero(t) {
         if (!own.upToDate) badges.append(statusBadge('wait', 'bi-arrow-up-circle', I18N.badgeUpdate));
         if (missingDlc) badges.append(statusBadge('dlc', 'bi-puzzle', I18N.badgeMissingDlc));
         if (own.upToDate && !missingDlc) badges.append(statusBadge('ok', 'bi-stars', I18N.badgeComplete));
+        // The game's own file is a bundle: "Bundle 1G+1U+5D".
+        const base = (t.apps || []).find(a => a.appType === 'BASE' && a.downloadableFile);
+        badges.append(bundleBadge(base && base.downloadableFile.contents, I18N.bundle));
     } else {
         badges.append(statusBadge('', 'bi-dash-circle', I18N.notInLibrary));
     }

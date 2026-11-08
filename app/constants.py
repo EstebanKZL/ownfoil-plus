@@ -170,6 +170,11 @@ DEFAULT_SETTINGS = {
         "telegram": {"enabled": False, "bot_token": "", "chat_id": ""},
         "ntfy": {"enabled": False, "server": "https://ntfy.sh", "topic": "", "token": ""},
         "webhook": {"enabled": False, "url": ""},
+        "gotify": {"enabled": False, "server": "", "token": ""},
+        "pushover": {"enabled": False, "user_key": "", "app_token": ""},
+        "slack": {"enabled": False, "webhook_url": ""},
+        # Uses the server's SMTP (SMTP_* environment variables, like account emails).
+        "email": {"enabled": False, "to": ""},
     },
     "worker": {
         "count": 2,
