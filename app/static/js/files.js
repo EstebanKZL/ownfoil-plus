@@ -658,6 +658,16 @@ function loadStats() {
         groupStats.pending = d.pendingFiles.total;
         paintTiles();
     }).catch(() => {});
+    // Pending moves as tasks come and go elsewhere too (a scan from Synchronize, a
+    // combine queued in another view): keep the tile honest without a page reload.
+    setInterval(() => {
+        gql('{ pendingFiles { total } }').then(d => {
+            if (d.pendingFiles && d.pendingFiles.total !== groupStats.pending) {
+                groupStats.pending = d.pendingFiles.total;
+                paintTiles();
+            }
+        }).catch(() => {});
+    }, 12000);
     ['compress', 'combine'].forEach(kind => Packing.load(kind, true).then(() => {
         paintTiles();
         if (current === kind) Packing.render(kind);
@@ -1173,14 +1183,16 @@ async function syncLibrary() {
     try {
         const d = await gql('mutation { syncLibrary { id status } }', {}, true);
         const id = d.syncLibrary && d.syncLibrary.id;
-        // Until the TitleDB task settles (it can run for a while on a slow link); a
-        // missing row or an error reading it ends the wait the same as a failure.
+        // Until the TitleDB task settles (it can run for a while on a slow link). A
+        // finished root task LEAVES the queue (its row moves to History) while a failed
+        // one keeps its row: gone means done, not an error.
         while (id) {
             await new Promise(r => setTimeout(r, 2000));
             const t = await gql(`{ task(id: ${id}) { status } }`);
             const status = t.task && t.task.status;
+            if (!status) { showToast(I18N.syncDone); break; }
             if (status === 'RUNNING' || status === 'PENDING' || status === 'WAITING_FOR_CHILDREN') continue;
-            showToast(status === 'SUCCEEDED' ? I18N.syncDone : I18N.syncFailedTemplate.replace('{error}', status || '?'));
+            showToast(status === 'SUCCEEDED' ? I18N.syncDone : I18N.syncFailedTemplate.replace('{error}', status));
             break;
         }
         loadStats();

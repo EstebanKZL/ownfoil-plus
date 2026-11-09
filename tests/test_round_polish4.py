@@ -128,7 +128,17 @@ def test_saga_cards_keep_one_row_of_covers():
     js = _read("app", "static", "js", "sagas.js")
     assert "const SAGA_THUMBS = 6;" in js and "saga-thumb--more" in js
     css = _read("app", "static", "style.css")
-    assert re.search(r"\.saga-card__strip \{[^}]*flex-wrap: nowrap;[^}]*overflow: hidden;", css)
+    # The cap matters: the card's body aligns its children to fit-content, and without
+    # it the row ran past the card's edge on narrow widths instead of clipping.
+    assert re.search(r"\.saga-card__strip \{[^}]*flex-wrap: nowrap;[^}]*overflow: hidden;[^}]*max-width: 100%;", css)
+
+
+def test_saga_cards_lift_on_hover_like_the_games():
+    css = _read("app", "static", "style.css")
+    # The games' lift, so a hover says where you are - while a complete saga keeps its
+    # gold frame, trophy and count (pinned by .is-complete, which wins over the hover).
+    assert re.search(r"\.saga-card:hover \{[^}]*transform: translateY\(-3px\);", css)
+    assert re.search(r"\.saga-card\.is-complete,\s*\.saga-card\.is-complete:hover \{", css)
 
 
 def test_a_saga_inside_a_bigger_one_is_not_listed_apart():

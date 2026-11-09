@@ -108,6 +108,22 @@ def test_pending_files_lists_the_fixture_librarys_unidentified_file(client):
     assert "identify" in pending["items"][0]["stages"]
 
 
+def test_pending_total_folds_one_game_into_one_entry(client):
+    """The Files page folds a game's pending files into a single row; the count says
+    the same thing the list does (a combine of six files is one process, not six -
+    the tile used to read 6 while the list showed one folded row)."""
+    client.post("/api/settings/library/management", json={"organizer": {"enabled": True}})
+    data = gql(client, "{ pendingFiles { total items { file { apps { titleId } } } } }")
+    pending = data["pendingFiles"]
+    # The fixture: three files of one game (base, update, DLC) plus the multi-content
+    # and the unidentified files, which have no title - the three fold into one entry,
+    # the two untitled ones stand alone: 5 pending files, 3 entries.
+    assert pending["total"] == 3
+    titled = [e for e in pending["items"] if e["file"]["apps"]]
+    assert len(titled) == 3
+    assert len({a["titleId"] for e in titled for a in e["file"]["apps"]}) == 1
+
+
 def test_pending_files_hydrates_apps_for_an_identified_pending_file(client, shop_app):
     """Regression guard: pendingFiles never ran its File objects through the `apps`
     hydration machinery, so a perfectly identified file awaiting some other stage (not

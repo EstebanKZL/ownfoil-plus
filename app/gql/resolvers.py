@@ -1463,6 +1463,12 @@ def resolve_pending_files(*, ctx: GraphQLContext, info, limit: int = 500) -> "Pe
     ops = _file_operations_in_flight()
     held = _files_in_pipeline()
     limit = max(1, min(int(limit or 500), 2000))
+    # The Files page folds one game's pending files into a single row; the count says
+    # the same thing the list does, so one map query - file id to its title - folds
+    # the total the same way (a file without a title counts on its own).
+    title_by_file = {row[0]: row[1] for row in db.session.execute(
+        text("SELECT af.file_id, a.title_id FROM app_files af JOIN apps a ON a.id = af.app_id"))}
+    counted_titles = set()
     total = 0
     entries = []
     files_by_pk: Dict[int, File] = {}
@@ -1473,7 +1479,11 @@ def resolve_pending_files(*, ctx: GraphQLContext, info, limit: int = 500) -> "Pe
         # What Files > Compress / Combine queued for it by hand, still on its way.
         stages += [op for op in ops.get(file.id, ()) if op not in stages]
         if stages:
-            total += 1
+            title = title_by_file.get(file.id)
+            if title is None or title not in counted_titles:
+                if title is not None:
+                    counted_titles.add(title)
+                total += 1
             # The tile asks for the count only: nothing to build then.
             if not want_items or len(entries) >= limit:
                 continue

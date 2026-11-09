@@ -1157,7 +1157,8 @@ a.stat-tile:hover {
 
 @media (prefers-reduced-motion: reduce) {
     .library-card:hover,
-    .compact-card:hover {
+    .compact-card:hover,
+    .saga-card:hover {
         transform: none;
     }
 }
@@ -3717,11 +3718,14 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     grid-template-columns: 5.5rem minmax(0, 1fr);
     gap: 1rem;
     color: var(--op-text);
-    transition: border-color var(--op-dur) var(--op-ease);
+    transition: border-color var(--op-dur) var(--op-ease), transform var(--op-dur) var(--op-ease);
 }
 
+/* The games' lift: it says where you are without touching the colors - a complete
+   saga keeps its gold frame, trophy and count (pinned below). */
 .saga-card:hover {
     border-color: rgba(var(--op-nav-rgb), .55);
+    transform: translateY(-3px);
 }
 
 .saga-card__cover .release-card__cover {
@@ -3783,12 +3787,15 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
 }
 
 /* One row of covers, the same in every card (the rest as "+N"), so a saga with many
-   games never makes its card taller than the others. */
+   games never makes its card taller than the others. The cap matters: the card's body
+   aligns its children to fit-content, and without it the row ran past the card's edge
+   on narrow widths instead of clipping. */
 .saga-card__strip {
     display: flex;
     flex-wrap: nowrap;
     gap: .25rem;
     overflow: hidden;
+    max-width: 100%;
 }
 
 .saga-thumb--more {

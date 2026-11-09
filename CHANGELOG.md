@@ -9,13 +9,16 @@ see the upstream project for its own history.
 - **Statistics' charts keep one palette, the same in every style.** A donut or a share
   bar used to start from the style's accent (cyan in ownfoil, red in neon); a plain
   share is the info blue now, and the per-type rows wear the type colors - base coral,
-  update amber, DLC cyan - like every other view of the same thing.
+  update amber, DLC cyan - like every other view of the same thing. The format donut
+  keeps to itself: one hue in steps (info blue toward the track color), never a
+  content-type color, so NSP's blue doesn't read as "update" or NUP's as "DLC".
 - **Files:**
   - **Synchronize** replaces the header's refresh icon, Switch Library Manager style: a
     labeled button that downloads the latest TitleDB and analyzes the library again (the
     scan runs behind the TitleDB task, so new files are identified against the freshest
-    names), spinning while it works and toasting its outcome. The old icon only re-read
-    the database.
+    names), spinning while it works and toasting its outcome. A finished task leaves the
+    queue - gone means done, which the toast now says instead of crying failure. The old
+    icon only re-read the database.
   - **Duplicates' tile counts each file once.** A multi-content file sits beside the
     game's base, its update and each of its DLC, and the "to free" figure summed it once
     per group (a 1.7 GiB bundle read as 10 GiB). Deleting it frees its size a single
@@ -24,10 +27,12 @@ see the upstream project for its own history.
     and the drawer's Compress follows that setting now too (it always deleted). The .nsz
     takes the row and the kept .nsp comes back as a file of its own through the normal
     pipeline, not whenever the next scan happens to run.
-  - **Pending folds a game into one row.** Compressing or combining a whole game listed
-    its base, update and DLC each with a bar of its own; one row carries the game now,
-    its bar the mean of its files' tasks (or the game's own combine task) - done looks
-    like 100 %, like every other progress bar.
+  - **Pending folds a game into one row - and counts what it shows.** Compressing or
+    combining a whole game listed its base, update and DLC each with a bar of its own;
+    one row carries the game now, its bar the mean of its files' tasks (or the game's
+    own combine task). The tile and the pager count the same processes, not files (a
+    six-file combine is 1 pending, not 6), and the tile re-asks the count on its own -
+    work queued elsewhere used to need a page reload to show up.
   - **Compress and Combine filter like All files**: no more rows of "All / Uncompressed
     / Compressed" pills above the list - the toolbar keeps the search, then the chips
     and the "+" that adds a filter, the same as the flat list.
@@ -48,7 +53,9 @@ see the upstream project for its own history.
   search still fills it); the List view's updates show no date.
 - **Sagas**: a complete saga is framed in gold with a trophy before its "10 of 10"; pages
   of 24 cards, in one, two or three columns - each divides 24, so only the last page can
-  end with a short row.
+  end with a short row. The covers' row is capped to the card (it used to run past the
+  edge on narrow windows), and hovering a card lifts it like a game's - the gold frame,
+  the trophy and the count stay as they are.
 
 - **A big library stays responsive while it scans.** SQLite takes one writer at a time,
   and a scan made thousands of tiny writes the web and the workers queued behind:

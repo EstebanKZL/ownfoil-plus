@@ -131,6 +131,17 @@ def test_files_header_synchronizes_like_switch_library_manager():
     assert 'id="refreshFiles"' not in html
     js = _js("files.js")
     assert "mutation { syncLibrary { id status } }" in js and "addClass('spin')" in js
+    # A finished root task leaves the queue (its row moves to History): gone means
+    # done, not an error - the toast used to say "failed" once the sync completed.
+    assert "if (!status) { showToast(I18N.syncDone); break; }" in js
+
+
+def test_pending_tile_keeps_itself_fresh():
+    js = _js("files.js")
+    # Pending moves as tasks come and go elsewhere (Synchronize's chained scan, a
+    # combine queued in another view): the tile re-asks the count instead of waiting
+    # for a page reload.
+    assert "setInterval" in js and "groupStats.pending = d.pendingFiles.total" in js
 
 
 def test_identified_files_link_to_their_game_page():
