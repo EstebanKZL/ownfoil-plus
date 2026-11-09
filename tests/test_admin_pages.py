@@ -116,6 +116,23 @@ def test_files_content_column_chips_carry_the_type_colors():
         assert re.search(rf"\.files-chip--{tone} \{{[^}}]*var\({token}", css), tone
 
 
+def test_duplicates_tile_counts_each_file_once():
+    # A multi-content file sits in several groups (the game's base, its update, each
+    # DLC); deleting it frees its size a single time, like the bulk-delete path.
+    body = _function_body(_js("files.js"), "loadStats")
+    assert "const doomed = new Map();" in body and "doomed.set(String(f.id)" in body
+
+
+def test_files_header_synchronizes_like_switch_library_manager():
+    html = _read("app/templates/files.html")
+    # A labeled button, not the old icon that only re-read the DB: it downloads the
+    # latest TitleDB and analyzes the library again, spinning while it runs.
+    assert 'id="syncFiles"' in html and "files.sync_title" in html
+    assert 'id="refreshFiles"' not in html
+    js = _js("files.js")
+    assert "mutation { syncLibrary { id status } }" in js and "addClass('spin')" in js
+
+
 def test_identified_files_link_to_their_game_page():
     body = _function_body(_js("files.js"), "titleLink")
     assert "`/game/${titleId}`" in body and "/title/" not in body

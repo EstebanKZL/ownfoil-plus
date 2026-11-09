@@ -124,46 +124,93 @@ const Packing = (() => {
         }).filter(Boolean);
     }
 
-    function pill(label, count, active, onClick, glyph) {
-        const p = make('button', 'filter-pill');
-        p.type = 'button';
-        p.classList.toggle('active', active);
-        p.setAttribute('aria-pressed', active ? 'true' : 'false');
-        if (glyph) p.append(make('i', `bi ${glyph}`));
-        p.append(make('span', null, label), make('span', 'filter-pill__count', count.toLocaleString()));
-        p.addEventListener('click', onClick);
-        return p;
+    /** The filters, shown the way the flat list shows its own: every active one a chip
+     *  (its choices in a dropdown, an x that clears it back to "all") and a "+" that
+     *  adds one - asked for, in place of the rows of pills that used to sit above the
+     *  list. Single choice per filter, so the menu items are plain buttons. */
+    function filterDefs(kind) {
+        if (kind === 'compress') {
+            const files = (state[kind].games || []).flatMap(g => g.files);
+            const byShow = v => files.filter(f => v === 'all' || (v === 'raw') === !f.compressed);
+            return [
+                {key: 'show', label: T.filterState,
+                 options: () => [['all', T.showAll], ['raw', T.showRaw], ['compressed', T.showCompressed]],
+                 count: v => byShow(v).length},
+                {key: 'format', label: T.filterFormat,
+                 options: () => [['all', T.formatAll], ['nsp', 'NSP'], ['nsz', 'NSZ'], ['xci', 'XCI'], ['xcz', 'XCZ']],
+                 count: v => {
+                     const seen = byShow(state[kind].show);
+                     return v === 'all' ? seen.length : seen.filter(f => f.extension === v).length;
+                 }},
+            ];
+        }
+        const games = state[kind].games || [];
+        return [
+            {key: 'show', label: T.filterState,
+             options: () => [['all', T.showAll], ['loose', T.showLoose], ['combined', T.showCombined]],
+             count: v => games.filter(g => v === 'all' || g.state === v).length},
+        ];
     }
 
-    function filterRows(kind) {
+    function filterChipNode(kind, def) {
         const s = state[kind];
-        const box = make('div', 'packing-filters');
-        if (kind === 'compress') {
-            const files = (s.games || []).flatMap(g => g.files);
-            const byShow = v => files.filter(f => v === 'all' || (v === 'raw') === !f.compressed);
-            const row = make('div', 'pill-row');
-            [['all', T.showAll, null], ['raw', T.showRaw, 'bi-file-earmark'], ['compressed', T.showCompressed, 'bi-file-earmark-zip']]
-                .forEach(([v, label, glyph]) => row.append(pill(label, byShow(v).length, s.show === v, () => {
-                    s.show = v;
-                    render('compress');
-                }, glyph)));
-            const formats = make('div', 'pill-row');
-            const seen = byShow(s.show);
-            [['all', T.formatAll], ['nsp', 'NSP'], ['nsz', 'NSZ'], ['xci', 'XCI'], ['xcz', 'XCZ']].forEach(([v, label]) => {
-                const count = v === 'all' ? seen.length : seen.filter(f => f.extension === v).length;
-                if (!count && v !== 'all' && s.format !== v) return;
-                formats.append(pill(label, count, s.format === v, () => { s.format = v; render('compress'); }));
+        const chip = make('div', 'dropdown files-filter-chip');
+        chip.dataset.key = def.key;
+        const toggle = make('button');
+        toggle.type = 'button';
+        toggle.dataset.bsToggle = 'dropdown';
+        const current = () => def.options().find(([v]) => v === s[def.key]);
+        toggle.replaceChildren(`${def.label}: `, make('b', null, current() ? current()[1] : ''));
+        const menu = make('div', 'dropdown-menu');
+        def.options().forEach(([v, label]) => {
+            const item = make('button', 'dropdown-item');
+            item.type = 'button';
+            item.append(make('span', null, label),
+                         make('span', 'text-secondary ms-2 small', def.count(v).toLocaleString()));
+            item.addEventListener('click', () => { s[def.key] = v; render(kind); });
+            menu.append(item);
+        });
+        const remove = make('button', null);
+        remove.type = 'button';
+        remove.title = T.removeFilterTitle;
+        remove.append(make('i', 'bi bi-x'));
+        remove.addEventListener('click', () => { s[def.key] = 'all'; render(kind); });
+        chip.append(toggle, menu, remove);
+        return chip;
+    }
+
+    /** The chips bar that goes in the toolbar, after the search: active chips first,
+     *  then the "+" with the filters still on "all". */
+    function filterBar(kind) {
+        const s = state[kind];
+        const defs = filterDefs(kind);
+        const bar = make('div', 'files-chips');
+        defs.forEach(def => { if (s[def.key] !== 'all') bar.append(filterChipNode(kind, def)); });
+        const add = make('div', 'dropdown');
+        const addBtn = make('button', 'icon-btn');
+        addBtn.type = 'button';
+        addBtn.dataset.bsToggle = 'dropdown';
+        addBtn.append(make('i', 'bi bi-plus-lg'), document.createTextNode(' '), make('span', null, T.filterButton));
+        const menu = make('div', 'dropdown-menu');
+        const free = defs.filter(def => s[def.key] === 'all');
+        free.forEach(def => {
+            const item = make('button', 'dropdown-item', def.label);
+            item.type = 'button';
+            item.addEventListener('click', () => {
+                // Straight to its first real choice ("Uncompressed", say), with the
+                // chip's own menu open to change it - same feel as the flat list.
+                const first = def.options().find(([v]) => v !== 'all');
+                s[def.key] = first ? first[0] : 'all';
+                render(kind);
+                const toggle = document.querySelector(`#packingPanel .files-filter-chip[data-key="${def.key}"] [data-bs-toggle]`);
+                if (toggle) setTimeout(() => bootstrap.Dropdown.getOrCreateInstance(toggle).show());
             });
-            box.append(row, formats);
-        } else {
-            const games = s.games || [];
-            const row = make('div', 'pill-row');
-            [['all', T.showAll, null], ['loose', T.showLoose, 'bi-files'], ['combined', T.showCombined, 'bi-box-seam']]
-                .forEach(([v, label, glyph]) => row.append(pill(label, games.filter(g => v === 'all' || g.state === v).length,
-                    s.show === v, () => { s.show = v; render('combine'); }, glyph)));
-            box.append(row);
-        }
-        return box;
+            menu.append(item);
+        });
+        addBtn.disabled = !free.length;
+        add.append(addBtn, menu);
+        bar.append(add);
+        return bar;
     }
 
     function toolbar(kind, shown) {
@@ -188,7 +235,7 @@ const Packing = (() => {
             input._timer = setTimeout(() => { s.search = input.value.trim(); render(kind); focusSearch(); }, 250);
         });
         search.append(input);
-        bar.append(selectAll, search, make('span', 'packing-summary ms-auto', summary(kind)));
+        bar.append(selectAll, search, filterBar(kind), make('span', 'packing-summary ms-auto', summary(kind)));
         return bar;
     }
 
@@ -423,7 +470,7 @@ const Packing = (() => {
             if (view !== s.view) { s.view = view; s.page = 0; }
             s.page = Math.max(0, Math.min(s.page, Math.ceil(shown.length / PAGE_GAMES) - 1));
             const page = shown.slice(s.page * PAGE_GAMES, (s.page + 1) * PAGE_GAMES);
-            nodes.push(filterRows(kind), toolbar(kind, shown), pager(kind, shown.length));
+            nodes.push(toolbar(kind, shown), pager(kind, shown.length));
             if (!shown.length) nodes.push(make('p', 'text-secondary', I18N.emptyFiltered));
             const list = make('div', 'packing-games');
             page.forEach(g => list.append(kind === 'compress' ? compressGame(g) : combineGame(g)));

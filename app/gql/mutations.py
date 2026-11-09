@@ -139,6 +139,17 @@ class Mutation:
         return _task_by_id(last.id, info) if last else None
 
     @described_mutation
+    def sync_library(self, info: Info) -> Task:
+        """Synchronize the library in one go, Switch Library Manager style: download
+        the latest TitleDB (a rebuilt one re-identifies the library on its own), then
+        scan every configured root for files added or removed on disk. Returns the
+        TitleDB task; the scan is chained behind it and appears on its own."""
+        import tasks as tasks_mod
+        _require_admin(info.context)
+        task, _ = tasks_mod.enqueue_task('update_titledb', {'then_scan': True})
+        return _task_by_id(task.id, info)
+
+    @described_mutation
     def verify_library(
         self, info: Info,
         force: Annotated[bool, strawberry.argument(
@@ -310,9 +321,11 @@ class Mutation:
         file_id: Annotated[strawberry.ID, strawberry.argument(
             description="Primary key of the file to compress.")],
     ) -> Optional[Task]:
-        """Compress one file to NSZ/XCZ. Same guards as the REST endpoint."""
+        """Compress one file to NSZ/XCZ. Same guards, and the same "delete the
+        originals" setting, as the REST endpoint."""
         import tasks as tasks_mod
         from db import Files, db
+        from settings import get_settings
         _require_admin(info.context)
         file = db.session.get(Files, int(file_id))
         if not file:
@@ -321,7 +334,9 @@ class Mutation:
             raise MutationFailed("File is already compressed")
         if file.extension not in COMPRESS_EXT:
             raise MutationFailed("File type cannot be compressed")
-        task, _ = tasks_mod.enqueue_task('compress_file', {'file_id': int(file_id), 'manual': True})
+        keep = not bool(get_settings()['library']['management']['compression'].get('delete_originals', True))
+        task, _ = tasks_mod.enqueue_task('compress_file',
+                                         {'file_id': int(file_id), 'manual': True, 'keep_original': keep})
         return _task_by_id(task.id, info)
 
     @described_mutation

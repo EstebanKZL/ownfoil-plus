@@ -806,6 +806,11 @@ def update_titledb_task(**kwargs):
     delta = interval_string_to_timedelta(interval_str)
     if delta:
         update_scheduled_task('update_titledb', datetime.datetime.utcnow() + delta)
+    if kwargs.get('then_scan'):
+        # The Files page's Synchronize button: with the freshest TitleDB in place, scan
+        # every root so files added or removed on disk show up right away (a rebuilt
+        # TitleDB has already re-identified the whole library above).
+        enqueue_task('scan_libraries')
 
 
 @register_task('update_series', group='net')
@@ -1635,8 +1640,9 @@ def verify_file_task(file_id, manual=False, **kwargs):
 # --- Compression pipeline ---
 def _finalize_conversion(file_obj, target, new_extension, compressed, keep_source=False):
     """Flip the Files row onto the verified output, then drop the now-redundant source -
-    or, with `keep_source` (Files > Compress with "delete originals" off), leave it on
-    disk, untracked: the next scan picks it up and the duplicate settings decide."""
+    or, with `keep_source` (Files > Compress with "delete originals" off), register the
+    kept source as its own file right away, so it shows up without waiting for the next
+    scan (and Duplicates can judge the nsp against the nsz)."""
     source = file_obj.filepath
     remove = not keep_source and os.path.abspath(source) != os.path.abspath(target)
     if remove:
@@ -1653,6 +1659,13 @@ def _finalize_conversion(file_obj, target, new_extension, compressed, keep_sourc
     db.session.commit()
     if remove:
         os.remove(source)
+    else:
+        # The original stays on disk and the flipped row no longer points at it: add it
+        # back as a fresh file of its own (full pipeline: identify, artwork, ...), once.
+        library = Libraries.query.get(file_obj.library_id)
+        if library:
+            enqueue_task('add_file',
+                         {'library_path': library.path, 'filepath': os.path.abspath(source)})
 
 
 def _convert_file(file_obj, produce, new_extension, compressed, keep_source=False):

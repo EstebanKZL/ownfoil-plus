@@ -35,8 +35,9 @@
         <h2 class="page-head__title">{{ t('files.heading') }}</h2>
         <p class="page-head__desc">{{ t('files.manage_desc') | safe }}</p>
         <div class="page-head__actions">
-            <button type="button" id="refreshFiles" class="icon-btn" title="{{ t('files.refresh_title') }}">
-                <i class="bi bi-arrow-clockwise"></i>
+            <button type="button" id="syncFiles" class="btn btn-primary" title="{{ t('files.sync_title') }}">
+                <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+                <span>{{ t('files.sync') }}</span>
             </button>
         </div>
     </header>
@@ -159,6 +160,15 @@
     </div>
 
 </div>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="filesToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4000">
+        <div class="d-flex">
+            <div class="toast-body" id="filesToastText"></div>
+            <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="{{ t('files.close_title') }}"></button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block panel_scripts %}
@@ -264,6 +274,10 @@
             formatAll: {{ t('files.pack_format_all') | tojson }},
             showLoose: {{ t('files.pack_show_loose') | tojson }},
             showCombined: {{ t('files.pack_show_combined') | tojson }},
+            filterState: {{ t('files.filter_state_label') | tojson }},
+            filterFormat: {{ t('files.filter_format_label') | tojson }},
+            filterButton: {{ t('files.filter_button') | tojson }},
+            removeFilterTitle: {{ t('files.remove_filter_title') | tojson }},
             stateLoose: {{ t('files.pack_state_loose') | tojson }},
             stateCombined: {{ t('files.pack_state_combined') | tojson }},
             selectAll: {{ t('files.pack_select_all') | tojson }},
@@ -296,6 +310,7 @@
         emptyDuplicates: {{ t('files.empty_duplicates') | tojson }},
         emptyOutdated: {{ t('files.empty_outdated') | tojson }},
         emptyPending: {{ t('files.empty_pending') | tojson }},
+        pendingFilesCount: {{ t('files.pending_files_count') | tojson }},
         pendingStageIdentify: {{ t('files.pending_stage_identify') | tojson }},
         pendingStageOrganize: {{ t('files.pending_stage_organize') | tojson }},
         pendingStageVerify: {{ t('files.pending_stage_verify') | tojson }},
@@ -347,6 +362,8 @@
         pagerRemovalTemplate: {{ t('files.pager_removal_template') | tojson }},
         taskFailedTemplate: {{ t('files.task_failed_template') | tojson }},
         seeTasksPage: {{ t('files.see_tasks_page') | tojson }},
+        syncDone: {{ t('files.sync_done') | tojson }},
+        syncFailedTemplate: {{ t('files.sync_failed_template') | tojson }},
     };
 </script>
 <script src="{{ url_for('static', filename='js/title-list.js') }}"></script>

@@ -125,6 +125,19 @@ def test_components_carry_the_content_type_colors():
         assert token in _rule(css, cls), cls
 
 
+def test_charts_use_the_same_colors_in_every_style():
+    # A plain share is the info blue (not the style's accent); a bar that names a
+    # content type wears its color, and Statistics' per-type rows carry their tone.
+    css = _read("app/static/style.css")
+    assert "var(--op-info)" in _rule(css, ".chart-bar__fill")
+    assert "var(--op-info)" in _rule(css, ".dash-list__bar-fill")
+    for cls, token in ((".chart-bar--base .chart-bar__fill", "--op-base"),
+                       (".chart-bar--dlc .chart-bar__fill", "--op-dlc")):
+        assert token in _rule(css, cls), cls
+    js = _read("app/static/js/stats.js")
+    assert "TYPE_TONES = {BASE: 'base', UPDATE: 'wait', DLC: 'dlc'}" in js
+
+
 def test_reduced_motion_disables_component_transitions():
     css = _read("app/static/style.css")
     assert "prefers-reduced-motion: reduce" in css

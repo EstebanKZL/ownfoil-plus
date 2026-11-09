@@ -2,9 +2,10 @@
 // drawn with CSS (conic-gradient, widths), no chart library - the UI works offline.
 // Colors are design tokens, so every chart follows the style and the mode.
 
-// One color per segment, in order; anything past the list repeats the muted one.
+// One color per segment, in order; anything past the list repeats the muted one. The
+// palette is the same in every style - a chart reads the same in ownfoil, neon or joycon.
 const CHART_COLORS = [
-    'var(--op-nav)', 'var(--op-action)', 'var(--op-wait)', 'var(--op-ok)', 'var(--op-fav)',
+    'var(--op-info)', 'var(--op-dlc)', 'var(--op-wait)', 'var(--op-fav)', 'var(--op-ok)',
     'var(--op-text-muted)',
 ];
 

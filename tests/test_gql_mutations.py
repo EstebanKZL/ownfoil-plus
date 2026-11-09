@@ -103,6 +103,20 @@ def test_verify_library_enqueues_the_verify_phase_directly(library):
     assert data["verifyLibrary"]["status"] == "PENDING"
 
 
+def test_sync_library_downloads_titledb_then_scans(library):
+    """The Files page's Synchronize button: the TitleDB task carries the flag that
+    chains a scan behind it (see update_titledb_task), not a bare scan - files added
+    on disk get identified against the freshest names."""
+    data = mutate(library, """
+        mutation { syncLibrary { id taskName status } }""")
+
+    assert data["syncLibrary"]["taskName"] == "update_titledb"
+    assert data["syncLibrary"]["status"] == "PENDING"
+    with library.app.app_context():
+        task = db_mod.Task.query.filter_by(task_name="update_titledb").first()
+        assert json.loads(task.input_json)["then_scan"] is True
+
+
 def test_the_enqueued_task_is_readable_through_the_query_side(library):
     """A mutation returns exactly what `task(id:)` would - one shape for a task."""
     created = mutate(library, "mutation { scanLibrary { id } }")["scanLibrary"]
@@ -179,6 +193,9 @@ def test_compress_file_mutation_enqueues_a_manual_task(library):
     with library.app.app_context():
         task = db_mod.Task.query.filter_by(task_name="compress_file").first()
         assert json.loads(task.input_json)["manual"] is True
+        # Same "delete the originals" setting as the panel's bulk path - the drawer's
+        # button used to always delete the original, whatever Settings said.
+        assert "keep_original" in json.loads(task.input_json)
 
 
 def test_verify_file_mutation_enqueues_a_manual_task(library):

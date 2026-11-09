@@ -317,7 +317,7 @@ def test_packing_pages_of_100_and_the_name_opens_the_file_panel():
 
 def test_pending_rows_carry_a_live_progress_bar():
     js = open(os.path.join(APP_DIR, 'static', 'js', 'files.js'), encoding='utf-8').read()
-    assert "tab.kind === 'pending' ? progressBar(r.id, r.apps) : null" in js
+    assert "tab.kind === 'pending' ? progressBar(r.id, r.apps, r._ids) : null" in js
     assert 'setInterval(pollPending, 2000)' in js and 'tasks(status: RUNNING' in js
     # A Combine names the game: its bar follows the game's id. The list itself is asked
     # again at most every 15 s (it is the page's heaviest request).
@@ -332,3 +332,21 @@ def test_kind_badges_wear_the_fixed_type_colors():
     js = open(os.path.join(APP_DIR, 'static', 'js', 'packing.js'), encoding='utf-8').read()
     assert "BASE: 'base'" in js and "MULTI: 'fav'" in js
     assert "BASE: 'nav'" not in js and "MULTI: 'info'" not in js
+
+
+def test_pending_files_of_one_game_fold_into_one_row():
+    js = open(os.path.join(APP_DIR, 'static', 'js', 'files.js'), encoding='utf-8').read()
+    # Compressing or combining a whole game listed its base, update and DLC each with
+    # a bar; the folded row carries every file id and its bar is the mean of their
+    # tasks (a file without one yet counting as zero), or the game's own combine task.
+    assert "function groupPendingByGame(rows)" in js and "dataset.progressIds" in js
+    assert "Math.round(ids.reduce" in js
+    assert "_files ? I18N.pendingFilesCount.replace('{count}'" in js
+
+
+def test_packing_filters_are_chips_with_a_plus_menu():
+    js = open(os.path.join(APP_DIR, 'static', 'js', 'packing.js'), encoding='utf-8').read()
+    # No rows of pills: the toolbar carries the active chips and the "+" that adds
+    # one, exactly like the flat list (files-filter-chip is its chip class).
+    assert "filterBar(kind)" in js and "files-filter-chip" in js
+    assert "filter-pill" not in js and "packing-filters" not in js

@@ -6,6 +6,31 @@ see the upstream project for its own history.
 
 ## [6.2.5.56]
 
+- **Statistics' charts keep one palette, the same in every style.** A donut or a share
+  bar used to start from the style's accent (cyan in ownfoil, red in neon); a plain
+  share is the info blue now, and the per-type rows wear the type colors - base coral,
+  update amber, DLC cyan - like every other view of the same thing.
+- **Files:**
+  - **Synchronize** replaces the header's refresh icon, Switch Library Manager style: a
+    labeled button that downloads the latest TitleDB and analyzes the library again (the
+    scan runs behind the TitleDB task, so new files are identified against the freshest
+    names), spinning while it works and toasting its outcome. The old icon only re-read
+    the database.
+  - **Duplicates' tile counts each file once.** A multi-content file sits beside the
+    game's base, its update and each of its DLC, and the "to free" figure summed it once
+    per group (a 1.7 GiB bundle read as 10 GiB). Deleting it frees its size a single
+    time, which is what the tile says now - the bulk-delete path already worked this way.
+  - **Compressing with "delete the originals" off registers the original right away** -
+    and the drawer's Compress follows that setting now too (it always deleted). The .nsz
+    takes the row and the kept .nsp comes back as a file of its own through the normal
+    pipeline, not whenever the next scan happens to run.
+  - **Pending folds a game into one row.** Compressing or combining a whole game listed
+    its base, update and DLC each with a bar of its own; one row carries the game now,
+    its bar the mean of its files' tasks (or the game's own combine task) - done looks
+    like 100 %, like every other progress bar.
+  - **Compress and Combine filter like All files**: no more rows of "All / Uncompressed
+    / Compressed" pills above the list - the toolbar keeps the search, then the chips
+    and the "+" that adds a filter, the same as the flat list.
 - **One color per content type, in every style.** What a file holds no longer follows the
   style's accent: a base game is coral (a new `--op-base`, its own red apart from the one
   of errors), an update amber, DLC cyan, a Multi gold and firmware violet - the same in

@@ -2785,16 +2785,20 @@ a.stat-tile:hover {
     overflow: hidden;
 }
 
+/* A chart's colors are the same in every style: a plain share is the info blue, a
+   meaning keeps its token (ok, wait, danger...), a content type its own (base, dlc). */
 .chart-bar__fill {
     height: 100%;
     border-radius: 1rem;
-    background-color: var(--op-nav);
+    background-color: var(--op-info);
 }
 
 .chart-bar--ok .chart-bar__fill { background-color: var(--op-ok); }
 .chart-bar--wait .chart-bar__fill { background-color: var(--op-wait); }
 .chart-bar--danger .chart-bar__fill { background-color: var(--op-danger); }
 .chart-bar--action .chart-bar__fill { background-color: var(--op-action); }
+.chart-bar--base .chart-bar__fill { background-color: var(--op-base); }
+.chart-bar--dlc .chart-bar__fill { background-color: var(--op-dlc); }
 
 /* Statistics: sections in a two-column grid from lg. */
 .stats-page {
@@ -4453,7 +4457,7 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     display: block;
     height: 100%;
     border-radius: inherit;
-    background-color: var(--op-nav);
+    background-color: var(--op-info);
 }
 
 .dash-list__chips {
@@ -4842,12 +4846,6 @@ html[data-readonly] a[href^="/api/backups/"] {
 }
 
 /* --- Files > Compress and Files > Combine (static/js/packing.js) ------------------- */
-
-.packing-filters {
-    display: grid;
-    gap: .5rem;
-    margin-bottom: .9rem;
-}
 
 .packing-notice {
     margin-bottom: 1rem;

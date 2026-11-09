@@ -253,6 +253,22 @@ def test_compress_file_success(env, name, comp_ext):
     assert TempFile.query.count() == 0
 
 
+def test_compress_file_with_keep_original_registers_the_source(env):
+    """The panel's "delete the originals" off: the source stays on disk - and is
+    registered as a file of its own right away (an add_file task), instead of
+    appearing whenever the next scan happens to run."""
+    env.monkeypatch.setattr(compression, "compress_to", _stub_produce())
+    f = env.seed("Game.nsp")
+    source, fid = f.filepath, f.id
+
+    tasks.compress_file_task(file_id=fid, keep_original=True)
+
+    assert os.path.exists(source)
+    row = db.session.get(Files, fid)
+    assert row.filepath.endswith(".nsz") and row.compressed is True
+    assert Task.query.filter_by(task_name="add_file", status="pending").count() == 1
+
+
 def test_compress_file_verify_failure_keeps_source(env):
     def boom(*a, **k):
         raise VerificationException("hash mismatch")
