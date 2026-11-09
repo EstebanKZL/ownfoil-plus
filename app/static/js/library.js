@@ -54,10 +54,13 @@ function loadSortFromStorage() {
 
 function renderSortControls() {
     $('#sortField').val(librarySort.field);
-    $('.sort-direction-btn').each(function () {
-        const on = this.dataset.direction === librarySort.direction;
-        $(this).toggleClass('active', on).attr('aria-pressed', on ? 'true' : 'false');
-    });
+    // One button, pointing the way it sorts; a click flips it (no up/down pair).
+    const asc = librarySort.direction === 'ASC';
+    $('#sortDirectionBtn')
+        .attr({'data-direction': librarySort.direction,
+               title: asc ? I18N.sortAsc : I18N.sortDesc,
+               'aria-label': asc ? I18N.sortAsc : I18N.sortDesc})
+        .find('i').attr('class', `bi ${asc ? 'bi-sort-down-alt' : 'bi-sort-up'}`);
 }
 
 function setSort(field, direction) {
@@ -155,11 +158,11 @@ const LIST_QUERY = `
                 screenshots { url }
                 ownership { haveBase upToDate complete }
                 apps(owned: true) {
-                    appId appType appVersion releaseDate
+                    appId appType appVersion displayVersion releaseDate
                     downloadableFile { id size verificationStatus contents }
                 }
                 updateApps: apps(appType: [UPDATE]) {
-                    appId appVersion releaseDate owned
+                    appId appVersion displayVersion releaseDate owned
                     downloadableFile { id size verificationStatus contents }
                 }
                 availableDlc {
@@ -671,6 +674,13 @@ function renderCardView(games) {
         badges.append(bundleBadge(game.contents, I18N.bundle));
         coverWrap.append(badges);
         coverWrap.append(favoriteButton(game));
+        // "In your library", the Switch Library Manager way: a neutral gray circle
+        // with a check, under the star - only when the library really holds it.
+        if (game.owned !== false) {
+            coverWrap.append($('<span class="library-card-check" role="img">')
+                .attr({title: I18N.inLibrary, 'aria-label': I18N.inLibrary})
+                .append('<i class="bi bi-check" aria-hidden="true"></i>'));
+        }
         // Along the cover's bottom: the file's format on the left, and on the right a
         // mark when the game has a newer update than the library's.
         coverWrap.append(coverFormat(game));
@@ -752,6 +762,11 @@ function renderCompactView(games) {
         // A bundle (base + update + DLC in one file): "Bundle 1G+1U+5D".
         badges.append(bundleBadge(game.contents, I18N.bundle));
         cover.append(badges);
+        if (game.owned !== false) {
+            cover.append($('<span class="library-card-check" role="img">')
+                .attr({title: I18N.inLibrary, 'aria-label': I18N.inLibrary})
+                .append('<i class="bi bi-check" aria-hidden="true"></i>'));
+        }
         cover.append(coverFormat(game));
         if (game.update_pending) {
             cover.append($('<span class="library-cover-update">')
@@ -826,9 +841,9 @@ function buildContentRow({label, sub, owned, size, verification, fileId, meta, m
         left.append($('<small class="text-secondary ms-1"></small>').text(`(${sub})`));
     }
     const right = $('<span class="d-flex align-items-center gap-2 flex-shrink-0"></span>');
-    right.append($('<span class="badge rounded-pill"></span>')
-        .addClass(owned ? 'text-bg-success' : 'text-bg-warning')
-        .text(owned ? I18N.owned : I18N.missing));
+    // The same badge the game page wears, check in its circle and all.
+    right.append(owned ? statusBadge('ok', 'bi-check-circle', I18N.inLibrary)
+                       : statusBadge('wait', 'bi-dash-circle', I18N.missing));
     if (multi) {
         // An update or DLC inside a Multi file: no size or download of its own (the base
         // game's row, or the Files dialog, downloads the whole file).
@@ -973,19 +988,21 @@ function renderListView(titles) {
             headerText.append($('<p class="card-text small text-secondary mb-1"></p>').text(t.intro));
         }
 
-        const latestVersion = updateApps.length ? updateApps[0].appVersion : 0;
-        const latestDate = updateApps.length ? updateApps[0].releaseDate : null;
+        const latest = updateApps[0] || {};
+        const latestVersion = latest.appVersion || 0;
+        // Both ways of naming it, like the game page: "3.0.0 · v1048576".
+        const versionText = latest.displayVersion
+            ? `${latest.displayVersion} · v${latest.appVersion}` : `v${latest.appVersion}`;
         const versionLine = $('<p class="small mb-0 d-flex align-items-center gap-2"></p>');
         versionLine.append($('<strong></strong>').text(I18N.latestVersion));
         const versionBadge = $('<span class="badge rounded-pill"></span>')
             .addClass(ownership.upToDate ? 'text-bg-success' : 'text-bg-warning')
-            .text(`v${latestVersion}`);
+            .text(versionText);
         versionLine.append(versionBadge);
-        if (latestDate) {
-            versionLine.append($('<span class="text-secondary"></span>').text(`(${latestDate})`));
-        }
-        versionLine.append($('<i class="bi"></i>').addClass(
-            ownership.upToDate ? 'bi-check-circle-fill text-success' : 'bi-arrow-down-circle text-warning'));
+        // The state mark says what it is (a hover told nothing before).
+        const stateTip = ownership.upToDate ? I18N.tileUpToDate : I18N.updateAvailable;
+        versionLine.append($('<i class="bi" role="img"></i>').attr({title: stateTip, 'aria-label': stateTip})
+            .addClass(ownership.upToDate ? 'bi-check-circle-fill text-success' : 'bi-arrow-down-circle text-warning'));
         headerText.append(versionLine);
 
         headerRow.append(headerText);
@@ -1352,7 +1369,11 @@ $(document).ready(function () {
     const savedTarget = parseInt(storageGet('pageTarget'));
     if (savedTarget >= 10 && savedTarget <= 100 && savedTarget % 10 === 0) pageTarget = savedTarget;
 
-    const savedCurrentView = storageGet('currentView');
+    let savedCurrentView = storageGet('currentView');
+    // The List view is hidden on phones: a remembered list becomes cards there.
+    if (savedCurrentView === 'list' && window.matchMedia('(max-width: 575.98px)').matches) {
+        savedCurrentView = 'card';
+    }
     if (['card', 'icon', 'list'].includes(savedCurrentView)) {
         currentView = savedCurrentView;
         $('.view-toggle-btn').removeClass("active");
@@ -1367,7 +1388,9 @@ $(document).ready(function () {
     updateFiltersDot();
     loadSortFromStorage();
     $('#sortField').on('change', function () { setSort(this.value, librarySort.direction); });
-    $('.sort-direction-btn').on('click', function () { setSort(librarySort.field, this.dataset.direction); });
+    // The one direction button flips the way it points.
+    $('#sortDirectionBtn').on('click', () =>
+        setSort(librarySort.field, librarySort.direction === 'ASC' ? 'DESC' : 'ASC'));
     // The stars first: the cards are drawn with them.
     loadFavorites().finally(loadPage);
     loadLibraryStats();

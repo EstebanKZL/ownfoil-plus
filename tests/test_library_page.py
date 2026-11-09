@@ -70,9 +70,53 @@ def test_sort_controls_offer_every_field_and_both_directions(client):
     html = client.get("/").get_data(as_text=True)
     sel = html.split('id="sortField"', 1)[1].split("</select>", 1)[0]
     assert re.findall(r'value="(\w+)"', sel) == ["NAME", "RELEASE_DATE", "REGION", "SIZE", "ADDED_AT", "ID"]
-    # One button per direction, the one in use lit.
-    assert 'class="btn btn-outline-secondary sort-direction-btn" data-direction="ASC"' in html
-    assert 'class="btn btn-outline-secondary sort-direction-btn" data-direction="DESC"' in html
+    # One button pointing the way it sorts (asked for: no up/down pair beside the
+    # search); a click flips it, with the icon and the tooltip following.
+    assert 'id="sortDirectionBtn"' in html and html.count('sort-direction-btn') == 1
+    js = _library_js()
+    assert "librarySort.direction === 'ASC' ? 'DESC' : 'ASC'" in js
+    assert "bi-sort-down-alt' : 'bi-sort-up'" in js
+
+
+def test_the_list_view_is_a_desk_thing(client):
+    html = client.get("/").get_data(as_text=True)
+    # Hidden on phones, and a remembered list becomes cards there.
+    assert 'view-toggle-btn d-none d-sm-inline-flex" data-view="list"' in html
+    js = _library_js()
+    assert "savedCurrentView === 'list' && window.matchMedia('(max-width: 575.98px)')" in js
+
+
+def test_owned_cards_and_rows_wear_the_library_mark():
+    js = _library_js()
+    # The card: a neutral gray circle with a check under the star (Switch Library
+    # Manager's mark, on our tokens), only when the library really holds the game.
+    assert "library-card-check" in js and "I18N.inLibrary" in js
+    css = _read("app", "static", "style.css")
+    rule = re.search(r"\.library-card-check \{([^}]*)\}", css).group(1)
+    assert "var(--op-text-muted)" in rule and "var(--op-surface-0)" in rule
+    # The List view's rows: the same badge the game page wears ("En la biblioteca",
+    # check in its circle), not a plain Bootstrap pill - the one text-bg pill left is
+    # the version badge, which is a version, not a state of the library.
+    assert "statusBadge('ok', 'bi-check-circle', I18N.inLibrary)" in js
+    assert js.count("text-bg-success") == 1 and "text-bg-warning" not in re.search(
+        r"right\.append\(owned \? statusBadge[^;]*;", js).group(0)
+
+
+def test_the_console_filter_is_one_stadium_bar():
+    css = _read("app", "static", "style.css")
+    rule = re.search(r"#libraryConsole \{([^}]*)\}", css).group(1)
+    assert "border-radius: 2rem" in rule and "var(--op-surface-1)" in rule
+    # The chosen option carries its count as a nested pill, Switch Library style.
+    assert re.search(r"#libraryConsole \.filter-pill\.active \.filter-pill__count \{[^}]*border-radius: 1rem", css)
+
+
+def test_the_list_titles_state_their_mark_and_both_versions():
+    js = _library_js()
+    body = _function_body(js, "renderListView")
+    # No date after "Latest version" (asked for), the state mark explains itself on
+    # hover, and the version badge reads both ways: "3.0.0 · v1048576".
+    assert "latestDate" not in body and "stateTip" in body and "aria-label" in body
+    assert "latest.displayVersion" in body and "· v${latest.appVersion}" in body
 
 
 @pytest.mark.parametrize("field", ["REGION", "SIZE", "ADDED_AT", "ID"])
@@ -394,6 +438,9 @@ def test_sagas_go_by_pages_of_24_and_complete_ones_are_gold():
     assert "const SAGAS_PER_PAGE = 24;" in js and "card.classList.toggle('is-complete', complete);" in js
     assert "bi-trophy-fill" in js
     css = _read("app", "static", "style.css")
-    assert re.search(r"\.saga-card\.is-complete,\s*\.saga-card\.is-complete:hover \{[^}]*--op-fav-rgb", css)
+    # Gold at rest, trophy and count always gold - but the frame yields to the hover
+    # marking like any other card (asked for after pinning it by mistake).
+    assert re.search(r"\.saga-card\.is-complete \{[^}]*--op-fav-rgb", css)
+    assert re.search(r"\.saga-card\.is-complete:hover \{[^}]*--op-nav-rgb", css)
     # 1, 2 or 3 columns: each divides 24, so only the last page has a short row.
     assert "repeat(3, minmax(0, 1fr))" in css[css.index(".saga-grid {"):]

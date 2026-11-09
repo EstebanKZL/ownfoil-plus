@@ -6,6 +6,26 @@ see the upstream project for its own history.
 
 ## [6.2.5.56]
 
+- **Switch Library Manager touches, on our own shape:**
+  - **Game cards wear a gray of their own** (a new `--op-card`, both themes) and an
+    "in your library" mark: a neutral gray circle with a check, just under the star.
+  - **The console filter is one stadium bar**: the options sit inside it, the chosen
+    one filled with the style's accent with its count as a nested pill - in the same
+    place it always was.
+  - **The sort direction is one button** that points the way it sorts and flips on a
+    click (the up/down pair beside the search is gone), and **the List view is hidden
+    on phones** - a remembered list becomes cards there.
+  - **The List view's titles** carry both version names ("3.0.0 · v1048576"), show no
+    date after "Latest version", and their up-to-date/update mark says what it is on
+    hover; its rows say "En la biblioteca" with the check in its circle, like the game
+    page's own badge.
+  - **Updates read both names too**, and every row gets a release-notes icon - only
+    the icon, opening a web search in its own tab - right before the download arrow.
+  - **A DLC's name opens its own card**: the game's art beside its facts (id with a
+    copy button, release date, size) and its description. The row keeps the size once,
+    in a pill like the List view's, and its id gets a copy button beside it.
+  - **One date format for updates and DLC**: DD/MM/YYYY, whether titledb shipped
+    YYYYMMDD or the row carried a dashed ISO date (those used to show raw).
 - **Statistics' charts keep one palette, the same in every style.** A donut or a share
   bar used to start from the style's accent (cyan in ownfoil, red in neon); a plain
   share is the info blue now, and the per-type rows wear the type colors - base coral,
@@ -54,8 +74,8 @@ see the upstream project for its own history.
 - **Sagas**: a complete saga is framed in gold with a trophy before its "10 of 10"; pages
   of 24 cards, in one, two or three columns - each divides 24, so only the last page can
   end with a short row. The covers' row is capped to the card (it used to run past the
-  edge on narrow windows), and hovering a card lifts it like a game's - the gold frame,
-  the trophy and the count stay as they are.
+  edge on narrow windows), and hovering a card lifts and marks it like a game's - the
+  trophy and the count stay gold, the frame joins the hover like any other card.
 
 - **A big library stays responsive while it scans.** SQLite takes one writer at a time,
   and a scan made thousands of tiny writes the web and the workers queued behind:

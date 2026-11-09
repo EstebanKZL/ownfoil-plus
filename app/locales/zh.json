@@ -705,6 +705,7 @@
  "game.description": "简介",
  "game.screenshots": "截图",
  "game.updates": "更新",
+ "game.update_notes_title": "在网上搜索版本说明",
  "game.update_missing": "有可用的更新 {version}，你的版本为 {installed}。",
  "game.no_updates": "此游戏没有更新。",
  "game.dlc": "DLC",

@@ -705,6 +705,7 @@
  "game.description": "Beschrijving",
  "game.screenshots": "Screenshots",
  "game.updates": "Updates",
+ "game.update_notes_title": "Zoek de release-opmerkingen op het web",
  "game.update_missing": "Update {version} is beschikbaar, je hebt {installed}.",
  "game.no_updates": "Deze game heeft geen updates.",
  "game.dlc": "DLC",

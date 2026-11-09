@@ -705,6 +705,7 @@
  "game.description": "Описание",
  "game.screenshots": "Скриншоты",
  "game.updates": "Обновления",
+ "game.update_notes_title": "Искать заметки о версии в интернете",
  "game.update_missing": "Доступно обновление {version}, у вас {installed}.",
  "game.no_updates": "У этой игры нет обновлений.",
  "game.dlc": "DLC",

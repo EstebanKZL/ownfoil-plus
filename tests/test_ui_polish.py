@@ -64,9 +64,10 @@ def test_light_theme_covers_the_game_cards():
 
 
 def test_game_cards_follow_the_design_tokens():
-    # Stage 1 design system: the card colors come from the tokens, not literals.
+    # Stage 1 design system: the card colors come from the tokens, not literals. The
+    # card gray is its own token (Switch Library Manager's card tone, on our tokens).
     rule = _block(_read("app", "static", "style.css"), ".game-surface")
-    assert "var(--op-surface-1)" in rule and "var(--op-text)" in rule
+    assert "var(--op-card)" in rule and "var(--op-text)" in rule
 
 
 # --- task history ------------------------------------------------------------------------

@@ -1030,6 +1030,8 @@ TRANSLATIONS = {
     'game.description': {'en': 'Description', 'es': 'Descripción'},
     'game.screenshots': {'en': 'Screenshots', 'es': 'Capturas'},
     'game.updates': {'en': 'Updates', 'es': 'Actualizaciones'},
+    'game.update_notes_title': {'en': 'Search the release notes on the web',
+                                'es': 'Buscar las notas de la versión en la web'},
     'game.update_missing': {'en': 'Update {version} is available, you have {installed}.',
                             'es': 'Está disponible la actualización {version}, tenés la {installed}.'},
     'game.no_updates': {'en': 'This game has no updates.', 'es': 'Este juego no tiene actualizaciones.'},

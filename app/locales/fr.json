@@ -705,6 +705,7 @@
  "game.description": "Description",
  "game.screenshots": "Captures d'écran",
  "game.updates": "Mises à jour",
+ "game.update_notes_title": "Rechercher les notes de version sur le web",
  "game.update_missing": "La mise à jour {version} est disponible, tu as {installed}.",
  "game.no_updates": "Ce jeu n'a pas de mises à jour.",
  "game.dlc": "DLC",

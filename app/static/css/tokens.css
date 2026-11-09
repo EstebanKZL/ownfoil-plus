@@ -72,6 +72,9 @@
     --op-firmware-rgb: 167, 139, 250;
     --op-base: #ff7a72;          /* base games: coral in every style, apart from the danger red */
     --op-base-rgb: 255, 122, 114;
+    --op-card: #22262d;          /* game cards: a neutral gray of their own, a step up from
+                                    the page (Switch Library Manager's card tone, on our
+                                    tokens) */
 }
 
 /* The soft warm light theme Ownfoil-Plus already had, now as tokens. */
@@ -104,6 +107,7 @@
     --op-firmware-rgb: 109, 40, 217;
     --op-base: #a84c44;
     --op-base-rgb: 168, 76, 68;
+    --op-card: #e9e8e4;
 }
 
 /* --- Styles ----------------------------------------------------------------------- */

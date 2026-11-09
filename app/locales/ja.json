@@ -705,6 +705,7 @@
  "game.description": "説明",
  "game.screenshots": "スクリーンショット",
  "game.updates": "アップデート",
+ "game.update_notes_title": "ウェブでリリースノートを検索",
  "game.update_missing": "アップデート {version} が利用可能です（所持: {installed}）。",
  "game.no_updates": "このゲームにはアップデートがありません。",
  "game.dlc": "DLC",

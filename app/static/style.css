@@ -715,6 +715,33 @@ a.stat-tile:hover {
     opacity: .8;
 }
 
+/* The console filter (Library): one stadium bar holding the options, the chosen one
+   filled - Switch Library Manager's segmented look on our tokens, in our own place.
+   Scoped here so every other .filter-pill row keeps its stand-alone pills. */
+#libraryConsole {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: .25rem;
+    padding: .28rem;
+    border-radius: 2rem;
+    border: 1px solid var(--op-border);
+    background-color: var(--op-surface-1);
+}
+
+#libraryConsole .filter-pill {
+    border-color: transparent;
+    background-color: transparent;
+    padding: .3rem .75rem;
+}
+
+#libraryConsole .filter-pill.active .filter-pill__count {
+    margin-left: .1rem;
+    padding: 0 .5rem;
+    border-radius: 1rem;
+    background-color: rgba(var(--op-surface-0-rgb), .22);
+    opacity: 1;
+}
+
 /* Toolbar: search, sort and view toggles in one block. */
 .toolbar {
     display: flex;
@@ -1074,6 +1101,28 @@ a.stat-tile:hover {
 }
 
 /* At the top of the cover: its bottom is the format's and the update mark's. */
+/* "In your library" on a card's cover: a neutral gray circle with a dark check
+   (Switch Library Manager's mark, on our tokens - no color of its own, so it never
+   competes with the type badges). */
+.library-card-check {
+    position: absolute;
+    /* Just under the favourite star, which keeps the corner. */
+    top: 2.75rem;
+    right: .55rem;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 1.45rem;
+    height: 1.45rem;
+    border-radius: 50%;
+    background-color: var(--op-text-muted);
+    color: var(--op-surface-0);
+    font-size: .8rem;
+    font-weight: 700;
+    line-height: 1;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
+}
+
 .library-badges {
     position: absolute;
     left: .5rem;
@@ -1087,8 +1136,7 @@ a.stat-tile:hover {
 /* On a cover the badges stack, one under the other, clear of the star at the top
    right - and always in the same order: firmware, base game missing, bundle. */
 .library-cover-wrap .library-badges,
-.compact-cover .library-badges {
-    right: 3rem;
+.compact-cover .library-badges {    right: 3rem;
     flex-direction: column;
     flex-wrap: nowrap;
     align-items: flex-start;
@@ -2190,7 +2238,7 @@ a.stat-tile:hover {
 /* Game cards share the .surface look (design tokens); the cover art and its overlay sit
    on top of it, so the dark card keeps light text in every style. */
 .game-surface {
-    background-color: var(--op-surface-1);
+    background-color: var(--op-card);
     color: var(--op-text);
     border-color: var(--op-border);
     border-radius: var(--op-radius-lg) !important;
@@ -2223,7 +2271,7 @@ a.stat-tile:hover {
 
 /* Game cards in the light theme. */
 [data-bs-theme=light] .game-surface {
-    background-color: var(--op-surface-1);
+    background-color: var(--op-card);
     color: var(--op-text);
     border-color: var(--op-border);
 }
@@ -2695,9 +2743,78 @@ a.stat-tile:hover {
     flex: 0 0 auto;
 }
 
+.game-row__name-btn {
+    padding: 0;
+    border: 0;
+    background: none;
+    font-weight: 600;
+    font-size: inherit;
+    font-family: inherit;
+    color: var(--op-text);
+    text-align: inherit;
+    overflow-wrap: anywhere;
+}
+
+.game-row__name-btn:hover {
+    color: var(--op-nav);
+    text-decoration: underline;
+}
+
+/* The file's size as a pill, the same shape the List view's rows wear (asked for:
+ *  Switch Library Manager's look on our tokens). */
 .game-row__size {
-    font-size: .85rem;
+    padding: .1rem .6rem;
+    border-radius: 1rem;
+    border: 1px solid var(--op-border);
+    background-color: var(--op-surface-2);
+    font-size: .78rem;
+    font-weight: 600;
     color: var(--op-text-muted);
+    white-space: nowrap;
+}
+
+.game-row__id-copy {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--op-text-muted);
+    font-size: .75rem;
+    line-height: 1;
+}
+
+.game-row__id-copy:hover {
+    color: var(--op-nav);
+}
+
+/* A DLC's own card (the row's name opens it): the game's art beside its facts. */
+.dlc-modal__img {
+    flex: 0 0 auto;
+    width: 9rem;
+    border-radius: var(--op-radius-sm);
+    object-fit: cover;
+    align-self: flex-start;
+}
+
+.dlc-modal__facts {
+    margin: 0;
+    font-size: .85rem;
+}
+
+.dlc-modal__fact {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.dlc-modal__fact dt {
+    flex: 0 0 auto;
+    color: var(--op-text-muted);
+}
+
+.dlc-modal__fact dd {
+    font-family: var(--bs-font-monospace);
+    overflow-wrap: anywhere;
+    text-align: right;
 }
 
 /* A row that folds out its details (a DLC's description) underneath. */
@@ -3763,11 +3880,16 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     font-weight: 700;
 }
 
-/* A complete saga: framed in gold (the favourites' color), a trophy before its count. */
-.saga-card.is-complete,
-.saga-card.is-complete:hover {
+/* A complete saga: framed in gold (the favourites' color), a trophy before its count.
+   The frame yields to the hover marking like any other card (asked for); the trophy
+   and the count stay gold whatever the hover does. */
+.saga-card.is-complete {
     border-color: rgba(var(--op-fav-rgb), .75);
     box-shadow: 0 0 0 1px rgba(var(--op-fav-rgb), .35), 0 0 22px rgba(var(--op-fav-rgb), .12);
+}
+
+.saga-card.is-complete:hover {
+    border-color: rgba(var(--op-nav-rgb), .55);
 }
 
 .saga-card.is-complete .saga-card__count {

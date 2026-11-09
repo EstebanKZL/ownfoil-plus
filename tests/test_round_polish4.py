@@ -135,10 +135,10 @@ def test_saga_cards_keep_one_row_of_covers():
 
 def test_saga_cards_lift_on_hover_like_the_games():
     css = _read("app", "static", "style.css")
-    # The games' lift, so a hover says where you are - while a complete saga keeps its
-    # gold frame, trophy and count (pinned by .is-complete, which wins over the hover).
+    # The games' lift, so a hover says where you are; a complete saga's frame yields to
+    # the hover marking too (asked for), its trophy and count stay gold.
     assert re.search(r"\.saga-card:hover \{[^}]*transform: translateY\(-3px\);", css)
-    assert re.search(r"\.saga-card\.is-complete,\s*\.saga-card\.is-complete:hover \{", css)
+    assert re.search(r"\.saga-card\.is-complete:hover \{[^}]*--op-nav-rgb", css)
 
 
 def test_a_saga_inside_a_bigger_one_is_not_listed_apart():

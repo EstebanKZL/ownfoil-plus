@@ -62,8 +62,10 @@ Docker image `estebankzl/ownfoil-plus`.
   `uv pip install -r requirements.txt pytest`).
 - Run tests with `PYTHONUTF8=1` (some tests open files without an encoding and fail
   under cp1252): `PYTHONUTF8=1 python -m pytest -q -p no:cacheprovider -W ignore`.
-  The full suite (~2,300 tests) takes ~20 min on Windows; run the affected test files
-  first, the full suite in the background before committing.
+  The full suite takes ~30 min serially on Windows; with `pytest-xdist` installed,
+  `-n auto` runs the same tests in parallel in ~2 min (same count, all green) - use
+  that locally, CI stays serial. Either way: run the affected test files first, the
+  full suite in the background before committing.
 - Run the app: `python -m ownfoil.cli <data-dir> --no-browser` (serves on port 8465;
   `USER_ADMIN_NAME` / `USER_ADMIN_PASSWORD` env vars create an admin). On Linux/Docker
   the entrypoint is `app/run.py` (gunicorn + worker pool).

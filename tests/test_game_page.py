@@ -333,3 +333,46 @@ def test_scroll_is_only_restored_when_going_back():
     setup = js[js.rindex("let scrollToRestore", 0, i):i + 600]
     assert "back_forward" in setup
     assert "sessionStorage.removeItem('libraryScroll')" in setup
+
+
+def test_updates_read_both_versions_and_link_their_notes():
+    """Switch Library Manager touches, on our shape: "3.0.0 · v1048576" for a version
+    (the human name when the CNMT gave one), and a release-notes icon - only the icon,
+    opening a web search in its own tab - right before the download arrow."""
+    js = _js("game.js")
+    updates = _function_body(js, "renderUpdates")
+    assert "u.displayVersion ? `${u.displayVersion} · v${u.appVersion}`" in updates
+    assert "newsUrl: updateNotesUrl(t, u)" in updates
+    # contentRow destructures its params (the shared body extractor stops at the
+    # destructuring brace), so these read against the file: the icon opens a new tab
+    # and carries only its tooltip, never a label.
+    assert 'target="_blank" rel="noopener"' in js and "bi-box-arrow-up-right" in js
+    assert "I18N.updateNotes" in js
+    # Icon only: no text rides along.
+    notes = _function_body(js, "updateNotesUrl")
+    assert "google.com/search" in notes
+
+
+def test_a_dlc_name_opens_its_own_card():
+    """The DLC's name opens a window with the game's art and the DLC's facts; its id
+    gets a copy button beside it, and the size rides in the row's pill once (not again
+    under the name)."""
+    js = _js("game.js")
+    dlc = _function_body(js, "renderDlc")
+    assert "onName: () => openDlcModal(" in dlc and "copyId: d.appId" in dlc
+    assert "formatTitledbSize(meta.size)" not in dlc.split("const sub =")[1].split("join")[0]
+    modal = _function_body(js, "openDlcModal")
+    assert "dlcModalImg" in modal and "ownedBadge(owned)" in modal
+    assert "copyIdButton(d.appId)" in modal
+    html = _read("app", "templates", "game.html")
+    assert 'id="dlcModal"' in html and 'id="dlcModalName"' in html
+    # The row's size is a pill now, like the List view's.
+    css = _read("app", "static", "style.css")
+    assert "border-radius: 1rem" in re.search(r"\.game-row__size \{([^}]*)\}", css).group(1)
+
+
+def test_dates_read_the_same_way_whatever_shaped_they_come():
+    """titledb ships YYYYMMDD, the apps table dashed ISO dates; both are the one
+    DD/MM/YYYY every update and DLC row shows."""
+    body = _function_body(_js("library-common.js"), "formatTitledbDate")
+    assert r"/^(\d{4})-?(\d{2})-?(\d{2})$/" in body

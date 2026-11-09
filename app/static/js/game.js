@@ -15,12 +15,12 @@ const GAME_QUERY = `
             screenshots { url }
             ownership { haveBase upToDate complete }
             apps(owned: true) {
-                appId appType appVersion releaseDate
+                appId appType appVersion displayVersion releaseDate
                 downloadableFile { id size verificationStatus format contents }
                 files { id filename size extension }
             }
             updateApps: apps(appType: [UPDATE]) {
-                appId appVersion releaseDate owned
+                appId appVersion displayVersion releaseDate owned
                 downloadableFile { id size verificationStatus format contents }
             }
             availableDlc {
@@ -313,10 +313,27 @@ function renderScreenshots(t) {
     return section('gameScreenshots', 'bi-images', I18N.screenshots, gallery);
 }
 
+/** Copy a row's own id (a DLC's), right beside where it reads. */
+function copyIdButton(id) {
+    return $('<button type="button" class="game-row__id-copy ms-1">')
+        .attr({title: I18N.copyTitleId, 'aria-label': I18N.copyTitleId})
+        .append('<i class="bi bi-clipboard" aria-hidden="true"></i>')
+        .on('click', () => copyTitleId(id));
+}
+
+/** The web knows what a version changed; titledb doesn't. One search, Switch Library
+ *  Manager's "novedades" - only the icon, opening in its own tab. */
+function updateNotesUrl(t, u) {
+    const q = `${t.name || t.titleId} switch update ${u.displayVersion || `v${u.appVersion}`}`;
+    return `https://www.google.com/search?q=${encodeURIComponent(q)}`;
+}
+
 /** One row: what it is, when, and whether it's in the library - plus, for an owned
- *  file, its size, verification and (when allowed) a download button. All text goes
- *  through .text(): names are real (untrusted) catalogue data. */
-function contentRow({icon, iconUrl, name, sub, owned, file, dataAttrs, details}) {
+ *  file, its size, verification and (when allowed) a download button. A name with
+ *  `onName` opens something (a DLC's card); `newsUrl` adds the release-notes icon
+ *  before the download; `copyId` puts a copy button beside the id in the sub line.
+ *  All text goes through .text(): names are real (untrusted) catalogue data. */
+function contentRow({icon, iconUrl, name, sub, owned, file, dataAttrs, details, onName, newsUrl, copyId}) {
     const row = $('<li class="game-row">');
     if (dataAttrs) row.attr(dataAttrs);
     const lead = $('<div class="game-row__lead">');
@@ -326,19 +343,33 @@ function contentRow({icon, iconUrl, name, sub, owned, file, dataAttrs, details})
         lead.append($('<span class="game-row__icon game-row__icon--glyph">')
             .append($('<i aria-hidden="true">').addClass(`bi ${icon}`)));
     }
-    const text = $('<div class="game-row__text">').append($('<div class="game-row__name">').text(name));
-    if (sub) text.append($('<div class="game-row__sub">').text(sub));
+    const nameEl = onName
+        ? $('<button type="button" class="game-row__name-btn">').text(name).attr('title', name).on('click', onName)
+        : $('<div class="game-row__name">').text(name);
+    const text = $('<div class="game-row__text">').append(nameEl);
+    if (sub || copyId) {
+        const subEl = $('<div class="game-row__sub"></div>');
+        if (sub) subEl.append(document.createTextNode(sub));
+        if (copyId) subEl.append(copyIdButton(copyId));
+        text.append(subEl);
+    }
     lead.append(text);
+    const multi = owned && file && file.contents && file.contents.length > 1;
     const tail = $('<div class="game-row__tail">').append(ownedBadge(owned));
-    if (owned && file && file.contents && file.contents.length > 1) {
+    if (multi) {
         // Inside a Multi file: listed, but downloaded with the whole file.
         tail.append(multiChip(I18N.bundle));
     } else if (owned && file) {
         if (file.size) tail.append($('<span class="game-row__size">').text(formatBytes(file.size)));
         const ver = verificationBadge(file.verificationStatus);
         if (ver) tail.append(ver);
-        if (canDownload()) tail.append(downloadButton(file.id, name));
     }
+    if (newsUrl) {
+        tail.append($('<a class="btn btn-sm icon-btn p-0" target="_blank" rel="noopener">')
+            .attr({href: newsUrl, title: I18N.updateNotes, 'aria-label': I18N.updateNotes})
+            .append('<i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>'));
+    }
+    if (owned && file && !multi && canDownload()) tail.append(downloadButton(file.id, name));
     row.append(lead, tail);
     if (details) {
         // More about it (a DLC's description), folded away under its row.
@@ -380,8 +411,12 @@ function renderUpdates(t) {
         const needs = versionFirmware(t, u.appVersion);
         const sub = [formatTitledbDate(u.releaseDate), needs && I18N.firmwareVersion.replace('{version}', needs)]
             .filter(Boolean).join(' · ');
-        const row = contentRow({icon: 'bi-arrow-up-circle', name: `v${u.appVersion}`, sub,
-                                owned: u.owned, file: u.downloadableFile});
+        // Both ways of naming a version, "3.0.0 · v1048576" (the game page and the
+        // Library's List view read the same).
+        const label = u.displayVersion ? `${u.displayVersion} · v${u.appVersion}` : `v${u.appVersion}`;
+        const row = contentRow({icon: 'bi-arrow-up-circle', name: label, sub,
+                                owned: u.owned, file: u.downloadableFile,
+                                newsUrl: updateNotesUrl(t, u)});
         if (firmwareTooOld(needs, CONSOLE_FIRMWARE)) {
             $(row).addClass('game-row--firmware').attr('title', I18N.firmwareTooOld
                 .replace('{mine}', CONSOLE_FIRMWARE).replace('{needed}', needs));
@@ -410,17 +445,42 @@ function renderDlc(t) {
     sorted.forEach(d => {
         const meta = d.titledb || {};
         const owned = ownedIds.has(d.appId);
-        // Its own catalogue facts: release date, size, id - and its description below.
-        const sub = [formatTitledbDate(meta.releaseDate), formatTitledbSize(meta.size), d.appId]
-            .filter(Boolean).join(' · ');
+        // Its own catalogue facts: release date and id (the size rides in its pill at
+        // the row's end, the full card has it too) - and its description below.
+        const sub = [formatTitledbDate(meta.releaseDate), d.appId].filter(Boolean).join(' · ');
         list.append(contentRow({
             icon: 'bi-puzzle', iconUrl: meta.iconUrl, name: meta.name || d.appId, sub, owned,
             file: owned ? (ownedApps[d.appId] || {}).downloadableFile : null,
             dataAttrs: {'data-dlc': d.appId},
+            onName: () => openDlcModal(t, d, owned, (ownedApps[d.appId] || {}).downloadableFile),
+            copyId: d.appId,
             details: meta.description || I18N.noDescription,
         }));
     });
     return section('gameDlc', 'bi-puzzle', `${I18N.dlc} (${ownedIds.size} / ${dlc.length})`, list);
+}
+
+/** A DLC's own card (the row's name opens it): the game's art beside the DLC's facts
+ *  - id with a copy button, release date, size - and its description. Everything goes
+ *  through .text(): names are real (untrusted) catalogue data. */
+function openDlcModal(t, d, owned, file) {
+    const meta = d.titledb || {};
+    const art = meta.bannerUrl || meta.iconUrl || t.bannerUrl || t.iconUrl || '';
+    $('#dlcModalImg').attr('src', art).toggleClass('d-none', !art);
+    $('#dlcModalName').text(meta.name || d.appId);
+    $('#dlcModalBadge').empty().append(ownedBadge(owned));
+    const facts = $('#dlcModalFacts').empty();
+    const fact = (label, value, extra) => {
+        if (value === null || value === undefined || value === '') return;
+        const dd = $('<dd class="mb-0"></dd>').text(value);
+        if (extra) dd.append(' ', extra);
+        facts.append($('<div class="dlc-modal__fact">').append($('<dt>').text(label), dd));
+    };
+    fact(I18N.titleId, d.appId, copyIdButton(d.appId).removeClass('ms-1'));
+    fact(I18N.releaseDate, formatTitledbDate(meta.releaseDate));
+    fact(I18N.size, file && file.size ? formatBytes(file.size) : formatTitledbSize(meta.size));
+    $('#dlcModalDesc').text(meta.description || I18N.noDescription);
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('dlcModal')).show();
 }
 
 /** `?dlc=<appId>` (a DLC card in the Library) scrolls to that DLC and marks it. */

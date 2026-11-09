@@ -705,6 +705,7 @@
  "game.description": "설명",
  "game.screenshots": "스크린샷",
  "game.updates": "업데이트",
+ "game.update_notes_title": "웹에서 릴리스 노트 검색",
  "game.update_missing": "업데이트 {version}이(가) 나왔습니다. 현재 {installed}을(를) 보유 중입니다.",
  "game.no_updates": "이 게임은 업데이트가 없습니다.",
  "game.dlc": "DLC",
