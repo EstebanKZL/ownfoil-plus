@@ -1101,28 +1101,6 @@ a.stat-tile:hover {
 }
 
 /* At the top of the cover: its bottom is the format's and the update mark's. */
-/* "In your library" on a card's cover: a neutral gray circle with a dark check
-   (Switch Library Manager's mark, on our tokens - no color of its own, so it never
-   competes with the type badges). */
-.library-card-check {
-    position: absolute;
-    /* Just under the favourite star, which keeps the corner. */
-    top: 2.75rem;
-    right: .55rem;
-    z-index: 2;
-    display: grid;
-    place-items: center;
-    width: 1.45rem;
-    height: 1.45rem;
-    border-radius: 50%;
-    background-color: var(--op-text-muted);
-    color: var(--op-surface-0);
-    font-size: .8rem;
-    font-weight: 700;
-    line-height: 1;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
-}
-
 .library-badges {
     position: absolute;
     left: .5rem;
@@ -2238,7 +2216,7 @@ a.stat-tile:hover {
 /* Game cards share the .surface look (design tokens); the cover art and its overlay sit
    on top of it, so the dark card keeps light text in every style. */
 .game-surface {
-    background-color: var(--op-card);
+    background-color: var(--op-surface-1);
     color: var(--op-text);
     border-color: var(--op-border);
     border-radius: var(--op-radius-lg) !important;
@@ -2271,7 +2249,7 @@ a.stat-tile:hover {
 
 /* Game cards in the light theme. */
 [data-bs-theme=light] .game-surface {
-    background-color: var(--op-card);
+    background-color: var(--op-surface-1);
     color: var(--op-text);
     border-color: var(--op-border);
 }

@@ -54,13 +54,10 @@ function loadSortFromStorage() {
 
 function renderSortControls() {
     $('#sortField').val(librarySort.field);
-    // One button, pointing the way it sorts; a click flips it (no up/down pair).
-    const asc = librarySort.direction === 'ASC';
-    $('#sortDirectionBtn')
-        .attr({'data-direction': librarySort.direction,
-               title: asc ? I18N.sortAsc : I18N.sortDesc,
-               'aria-label': asc ? I18N.sortAsc : I18N.sortDesc})
-        .find('i').attr('class', `bi ${asc ? 'bi-sort-down-alt' : 'bi-sort-up'}`);
+    $('.sort-direction-btn').each(function () {
+        const on = this.dataset.direction === librarySort.direction;
+        $(this).toggleClass('active', on).attr('aria-pressed', on ? 'true' : 'false');
+    });
 }
 
 function setSort(field, direction) {
@@ -674,13 +671,6 @@ function renderCardView(games) {
         badges.append(bundleBadge(game.contents, I18N.bundle));
         coverWrap.append(badges);
         coverWrap.append(favoriteButton(game));
-        // "In your library", the Switch Library Manager way: a neutral gray circle
-        // with a check, under the star - only when the library really holds it.
-        if (game.owned !== false) {
-            coverWrap.append($('<span class="library-card-check" role="img">')
-                .attr({title: I18N.inLibrary, 'aria-label': I18N.inLibrary})
-                .append('<i class="bi bi-check" aria-hidden="true"></i>'));
-        }
         // Along the cover's bottom: the file's format on the left, and on the right a
         // mark when the game has a newer update than the library's.
         coverWrap.append(coverFormat(game));
@@ -762,11 +752,6 @@ function renderCompactView(games) {
         // A bundle (base + update + DLC in one file): "Bundle 1G+1U+5D".
         badges.append(bundleBadge(game.contents, I18N.bundle));
         cover.append(badges);
-        if (game.owned !== false) {
-            cover.append($('<span class="library-card-check" role="img">')
-                .attr({title: I18N.inLibrary, 'aria-label': I18N.inLibrary})
-                .append('<i class="bi bi-check" aria-hidden="true"></i>'));
-        }
         cover.append(coverFormat(game));
         if (game.update_pending) {
             cover.append($('<span class="library-cover-update">')
@@ -990,15 +975,13 @@ function renderListView(titles) {
 
         const latest = updateApps[0] || {};
         const latestVersion = latest.appVersion || 0;
-        // Both ways of naming it, like the game page: "3.0.0 · v1048576".
+        // Both ways of naming it, like the game page: "3.0.0 · v1048576" - plain text,
+        // no colored pill (asked for: the green "up to date" badge goes).
         const versionText = latest.displayVersion
             ? `${latest.displayVersion} · v${latest.appVersion}` : `v${latest.appVersion}`;
         const versionLine = $('<p class="small mb-0 d-flex align-items-center gap-2"></p>');
         versionLine.append($('<strong></strong>').text(I18N.latestVersion));
-        const versionBadge = $('<span class="badge rounded-pill"></span>')
-            .addClass(ownership.upToDate ? 'text-bg-success' : 'text-bg-warning')
-            .text(versionText);
-        versionLine.append(versionBadge);
+        versionLine.append($('<span></span>').text(versionText));
         // The state mark says what it is (a hover told nothing before).
         const stateTip = ownership.upToDate ? I18N.tileUpToDate : I18N.updateAvailable;
         versionLine.append($('<i class="bi" role="img"></i>').attr({title: stateTip, 'aria-label': stateTip})
@@ -1032,7 +1015,8 @@ function renderListView(titles) {
             const ownedVersionNumbers = updateApps.filter(a => a.owned).map(a => a.appVersion);
             const highestOwned = ownedVersionNumbers.length ? Math.max(...ownedVersionNumbers) : null;
             const buildUpdateRow = a => buildContentRow({
-                label: `v${a.appVersion}`,
+                // Both ways of naming it, like the game page's rows: "3.0.0 · v1048576".
+                label: a.displayVersion ? `${a.displayVersion} · v${a.appVersion}` : `v${a.appVersion}`,
                 owned: a.owned,
                 size: appSize(a),
                 verification: appVerification(a),
@@ -1388,9 +1372,7 @@ $(document).ready(function () {
     updateFiltersDot();
     loadSortFromStorage();
     $('#sortField').on('change', function () { setSort(this.value, librarySort.direction); });
-    // The one direction button flips the way it points.
-    $('#sortDirectionBtn').on('click', () =>
-        setSort(librarySort.field, librarySort.direction === 'ASC' ? 'DESC' : 'ASC'));
+    $('.sort-direction-btn').on('click', function () { setSort(librarySort.field, this.dataset.direction); });
     // The stars first: the cards are drawn with them.
     loadFavorites().finally(loadPage);
     loadLibraryStats();

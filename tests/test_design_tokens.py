@@ -145,12 +145,7 @@ def test_reduced_motion_disables_component_transitions():
 
 def test_game_cards_share_the_surface_look():
     css = _read("app/static/style.css")
-    assert "var(--op-card)" in _rule(css, ".game-surface")
-    # The card gray is a token of its own, in both themes (never a literal).
-    tokens = _read("app/static/css/tokens.css")
-    for mode in ("dark", "light"):
-        block = _rule(tokens, f'[data-bs-theme="{mode}"]')
-        assert "--op-card:" in block, mode
+    assert "var(--op-surface-1)" in _rule(css, ".game-surface")
 
 
 def test_dashboard_uses_page_head_and_stat_tiles(admin_client):

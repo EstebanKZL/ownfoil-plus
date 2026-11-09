@@ -364,12 +364,13 @@ function contentRow({icon, iconUrl, name, sub, owned, file, dataAttrs, details, 
         const ver = verificationBadge(file.verificationStatus);
         if (ver) tail.append(ver);
     }
+    if (owned && file && !multi && canDownload()) tail.append(downloadButton(file.id, name));
     if (newsUrl) {
+        // The release notes, after the download (asked for) - only the icon.
         tail.append($('<a class="btn btn-sm icon-btn p-0" target="_blank" rel="noopener">')
             .attr({href: newsUrl, title: I18N.updateNotes, 'aria-label': I18N.updateNotes})
             .append('<i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>'));
     }
-    if (owned && file && !multi && canDownload()) tail.append(downloadButton(file.id, name));
     row.append(lead, tail);
     if (details) {
         // More about it (a DLC's description), folded away under its row.

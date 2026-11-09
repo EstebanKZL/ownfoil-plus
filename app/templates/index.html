@@ -32,10 +32,12 @@
                 <option value="ID">{{ t('library.sort_id') }}</option>
             </select>
         </div>
-        {# Which way: one button pointing the way it sorts, a click flips it. #}
+        {# Which way: both buttons in view, the one in use lit. #}
         <div class="btn-group library-sort-direction" role="group" aria-label="{{ t('library.sort_label') }}">
-            <button type="button" id="sortDirectionBtn" class="btn btn-outline-secondary sort-direction-btn" data-direction="ASC"
+            <button type="button" class="btn btn-outline-secondary sort-direction-btn" data-direction="ASC"
                     title="{{ t('library.sort_asc') }}" aria-label="{{ t('library.sort_asc') }}"><i class="bi bi-sort-down-alt" aria-hidden="true"></i></button>
+            <button type="button" class="btn btn-outline-secondary sort-direction-btn" data-direction="DESC"
+                    title="{{ t('library.sort_desc') }}" aria-label="{{ t('library.sort_desc') }}"><i class="bi bi-sort-up" aria-hidden="true"></i></button>
         </div>
         <div class="btn-group library-views" role="group" aria-label="{{ t('library.view_menu') }}">
             <button id="view-toggle-btn-card" type="button" class="btn btn-outline-secondary view-toggle-btn active" data-view="card"
@@ -206,8 +208,6 @@
         owned: {{ t('library.owned') | tojson }},
         missing: {{ t('library.missing') | tojson }},
         inLibrary: {{ t('game.in_library') | tojson }},
-        sortAsc: {{ t('library.sort_asc') | tojson }},
-        sortDesc: {{ t('library.sort_desc') | tojson }},
         baseMissing: {{ t('library.base_missing') | tojson }},
         noDlc: {{ t('library.no_dlc') | tojson }},
         dlcCount: {{ t('library.dlc_count') | tojson }},

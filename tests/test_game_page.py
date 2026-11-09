@@ -344,10 +344,12 @@ def test_updates_read_both_versions_and_link_their_notes():
     assert "u.displayVersion ? `${u.displayVersion} · v${u.appVersion}`" in updates
     assert "newsUrl: updateNotesUrl(t, u)" in updates
     # contentRow destructures its params (the shared body extractor stops at the
-    # destructuring brace), so these read against the file: the icon opens a new tab
-    # and carries only its tooltip, never a label.
+    # destructuring brace), so these read against the file: the icon opens a new tab,
+    # carries only its tooltip (never a label) and sits AFTER the download button
+    # (asked for - it used to go before).
     assert 'target="_blank" rel="noopener"' in js and "bi-box-arrow-up-right" in js
     assert "I18N.updateNotes" in js
+    assert js.index("tail.append(downloadButton(file.id, name))") < js.index("if (newsUrl) {")
     # Icon only: no text rides along.
     notes = _function_body(js, "updateNotesUrl")
     assert "google.com/search" in notes

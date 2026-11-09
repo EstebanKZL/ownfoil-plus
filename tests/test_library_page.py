@@ -70,12 +70,10 @@ def test_sort_controls_offer_every_field_and_both_directions(client):
     html = client.get("/").get_data(as_text=True)
     sel = html.split('id="sortField"', 1)[1].split("</select>", 1)[0]
     assert re.findall(r'value="(\w+)"', sel) == ["NAME", "RELEASE_DATE", "REGION", "SIZE", "ADDED_AT", "ID"]
-    # One button pointing the way it sorts (asked for: no up/down pair beside the
-    # search); a click flips it, with the icon and the tooltip following.
-    assert 'id="sortDirectionBtn"' in html and html.count('sort-direction-btn') == 1
-    js = _library_js()
-    assert "librarySort.direction === 'ASC' ? 'DESC' : 'ASC'" in js
-    assert "bi-sort-down-alt' : 'bi-sort-up'" in js
+    # One button per direction, the one in use lit (the single flip button didn't sit
+    # well: back to the pair).
+    assert 'class="btn btn-outline-secondary sort-direction-btn" data-direction="ASC"' in html
+    assert 'class="btn btn-outline-secondary sort-direction-btn" data-direction="DESC"' in html
 
 
 def test_the_list_view_is_a_desk_thing(client):
@@ -88,18 +86,13 @@ def test_the_list_view_is_a_desk_thing(client):
 
 def test_owned_cards_and_rows_wear_the_library_mark():
     js = _library_js()
-    # The card: a neutral gray circle with a check under the star (Switch Library
-    # Manager's mark, on our tokens), only when the library really holds the game.
-    assert "library-card-check" in js and "I18N.inLibrary" in js
+    # The gray check on the covers went (asked for): the card keeps its badges and the
+    # star, and the List view's rows still wear the game page's badge ("En la
+    # biblioteca", check in its circle) instead of a plain Bootstrap pill.
+    assert "library-card-check" not in js
     css = _read("app", "static", "style.css")
-    rule = re.search(r"\.library-card-check \{([^}]*)\}", css).group(1)
-    assert "var(--op-text-muted)" in rule and "var(--op-surface-0)" in rule
-    # The List view's rows: the same badge the game page wears ("En la biblioteca",
-    # check in its circle), not a plain Bootstrap pill - the one text-bg pill left is
-    # the version badge, which is a version, not a state of the library.
+    assert ".library-card-check" not in css
     assert "statusBadge('ok', 'bi-check-circle', I18N.inLibrary)" in js
-    assert js.count("text-bg-success") == 1 and "text-bg-warning" not in re.search(
-        r"right\.append\(owned \? statusBadge[^;]*;", js).group(0)
 
 
 def test_the_console_filter_is_one_stadium_bar():
@@ -114,9 +107,13 @@ def test_the_list_titles_state_their_mark_and_both_versions():
     js = _library_js()
     body = _function_body(js, "renderListView")
     # No date after "Latest version" (asked for), the state mark explains itself on
-    # hover, and the version badge reads both ways: "3.0.0 · v1048576".
+    # hover, the version reads both ways as plain text ("3.0.0 · v1048576") - the
+    # green "up to date" pill went (asked for).
     assert "latestDate" not in body and "stateTip" in body and "aria-label" in body
     assert "latest.displayVersion" in body and "· v${latest.appVersion}" in body
+    assert "text-bg-success" not in body and "text-bg-warning" not in body
+    # Every update row reads both names too, in the collapsible sections.
+    assert "a.displayVersion ? `${a.displayVersion} · v${a.appVersion}`" in js
 
 
 @pytest.mark.parametrize("field", ["REGION", "SIZE", "ADDED_AT", "ID"])

@@ -7,20 +7,18 @@ see the upstream project for its own history.
 ## [6.2.5.56]
 
 - **Switch Library Manager touches, on our own shape:**
-  - **Game cards wear a gray of their own** (a new `--op-card`, both themes) and an
-    "in your library" mark: a neutral gray circle with a check, just under the star.
   - **The console filter is one stadium bar**: the options sit inside it, the chosen
     one filled with the style's accent with its count as a nested pill - in the same
     place it always was.
-  - **The sort direction is one button** that points the way it sorts and flips on a
-    click (the up/down pair beside the search is gone), and **the List view is hidden
-    on phones** - a remembered list becomes cards there.
-  - **The List view's titles** carry both version names ("3.0.0 · v1048576"), show no
-    date after "Latest version", and their up-to-date/update mark says what it is on
-    hover; its rows say "En la biblioteca" with the check in its circle, like the game
-    page's own badge.
-  - **Updates read both names too**, and every row gets a release-notes icon - only
-    the icon, opening a web search in its own tab - right before the download arrow.
+  - **The List view is hidden on phones** - a remembered list becomes cards there.
+  - **The List view's titles** carry both version names ("3.0.0 · v1048576", plain
+    text - the green "up to date" pill went), show no date after "Latest version",
+    and their up-to-date/update mark says what it is on hover; its rows say "En la
+    biblioteca" with the check in its circle, like the game page's own badge. Every
+    update row in the sections reads both names too.
+  - **Updates read both names** on the game page as well, and every row gets a
+    release-notes icon - only the icon, opening a web search in its own tab - just
+    after the download arrow.
   - **A DLC's name opens its own card**: the game's art beside its facts (id with a
     copy button, release date, size) and its description. The row keeps the size once,
     in a pill like the List view's, and its id gets a copy button beside it.
