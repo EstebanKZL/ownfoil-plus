@@ -1175,5 +1175,12 @@
  "account.language_label": "사이트 언어",
  "account.language_auto": "자동 (브라우저 언어)",
  "templates.unknown_field": "저장되지 않음: {field}은(는) 템플릿 필드가 아닙니다.",
- "notif.language_help": "아래 카드(Discord, Telegram, 이메일 카드 등)의 메시지용입니다. 각 사용자의 이메일은 프로필 언어로 보내집니다."
+ "notif.language_help": "아래 카드(Discord, Telegram, 이메일 카드 등)의 메시지용입니다. 각 사용자의 이메일은 프로필 언어로 보내집니다.",
+ "files.progress_running": "진행 중 · {pct}%",
+ "files.progress_queued": "대기열",
+ "files.progress_waiting": "대기 중",
+ "files.pending_stage_decompress": "압축 해제",
+ "files.pending_stage_combine": "결합",
+ "files.pending_stage_split": "분할",
+ "tasks.queue_more": "… 뒤에 {n}개가 더 대기 중입니다."
 }

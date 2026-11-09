@@ -1382,7 +1382,62 @@ def resolve_outdated_update_groups(*, ctx: GraphQLContext, info) -> "List[Outdat
     return groups
 
 
-def resolve_pending_files(*, ctx: GraphQLContext, info) -> "PendingFileList":
+# Files > Compress / Combine work, by task: the stage name Pending shows for it.
+_FILE_OPERATIONS = {'compress_file': 'compress', 'decompress_file': 'decompress',
+                    'split_file': 'split', 'combine_title': 'combine'}
+
+
+def _file_operations_in_flight() -> Dict[int, List[str]]:
+    """file id -> the operations queued or running on it: a compress, decompress or split
+    names its file; a combine names its game, so it counts for every file of that game."""
+    rows = db.session.execute(text(
+        "SELECT task_name, input_json FROM tasks WHERE status IN ('pending', 'running', "
+        "'waiting_for_children') AND task_name IN ('compress_file', 'decompress_file', "
+        "'split_file', 'combine_title')")).fetchall()
+    ops: Dict[int, List[str]] = {}
+    titles: Dict[str, str] = {}
+    for name, raw in rows:
+        try:
+            data = json.loads(raw or '{}')
+        except ValueError:
+            continue
+        if name == 'combine_title' and data.get('title_id'):
+            titles[str(data['title_id']).upper()] = 'combine'
+        elif data.get('file_id') is not None:
+            ops.setdefault(int(data['file_id']), []).append(_FILE_OPERATIONS[name])
+    if titles:
+        marks = ', '.join(f':t{i}' for i in range(len(titles)))
+        found = db.session.execute(text(
+            "SELECT DISTINCT af.file_id FROM app_files af JOIN apps a ON a.id = af.app_id "
+            f"JOIN titles t ON t.id = a.title_id WHERE upper(t.title_id) IN ({marks})"),
+            {f't{i}': tid for i, tid in enumerate(titles)}).fetchall()
+        for (file_id,) in found:
+            ops.setdefault(int(file_id), []).append('combine')
+    return ops
+
+
+# Tasks already walking a file down its stages: while one holds a file, its quick
+# identify/organize stages are in hand and not shown (they flickered in and out).
+_PIPELINE_TASKS = ('process_file', 'process_file_organize', 'process_file_verify')
+
+
+def _files_in_pipeline() -> set:
+    rows = db.session.execute(text(
+        "SELECT input_json FROM tasks WHERE status IN ('pending', 'running', "
+        "'waiting_for_children') AND task_name IN ('process_file', "
+        "'process_file_organize', 'process_file_verify')")).fetchall()
+    held = set()
+    for (raw,) in rows:
+        try:
+            file_id = json.loads(raw or '{}').get('file_id')
+        except ValueError:
+            continue
+        if file_id is not None:
+            held.add(int(file_id))
+    return held
+
+
+def resolve_pending_files(*, ctx: GraphQLContext, info, limit: int = 500) -> "PendingFileList":
     """Every file the automatic pipeline still owes work to, given the settings
     right now. Admin only - walks every tracked file's identify/organize/verify/
     compress stages against `tasks.STAGES`, the exact predicates the background
@@ -1404,11 +1459,24 @@ def resolve_pending_files(*, ctx: GraphQLContext, info) -> "PendingFileList":
     want_title = want_apps and apps_sel.has("title")
     title_sel = apps_sel.child("title")
 
+    want_items = Selection.from_info(info).has("items")
+    ops = _file_operations_in_flight()
+    held = _files_in_pipeline()
+    limit = max(1, min(int(limit or 500), 2000))
+    total = 0
     entries = []
     files_by_pk: Dict[int, File] = {}
     for file in Files.query.all():
         stages = [stage.name for stage in tasks_mod.STAGES if stage.applies(file, mgmt)]
+        if file.id in held:
+            stages = [s for s in stages if s not in ('identify', 'organize')]
+        # What Files > Compress / Combine queued for it by hand, still on its way.
+        stages += [op for op in ops.get(file.id, ()) if op not in stages]
         if stages:
+            total += 1
+            # The tile asks for the count only: nothing to build then.
+            if not want_items or len(entries) >= limit:
+                continue
             built = _build_file(file, include_filepath=True)
             if want_apps:
                 built.apps_loaded = []
@@ -1417,7 +1485,7 @@ def resolve_pending_files(*, ctx: GraphQLContext, info) -> "PendingFileList":
     if want_apps and files_by_pk:
         _hydrate_file_apps(list(files_by_pk.keys()), files_by_pk,
                            with_title=want_title, title_sel=title_sel)
-    return PendingFileList(total=len(entries), items=entries)
+    return PendingFileList(total=total, items=entries)
 
 
 _TASK_COLS = """

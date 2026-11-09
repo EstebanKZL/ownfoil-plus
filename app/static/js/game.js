@@ -474,6 +474,7 @@ function gameFiles(t) {
             rows.push({
                 id: f.id, size: f.size, verificationStatus: verification[f.id],
                 name: f.filename || label(a), icon: icons[a.appType] || 'bi-file-earmark-zip',
+                tone: (a.appType || '').toLowerCase(),
                 sub: [(parts[f.id] || []).length > 1 ? parts[f.id].join(', ') : `${typeName(a)} v${a.appVersion}`,
                       (f.extension || '').toUpperCase()].filter(Boolean).join(' · '),
                 order: a.appType in order ? order[a.appType] : 3,
@@ -541,6 +542,7 @@ function openFiles(files) {
     files.forEach(f => {
         const lead = $('<div class="game-row__lead">').append(
             $('<span class="game-row__icon game-row__icon--glyph">')
+                .addClass(f.tone ? `game-row__icon--${f.tone}` : '')
                 .append($('<i aria-hidden="true">').addClass(`bi ${f.icon}`)),
             $('<div class="game-row__text">').append(
                 $('<div class="game-row__name">').text(f.name),

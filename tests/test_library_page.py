@@ -121,7 +121,8 @@ def _function_body(js, name):
 
 def test_header_tiles_replace_the_stats_line(client):
     html = client.get("/").get_data(as_text=True)
-    assert 'class="page-head' in html and 'id="libraryCount"' in html
+    # No count beside the title (the Games tile says it).
+    assert 'class="page-head' in html and 'id="libraryCount"' not in html
     assert re.search(r'id="libraryTiles"[^>]*hidden', html)
     # The big percentage bar is gone: the "Up to date" tile carries the share.
     assert 'id="libraryProgress"' not in html
@@ -137,6 +138,21 @@ def test_tiles_are_computed_from_the_stats_query():
     assert "stat-tile__bar-fill" in body
     # Pending updates and missing DLC tiles apply their filter.
     assert 'data-pill' in body or "dataset.pill" in body
+
+
+def test_tiles_and_sections_wear_the_fixed_type_colors():
+    js = _library_js()
+    # The tiles that identify a content type keep its fixed color in every style:
+    # games coral (base), updates amber, missing DLC cyan; "up to date" stays the
+    # green of done. None of them follows the style's accent.
+    block = re.search(r"const tiles = \[(.*?)\];", js, re.DOTALL).group(1)
+    for tone in ("'base'", "'wait'", "'dlc'", "'ok'"):
+        assert tone in block, tone
+    assert "'nav'" not in block and "'action'" not in block
+    # The list view identifies its sections the same way: a colored dot on the base
+    # game's row and on the Updates / DLC headers.
+    assert "tone: 'base'," in js and "updateRows, 'update')" in js and "}), 'dlc'));" in js
+    assert "list-section-dot list-section-dot--${tone}" in js
 
 
 def test_library_header_strings_are_translated(client):
@@ -276,7 +292,7 @@ def test_a_failed_query_shows_the_error_state_and_clear_resets_everything():
     load = _function_body(js, "loadPage")
     assert "libraryError" in load.split("catch", 1)[1]
     clear = _function_body(js, "clearAllFilters")
-    assert "searchTerm" in clear and "saveFiltersToStorage()" in clear and "resetToFirstPage()" in clear
+    assert "$('#textFilter').val('')" in clear and "saveFiltersToStorage()" in clear and "resetToFirstPage()" in clear
 
 
 def test_state_strings_are_translated():
@@ -363,3 +379,21 @@ def test_a_template_with_an_unknown_field_is_refused(client, shop_app):
     body = shop_app.client.post('/api/settings/library/management', json={
         'organizer': {'templates': {'multi': '{titleName} [{packageNamez}]'}}}).get_json()
     assert body['success'] is False and body['errors'][0]['error'] == '{packageNamez}'
+
+
+def test_the_search_lasts_while_on_the_page_and_list_updates_have_no_date():
+    """Views and filters keep the search (same page); coming back from another page it is
+    empty - only the filters are remembered. The List view's updates show no date."""
+    js = _library_js()
+    assert "storageSet('searchTerm'" not in js and "storageRemove('searchTerm');" in js
+    assert "sub: a.releaseDate" not in js
+
+
+def test_sagas_go_by_pages_of_24_and_complete_ones_are_gold():
+    js = _read("app", "static", "js", "sagas.js")
+    assert "const SAGAS_PER_PAGE = 24;" in js and "card.classList.toggle('is-complete', complete);" in js
+    assert "bi-trophy-fill" in js
+    css = _read("app", "static", "style.css")
+    assert re.search(r"\.saga-card\.is-complete,\s*\.saga-card\.is-complete:hover \{[^}]*--op-fav-rgb", css)
+    # 1, 2 or 3 columns: each divides 24, so only the last page has a short row.
+    assert "repeat(3, minmax(0, 1fr))" in css[css.index(".saga-grid {"):]

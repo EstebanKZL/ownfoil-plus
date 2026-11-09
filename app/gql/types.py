@@ -902,4 +902,4 @@ class PendingFileList:
     settings - not a queue of currently-running tasks, a *lack* of one: a file with
     no task working on it right now that the next scheduled pass would pick up."""
     total: int = desc("How many files are pending.")
-    items: List[PendingFileEntry] = desc("Every pending file, unpaged.")
+    items: List[PendingFileEntry] = desc("The first `limit` pending files, in id order.")

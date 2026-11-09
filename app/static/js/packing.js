@@ -10,8 +10,8 @@
 const Packing = (() => {
     const T = I18N.pack;
     const state = {
-        compress: {games: null, picked: new Set(), search: '', show: 'all', format: 'all'},
-        combine: {games: null, picked: new Set(), search: '', show: 'all'},
+        compress: {games: null, picked: new Set(), search: '', show: 'all', format: 'all', page: 0, view: ''},
+        combine: {games: null, picked: new Set(), search: '', show: 'all', page: 0, view: ''},
     };
     let keysValid = true;
     // Games shown open (their files listed); every other one is folded to its header.
@@ -67,7 +67,8 @@ const Packing = (() => {
     }
 
     const KIND_LABEL = () => ({BASE: T.kindBase, UPDATE: T.kindUpdate, DLC: T.kindDlc, MULTI: T.kindMulti});
-    const KIND_TONE = {BASE: 'nav', UPDATE: 'wait', DLC: 'dlc', MULTI: 'info'};
+    // Each kind wears its content type's fixed color, the same in every style.
+    const KIND_TONE = {BASE: 'base', UPDATE: 'wait', DLC: 'dlc', MULTI: 'fav'};
 
     function badge(kind) {
         return make('span', `packing-kind packing-kind--${KIND_TONE[kind]}`, KIND_LABEL()[kind]);
@@ -213,8 +214,16 @@ const Packing = (() => {
     function gameHead(kind, key, game, sub, checked, onCheck, side) {
         const head = make('div', 'packing-game__head');
         const text = make('div', 'packing-game__text');
-        const name = make('a', 'packing-game__name', game.name);
-        name.href = `/game/${game.title_id}`;
+        // The name opens the file panel on the right, like every other view of the page
+        // (it used to leave for the game page).
+        const name = make('button', 'packing-game__name', game.name);
+        name.type = 'button';
+        name.title = game.name;
+        name.addEventListener('click', () => {
+            const files = game.files || [];
+            const first = files.find(f => f.kind === 'BASE') || files[0];
+            if (first && typeof openDrawer === 'function') openDrawer({id: String(first.id)});
+        });
         text.append(name, make('div', 'packing-game__sub', sub));
         const isOpen = open[kind].has(key);
         const toggle = make('button', 'icon-btn packing-toggle');
@@ -227,7 +236,7 @@ const Packing = (() => {
         if (side) head.append(side);
         head.append(toggle);
         head.addEventListener('click', e => {
-            if (e.target.closest('input, a')) return;
+            if (e.target.closest('input, a, .packing-game__name')) return;
             isOpen ? open[kind].delete(key) : open[kind].add(key);
             render(kind);
         });
@@ -364,6 +373,37 @@ const Packing = (() => {
         box.hidden = false;
     }
 
+    const PAGE_GAMES = 100;
+
+    /** A page of at most PAGE_GAMES games: a long library rendered every game card at once. */
+    function pager(kind, total) {
+        const s = state[kind];
+        const pages = Math.ceil(total / PAGE_GAMES);
+        const bar = make('div', 'packing-pager');
+        if (pages <= 1) return bar;
+        const first = s.page * PAGE_GAMES + 1;
+        const last = Math.min(total, first + PAGE_GAMES - 1);
+        const step = (delta, glyph, label) => {
+            const b = make('button', 'icon-btn');
+            b.type = 'button';
+            b.title = label;
+            b.setAttribute('aria-label', label);
+            b.disabled = s.page + delta < 0 || s.page + delta >= pages;
+            b.append(make('i', `bi ${glyph}`));
+            b.addEventListener('click', () => {
+                s.page += delta;
+                render(kind);
+                document.getElementById('packingPanel').scrollIntoView({block: 'start'});
+            });
+            return b;
+        };
+        bar.append(make('span', 'packing-pager__text', I18N.pagerRangeTemplate
+            .replace('{first}', first.toLocaleString()).replace('{last}', last.toLocaleString())
+            .replace('{total}', total.toLocaleString())),
+            step(-1, 'bi-chevron-left', I18N.previousPage), step(1, 'bi-chevron-right', I18N.nextPage));
+        return bar;
+    }
+
     function render(kind) {
         const panel = document.getElementById('packingPanel');
         const s = state[kind];
@@ -378,11 +418,16 @@ const Packing = (() => {
             nodes.push(make('p', 'text-secondary', kind === 'compress' ? T.noneCompress : T.noneCombine));
         } else {
             const shown = visibleGames(kind);
-            nodes.push(filterRows(kind), toolbar(kind, shown));
+            // Another search or filter starts again from the first page.
+            const view = JSON.stringify([s.search, s.show, s.format]);
+            if (view !== s.view) { s.view = view; s.page = 0; }
+            s.page = Math.max(0, Math.min(s.page, Math.ceil(shown.length / PAGE_GAMES) - 1));
+            const page = shown.slice(s.page * PAGE_GAMES, (s.page + 1) * PAGE_GAMES);
+            nodes.push(filterRows(kind), toolbar(kind, shown), pager(kind, shown.length));
             if (!shown.length) nodes.push(make('p', 'text-secondary', I18N.emptyFiltered));
             const list = make('div', 'packing-games');
-            shown.forEach(g => list.append(kind === 'compress' ? compressGame(g) : combineGame(g)));
-            nodes.push(list, footer(kind));
+            page.forEach(g => list.append(kind === 'compress' ? compressGame(g) : combineGame(g)));
+            nodes.push(list, pager(kind, shown.length), footer(kind));
         }
         panel.replaceChildren(...nodes);
         if (typeof fillTitleIcons === 'function') fillTitleIcons(panel);

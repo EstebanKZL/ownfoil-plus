@@ -104,6 +104,18 @@ def test_files_tiles_take_a_tone_per_state():
     assert "var(--op-radius-lg)" in tile and "#" not in tile
 
 
+def test_files_content_column_chips_carry_the_type_colors():
+    js = _js("files.js")
+    # The Content column is built through contentChips (no plain-text line anymore);
+    # chip(text, tone) wears the type's fixed color, from the files-chip--* rules.
+    assert "contentChips(r)," in js and "line('files-row-content'" not in js
+    assert "`files-chip files-chip--${tone}`" in js
+    css = _css()
+    for tone, token in (("base", "--op-base"), ("update", "--op-wait"),
+                        ("dlc", "--op-dlc"), ("multi", "--op-fav")):
+        assert re.search(rf"\.files-chip--{tone} \{{[^}}]*var\({token}", css), tone
+
+
 def test_identified_files_link_to_their_game_page():
     body = _function_body(_js("files.js"), "titleLink")
     assert "`/game/${titleId}`" in body and "/title/" not in body

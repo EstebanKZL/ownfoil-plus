@@ -67,8 +67,14 @@ function sagaCard(saga) {
     const head = node('div', 'saga-card__head');
     const name = node('a', 'saga-card__name', saga.name);
     name.href = link;
-    head.append(name, node('span', 'saga-card__count',
-                           I18N.count.replace('{owned}', saga.owned).replace('{total}', saga.total)));
+    // A complete saga: a gold frame and a trophy before its "10 of 10".
+    const complete = saga.total > 0 && saga.owned >= saga.total;
+    card.classList.toggle('is-complete', complete);
+    const count = node('span', 'saga-card__count');
+    if (complete) count.append(node('i', 'bi bi-trophy-fill saga-card__trophy'));
+    count.append(document.createTextNode(
+        I18N.count.replace('{owned}', saga.owned).replace('{total}', saga.total)));
+    head.append(name, count);
     const bar = node('div', 'saga-progress__bar saga-progress__bar--striped');
     const fill = node('div', 'saga-progress__fill');
     fill.style.width = `${Math.round(100 * saga.owned / Math.max(saga.total, 1))}%`;
@@ -98,6 +104,11 @@ function sagaCard(saga) {
 }
 
 const SAGA_TAB_KEY = 'sagasTab';
+// Cards a page: 24 fills every row at one, two or three columns (the grid's widths), so
+// only the last page can end with a short row.
+const SAGAS_PER_PAGE = 24;
+let sagaPage = 1;
+let sagaView = '';
 const SAGA_THUMBS = 6;   // covers in a card's row (the last one "+N" when there are more)
 let allSagas = [];
 
@@ -122,8 +133,51 @@ function renderSagaList() {
     });
     const shown = allSagas.filter(s => (tab === 'all' || isComplete(s) === (tab === 'complete'))
                                        && (!query || s.name.toLowerCase().includes(query)));
-    document.getElementById('sagasList').replaceChildren(...shown.map(sagaCard));
+    // Another tab or search starts at the first page.
+    const view = tab + '\n' + query;
+    if (view !== sagaView) { sagaView = view; sagaPage = 1; }
+    const pages = Math.max(1, Math.ceil(shown.length / SAGAS_PER_PAGE));
+    sagaPage = Math.min(sagaPage, pages);
+    const page = shown.slice((sagaPage - 1) * SAGAS_PER_PAGE, sagaPage * SAGAS_PER_PAGE);
+    document.getElementById('sagasList').replaceChildren(...page.map(sagaCard));
+    renderSagaPager(pages);
     show('sagasNoMatch', allSagas.length > 0 && !shown.length);
+}
+
+/** The pages under the grid: « 1 2 3 … 9 », as in the Library. */
+function renderSagaPager(pages) {
+    const bar = document.getElementById('sagasPager');
+    bar.replaceChildren();
+    bar.hidden = pages <= 1;
+    if (pages <= 1) return;
+    const item = (label, target, {active = false, disabled = false, aria} = {}) => {
+        const li = node('li', 'page-item' + (active ? ' active' : '') + (disabled ? ' disabled' : ''));
+        const a = node(disabled && target === null ? 'span' : 'a', 'page-link', label);
+        if (a.tagName === 'A') {
+            a.href = '#';
+            a.addEventListener('click', e => {
+                e.preventDefault();
+                if (disabled || target === sagaPage) return;
+                sagaPage = target;
+                renderSagaList();
+                document.getElementById('sagasToolbar').scrollIntoView({block: 'start', behavior: 'smooth'});
+            });
+        }
+        if (aria) a.setAttribute('aria-label', aria);
+        if (active) a.setAttribute('aria-current', 'page');
+        li.append(a);
+        return li;
+    };
+    bar.append(item('«', sagaPage - 1, {disabled: sagaPage === 1, aria: I18N.previous}));
+    const wanted = new Set([1, pages, sagaPage - 1, sagaPage, sagaPage + 1]);
+    let last = 0;
+    for (let p = 1; p <= pages; p++) {
+        if (!wanted.has(p)) continue;
+        if (p - last > 1) bar.append(item('…', null, {disabled: true}));
+        bar.append(item(String(p), p, {active: p === sagaPage}));
+        last = p;
+    }
+    bar.append(item('»', sagaPage + 1, {disabled: sagaPage === pages, aria: I18N.next}));
 }
 
 async function loadList() {

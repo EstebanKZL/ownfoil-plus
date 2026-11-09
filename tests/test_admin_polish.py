@@ -87,8 +87,9 @@ def test_tasks_lists_keep_a_fixed_frame_of_ten_or_five_rows(admin_client):
     task_scroll = re.search(r"(?m)^\.task-scroll \{([^}]*)\}", _css()).group(1)
     assert "height: calc(var(--task-rows, 5) * var(--task-row-h))" in task_scroll
     assert re.search(r"\.task-scroll,\s*\.rows-limited \{\s*scrollbar-width: thin;", _css())
-    # The whole queue, no "N oldest" note.
-    assert 'queueTruncated' not in html and 'MAX_TASKS' not in _js("tasks.js")
+    # The oldest 1,000 live, then one line saying how many more wait (not the old banner).
+    assert 'queueTruncated' not in html and 'id="queueMore"' in html
+    assert 'const MAX_TASKS = 1000;' in html and "fetch('/api/tasks/queued'" in _js("tasks.js")
 
 
 # --- 1.4 Statistics lists: the Dashboard's rows, with each game's icon ---------------------

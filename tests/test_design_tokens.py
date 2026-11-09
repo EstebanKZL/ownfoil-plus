@@ -96,6 +96,35 @@ def test_component_modifiers_use_the_semantic_colors():
         assert token in _rule(css, ".status-badge" + modifier), modifier
 
 
+def test_content_type_colors_are_fixed_in_every_style():
+    # What identifies a content type lives in the theme blocks only: a style may change
+    # its accents, never the type colors (base coral, DLC cyan, firmware violet).
+    css = _read("app/static/css/tokens.css")
+    for mode in ("dark", "light"):
+        block = _rule(css, f'[data-bs-theme="{mode}"]')
+        for var in ("--op-base:", "--op-base-rgb:", "--op-dlc:", "--op-firmware:"):
+            assert var in block, (mode, var)
+    for style in STYLES:
+        for mode in ("dark", "light"):
+            block = _rule(css, f'[data-style="{style}"][data-bs-theme="{mode}"]')
+            for var in ("--op-base", "--op-dlc", "--op-firmware"):
+                assert var not in block, (style, mode, var)
+
+
+def test_components_carry_the_content_type_colors():
+    css = _read("app/static/style.css")
+    for cls, token in ((".status-badge--dlc", "--op-dlc"),
+                       (".stat-tile--base", "--op-base"), (".stat-tile--dlc", "--op-dlc"),
+                       (".packing-kind--base", "--op-base"), (".packing-kind--fav", "--op-fav"),
+                       (".game-row__icon--base", "--op-base"), (".game-row__icon--update", "--op-wait"),
+                       (".game-row__icon--dlc", "--op-dlc"),
+                       (".list-section-dot--base", "--op-base"), (".list-section-dot--update", "--op-wait"),
+                       (".list-section-dot--dlc", "--op-dlc"),
+                       (".files-chip--base", "--op-base"), (".files-chip--update", "--op-wait"),
+                       (".files-chip--dlc", "--op-dlc"), (".files-chip--multi", "--op-fav")):
+        assert token in _rule(css, cls), cls
+
+
 def test_reduced_motion_disables_component_transitions():
     css = _read("app/static/style.css")
     assert "prefers-reduced-motion: reduce" in css

@@ -1175,5 +1175,12 @@
  "account.language_label": "Sprache der Website",
  "account.language_auto": "Automatisch (Browsersprache)",
  "templates.unknown_field": "Nicht gespeichert: {field} ist kein Vorlagenfeld.",
- "notif.language_help": "Für die Nachrichten der Karten unten (Discord, Telegram, die E-Mail-Karte...). Jeder Benutzer erhält seine E-Mails in der Sprache seines Profils."
+ "notif.language_help": "Für die Nachrichten der Karten unten (Discord, Telegram, die E-Mail-Karte...). Jeder Benutzer erhält seine E-Mails in der Sprache seines Profils.",
+ "files.progress_running": "Läuft · {pct}%",
+ "files.progress_queued": "In der Warteschlange",
+ "files.progress_waiting": "Wartet",
+ "files.pending_stage_decompress": "Dekomprimieren",
+ "files.pending_stage_combine": "Kombinieren",
+ "files.pending_stage_split": "Trennen",
+ "tasks.queue_more": "… und {n} weitere dahinter in der Warteschlange."
 }

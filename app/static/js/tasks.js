@@ -1,5 +1,5 @@
-// The Tasks admin page (templates/tasks.html). The page renders its I18N strings in its
-// one inline script, then loads this file.
+// The Tasks admin page (templates/tasks.html). The page renders its I18N strings and
+// MAX_TASKS in its one inline script, then loads this file.
 
 const CANCEL_MUTATION = `
     mutation Cancel($id: ID!) {
@@ -346,7 +346,32 @@ function render() {
 
     // Queue and Failed frame 10 rows, Scheduled and History 5 (--task-rows in the page),
     // the rest by scrolling: the frames keep their height as rows come and go.
+    renderQueueMore();
     renderWorkers();
+}
+
+// A full window: how many more open tasks wait behind the ones the page has, asked at
+// most every 5 s (one COUNT on the server).
+let queuedTotal = null;
+let queuedAsked = 0;
+
+function renderQueueMore() {
+    const shown = Object.values(tasks).filter(t => t.status !== 'failed').length;
+    const line = document.getElementById('queueMore');
+    if (shown < MAX_TASKS) {
+        line.classList.add('d-none');
+        return;
+    }
+    if (Date.now() - queuedAsked > 5000) {
+        queuedAsked = Date.now();
+        fetch('/api/tasks/queued', {credentials: 'same-origin'})
+            .then(r => r.ok ? r.json() : null)
+            .then(d => { if (d) { queuedTotal = d.open; renderQueueMore(); } })
+            .catch(() => {});
+    }
+    const more = queuedTotal === null ? 0 : queuedTotal - shown;
+    line.classList.toggle('d-none', more <= 0);
+    line.textContent = I18N.queueMore.replace('{n}', more.toLocaleString());
 }
 
 // --- Wiring ---

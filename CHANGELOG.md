@@ -4,6 +4,63 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.56]
+
+- **One color per content type, in every style.** What a file holds no longer follows the
+  style's accent: a base game is coral (a new `--op-base`, its own red apart from the one
+  of errors), an update amber, DLC cyan, a Multi gold and firmware violet - the same in
+  light and dark, ownfoil, neon or joycon, in badges, tiles, chips, tables and dialogs.
+  What used to drift with the style and now doesn't: the game page's missing-DLC badge,
+  the Library's *Games* and *DLC missing* tiles, and the Compress panel's Multi chip
+  (blue before, gold like every Multi now; Base went coral and stopped colliding with
+  DLC's cyan in ownfoil and joycon). And the types are identified by their color in more
+  places: the Files table's Content column shows each type as a colored chip (a
+  multi-content file leads with the gold Multi one), the game's file dialog tints each
+  row's icon, and the List view's Base game / Updates / DLC sections carry their dot.
+- **Library**: no count beside the title (the *Games* tile says it); the search lasts while
+  you stay on the page - views and filters keep it - and starts empty when you come back
+  from another page (it was remembered for good; the filters still are, and Ctrl+K's
+  search still fills it); the List view's updates show no date.
+- **Sagas**: a complete saga is framed in gold with a trophy before its "10 of 10"; pages
+  of 24 cards, in one, two or three columns - each divides 24, so only the last page can
+  end with a short row.
+
+- **A big library stays responsive while it scans.** SQLite takes one writer at a time,
+  and a scan made thousands of tiny writes the web and the workers queued behind:
+  - **Batches**: a scan commits its new files 200 at a time and queues their tasks in one
+    transaction; the library pass, the verify pass and the artwork do the same. Measured
+    on 3,000 files: the scan went from 18.3 s to 1.7 s, queueing 3,000 tasks from 8.4 s
+    to 0.07 s.
+  - **Artwork**: only the titles still missing an image get a task (it was one per game
+    and DLC, whatever their state).
+  - **No passes for nothing**: an unchanged TitleDB (most runs, every 12 h and at each
+    start) no longer sets off a pass over the whole library; a scan that finds nothing
+    new runs none unless some file still owes a stage; a scan of every library runs one
+    pass at the end instead of one per library.
+  - **The live Tasks view** gets the oldest 1,000 open tasks (10,000 was read four times a
+    second) and reads a long queue once a second; one line under the queue says how many
+    more wait behind.
+  - **Pending** hides the identify and organize stages of a file a task already has in
+    hand (they flickered in and out), and the server builds at most 500 rows (`total`
+    still counts all); the tile asks for the count alone.
+
+- **Duplicates show each copy's real name**: compressing or decompressing moved a file to
+  `.nsz`/`.xcz` (its path) but left its name and folder as they were, so Duplicates listed
+  `game.nsp` twice while the file panel said `.nsz`. Both follow the path now, and every
+  start repairs the rows left behind.
+- **Files > Compress and Combine go by pages of 100 games**, with the range and arrows
+  above and below the list (another search or filter starts at the first page). A game's
+  name opens the file panel on the right, as in the other views, instead of leaving for
+  the game page - the panel now sits beside these lists too.
+- **Files > Pending: a progress bar per file**, from the task working on it: its share
+  while it runs, striped while it waits in the queue, empty before a task has it. It
+  updates every 2 seconds; the files whose task finished leave the list, which is asked
+  again at most every 15 s (during a big scan a task ends every second, and the list is
+  the page's heaviest request).
+- **Pending also lists Files > Compress and Combine work**: a file queued to compress,
+  decompress or split, and every file of a game being combined, with the operation as its
+  stage and the same progress bar (a combine's bar follows its game).
+
 ## [6.2.5.55]
 
 - **The Tasks cards keep their size**: each list sits in a frame of a fixed height - 10

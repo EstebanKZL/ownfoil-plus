@@ -28,8 +28,9 @@ QUEUE_SIZE = 100
 
 # `access` is a role name understood by User.has_access, or None for public.
 # `snapshot()` returns the topic's full current state; `poll()` returns an iterable of
-# (event_type, data) pairs, or None for push-only topics.
-Topic = namedtuple('Topic', 'name access snapshot poll')
+# (event_type, data) pairs, or None for push-only topics. `delay()`, when given, returns
+# how long the broker may wait before the next read (a busy topic asks for a slower beat).
+Topic = namedtuple('Topic', 'name access snapshot poll delay', defaults=(None,))
 
 TOPICS = {}
 
@@ -60,9 +61,9 @@ def init_app(app):
     _app = app
 
 
-def register_topic(name, access=None, snapshot=None, poll=None):
+def register_topic(name, access=None, snapshot=None, poll=None, delay=None):
     """Register a topic clients can subscribe to."""
-    TOPICS[name] = Topic(name, access, snapshot, poll)
+    TOPICS[name] = Topic(name, access, snapshot, poll, delay)
 
 
 def publish(topic, event_type, data):
@@ -175,7 +176,15 @@ def _poll_loop():
                             publish(topic.name, event_type, data)
                     except Exception as e:
                         logger.error(f"Realtime topic '{topic.name}' poll failed: {e}")
-            _stop.wait(POLL_INTERVAL)
+            # A topic with a big state asks for a slower beat: each read walks all of it.
+            wait = POLL_INTERVAL
+            for topic in topics:
+                if topic.delay:
+                    try:
+                        wait = max(wait, topic.delay())
+                    except Exception:
+                        pass
+            _stop.wait(wait)
     finally:
         # Also covers the stop() path, so a shutdown never leaves a dead handle behind
         # that would stop the next subscriber from starting a poller.

@@ -1175,5 +1175,12 @@
  "account.language_label": "Язык сайта",
  "account.language_auto": "Автоматически (язык браузера)",
  "templates.unknown_field": "Не сохранено: {field} — не поле шаблона.",
- "notif.language_help": "Для сообщений карточек ниже (Discord, Telegram, карточка «Почта»...). Каждый пользователь получает свои письма на языке своего профиля."
+ "notif.language_help": "Для сообщений карточек ниже (Discord, Telegram, карточка «Почта»...). Каждый пользователь получает свои письма на языке своего профиля.",
+ "files.progress_running": "Выполняется · {pct}%",
+ "files.progress_queued": "В очереди",
+ "files.progress_waiting": "Ожидает",
+ "files.pending_stage_decompress": "Распаковать",
+ "files.pending_stage_combine": "Объединить",
+ "files.pending_stage_split": "Разделить",
+ "tasks.queue_more": "… и ещё {n} в очереди за ними."
 }

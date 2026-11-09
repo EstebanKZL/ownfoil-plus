@@ -302,3 +302,33 @@ def test_multi_label_and_its_contents_listed_without_their_own_download():
     lib = open(os.path.join(APP_DIR, 'static', 'js', 'library.js'), encoding='utf-8').read()
     assert lib.count('downloadableFile { id size verificationStatus contents }') == 2
     assert 'multi: a.owned && inMulti(a),' in lib and 'multi: inMulti(ownedApp),' in lib
+
+
+def test_packing_pages_of_100_and_the_name_opens_the_file_panel():
+    js = open(os.path.join(APP_DIR, 'static', 'js', 'packing.js'), encoding='utf-8').read()
+    assert 'const PAGE_GAMES = 100;' in js and 'shown.slice(s.page * PAGE_GAMES' in js
+    assert "make('button', 'packing-game__name', game.name)" in js and 'openDrawer(' in js
+    assert '/game/${game.title_id}' not in js
+    html = open(os.path.join(APP_DIR, 'templates', 'files.html'), encoding='utf-8').read()
+    # The panel sits beside the file drawer, so the drawer shows in these views too.
+    body = html[html.index('id="filesBody"'):html.index('id="filesDrawer"')]
+    assert 'id="packingPanel"' in body
+
+
+def test_pending_rows_carry_a_live_progress_bar():
+    js = open(os.path.join(APP_DIR, 'static', 'js', 'files.js'), encoding='utf-8').read()
+    assert "tab.kind === 'pending' ? progressBar(r.id, r.apps) : null" in js
+    assert 'setInterval(pollPending, 2000)' in js and 'tasks(status: RUNNING' in js
+    # A Combine names the game: its bar follows the game's id. The list itself is asked
+    # again at most every 15 s (it is the page's heaviest request).
+    assert 'pendingTitles[bar.dataset.progressTitle]' in js and 'Date.now() - pendingReloaded > 15000' in js
+    for stage in ('decompress', 'combine', 'split'):
+        assert f'{stage}: I18N.pendingStage' in js
+
+
+def test_kind_badges_wear_the_fixed_type_colors():
+    # Base coral, update amber, DLC cyan, multi gold - never the style's accent, so a
+    # kind is identified the same in every style.
+    js = open(os.path.join(APP_DIR, 'static', 'js', 'packing.js'), encoding='utf-8').read()
+    assert "BASE: 'base'" in js and "MULTI: 'fav'" in js
+    assert "BASE: 'nav'" not in js and "MULTI: 'info'" not in js

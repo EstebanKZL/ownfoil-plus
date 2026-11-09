@@ -179,6 +179,10 @@ Postponed - **remind the maintainer of these when a round of work wraps up**:
 1. **Save backups from Sphaira** - the `backup_access` permission and the handshake's
    `save_backup` / `resumable_upload` features are placeholders; depends on the client
    supporting it.
+2. **An index for the task queue's dedup lookup** (`tasks(task_name, input_hash,
+   status)`): every enqueue searches for a duplicate without an exact index. Needs an
+   Alembic migration; left out of 6.2.5.56's queue work (batches, lighter live view, no
+   double passes), which already helped most. Possibly brought by another user's report.
 
 Not yet verified by a person: the save vault with JKSV on a real console, account
 emails through a real SMTP server and Google sign-in with real credentials, installing the PWA in a real Chrome/Edge (on

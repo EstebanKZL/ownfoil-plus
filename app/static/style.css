@@ -322,6 +322,13 @@ p.game-description {
     background-color: var(--op-text-muted);
 }
 
+.task-more {
+    padding: .35rem 0 .1rem;
+    font-size: .8rem;
+    font-style: italic;
+    color: var(--op-text-muted);
+}
+
 .task-row.task-fading {
     opacity: 0;
 }
@@ -625,6 +632,9 @@ a.stat-tile:hover {
 .stat-tile--wait { --tile: var(--op-wait); --tile-rgb: var(--op-wait-rgb); }
 .stat-tile--nav { --tile: var(--op-nav); --tile-rgb: var(--op-nav-rgb); }
 .stat-tile--action { --tile: var(--op-action); --tile-rgb: var(--op-action-rgb); }
+/* The tiles that identify a content type keep its fixed color in every style. */
+.stat-tile--dlc { --tile: var(--op-dlc); --tile-rgb: var(--op-dlc-rgb); }
+.stat-tile--base { --tile: var(--op-base); --tile-rgb: var(--op-base-rgb); }
 
 .stat-tile__icon {
     grid-row: span 3;
@@ -750,7 +760,7 @@ a.stat-tile:hover {
 
 .status-badge--ok { --badge: var(--op-ok); --badge-rgb: var(--op-ok-rgb); }
 .status-badge--wait { --badge: var(--op-wait); --badge-rgb: var(--op-wait-rgb); }
-.status-badge--dlc { --badge: var(--op-nav); --badge-rgb: var(--op-nav-rgb); }
+.status-badge--dlc { --badge: var(--op-dlc); --badge-rgb: var(--op-dlc-rgb); }
 .status-badge--fav { --badge: var(--op-fav); --badge-rgb: var(--op-fav-rgb); }
 .status-badge--firmware { --badge: var(--op-firmware); --badge-rgb: var(--op-firmware-rgb); }
 .status-badge--info { --badge: var(--op-info); --badge-rgb: var(--op-info-rgb); }
@@ -1338,6 +1348,22 @@ a.stat-tile:hover {
     transition: transform .2s ease;
 }
 
+/* The colored dot before a content section's title (the game's list view): the type's
+   fixed color, so the section is identified the same in every style. */
+.list-section-dot {
+    display: inline-block;
+    width: .5rem;
+    height: .5rem;
+    margin-right: .4rem;
+    border-radius: 50%;
+    background-color: var(--op-text-muted);
+    vertical-align: .11rem;
+}
+
+.list-section-dot--base { background-color: var(--op-base); }
+.list-section-dot--update { background-color: var(--op-wait); }
+.list-section-dot--dlc { background-color: var(--op-dlc); }
+
 .list-section-trigger[aria-expanded="true"] .list-chevron {
     transform: rotate(180deg);
 }
@@ -1537,6 +1563,59 @@ a.stat-tile:hover {
     border-radius: 50%;
 }
 
+/* Pending: each file's progress beside its name - its task's share while it runs, a
+   striped track while it waits in line, an empty one before a task has it. */
+.files-progress {
+    flex: 0 1 18rem;
+    min-width: 8rem;
+    margin-left: auto;
+    padding-left: 1rem;
+}
+
+.files-progress__track {
+    height: .45rem;
+    border-radius: 999px;
+    background-color: var(--op-chart-track);
+    overflow: hidden;
+}
+
+.files-progress__fill {
+    display: block;
+    width: 0;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--op-info), var(--op-ok));
+    transition: width .6s var(--op-ease);
+}
+
+.files-progress.is-queued .files-progress__track {
+    background-image: repeating-linear-gradient(-45deg, rgba(var(--op-wait-rgb), .25) 0 6px, transparent 6px 12px);
+}
+
+.files-progress__label {
+    display: block;
+    margin-top: .3rem;
+    font-size: .75rem;
+    color: var(--op-text-muted);
+}
+
+.files-progress.is-running .files-progress__label {
+    color: var(--op-text);
+}
+
+@media (max-width: 575.98px) {
+    .files-row {
+        flex-wrap: wrap;
+    }
+
+    .files-progress {
+        flex-basis: 100%;
+        margin-left: 0;
+        padding-left: 0;
+        margin-top: .4rem;
+    }
+}
+
 /* What the view lists, beside the settings it depends on. */
 .files-status {
     display: flex;
@@ -1671,6 +1750,12 @@ a.stat-tile:hover {
     letter-spacing: .02em;
     text-transform: uppercase;
 }
+
+/* A chip that names a content type wears the type's fixed color, in every style. */
+.files-chip--base { color: var(--op-base); background: rgba(var(--op-base-rgb), .12); }
+.files-chip--update { color: var(--op-wait); background: rgba(var(--op-wait-rgb), .12); }
+.files-chip--dlc { color: var(--op-dlc); background: rgba(var(--op-dlc-rgb), .12); }
+.files-chip--multi { color: var(--op-fav); background: rgba(var(--op-fav-rgb), .12); }
 
 /* Rows separated by a hairline and a hover tint. Fixed layout: the widths come from the
    colgroup alone, so what a cell or a filter holds never resizes a column; a cell clips
@@ -1830,7 +1915,8 @@ a.stat-tile:hover {
     gap: 1.5rem;
 }
 
-.files-main {
+.files-main,
+.files-body > .packing {
     flex: 1;
     min-width: 0;
 }
@@ -2577,6 +2663,12 @@ a.stat-tile:hover {
     color: var(--op-nav);
     font-size: 1.15rem;
 }
+
+/* A glyph that says what the file holds wears the content type's fixed color; anything
+   else keeps the style's accent. */
+.game-row__icon--base { color: var(--op-base); }
+.game-row__icon--update { color: var(--op-wait); }
+.game-row__icon--dlc { color: var(--op-dlc); }
 
 .game-row__text {
     min-width: 0;
@@ -3595,10 +3687,24 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     border-color: rgba(var(--op-nav-rgb), .55);
 }
 
+/* One, two or three columns - each divides the 24 cards of a page, so every row but the
+   last page's is full. */
 .saga-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: 1rem;
+}
+
+@media (min-width: 768px) {
+    .saga-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1200px) {
+    .saga-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
 }
 
 /* A saga: its cover on the left; name and count, the bar, every game, "View the saga". */
@@ -3647,6 +3753,21 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     flex: 0 0 auto;
     font-size: .85rem;
     font-weight: 700;
+}
+
+/* A complete saga: framed in gold (the favourites' color), a trophy before its count. */
+.saga-card.is-complete,
+.saga-card.is-complete:hover {
+    border-color: rgba(var(--op-fav-rgb), .75);
+    box-shadow: 0 0 0 1px rgba(var(--op-fav-rgb), .35), 0 0 22px rgba(var(--op-fav-rgb), .12);
+}
+
+.saga-card.is-complete .saga-card__count {
+    color: var(--op-fav);
+}
+
+.saga-card__trophy {
+    margin-right: .3rem;
 }
 
 .saga-card .saga-progress__bar {
@@ -4776,6 +4897,25 @@ html[data-readonly] a[href^="/api/backups/"] {
     font-size: .9rem;
 }
 
+/* Pages of 100 games: the range and the arrows, right-aligned above and below the list. */
+.packing-pager {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .35rem;
+    margin-bottom: .6rem;
+    font-size: .85rem;
+    color: var(--op-text-muted);
+}
+
+.packing-pager:empty {
+    display: none;
+}
+
+.packing-pager__text {
+    margin-right: .35rem;
+}
+
 .packing-games {
     display: grid;
     gap: .75rem;
@@ -4809,6 +4949,12 @@ html[data-readonly] a[href^="/api/backups/"] {
 
 .packing-game__name {
     display: block;
+    max-width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    text-align: left;
+    font: inherit;
     font-weight: 600;
     color: var(--op-text);
     text-decoration: none;
@@ -4883,9 +5029,11 @@ html[data-readonly] a[href^="/api/backups/"] {
     border: 1px solid rgba(var(--kind-rgb), .32);
 }
 
+/* Each kind is its content type, in the fixed color every style gives it. */
+.packing-kind--base { --kind: var(--op-base); --kind-rgb: var(--op-base-rgb); }
 .packing-kind--wait { --kind: var(--op-wait); --kind-rgb: var(--op-wait-rgb); }
 .packing-kind--dlc { --kind: var(--op-dlc); --kind-rgb: var(--op-dlc-rgb); }
-.packing-kind--info { --kind: var(--op-info); --kind-rgb: var(--op-info-rgb); }
+.packing-kind--fav { --kind: var(--op-fav); --kind-rgb: var(--op-fav-rgb); }
 
 .packing-format {
     flex: 0 0 auto;

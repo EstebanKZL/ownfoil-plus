@@ -1175,5 +1175,12 @@
  "account.language_label": "网站语言",
  "account.language_auto": "自动（浏览器语言）",
  "templates.unknown_field": "未保存：{field} 不是模板字段。",
- "notif.language_help": "用于下方卡片（Discord、Telegram、邮件卡片等）的消息。每位用户的邮件使用其个人资料中的语言。"
+ "notif.language_help": "用于下方卡片（Discord、Telegram、邮件卡片等）的消息。每位用户的邮件使用其个人资料中的语言。",
+ "files.progress_running": "进行中 · {pct}%",
+ "files.progress_queued": "排队中",
+ "files.progress_waiting": "等待中",
+ "files.pending_stage_decompress": "解压",
+ "files.pending_stage_combine": "合并",
+ "files.pending_stage_split": "拆分",
+ "tasks.queue_more": "… 后面还有 {n} 个在排队。"
 }

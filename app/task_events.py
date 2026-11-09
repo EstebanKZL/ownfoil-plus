@@ -29,9 +29,13 @@ logger = logging.getLogger('main')
 # oldest-N *and* every currently-running task together with its full ancestor chain,
 # guaranteeing a live task (and the parents whose rows the tree needs to nest it under)
 # is never excluded just for being "new" underneath an old backlog.
-# A safety cap, not a page size: the Tasks page shows the whole queue (a scan's thousands
-# of file tasks included) and scrolls it; the rows are diffed, not redrawn, each tick.
-MAX_TASKS = 10000
+# How many queued rows the page gets (plus every running task and its parents). 10,000
+# was read four times a second while the Tasks page was open - a scan's queue made that
+# the heaviest thing the server did. The page says how many more wait behind them.
+MAX_TASKS = 1000
+
+# Above this many rows the broker reads the queue once a second instead of four times.
+BUSY_ROWS = 300
 
 # The file tasks label themselves with a filename rather than a row id, so the path is
 # joined in here. Resolving it per task instead would mean a query per file task on every
@@ -182,5 +186,12 @@ def workers_poll():
     return events
 
 
-realtime.register_topic('tasks', access='admin', snapshot=tasks_snapshot, poll=tasks_poll)
+def tasks_delay():
+    """A long queue is read once a second: four reads a second of hundreds of rows cost
+    more than the smoother bar is worth."""
+    return 1.0 if len(_tasks_state) > BUSY_ROWS else realtime.POLL_INTERVAL
+
+
+realtime.register_topic('tasks', access='admin', snapshot=tasks_snapshot, poll=tasks_poll,
+                        delay=tasks_delay)
 realtime.register_topic('workers', access='admin', snapshot=workers_snapshot, poll=workers_poll)

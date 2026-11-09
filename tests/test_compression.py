@@ -244,6 +244,8 @@ def test_compress_file_success(env, name, comp_ext):
     assert f.compressed is True
     assert f.extension == comp_ext
     assert f.filepath == target
+    # The name and folder follow (Duplicates showed the compressed copy as "Game.nsp").
+    assert f.filename == os.path.basename(target) and f.folder == os.path.dirname(target)
     assert f.size == len(b"COMPRESSEDPAYLOAD")
     assert os.path.exists(target) and not os.path.exists(source)
     # Source deletion is suppressed; the in-progress mark is cleared at the end.
@@ -891,3 +893,14 @@ def test_library_maintenance_chains_outdated_updates(env, enabled, expected):
     env.monkeypatch.setattr(tasks, "enqueue_task", lambda name, data=None: enqueued.append(name))
     tasks.library_maintenance_task()
     assert ("remove_outdated_updates" in enqueued) is expected
+
+
+def test_stale_names_are_repaired_from_the_path(env):
+    """Rows compressed before the fix kept their old name: a start puts them right."""
+    f = env.seed("Game.nsp")
+    fid, path = f.id, f.filepath
+    f.filename, f.folder = "Old.nsp", "/nowhere"
+    db.session.commit()
+    tasks._repair_file_names()
+    f = db.session.get(Files, fid)
+    assert f.filename == os.path.basename(path) and f.folder == os.path.dirname(path)

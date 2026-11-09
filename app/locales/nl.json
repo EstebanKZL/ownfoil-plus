@@ -1175,5 +1175,12 @@
  "account.language_label": "Taal van de site",
  "account.language_auto": "Automatisch (browsertaal)",
  "templates.unknown_field": "Niet opgeslagen: {field} is geen sjabloonveld.",
- "notif.language_help": "Voor de berichten van de kaarten hieronder (Discord, Telegram, de e-mailkaart...). Elke gebruiker krijgt zijn eigen e-mails in de taal van zijn profiel."
+ "notif.language_help": "Voor de berichten van de kaarten hieronder (Discord, Telegram, de e-mailkaart...). Elke gebruiker krijgt zijn eigen e-mails in de taal van zijn profiel.",
+ "files.progress_running": "Bezig · {pct}%",
+ "files.progress_queued": "In de wachtrij",
+ "files.progress_waiting": "Wacht",
+ "files.pending_stage_decompress": "Decomprimeren",
+ "files.pending_stage_combine": "Combineren",
+ "files.pending_stage_split": "Splitsen",
+ "tasks.queue_more": "… en nog {n} in de wachtrij erachter."
 }

@@ -1175,5 +1175,12 @@
  "account.language_label": "サイトの言語",
  "account.language_auto": "自動（ブラウザーの言語）",
  "templates.unknown_field": "保存されていません：{field} はテンプレートの項目ではありません。",
- "notif.language_help": "下のカード（Discord、Telegram、メールカードなど）のメッセージ用です。各ユーザーへのメールはプロフィールの言語で届きます。"
+ "notif.language_help": "下のカード（Discord、Telegram、メールカードなど）のメッセージ用です。各ユーザーへのメールはプロフィールの言語で届きます。",
+ "files.progress_running": "処理中 · {pct}%",
+ "files.progress_queued": "待機中",
+ "files.progress_waiting": "待ち",
+ "files.pending_stage_decompress": "展開",
+ "files.pending_stage_combine": "結合",
+ "files.pending_stage_split": "分割",
+ "tasks.queue_more": "… さらに {n} 件が後に待機中。"
 }

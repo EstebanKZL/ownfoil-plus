@@ -718,8 +718,18 @@ def combine_titles_api():
 @app.route('/admin/tasks')
 @access_required('admin')
 def tasks_page():
-    return render_template('tasks.html', title='Tasks',
+    import task_events
+    return render_template('tasks.html', title='Tasks', max_tasks=task_events.MAX_TASKS,
                            admin_account_created=admin_account_created())
+
+
+@app.get('/api/tasks/queued')
+@access_required('admin')
+def tasks_queued_api():
+    """How many tasks are open (not failed): the Tasks page gets the oldest MAX_TASKS of
+    them live, and says how many more wait behind."""
+    count = db.session.execute(db.text("SELECT COUNT(*) FROM tasks WHERE status != 'failed'")).scalar()
+    return jsonify({'open': int(count or 0)})
 
 @app.route('/admin/stats')
 @access_required('admin')

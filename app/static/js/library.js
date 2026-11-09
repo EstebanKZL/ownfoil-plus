@@ -296,18 +296,19 @@ function renderLibraryStats(stats) {
     const owned = stats.ownedTitles;
     const pending = stats.ownedTitles - stats.upToDateTitles;
 
-    $('#libraryCount').text(owned.toLocaleString()).prop('hidden', false);
 
     // "Up to date" means nothing missing: the latest update and every DLC.
     const pct = Math.round(100 * stats.currentTitles / owned);
 
     // (value, label, note, icon, tone, pill it applies, share for a small bar or null).
     // Pending updates count base games only; DLC count only under missing DLC. The same
-    // for every role: no file figures here (they were admin only).
+    // for every role: no file figures here (they were admin only). The tiles that
+    // identify a content type wear its fixed color, whatever the style: games coral
+    // (base), updates amber, missing DLC cyan; only "up to date" is the green of done.
     const tiles = [
-        [owned.toLocaleString(), I18N.tileGames, null, 'bi-controller', 'nav', 'all', null],
+        [owned.toLocaleString(), I18N.tileGames, null, 'bi-controller', 'base', 'all', null],
         [pending.toLocaleString(), I18N.tileUpdates, null, 'bi-arrow-up-circle', 'wait', 'outdated', null],
-        [stats.missingDlc.toLocaleString(), I18N.tileDlcMissing, null, 'bi-puzzle', 'action', 'missingDlc', null],
+        [stats.missingDlc.toLocaleString(), I18N.tileDlcMissing, null, 'bi-puzzle', 'dlc', 'missingDlc', null],
         [stats.currentTitles.toLocaleString(), I18N.tileUpToDate.replace('{pct}', pct), null,
          'bi-check-circle', 'ok', 'upToDate', pct],
     ];
@@ -811,13 +812,16 @@ function metadataButton(meta) {
         .attr({href: meta.url, title: I18N.detailsTooltip, 'aria-label': I18N.detailsTooltip});
 }
 
-/** One row inside a Base Game / Updates / DLC group: a label on the left, an
- *  Owned/Missing badge, size, verification, metadata and (when enabled) download
- *  controls on the right. All text goes through .text(), never raw HTML, since it
- *  can carry a game's real (untrusted) name. */
-function buildContentRow({label, sub, owned, size, verification, fileId, meta, multi}) {
+/** One row inside a Base Game / Updates / DLC group: a label on the left (with the
+ *  type's colored dot when `tone` names one), an Owned/Missing badge, size,
+ *  verification, metadata and (when enabled) download controls on the right. All text
+ *  goes through .text(), never raw HTML, since it can carry a game's real (untrusted)
+ *  name. */
+function buildContentRow({label, sub, owned, size, verification, fileId, meta, multi, tone}) {
     const li = $('<li class="list-group-item bg-transparent d-flex justify-content-between align-items-center flex-wrap gap-2"></li>');
-    const left = $('<span class="text-break"></span>').text(label);
+    const left = $('<span class="text-break"></span>');
+    if (tone) left.append($('<span aria-hidden="true"></span>').addClass(`list-section-dot list-section-dot--${tone}`));
+    left.append(document.createTextNode(label));
     if (sub) {
         left.append($('<small class="text-secondary ms-1"></small>').text(`(${sub})`));
     }
@@ -849,17 +853,20 @@ function buildContentRow({label, sub, owned, size, verification, fileId, meta, m
 
 let listSectionSeq = 0;
 
-/** A collapsible "Updates" or "DLC" group: a header row with a count badge and a
- *  chevron that flips on expand (see .list-section-trigger in style.css), holding
- *  the individual content rows underneath. */
-function buildCollapsibleSection(sectionTitle, count, rows) {
+/** A collapsible "Updates" or "DLC" group: a header row with the type's colored dot,
+ *  a count badge and a chevron that flips on expand (see .list-section-trigger in
+ *  style.css), holding the individual contentRows underneath. */
+function buildCollapsibleSection(sectionTitle, count, rows, tone) {
     const id = `listSection${listSectionSeq++}`;
     const li = $('<li class="list-group-item bg-transparent"></li>');
     const trigger = $('<p class="my-1 d-flex justify-content-between align-items-center list-section-trigger" role="button" aria-expanded="false"></p>')
         .attr('data-bs-toggle', 'collapse')
         .attr('data-bs-target', `#${id}`)
         .attr('aria-controls', id);
-    trigger.append($('<strong></strong>').text(sectionTitle));
+    const title = $('<strong></strong>');
+    if (tone) title.append($('<span aria-hidden="true"></span>').addClass(`list-section-dot list-section-dot--${tone}`));
+    title.append(document.createTextNode(sectionTitle));
+    trigger.append(title);
     const right = $('<span class="d-flex align-items-center gap-2"></span>');
     right.append($('<span class="badge text-bg-secondary"></span>').text(count));
     right.append($('<i class="bi bi-chevron-down list-chevron"></i>'));
@@ -997,6 +1004,7 @@ function renderListView(titles) {
             verification: appVerification(baseApp),
             fileId: appFileId(baseApp),
             meta: {id: t.titleId, url: `/game/${t.titleId}`},
+            tone: 'base',
         }));
 
         if (updateApps.length) {
@@ -1008,7 +1016,6 @@ function renderListView(titles) {
             const highestOwned = ownedVersionNumbers.length ? Math.max(...ownedVersionNumbers) : null;
             const buildUpdateRow = a => buildContentRow({
                 label: `v${a.appVersion}`,
-                sub: a.releaseDate,
                 owned: a.owned,
                 size: appSize(a),
                 verification: appVerification(a),
@@ -1025,7 +1032,7 @@ function renderListView(titles) {
             if (olderApps.length) {
                 updateRows.push(buildOlderVersionsToggle(olderApps.map(buildUpdateRow)));
             }
-            listGroup.append(buildCollapsibleSection(I18N.updatesSection, updateApps.length, updateRows));
+            listGroup.append(buildCollapsibleSection(I18N.updatesSection, updateApps.length, updateRows, 'update'));
         }
 
         if (availableDlc.length || ownedDlcByAppId.size) {
@@ -1057,7 +1064,7 @@ function renderListView(titles) {
                         multi: inMulti(ownedApp),
                         meta: {id: d.appId, url: `/game/${t.titleId}?dlc=${d.appId}`},
                     });
-                })));
+                }), 'dlc'));
         }
 
         body.append(listGroup);
@@ -1251,9 +1258,11 @@ function loadFiltersFromStorage() {
     }
     updateFilter();
 
-    const savedSearch = storageGet('searchTerm');
-    $('#textFilter').val(savedSearch || '');
-    // ?q= from the global search (Ctrl+K) wins over the remembered search.
+    // The search lasts while you stay on the page (views and filters keep it) and starts
+    // empty when you come back from another one; the filters are the ones remembered.
+    storageRemove('searchTerm');
+    $('#textFilter').val('');
+    // ?q= from the global search (Ctrl+K) fills it.
     const urlSearch = new URLSearchParams(location.search).get('q');
     if (urlSearch) {
         $('#textFilter').val(urlSearch);
@@ -1309,7 +1318,6 @@ function clearAllFilters() {
     storageRemove('libraryFavorites');
     $('#favoriteAll').prop('checked', true);
     $('#textFilter').val('');
-    storageRemove('searchTerm');
     updateFilter();
     saveFiltersToStorage();
     updateFiltersDot();
@@ -1393,8 +1401,6 @@ $(document).ready(function () {
 
     // Listen to input changes in the text filter input
     $("#textFilter").on("input", function () {
-        const attributeText = $(this).val();
-        storageSet('searchTerm', attributeText);
         // Debounced: every keystroke would otherwise be its own query.
         clearTimeout(searchDebounce);
         searchDebounce = setTimeout(resetToFirstPage, 250);

@@ -71,8 +71,10 @@ function muted(text) {
     return text ? el('span', {className: 'text-secondary', textContent: text}) : null;
 }
 
-function chip(text) {
-    return el('span', {className: 'files-chip', textContent: text});
+/** A small chip; with a `tone` (base, update, dlc, multi) it wears that content
+ *  type's fixed color, the same in every style. */
+function chip(text, tone) {
+    return el('span', {className: tone ? `files-chip files-chip--${tone}` : 'files-chip', textContent: text});
 }
 
 const yesNo = v => v ? I18N.yes : I18N.no;
@@ -91,7 +93,9 @@ const STATUS_LABEL = {VALID: I18N.statusValid, REPACK: I18N.statusRepack, CORRUP
 // (tasks.STAGES' own names: 'identify', 'organize', 'verify', 'compress') -
 // humanized for display rather than shown as-is.
 const PENDING_STAGE_LABEL = {identify: I18N.pendingStageIdentify, organize: I18N.pendingStageOrganize,
-                             verify: I18N.pendingStageVerify, compress: I18N.pendingStageCompress};
+                             verify: I18N.pendingStageVerify, compress: I18N.pendingStageCompress,
+                             decompress: I18N.pendingStageDecompress, combine: I18N.pendingStageCombine,
+                             split: I18N.pendingStageSplit};
 const humanizeStage = stage => PENDING_STAGE_LABEL[stage] || stage;
 
 function humanizeStatus(status) {
@@ -143,6 +147,24 @@ function contentText(r) {
 
 function contentLabel(a) {
     return [APP_TYPES[a.appType], version(a)].filter(Boolean).join(' ');
+}
+
+/** The Content column: the type as a chip in its fixed color, the version(s) as plain
+ *  text beside it - a multi-content file leads with the gold Multi chip. The plain
+ *  text still goes in the title, so the tooltip keeps the full list. */
+function contentChips(r) {
+    if (!r.apps || !r.apps.length) return null;
+    const wrap = el('div', {className: 'files-row-content', title: contentText(r)});
+    if (r.multicontent) {
+        wrap.append(chip(I18N.filterContentBundle, 'multi'),
+                    el('span', {textContent: ` ${r.apps.map(contentLabel).join(', ')}`}));
+        return wrap;
+    }
+    const a = r.apps[0];
+    wrap.append(chip(APP_TYPES[a.appType] || a.appType, (a.appType || '').toLowerCase()));
+    const v = version(a);
+    if (v) wrap.append(el('span', {textContent: ` ${v}`}));
+    return wrap;
 }
 
 const IDENTIFIED = {cnmt: ['files-fg-success', I18N.identifiedCnmtTooltip],
@@ -512,7 +534,8 @@ function groupBlock(g, tab) {
         renderBody();
     });
     const head = el('div', {className: 'files-cmp-head'}, avatar(copies[0] ? copies[0].file.apps : [], 'sm'),
-        el('b', {textContent: g.app.label}), chip(APP_TYPES[g.app.appType] || g.app.appType),
+        el('b', {textContent: g.app.label}),
+        chip(APP_TYPES[g.app.appType] || g.app.appType, (g.app.appType || '').toLowerCase()),
         g.app.versionLabel ? muted(g.app.versionLabel) : null,
         el('span', {className: 'files-cmp-free', textContent: I18N.freeTemplate.replace('{size}', formatBytes(free))}),
         el('div', {className: 'form-check form-switch m-0'}, toggle));
@@ -794,6 +817,82 @@ function renderHead() {
     })));
 }
 
+// --- Pending: a progress bar per file, from the task working on it ---
+
+let pendingTasks = {};      // file id -> {status, pct}
+let pendingTitles = {};     // game id -> {status, pct}: a Combine names the game, not a file
+let pendingTimer = null;
+let pendingReloaded = 0;    // when the list was last asked again (see pollPending)
+
+/** The bar of a pending file: its task's progress while it runs, "Queued" while it waits
+ *  in line, "Waiting" when no task has it yet. Filled in place by pollPending(). */
+function progressBar(fileId, apps) {
+    const bar = el('div', {className: 'files-progress'},
+        el('div', {className: 'files-progress__track'}, el('span', {className: 'files-progress__fill'})),
+        el('span', {className: 'files-progress__label'}));
+    bar.dataset.progressId = String(fileId);
+    const titleId = apps && apps[0] && apps[0].titleId;
+    if (titleId) bar.dataset.progressTitle = String(titleId).toUpperCase();
+    paintProgress(bar);
+    return bar;
+}
+
+function paintProgress(bar) {
+    const t = pendingTasks[bar.dataset.progressId] || pendingTitles[bar.dataset.progressTitle];
+    const running = t && t.status === 'RUNNING';
+    const pct = running ? Math.max(0, Math.min(100, t.pct || 0)) : 0;
+    bar.classList.toggle('is-running', Boolean(running));
+    bar.classList.toggle('is-queued', Boolean(t && !running));
+    bar.querySelector('.files-progress__fill').style.width = pct + '%';
+    bar.querySelector('.files-progress__label').textContent = running
+        ? I18N.progressRunning.replace('{pct}', pct) : t ? I18N.progressQueued : I18N.progressWaiting;
+}
+
+/** Every 2 s while Pending is open: which of its files a task holds, and how far along.
+ *  A task that has just finished takes its file off the list (the rows are asked again). */
+async function pollPending() {
+    if (current !== 'pending') return stopPending();
+    let tasks;
+    try {
+        const d = await gql(`{ running: tasks(status: RUNNING, includeChildren: true, limit: 500) { status completionPct input }
+                              queued: tasks(status: PENDING, includeChildren: true, limit: 500) { status completionPct input } }`);
+        tasks = d.running.concat(d.queued);
+    } catch (e) { return; }
+    const next = {};
+    const nextTitles = {};
+    const keep = (map, key, t) => {
+        if (!map[key] || t.status === 'RUNNING') map[key] = {status: t.status, pct: t.completionPct};
+    };
+    tasks.forEach(t => {
+        let input = {};
+        try { input = JSON.parse(t.input || '{}'); } catch (e) { /* not a file task */ }
+        if (input.file_id != null) keep(next, String(input.file_id), t);
+        else if (input.title_id) keep(nextTitles, String(input.title_id).toUpperCase(), t);
+    });
+    const done = (before, after) => Object.keys(before).some(k => before[k].status === 'RUNNING' && !after[k]);
+    const finished = done(pendingTasks, next) || done(pendingTitles, nextTitles);
+    pendingTasks = next;
+    pendingTitles = nextTitles;
+    document.querySelectorAll('.files-progress[data-progress-id]').forEach(paintProgress);
+    // The finished files leave the list - asked again at most every 15 s: during a big
+    // scan a task ends every second, and the list is the page's heaviest request.
+    if (finished && current === 'pending' && Date.now() - pendingReloaded > 15000) {
+        pendingReloaded = Date.now();
+        await loadTab(true);
+        renderBody();
+    }
+}
+
+function startPending() {
+    if (!pendingTimer) pendingTimer = setInterval(pollPending, 2000);
+    pollPending();
+}
+
+function stopPending() {
+    clearInterval(pendingTimer);
+    pendingTimer = null;
+}
+
 function fileRow(r, tab) {
     const titled = r.apps && r.apps.length;
     const sub = tab.detail ? tab.detail(r) : titled ? r.filename : null;
@@ -802,8 +901,9 @@ function fileRow(r, tab) {
         el('td', null, el('div', {className: 'files-row'}, avatar(r.apps),
             el('div', {className: 'files-row-lines'},
                 line('files-row-title', titled ? titleName(r) : r.filename),
-                line('files-row-content', contentText(r)),
-                line('files-row-sub', sub)))),
+                contentChips(r),
+                line('files-row-sub', sub)),
+            tab.kind === 'pending' ? progressBar(r.id, r.apps) : null)),
         el('td', {className: 'files-wide'}, stateIcons(r)),
         el('td', {className: 'text-end files-num'}, formatBytes(r.size)),
         el('td', {className: 'text-end files-num text-secondary files-wide'}, when(parseDate(r.addedAt, true))),
@@ -824,7 +924,7 @@ function renderBody() {
     const tab = TABS[current];
     const packing = tab.kind === 'packing';
     $('#packingPanel').toggleClass('d-none', !packing);
-    $('#filesBody').toggleClass('d-none', packing);
+    $('#filesMain').toggleClass('d-none', packing);
     if (packing) {
         $('#filesFlatToolbar').addClass('d-none');
         Packing.render(current);
@@ -929,7 +1029,8 @@ function renderDrawer(f) {
     const titles = fileTitles(f);
     const bullet = () => muted(' · ');
     const contents = f.apps && f.apps.length
-        ? f.apps.map(a => el('div', {className: 'mb-1'}, APP_TYPES[a.appType], bullet(), version(a), bullet(),
+        ? f.apps.map(a => el('div', {className: 'mb-1'},
+            chip(APP_TYPES[a.appType] || a.appType, (a.appType || '').toLowerCase()), bullet(), version(a), bullet(),
             el('span', {className: 'files-app-id', textContent: a.appId})))
         : [muted(`${f.identificationError || I18N.notMatchedText}. ${f.identificationAttempts} ${I18N.attemptsSuffix}.`)];
     const verified = parseDate(f.verifiedAt, false);
@@ -977,6 +1078,7 @@ function showTab() {
     renderChips();
     renderHead();
     loadTab(false);
+    if (current === 'pending') startPending(); else stopPending();
 }
 
 let searchTimer = null;

@@ -178,3 +178,28 @@ def test_verification_status_filter_with_an_empty_list_is_no_constraint(client):
     data = gql(client, "query { files(filter: {verificationStatus: []}) { total } }")
     data_all = gql(client, "{ stats { totalFiles } }")
     assert data["files"]["total"] == data_all["stats"]["totalFiles"]
+
+
+def test_pending_files_lists_compress_decompress_combine_and_split_on_their_way(client, shop_app):
+    """Pending also shows what Files > Compress / Combine queued: the file of a decompress
+    or split, and every file of a game being combined."""
+    with shop_app.app.app_context():
+        import json
+        from db import Apps, Files, Libraries, Task, db
+        lib = Libraries.query.first()
+        app_row = Apps.query.filter_by(app_id="0100000000010000").first()
+        title_id = app_row.title.title_id
+        f = Files(library_id=lib.id, filepath="/tmp/ops_fixture_file.nsz", folder="/tmp",
+                  filename="ops_fixture_file.nsz", extension="nsz", size=1234,
+                  identified=True, organized=True, compressed=True)
+        db.session.add(f)
+        db.session.flush()
+        app_row.files.append(f)
+        for name, data in (("decompress_file", {"file_id": f.id}), ("combine_title", {"title_id": title_id})):
+            db.session.add(Task(task_name=name, status="pending", completion_pct=0,
+                                input_json=json.dumps(data), input_hash=name))
+        db.session.commit()
+
+    data = gql(client, "{ pendingFiles { items { stages file { filename } } } }")
+    entry = next(e for e in data["pendingFiles"]["items"] if e["file"]["filename"] == "ops_fixture_file.nsz")
+    assert "decompress" in entry["stages"] and "combine" in entry["stages"]

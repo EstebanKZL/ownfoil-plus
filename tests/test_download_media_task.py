@@ -204,7 +204,10 @@ def test_an_unknown_title_record_is_left_untouched_rather_than_wiped(env, monkey
         assert (env.title_id, media.ICON, 0) in rows
 
 
-def test_download_media_task_enqueues_a_child_per_title_and_its_dlc(env, monkeypatch):
+def test_download_media_task_enqueues_a_child_per_title_still_missing_artwork(env, monkeypatch):
+    """A child for the game (its artwork isn't stored yet); none for its DLC, which has no
+    titledb record - the child would have returned at once - nor, below, for a title
+    whose artwork is all stored already."""
     enqueued = []
     monkeypatch.setattr(tasks, "enqueue_or_child", lambda name, data: enqueued.append((name, data)) or 1)
     monkeypatch.setattr(tasks, "set_waiting_for_children", lambda: None)
@@ -212,11 +215,14 @@ def test_download_media_task_enqueues_a_child_per_title_and_its_dlc(env, monkeyp
 
     with env.app.app_context():
         tasks.download_media_task()
+    assert enqueued == [("download_title_media", {"title_id": env.title_id})]
 
-    assert enqueued == [
-        ("download_title_media", {"title_id": env.title_id}),
-        ("download_title_media", {"title_id": "0100000000010800"}),
-    ]
+    # Once its artwork is stored, the next pass leaves it alone.
+    enqueued.clear()
+    monkeypatch.setattr(tasks, "_media_missing", lambda tid: False)
+    with env.app.app_context():
+        tasks.download_media_task()
+    assert enqueued == []
 
 
 def test_download_media_task_does_nothing_when_local_media_is_disabled(env, monkeypatch):
