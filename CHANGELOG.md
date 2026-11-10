@@ -4,6 +4,11 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.57]
+
+- Small tidy-ups in the docs, code comments and the *Clean names* help text, in every
+  language.
+
 ## [6.2.5.56]
 
 - **Game page, third round:**

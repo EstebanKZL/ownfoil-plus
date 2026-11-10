@@ -12,8 +12,7 @@ read with checks - a version of an update is a multiple of 0x10000, a DLC is lef
 catalogue - since they are not the release. A source that can't be downloaded, or that
 comes back as something else, keeps its last good copy.
 
-The sources and checks follow Switch Library Manager Web by DeLFuS77 (AGPL-3.0, see
-NOTICE.md), .github/scripts/merge_versions.py.
+Credits: see NOTICE.md.
 """
 import json
 import logging
