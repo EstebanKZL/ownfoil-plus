@@ -1130,7 +1130,7 @@
  "files.pack_combine_note": "ゲームごとに 1 ファイル、本編のフォルダーに作られます。進行状況はタスクで確認できます。",
  "files.pack_combine_confirm": "{count} 本のゲームを結合しますか？各結合ファイルの検証後に個別ファイルは削除されます。",
  "files.pack_queued": "{count} 件のタスクを追加しました。",
- "files.pack_open_tasks": "タスクで見る",
+ "files.pack_open_tasks": "「保留中」で確認",
  "files.pack_none_compress": "圧縮するものはもうありません。",
  "files.pack_none_combine": "結合できる個別のパーツがあるゲームはありません。",
  "files.pack_label_level": "圧縮レベル",

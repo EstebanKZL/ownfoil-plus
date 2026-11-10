@@ -64,6 +64,15 @@ def test_service_worker_never_touches_the_api_or_downloads(shop_app):
     assert "url.pathname.startsWith('/static/')" in js and "request.mode === 'navigate'" in js
 
 
+def test_static_assets_come_from_the_network_first(shop_app):
+    js = shop_app.client.get("/sw.js").get_data(as_text=True)
+    # Fresh pages must never wear an older version's CSS or JS: the network answers
+    # and the cache only when the server can't be reached (mixed versions used to
+    # half-break the layout "for a while" after every update).
+    static_block = js.split("url.pathname.startsWith('/static/')", 1)[1][:500]
+    assert static_block.index("fetch(request)") < static_block.index("cache.match(request)")
+
+
 def test_pwa_files_need_no_login_on_a_private_shop(shop_app):
     for url in ("/manifest.webmanifest", "/sw.js", "/offline"):
         resp = shop_app.client.get(url)

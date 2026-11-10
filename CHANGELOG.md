@@ -6,6 +6,25 @@ see the upstream project for its own history.
 
 ## [6.2.5.56]
 
+- **Files, second round:**
+  - **No more half-broken page after an update.** The service worker used to answer
+    CSS and JS from its cache while the page itself came fresh from the network - so
+    after every update the fresh page wore the old styles "for a while", misaligned,
+    until it settled. Static assets come from the network first now; the cache answers
+    only when the server can't be reached (the offline story keeps working).
+  - **Pending is live.** Entering the tab shows what runs right now (its rows used to
+    sit cached until a page reload), and the list follows work as it appears or ends:
+    a combine queued elsewhere shows up on its own, a finished one leaves, and the
+    tile's count had already been re-asking itself every 12 s.
+  - **The follow-up notice opens Pending right here**: "N tasks queued. See them on
+    Pending" links to this page's own Pending tab (it used to leave for the Tasks
+    page).
+- **Game page, second round:** the Updates and DLC sections wear their type colors on
+  the title icon and each row's glyph, and the *Latest version* fact turns the
+  update's amber when the owned one is behind it - the same treatment the firmware
+  fact gives its violet. In the Library's List view the *Latest version* pill is back
+  (green or amber, reading both version names); the state icon beside it was the part
+  that went.
 - **Switch Library Manager touches, on our own shape:**
   - **The console filter is one stadium bar**: the options sit inside it, the chosen
     one filled with the style's accent with its count as a nested pill - in the same

@@ -320,8 +320,9 @@ def test_pending_rows_carry_a_live_progress_bar():
     assert "tab.kind === 'pending' ? progressBar(r.id, r.apps, r._ids) : null" in js
     assert 'setInterval(pollPending, 2000)' in js and 'tasks(status: RUNNING' in js
     # A Combine names the game: its bar follows the game's id. The list itself is asked
-    # again at most every 15 s (it is the page's heaviest request).
-    assert 'pendingTitles[bar.dataset.progressTitle]' in js and 'Date.now() - pendingReloaded > 15000' in js
+    # again at most every 5 s, and follows new work too - not just the finished kind.
+    assert 'pendingTitles[bar.dataset.progressTitle]' in js and 'Date.now() - pendingReloaded > 5000' in js
+    assert 'sameKeys(pendingTasks, next)' in js
     for stage in ('decompress', 'combine', 'split'):
         assert f'{stage}: I18N.pendingStage' in js
 
@@ -350,3 +351,9 @@ def test_packing_filters_are_chips_with_a_plus_menu():
     # one, exactly like the flat list (files-filter-chip is its chip class).
     assert "filterBar(kind)" in js and "files-filter-chip" in js
     assert "filter-pill" not in js and "packing-filters" not in js
+
+
+def test_the_follow_up_notice_opens_pending_right_here():
+    js = open(os.path.join(APP_DIR, 'static', 'js', 'packing.js'), encoding='utf-8').read()
+    # "See them on Pending", a link to this page's own tab - not a leave for Tasks.
+    assert "link.href = '#pending'" in js and "'/admin/tasks'" not in js

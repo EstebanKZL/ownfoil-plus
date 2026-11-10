@@ -185,7 +185,10 @@ function renderFacts(t) {
         ['bi-shield-check', I18N.rating, t.rating],
         ['bi-hdd', I18N.size, formatTitledbSize(t.size)],
         ['bi-box-seam', I18N.installedVersion, installed !== null ? `v${installed}` : null],
-        ['bi-arrow-up-circle', I18N.latestVersion, (owned || latest) ? `v${latest}` : null],
+        // Behind the newest update: the fact wears the update's amber, the same way
+        // the firmware one wears its violet when the console is too old.
+        ['bi-arrow-up-circle', I18N.latestVersion, (owned || latest) ? `v${latest}` : null,
+         owned && installed !== null && latest !== null && latest > installed ? 'game-fact--update' : ''],
         // The newest version's; a console older than that can't run it up to date.
         ['bi-cpu', I18N.requiredFirmware, t.requiredFirmware,
          firmwareTooOld(t.requiredFirmware, CONSOLE_FIRMWARE) ? 'game-fact--firmware' : ''],
@@ -267,12 +270,14 @@ function canDownload() {
     return IS_SHOP && WEB_DOWNLOADS_ENABLED;
 }
 
-/** One section block: a titled .surface, or nothing when it has no content. */
-function section(id, icon, title, content) {
+/** One section block: a titled .surface, or nothing when it has no content. An
+ *  `iconTone` (update, dlc) wears the content type's fixed color on the title icon. */
+function section(id, icon, title, content, iconTone) {
     if (!content) return null;
     const block = $('<section class="surface game-section">').attr('id', id);
-    block.append($('<h2 class="game-section__title">')
-        .append($('<i aria-hidden="true">').addClass(`bi ${icon}`), $('<span>').text(title)));
+    const glyph = $('<i aria-hidden="true">').addClass(`bi ${icon}`);
+    if (iconTone) glyph.addClass(`game-section__icon--${iconTone}`);
+    block.append($('<h2 class="game-section__title">').append(glyph, $('<span>').text(title)));
     return block.append(content);
 }
 
@@ -333,15 +338,16 @@ function updateNotesUrl(t, u) {
  *  `onName` opens something (a DLC's card); `newsUrl` adds the release-notes icon
  *  before the download; `copyId` puts a copy button beside the id in the sub line.
  *  All text goes through .text(): names are real (untrusted) catalogue data. */
-function contentRow({icon, iconUrl, name, sub, owned, file, dataAttrs, details, onName, newsUrl, copyId}) {
+function contentRow({icon, iconUrl, name, sub, owned, file, dataAttrs, details, onName, newsUrl, copyId, iconTone}) {
     const row = $('<li class="game-row">');
     if (dataAttrs) row.attr(dataAttrs);
     const lead = $('<div class="game-row__lead">');
     if (iconUrl) {
         lead.append($('<img class="game-row__icon" loading="lazy" alt="">').attr('src', iconUrl));
     } else {
-        lead.append($('<span class="game-row__icon game-row__icon--glyph">')
-            .append($('<i aria-hidden="true">').addClass(`bi ${icon}`)));
+        const glyph = $('<span class="game-row__icon game-row__icon--glyph">');
+        if (iconTone) glyph.addClass(`game-row__icon--${iconTone}`);
+        lead.append(glyph.append($('<i aria-hidden="true">').addClass(`bi ${icon}`)));
     }
     const nameEl = onName
         ? $('<button type="button" class="game-row__name-btn">').text(name).attr('title', name).on('click', onName)
@@ -417,14 +423,14 @@ function renderUpdates(t) {
         const label = u.displayVersion ? `${u.displayVersion} · v${u.appVersion}` : `v${u.appVersion}`;
         const row = contentRow({icon: 'bi-arrow-up-circle', name: label, sub,
                                 owned: u.owned, file: u.downloadableFile,
-                                newsUrl: updateNotesUrl(t, u)});
+                                newsUrl: updateNotesUrl(t, u), iconTone: 'update'});
         if (firmwareTooOld(needs, CONSOLE_FIRMWARE)) {
             $(row).addClass('game-row--firmware').attr('title', I18N.firmwareTooOld
                 .replace('{mine}', CONSOLE_FIRMWARE).replace('{needed}', needs));
         }
         list.append(row);
     });
-    return section('gameUpdates', 'bi-arrow-up-circle', I18N.updates, content.append(list));
+    return section('gameUpdates', 'bi-arrow-up-circle', I18N.updates, content.append(list), 'update');
 }
 
 function renderDlc(t) {
@@ -451,6 +457,7 @@ function renderDlc(t) {
         const sub = [formatTitledbDate(meta.releaseDate), d.appId].filter(Boolean).join(' · ');
         list.append(contentRow({
             icon: 'bi-puzzle', iconUrl: meta.iconUrl, name: meta.name || d.appId, sub, owned,
+            iconTone: 'dlc',
             file: owned ? (ownedApps[d.appId] || {}).downloadableFile : null,
             dataAttrs: {'data-dlc': d.appId},
             onName: () => openDlcModal(t, d, owned, (ownedApps[d.appId] || {}).downloadableFile),
@@ -458,7 +465,7 @@ function renderDlc(t) {
             details: meta.description || I18N.noDescription,
         }));
     });
-    return section('gameDlc', 'bi-puzzle', `${I18N.dlc} (${ownedIds.size} / ${dlc.length})`, list);
+    return section('gameDlc', 'bi-puzzle', `${I18N.dlc} (${ownedIds.size} / ${dlc.length})`, list, 'dlc');
 }
 
 /** A DLC's own card (the row's name opens it): the game's art beside the DLC's facts

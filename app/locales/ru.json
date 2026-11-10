@@ -1130,7 +1130,7 @@
  "files.pack_combine_note": "По одному файлу на игру, в папке основной игры. Ход виден в Задачах.",
  "files.pack_combine_confirm": "Объединить игры ({count})? Отдельные файлы будут удалены после проверки каждого объединённого.",
  "files.pack_queued": "Задач в очереди: {count}.",
- "files.pack_open_tasks": "Смотреть в Задачах",
+ "files.pack_open_tasks": "Смотрите в «Ожидание»",
  "files.pack_none_compress": "Сжимать больше нечего.",
  "files.pack_none_combine": "Ни у одной игры нет отдельных частей для объединения.",
  "files.pack_label_level": "Уровень сжатия",

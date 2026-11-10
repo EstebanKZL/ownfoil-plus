@@ -1130,7 +1130,7 @@
  "files.pack_combine_note": "每个游戏生成一个文件，放在本体游戏的文件夹中。进度可在任务中查看。",
  "files.pack_combine_confirm": "合并 {count} 个游戏？每个合并文件校验通过后，零散文件会被删除。",
  "files.pack_queued": "已排队 {count} 个任务。",
- "files.pack_open_tasks": "在任务中查看",
+ "files.pack_open_tasks": "去\"待处理\"查看",
  "files.pack_none_compress": "没有可压缩的内容了。",
  "files.pack_none_combine": "没有可以合并零散部分的游戏。",
  "files.pack_label_level": "压缩级别",

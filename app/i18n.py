@@ -1162,7 +1162,7 @@ TRANSLATIONS = {
     'files.pack_combine_note': {'en': "One file per game, in the base game's folder. The progress shows on Tasks.", 'es': 'Sale un archivo por juego, en la carpeta del juego base. El progreso se ve en Tareas.'},
     'files.pack_combine_confirm': {'en': 'Combine {count} games? Their loose files are deleted once each combined file is checked.', 'es': '¿Combinar {count} juegos? Sus archivos sueltos se borran cuando cada combinado esté comprobado.'},
     'files.pack_queued': {'en': '{count} tasks queued.', 'es': '{count} tareas en cola.'},
-    'files.pack_open_tasks': {'en': 'See them on Tasks', 'es': 'Seguilas en Tareas'},
+    'files.pack_open_tasks': {'en': 'See them on Pending', 'es': 'Seguilas en Pendientes'},
     'files.pack_none_compress': {'en': 'Nothing left to compress.', 'es': 'No queda nada por comprimir.'},
     'files.pack_none_combine': {'en': 'No game has loose parts to combine.', 'es': 'Ningún juego tiene partes sueltas para combinar.'},
     'files.pack_label_level': {'en': 'Compression level', 'es': 'Nivel de compresión'},

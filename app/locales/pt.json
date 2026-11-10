@@ -1130,7 +1130,7 @@
  "files.pack_combine_note": "Um arquivo por jogo, na pasta do jogo base. O progresso aparece em Tarefas.",
  "files.pack_combine_confirm": "Combinar {count} jogos? Os arquivos soltos são apagados quando cada combinado estiver verificado.",
  "files.pack_queued": "{count} tarefas na fila.",
- "files.pack_open_tasks": "Veja em Tarefas",
+ "files.pack_open_tasks": "Acompanhe em Pendentes",
  "files.pack_none_compress": "Não sobrou nada para comprimir.",
  "files.pack_none_combine": "Nenhum jogo tem partes soltas para combinar.",
  "files.pack_label_level": "Nível de compressão",

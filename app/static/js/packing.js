@@ -414,8 +414,10 @@ const Packing = (() => {
         const box = document.getElementById('packingNotice');
         if (!box) return;
         box.replaceChildren(document.createTextNode(text + ' '));
+        // Pending, right here: the follow-up link opens the tab that shows this very
+        // work with its live bars (asked for - it used to leave for the Tasks page).
         const link = make('a', null, T.openTasks);
-        link.href = '/admin/tasks';
+        link.href = '#pending';
         box.append(link);
         box.hidden = false;
     }

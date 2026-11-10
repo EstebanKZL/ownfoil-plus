@@ -1130,7 +1130,7 @@
  "files.pack_combine_note": "Un fichier par jeu, dans le dossier du jeu de base. La progression s'affiche dans Tâches.",
  "files.pack_combine_confirm": "Combiner {count} jeux ? Leurs fichiers séparés seront supprimés une fois chaque fichier combiné vérifié.",
  "files.pack_queued": "{count} tâches en file.",
- "files.pack_open_tasks": "Les voir dans Tâches",
+ "files.pack_open_tasks": "Suis-les dans En attente",
  "files.pack_none_compress": "Plus rien à compresser.",
  "files.pack_none_combine": "Aucun jeu n'a de parties séparées à combiner.",
  "files.pack_label_level": "Niveau de compression",

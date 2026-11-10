@@ -975,17 +975,17 @@ function renderListView(titles) {
 
         const latest = updateApps[0] || {};
         const latestVersion = latest.appVersion || 0;
-        // Both ways of naming it, like the game page: "3.0.0 · v1048576" - plain text,
-        // no colored pill (asked for: the green "up to date" badge goes).
+        // Both ways of naming it, like the game page: "3.0.0 · v1048576". The pill
+        // keeps its green/amber state (asked for); the icon beside it was the part
+        // that went.
         const versionText = latest.displayVersion
             ? `${latest.displayVersion} · v${latest.appVersion}` : `v${latest.appVersion}`;
         const versionLine = $('<p class="small mb-0 d-flex align-items-center gap-2"></p>');
         versionLine.append($('<strong></strong>').text(I18N.latestVersion));
-        versionLine.append($('<span></span>').text(versionText));
-        // The state mark says what it is (a hover told nothing before).
-        const stateTip = ownership.upToDate ? I18N.tileUpToDate : I18N.updateAvailable;
-        versionLine.append($('<i class="bi" role="img"></i>').attr({title: stateTip, 'aria-label': stateTip})
-            .addClass(ownership.upToDate ? 'bi-check-circle-fill text-success' : 'bi-arrow-down-circle text-warning'));
+        const versionBadge = $('<span class="badge rounded-pill"></span>')
+            .addClass(ownership.upToDate ? 'text-bg-success' : 'text-bg-warning')
+            .text(versionText);
+        versionLine.append(versionBadge);
         headerText.append(versionLine);
 
         headerRow.append(headerText);

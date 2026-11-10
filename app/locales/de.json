@@ -1130,7 +1130,7 @@
  "files.pack_combine_note": "Eine Datei pro Spiel, im Ordner des Basisspiels. Der Fortschritt steht unter Aufgaben.",
  "files.pack_combine_confirm": "{count} Spiele kombinieren? Ihre Einzeldateien werden gelöscht, sobald jede kombinierte Datei geprüft ist.",
  "files.pack_queued": "{count} Aufgaben in der Warteschlange.",
- "files.pack_open_tasks": "Unter Aufgaben ansehen",
+ "files.pack_open_tasks": "Verfolge sie unter Ausstehend",
  "files.pack_none_compress": "Nichts mehr zu komprimieren.",
  "files.pack_none_combine": "Kein Spiel hat Einzelteile zum Kombinieren.",
  "files.pack_label_level": "Kompressionsstufe",

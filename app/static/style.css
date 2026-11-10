@@ -3522,6 +3522,27 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     color: var(--op-firmware);
 }
 
+/* The update counterpart: "Latest version" wears the update's amber when the owned
+   one is behind it (the fixed type color, like every other update mark). */
+.game-fact--update {
+    border-color: rgba(var(--op-wait-rgb), .6);
+}
+
+.game-fact--update .game-fact__label,
+.game-fact--update .game-fact__value {
+    color: var(--op-wait);
+}
+
+/* A section's title icon, in the content type's fixed color (scoped inside the title
+   to sit above the title's own .bi rule). */
+.game-section__title .game-section__icon--update {
+    color: var(--op-wait);
+}
+
+.game-section__title .game-section__icon--dlc {
+    color: var(--op-dlc);
+}
+
 .game-fact__note {
     margin-top: .25rem;
     font-size: .78rem;

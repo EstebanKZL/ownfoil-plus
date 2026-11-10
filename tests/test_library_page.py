@@ -106,12 +106,13 @@ def test_the_console_filter_is_one_stadium_bar():
 def test_the_list_titles_state_their_mark_and_both_versions():
     js = _library_js()
     body = _function_body(js, "renderListView")
-    # No date after "Latest version" (asked for), the state mark explains itself on
-    # hover, the version reads both ways as plain text ("3.0.0 · v1048576") - the
-    # green "up to date" pill went (asked for).
-    assert "latestDate" not in body and "stateTip" in body and "aria-label" in body
+    # No date after "Latest version"; the pill keeps its green/amber state and reads
+    # both ways ("3.0.0 · v1048576") - the state ICON beside it was the part that
+    # went (asked for), not the pill.
+    assert "latestDate" not in body
     assert "latest.displayVersion" in body and "· v${latest.appVersion}" in body
-    assert "text-bg-success" not in body and "text-bg-warning" not in body
+    assert "text-bg-success" in body and "text-bg-warning" in body
+    assert "bi-check-circle-fill" not in body and "bi-arrow-down-circle" not in body
     # Every update row reads both names too, in the collapsible sections.
     assert "a.displayVersion ? `${a.displayVersion} · v${a.appVersion}`" in js
 

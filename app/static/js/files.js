@@ -801,7 +801,9 @@ async function loadTab(force) {
         return;
     }
     renderBody();
-    if (tab.rows && !force) return;
+    // Pending never serves cached rows: entering the tab shows what runs right now
+    // (asked for - a queued combine used to wait for a page reload to appear).
+    if (tab.rows && !force && tab.kind !== 'pending') return;
     try {
         tab.rows = await fetchRows(tab);
         if (tab.kind === 'groups') tab.rows.forEach(g => { if (!g.decided) tab.skipped.add(g.key); });
@@ -936,12 +938,18 @@ async function pollPending() {
     });
     const done = (before, after) => Object.keys(before).some(k => before[k].status === 'RUNNING' && !after[k]);
     const finished = done(pendingTasks, next) || done(pendingTitles, nextTitles);
+    // Anything new in flight (a compress queued elsewhere, a combine picked here) or
+    // gone: the list follows it, not just the finished ones - asked for, it used to
+    // sit stale until a page reload. Same-key sets mean nothing moved.
+    const sameKeys = (a, b) => Object.keys(a).length === Object.keys(b).length
+        && Object.keys(a).every(k => b[k]);
+    const changed = finished || !sameKeys(pendingTasks, next) || !sameKeys(pendingTitles, nextTitles);
     pendingTasks = next;
     pendingTitles = nextTitles;
     document.querySelectorAll('.files-progress[data-progress-id]').forEach(paintProgress);
-    // The finished files leave the list - asked again at most every 15 s: during a big
-    // scan a task ends every second, and the list is the page's heaviest request.
-    if (finished && current === 'pending' && Date.now() - pendingReloaded > 15000) {
+    // Asked again at most every 5 s: the list is the page's heaviest request, and a
+    // big scan ends a task every second.
+    if (changed && current === 'pending' && Date.now() - pendingReloaded > 5000) {
         pendingReloaded = Date.now();
         await loadTab(true);
         renderBody();

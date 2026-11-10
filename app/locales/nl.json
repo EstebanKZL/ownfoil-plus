@@ -1130,7 +1130,7 @@
  "files.pack_combine_note": "Eén bestand per game, in de map van de basisgame. De voortgang staat bij Taken.",
  "files.pack_combine_confirm": "{count} games combineren? Hun losse bestanden worden verwijderd zodra elk gecombineerd bestand gecontroleerd is.",
  "files.pack_queued": "{count} taken in de wachtrij.",
- "files.pack_open_tasks": "Bekijk ze bij Taken",
+ "files.pack_open_tasks": "Volg ze bij In behandeling",
  "files.pack_none_compress": "Niets meer te comprimeren.",
  "files.pack_none_combine": "Geen enkele game heeft losse delen om te combineren.",
  "files.pack_label_level": "Compressieniveau",

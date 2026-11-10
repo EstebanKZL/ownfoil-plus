@@ -378,3 +378,25 @@ def test_dates_read_the_same_way_whatever_shaped_they_come():
     DD/MM/YYYY every update and DLC row shows."""
     body = _function_body(_js("library-common.js"), "formatTitledbDate")
     assert r"/^(\d{4})-?(\d{2})-?(\d{2})$/" in body
+
+
+def test_sections_and_rows_wear_the_type_colors():
+    """The Updates and DLC sections - title icon and row glyphs alike - carry their
+    content type's fixed color, like every other view of the same thing."""
+    js = _js("game.js")
+    assert "section('gameUpdates', 'bi-arrow-up-circle', I18N.updates, content.append(list), 'update')" in js
+    assert "list, 'dlc')" in js
+    assert "iconTone: 'update'" in js and "iconTone: 'dlc'" in js
+    css = _read("app", "static", "style.css")
+    for cls, token in ((".game-section__title .game-section__icon--update", "--op-wait"),
+                       (".game-section__title .game-section__icon--dlc", "--op-dlc")):
+        assert token in re.search(rf"{re.escape(cls)} \{{([^}}]*)\}}", css).group(1), cls
+
+
+def test_latest_version_wears_the_update_amber_when_behind():
+    """The firmware fact turns violet when the console is too old; "Latest version"
+    turns the update's amber when the owned one is behind it."""
+    body = _function_body(_js("game.js"), "renderFacts")
+    assert "latest > installed ? 'game-fact--update'" in body
+    css = _read("app", "static", "style.css")
+    assert "--op-wait-rgb" in css[css.index(".game-fact--update"):]

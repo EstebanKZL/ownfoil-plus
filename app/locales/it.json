@@ -1130,7 +1130,7 @@
  "files.pack_combine_note": "Un file per gioco, nella cartella del gioco base. L’avanzamento si vede in Attività.",
  "files.pack_combine_confirm": "Combinare {count} giochi? I loro file separati vengono eliminati quando ogni file combinato è verificato.",
  "files.pack_queued": "{count} attività in coda.",
- "files.pack_open_tasks": "Vedile in Attività",
+ "files.pack_open_tasks": "Seguile in Attesa",
  "files.pack_none_compress": "Non resta nulla da comprimere.",
  "files.pack_none_combine": "Nessun gioco ha parti separate da combinare.",
  "files.pack_label_level": "Livello di compressione",
