@@ -1,7 +1,7 @@
-"""Phase 5, part B: detection and counts as Switch Library Manager Web reads them.
+"""Phase 5, part B: detection and counts.
 
 - A file whose contents can't be read (a missing master key, a damaged header) is still
-  identified by its name ([TitleID][vVersion]), as SLMW does, instead of staying
+  identified by its name ([TitleID][vVersion]), instead of staying
   unidentified.
 - A DLC counts as missing only when no version of it is in the library; one with a
   newer version is a pending update, counted apart: "66 updates: 50 games and 16 DLC".

@@ -1,5 +1,4 @@
-"""One pager for every paged list (static/js/pager.js), Switch Library Manager style -
-asked for: "Mostrando 1-24 de 42" on the left, the pages in the middle, "Por página" on
+"""One pager for every paged list (static/js/pager.js) - asked for: "Mostrando 1-24 de 42" on the left, the pages in the middle, "Por página" on
 the right, each page remembering its own choice in the browser."""
 import os
 import re

@@ -716,7 +716,7 @@ a.stat-tile:hover {
 }
 
 /* The console filter (Library): one stadium bar holding the options, the chosen one
-   filled - Switch Library Manager's segmented look on our tokens, in our own place.
+   filled - a segmented look on our tokens.
    Scoped here so every other .filter-pill row keeps its stand-alone pills; only the
    resting pills go transparent, the chosen one keeps its accent fill. */
 #libraryConsole {
@@ -2742,8 +2742,7 @@ a.stat-tile:hover {
     text-decoration: underline;
 }
 
-/* The file's size as a pill, the same shape the List view's rows wear (asked for:
- *  Switch Library Manager's look on our tokens). */
+/* The file's size as a pill, the same shape the List view's rows wear (asked for). */
 .game-row__size {
     padding: .1rem .6rem;
     border-radius: 1rem;
@@ -4511,7 +4510,7 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     }
 }
 
-/* The shared pager (pager.js), Switch Library Manager style: what is shown on the left,
+/* The shared pager (pager.js): what is shown on the left,
    the pages in the middle, "per page" on the right. On a phone the pages go first, the
    other two share the row under them. */
 .op-pager {

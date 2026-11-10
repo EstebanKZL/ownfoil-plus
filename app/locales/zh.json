@@ -614,7 +614,7 @@
  "organizer.move_companions_label": "一并移动 NFO、SFV 和 proof 文件",
  "organizer.move_companions_help": "与游戏同名的文件（game.nsp 旁边的 game.nfo）会随之改名；只剩下说明、校验和、图片和 Proof 文件夹的文件夹会将它们一并移走，从而变为空文件夹。如果目标位置已有同名文件，则保留在原处。",
  "organizer.clean_names_label": "清理名称（移除 ™、®、©、+、:、／）",
- "organizer.clean_names_help": "整理文件时从游戏名称中去除商标、注册商标和版权符号，以及“+”和冒号/斜杠（包括普通和全角形式），类似 Switch Library Manager 的清理名称选项。",
+ "organizer.clean_names_help": "整理文件时从游戏名称中去除商标、注册商标和版权符号，以及“+”和冒号/斜杠（包括普通和全角形式）。",
  "organizer.show_background_image_label": "在游戏库列表视图中显示游戏背景图",
  "organizer.show_background_image_help": "关闭后，游戏库页面列表视图中每行背后的游戏背景图将不再显示，左侧的封面图标仍会显示。仅影响该视图，不影响卡片网格或游戏详情弹窗。",
  "organizer.naming_language": "命名语言",

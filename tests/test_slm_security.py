@@ -1,4 +1,4 @@
-"""Security fixes carried over from Switch Library Manager Web 1.71-2.0.1: a library file
+"""Security fixes: a library file
 linking into the config folder is never served, an upload belongs to whoever started it,
 and a saved ntfy token is not handed to a new server."""
 import os

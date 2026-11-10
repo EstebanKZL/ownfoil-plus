@@ -1,4 +1,4 @@
-// One pager for every paged list, Switch Library Manager style (asked for): "Showing
+// One pager for every paged list (asked for): "Showing
 // 1-24 of 42" on the left, the pages in the middle, "Per page" on the right. Loaded in
 // <head> by base.html; its strings come from base.html's #pagerI18n JSON block. Each
 // page remembers its own "per page" in this browser (Pager.perPage / Pager.savePerPage).

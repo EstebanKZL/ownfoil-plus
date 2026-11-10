@@ -1233,7 +1233,7 @@ function showToast(text) {
     bootstrap.Toast.getOrCreateInstance(toast).show();
 }
 
-/** Synchronize, Switch Library Manager style: download the latest TitleDB and scan
+/** Synchronize: download the latest TitleDB and scan
  *  every library behind it. The button spins while the TitleDB task runs (a rebuilt
  *  one re-identifies the library on its own); the scan it chains shows up on Tasks and
  *  Pending as usual. */

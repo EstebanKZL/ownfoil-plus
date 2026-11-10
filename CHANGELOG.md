@@ -4,6 +4,15 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.57]
+
+- **The changelog tells our own work as our own.** Entries, comments and one help
+  text (*Clean names*, in every language) named another project as the model for a
+  change; what this fork takes from other projects is credited once, in NOTICE.md and
+  the README, and the changes stand on their own. NOTICE.md now also lists what the
+  last version took (the NUP checks, the pager's layout, the saga cards' cover strip
+  and Synchronize).
+
 ## [6.2.5.56]
 
 - **Game page, third round:**
@@ -24,10 +33,10 @@ see the upstream project for its own history.
   account* (a new `user.show_verification`, migration `a7b8c9d0e1f3`). Rendered on
   `<html data-verification>`, so every mark - game page, Files dialog, List view - hides
   at once.
-- **Sagas show every game**, Switch Library Manager style: every cover, a little bigger,
+- **Sagas show every game**: every cover, a little bigger,
   in as many rows as they take - no "+N", and nothing cut mid-card when the window
   narrows.
-- **One pager everywhere**, Switch Library Manager style: "Showing 1–24 of 42" on the
+- **One pager everywhere**: "Showing 1–24 of 42" on the
   left, the pages in the middle, "Per page" on the right, each page remembering its own
   choice in the browser - the Library (top and bottom, with the sizes that fill whole
   rows), Sagas, Files > All files, Compress and Combine, the users in Settings and Saves.
@@ -57,7 +66,7 @@ see the upstream project for its own history.
   decompressing) is added as the new one, identified and verified. With the originals
   deleted the record still follows the output, and is verified again instead of
   carrying the original's verdict.
-- **NUP files, as Switch Library Manager Web 2.0 reads them:**
+- **NUP files, read more carefully:**
   - **Metadata types counted from 0, second rule.** A build of the format's packer
     numbered them one below; a block with a type 0 was already read one up. A DLC's
     block has no NPDM to tell it: a record 0x0007 that isn't the 32 bytes of a build
@@ -95,7 +104,7 @@ see the upstream project for its own history.
   is behind it - the same treatment the firmware fact gives its violet. In the
   Library's List view the *Latest version* pill is back (green or amber, reading both
   version names); the state icon beside it was the part that went.
-- **Switch Library Manager touches, on our own shape:**
+- **Library and game page touches:**
   - **The console filter is one stadium bar**: the options sit inside it, the chosen
     one filled with the style's accent with its count as a nested pill - in the same
     place it always was.
@@ -120,7 +129,7 @@ see the upstream project for its own history.
   keeps to itself: one hue in steps (info blue toward the track color), never a
   content-type color, so NSP's blue doesn't read as "update" or NUP's as "DLC".
 - **Files:**
-  - **Synchronize** replaces the header's refresh icon, Switch Library Manager style: a
+  - **Synchronize** replaces the header's refresh icon: a
     labeled button that downloads the latest TitleDB and analyzes the library again (the
     scan runs behind the TitleDB task, so new files are identified against the freshest
     names), spinning while it works and toasting its outcome. A finished task leaves the

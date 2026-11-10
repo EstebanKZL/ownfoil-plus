@@ -894,8 +894,8 @@ TRANSLATIONS = {
         'en': 'A file named as the game (game.nfo next to game.nsp) takes its new name, and a folder left holding only notes, checksums, images and a Proof folder hands them over, so it is left empty. A name already taken where it would go stays where it is.',
         'es': 'Un archivo con el mismo nombre que el juego (juego.nfo junto a juego.nsp) toma su nombre nuevo, y una carpeta que queda solo con notas, checksums, imágenes y una carpeta Proof se los pasa, así queda vacía. Si el nombre ya existe en el destino, el archivo se queda donde está.'},
     'organizer.clean_names_label': {'en': 'Clean names (remove ™, ®, ©, +, :, ／)', 'es': 'Limpiar nombres (quitar ™, ®, ©, +, :, ／)'},
-    'organizer.clean_names_help': {'en': 'Strips trademark, registered and copyright symbols, plus "+" and colons/slashes (in either their normal or fullwidth form), from game names when organizing files, similar to Switch Library Manager\'s clean name option.',
-                                    'es': 'Quita los símbolos de marca registrada y copyright, además de "+" y dos puntos/barras (en su forma normal o de ancho completo), de los nombres de los juegos al organizar archivos, similar a la opción de limpieza de nombres de Switch Library Manager.'},
+    'organizer.clean_names_help': {'en': 'Strips trademark, registered and copyright symbols, plus "+" and colons/slashes (in either their normal or fullwidth form), from game names when organizing files.',
+                                    'es': 'Quita los símbolos de marca registrada y copyright, además de "+" y dos puntos/barras (en su forma normal o de ancho completo), de los nombres de los juegos al organizar archivos.'},
     'organizer.show_background_image_label': {'en': 'Show game background image in Library list view',
                                                'es': 'Mostrar imagen de fondo del juego en la vista de lista de la Biblioteca'},
     'organizer.show_background_image_help': {

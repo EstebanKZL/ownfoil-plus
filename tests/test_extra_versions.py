@@ -3,7 +3,7 @@
 blawar/titledb - what the TitleDB release is built from - goes weeks without changes, and
 then new updates go unseen. borntohonk/titledb's versions.json and 16BitWonder's
 nx-versions (with its changelog for the dates) add the versions they know; the release's
-own stay first. The same sources and checks as Switch Library Manager Web.
+own stay first.
 """
 import json
 import os

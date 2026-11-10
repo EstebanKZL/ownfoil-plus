@@ -152,7 +152,7 @@ def organize_file(file_obj, library_path, organizer_settings):
                     format_data["appName"] = alt_app_name
 
         # Optionally strip trademark/copyright symbols (™, ®, ©) from the names used
-        # in the organized path, mirroring Switch Library Manager's "clean name" option.
+        # in the organized path (the "clean names" option).
         if organizer_settings.get('clean_names', False):
             for key in ("titleName", "appName"):
                 if key in format_data:

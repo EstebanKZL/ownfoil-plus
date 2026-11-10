@@ -140,7 +140,7 @@ class Mutation:
 
     @described_mutation
     def sync_library(self, info: Info) -> Task:
-        """Synchronize the library in one go, Switch Library Manager style: download
+        """Synchronize the library in one go: download
         the latest TitleDB (a rebuilt one re-identifies the library on its own), then
         scan every configured root for files added or removed on disk. Returns the
         TitleDB task; the scan is chained behind it and appears on its own."""

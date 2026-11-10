@@ -614,7 +614,7 @@
  "organizer.move_companions_label": "Levar junto arquivos NFO, SFV e de prova",
  "organizer.move_companions_help": "Um arquivo com o nome do jogo (game.nfo ao lado de game.nsp) recebe o novo nome, e uma pasta que só tenha notas, checksums, imagens e uma pasta Proof os entrega, ficando vazia. Um nome já ocupado no destino fica onde está.",
  "organizer.clean_names_label": "Limpar nomes (remover ™, ®, ©, +, :, ／)",
- "organizer.clean_names_help": "Remove símbolos de marca comercial, registrada e copyright, além de \"+\" e dois-pontos/barras (na forma normal ou de largura total), dos nomes dos jogos ao organizar os arquivos, como a opção de nome limpo do Switch Library Manager.",
+ "organizer.clean_names_help": "Remove símbolos de marca comercial, registrada e copyright, além de \"+\" e dois-pontos/barras (na forma normal ou de largura total), dos nomes dos jogos ao organizar os arquivos.",
  "organizer.show_background_image_label": "Mostrar a imagem de fundo do jogo na visualização em lista da Biblioteca",
  "organizer.show_background_image_help": "Desativa a arte de fundo de cada jogo atrás da sua linha na visualização em lista da página Biblioteca - o ícone da capa à esquerda continua aparecendo. Afeta só essa visualização, não a grade de cards nem o popup de detalhes do jogo.",
  "organizer.naming_language": "Idioma dos nomes",
