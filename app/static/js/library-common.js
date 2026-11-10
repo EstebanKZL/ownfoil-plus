@@ -112,7 +112,7 @@ const VERIFICATION_BADGES = {
 function verificationBadge(status) {
     if (!status) return null;
     const [icon, cls, label] = VERIFICATION_BADGES[status] || VERIFICATION_BADGES.UNVERIFIED;
-    return $(`<i class="bi ${icon} ${cls}" data-bs-toggle="tooltip" data-bs-placement="top" title="${label}"></i>`);
+    return $(`<i class="bi ${icon} ${cls} verification-mark" data-bs-toggle="tooltip" data-bs-placement="top" title="${label}"></i>`);
 }
 
 /** A download icon-button, only ever built when the caller has already confirmed

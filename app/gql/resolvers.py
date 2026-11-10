@@ -214,6 +214,16 @@ def _local_media_urls(title_id: str, icon_url, banner_url, screenshots):
     return icon_url, banner_url, screenshots, icon_row, banner_row, screenshot_rows
 
 
+def _shown_text(text):
+    """A store text as shown: left out when written in another script than TitleDB's
+    language (a Japanese tagline in the Spanish file - see titledb/language.py)."""
+    if not text:
+        return text
+    from settings import get_settings
+    from titledb.language import foreign_text
+    return None if foreign_text(text, get_settings()['titles']['language']) else text
+
+
 def _build_title(row, *, with_apps: bool, with_files: bool) -> Title:
     # `m.get(col)` returns None for columns the resolver didn't project,
     # which lets `_title_cols` skip unselected columns without us crashing
@@ -238,8 +248,8 @@ def _build_title(row, *, with_apps: bool, with_files: bool) -> Title:
         banner_url=banner_url,
         icon_url=icon_url,
         front_box_art=m.get('front_box_art'),
-        description=m.get('description'),
-        intro=m.get('intro'),
+        description=_shown_text(m.get('description')),
+        intro=_shown_text(m.get('intro')),
         developer=m.get('developer'),
         publisher=m.get('publisher'),
         release_date=m.get('release_date'),

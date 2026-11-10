@@ -121,23 +121,23 @@
     </div>
 </div>
 
-{# One DLC, its own card: the game's art beside the DLC's facts and description
-   (the row's name opens it). #}
+{# One DLC, its own card: the art across the top, the DLC's name, facts and description
+   underneath (the row's name opens it). #}
 <div class="modal fade" id="dlcModal" tabindex="-1" aria-labelledby="dlcModalTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable dlc-modal__dialog">
         <div class="modal-content">
             <div class="modal-header">
                 <h2 class="modal-title h5" id="dlcModalTitle">{{ t('files.app_type_dlc') }}</h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ t('nav.close') }}"></button>
             </div>
-            <div class="modal-body d-flex gap-3">
+            <div class="modal-body">
                 <img id="dlcModalImg" class="dlc-modal__img" alt="">
-                <div class="flex-grow-1 min-w-0">
-                    <h3 class="h6 mb-2" id="dlcModalName"></h3>
-                    <span id="dlcModalBadge" class="d-inline-flex mb-2"></span>
-                    <dl class="dlc-modal__facts mb-2" id="dlcModalFacts"></dl>
-                    <p class="mb-0 small" id="dlcModalDesc"></p>
+                <div class="dlc-modal__head">
+                    <h3 class="h5 mb-0" id="dlcModalName"></h3>
+                    <span id="dlcModalBadge" class="d-inline-flex"></span>
                 </div>
+                <dl class="dlc-modal__facts" id="dlcModalFacts"></dl>
+                <p class="dlc-modal__desc mb-0" id="dlcModalDesc"></p>
             </div>
         </div>
     </div>

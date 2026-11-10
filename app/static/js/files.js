@@ -5,7 +5,9 @@
 // outside this map (Unverified, Modified, Signature ok/failed) never appears here -
 // a group with any such file never gets a recommendedKeepId in the first place.
 const DUPLICATE_RANK = {VALID: 3, REPACK: 2, CORRUPT: 1};
-const PAGE_SIZE = 100;
+// Rows a page of All files, remembered per browser.
+const FILE_SIZES = [50, 100, 200];
+let pageSize = Pager.perPage('files', FILE_SIZES, 100);
 const BROKEN = ['SIGNATURE_FAILED', 'MODIFIED', 'CORRUPT'];
 // Every library format can be verified, so UNVERIFIED always means not checked yet.
 const VERIFICATION_ISSUES = [...BROKEN, 'UNVERIFIED'];
@@ -290,9 +292,7 @@ async function checkWatched() {
         watched.delete(id);
     });
     if (ids.length === watched.size) return;
-    TABS.duplicates.rows = null;
-    TABS.outdated.rows = null;
-    if (current !== 'duplicates' && current !== 'outdated') TABS[current].rows = null;
+    markStale(current);
     loadStats();
     await loadTab(true);
     if (drawerId) openDrawer({id: drawerId});
@@ -311,8 +311,7 @@ async function deleteOneCopy(file) {
     try {
         await gql('mutation ($id: ID!) { deleteFileRecord(fileId: $id) }', {id: file.id}, true);
         notice('');
-        TABS.duplicates.rows = null;
-        TABS.outdated.rows = null;
+        markStale(current);
         loadStats();
         return true;
     } catch (e) { notice(e.message); return false; }
@@ -325,8 +324,7 @@ async function cleanOneFile(file) {
     try {
         await gql('mutation ($id: ID!) { cleanFileRecord(fileId: $id) }', {id: file.id}, true);
         notice('');
-        TABS.duplicates.rows = null;
-        TABS.outdated.rows = null;
+        markStale(current);
         loadStats();
         return true;
     } catch (e) { notice(e.message); return false; }
@@ -463,6 +461,7 @@ async function runRemoval() {
     }
     notice(failed ? I18N.bulkDeleteFailedTemplate.replace('{count}', failed) : '');
     tab.rows = null;
+    markStale(current);
     loadStats();
     loadTab(true);
 }
@@ -658,16 +657,6 @@ function loadStats() {
         groupStats.pending = d.pendingFiles.total;
         paintTiles();
     }).catch(() => {});
-    // Pending moves as tasks come and go elsewhere too (a scan from Synchronize, a
-    // combine queued in another view): keep the tile honest without a page reload.
-    setInterval(() => {
-        gql('{ pendingFiles { total } }').then(d => {
-            if (d.pendingFiles && d.pendingFiles.total !== groupStats.pending) {
-                groupStats.pending = d.pendingFiles.total;
-                paintTiles();
-            }
-        }).catch(() => {});
-    }, 12000);
     ['compress', 'combine'].forEach(kind => Packing.load(kind, true).then(() => {
         paintTiles();
         if (current === kind) Packing.render(kind);
@@ -777,10 +766,10 @@ async function fetchRows(tab) {
         tab.total = d.pendingFiles.total;
         return groupPendingByGame(d.pendingFiles.items.map(p => ({...p.file, _stages: p.stages})));
     }
-    const d = await gql(`query ($filter: FileFilter, $orderBy: OrderBy, $page: Int!) {
-        files(filter: $filter, orderBy: $orderBy, page: $page, pageSize: ${PAGE_SIZE}) {
+    const d = await gql(`query ($filter: FileFilter, $orderBy: OrderBy, $page: Int!, $pageSize: Int!) {
+        files(filter: $filter, orderBy: $orderBy, page: $page, pageSize: $pageSize) {
             total items { ...F } } } ${FILE_FIELDS}`,
-        {filter: serverFilter(tab), orderBy: tab.order, page: tab.page});
+        {filter: serverFilter(tab), orderBy: tab.order, page: tab.page, pageSize});
     tab.total = d.files.total;
     return d.files.items;
 }
@@ -796,7 +785,11 @@ async function loadTab(force) {
     if (tab.kind === 'packing') {
         const kind = current;
         renderBody();
-        try { await Packing.load(kind, force); notice(''); } catch (e) { notice(e.message); }
+        try {
+            await Packing.load(kind, force || packingStale[kind]);
+            packingStale[kind] = false;
+            notice('');
+        } catch (e) { notice(e.message); }
         if (current === kind) { Packing.render(kind); paintTiles(); }
         return;
     }
@@ -804,6 +797,7 @@ async function loadTab(force) {
     // Pending never serves cached rows: entering the tab shows what runs right now
     // (asked for - a queued combine used to wait for a page reload to appear).
     if (tab.rows && !force && tab.kind !== 'pending') return;
+    lastLoaded = Date.now();
     try {
         tab.rows = await fetchRows(tab);
         if (tab.kind === 'groups') tab.rows.forEach(g => { if (!g.decided) tab.skipped.add(g.key); });
@@ -1029,7 +1023,7 @@ function renderPager() {
     const tab = TABS[current];
     let text = '';
     if (tab.rows !== null && tab.kind === 'files' && tab.total) {
-        const first = (tab.page - 1) * PAGE_SIZE + 1;
+        const first = (tab.page - 1) * pageSize + 1;
         text = I18N.pagerRangeTemplate.replace('{first}', first.toLocaleString())
             .replace('{last}', (first + tab.rows.length - 1).toLocaleString())
             .replace('{total}', tab.total.toLocaleString());
@@ -1044,7 +1038,24 @@ function renderPager() {
     $('.files-count').text(text);
     const paged = tab.kind === 'files' && tab.rows !== null;
     $('.files-prev').toggleClass('d-none', !paged).prop('disabled', tab.page <= 1);
-    $('.files-next').toggleClass('d-none', !paged).prop('disabled', tab.page * PAGE_SIZE >= (tab.total || 0));
+    $('.files-next').toggleClass('d-none', !paged).prop('disabled', tab.page * pageSize >= (tab.total || 0));
+    // Below the list, the shared pager (the toolbar keeps its short arrows); the bottom
+    // row keeps the duplicates' delete button where that applies.
+    Pager.render(document.getElementById('filesPages'), {
+        total: paged ? tab.total : 0, page: tab.page, perPage: pageSize, sizes: FILE_SIZES,
+        onPage: p => {
+            tab.page = p;
+            document.querySelector('.files-toolbar').scrollIntoView({block: 'start'});
+            loadTab(true);
+        },
+        onPerPage: n => {
+            pageSize = n;
+            Pager.savePerPage('files', n);
+            tab.page = 1;
+            loadTab(true);
+        },
+    });
+    $('#filesPagerBottom').toggleClass('d-none', paged);
     const removals = removalSet();
     $('.files-delete').toggleClass('d-none', tab.kind !== 'groups').prop('disabled', !removals.size).find('span')
         .text(removals.size ? I18N.bulkDeleteButtonTemplate.replace('{count}', removals.size.toLocaleString()) : I18N.bulkDeleteButtonEmpty);
@@ -1142,6 +1153,48 @@ function renderDrawer(f) {
     paintBusy();
 }
 
+// --- keeping the tabs fresh ---
+//
+// Each tab keeps its rows until the files change: entering it again shows them at once.
+// The server publishes a signature of the files table on the realtime feed
+// (files_events.py); when it moves, the tiles and the open tab follow and every other
+// tab is asked again the next time it is entered - only then.
+
+let filesRevision = null;
+let lastLoaded = 0;
+const packingStale = {compress: false, combine: false};
+
+/** Every tab but `except` asks its rows again when next entered. */
+function markStale(except) {
+    Object.entries(TABS).forEach(([key, tab]) => {
+        if (key === except) return;
+        if (tab.kind === 'packing') packingStale[key] = true;
+        else tab.rows = null;
+    });
+}
+
+/** The files changed somewhere (a task, another page, a scan): the tiles and the open
+ *  tab follow, the rest wait to be entered. A reload this page just made covers it. */
+function filesChanged() {
+    markStale(current);
+    loadStats();
+    if (Date.now() - lastLoaded < 4000) return;
+    const tab = TABS[current];
+    if (tab.kind === 'pending') return;      // Pending follows its own tasks, live
+    if (tab.kind === 'packing') packingStale[current] = true;
+    loadTab(true);
+}
+
+const live = new Realtime(['files']);
+live.on('files', (type, data) => {
+    const item = Array.isArray(data) ? data[0] : data;
+    const revision = item && item.revision;
+    if (!revision || revision === filesRevision) return;
+    const first = filesRevision === null;
+    filesRevision = revision;
+    if (!first) filesChanged();
+});
+
 // --- views ---
 
 function showTab() {
@@ -1226,6 +1279,17 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && drawerId) 
 window.addEventListener('hashchange', showTab);
 
 loadStats();
+// Pending moves as tasks come and go elsewhere too (a scan from Synchronize, a combine
+// queued in another view): keep its tile honest without a page reload.
+setInterval(() => {
+    gql('{ pendingFiles { total } }').then(d => {
+        if (d.pendingFiles && d.pendingFiles.total !== groupStats.pending) {
+            groupStats.pending = d.pendingFiles.total;
+            paintTiles();
+        }
+    }).catch(() => {});
+}, 12000);
+live.start();
 // ?q= from the global search (Ctrl+K): open the All tab already filtered by it.
 const urlSearch = new URLSearchParams(location.search).get('q');
 if (urlSearch) TABS.all.search = urlSearch;

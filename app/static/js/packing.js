@@ -215,18 +215,10 @@ const Packing = (() => {
 
     function toolbar(kind, shown) {
         const s = state[kind];
-        // The search leads, flush left like every other card's toolbar; "Select all"
-        // rides on its own row underneath (asked for), so the row reads the same as
-        // the flat list's.
+        // The search leads, flush left like every other card's toolbar, with the filter
+        // chips after it; what is chosen is told by the action bar at the bottom.
         const wrap = make('div', 'packing-toolbar-wrap');
         const bar = make('div', 'packing-toolbar');
-        const keys = kind === 'compress' ? shown.flatMap(g => g.files.map(f => f.id)) : shown.map(rowKey);
-        const all = keys.length > 0 && keys.every(k => s.picked.has(k));
-        const selectAll = make('label', 'packing-select-all admin-write');
-        selectAll.append(checkbox(all, on => {
-            keys.forEach(k => on ? s.picked.add(k) : s.picked.delete(k));
-            render(kind);
-        }, T.selectAll), document.createTextNode(T.selectAll));
         const search = make('div', 'packing-search');
         search.append(make('i', 'bi bi-search'));
         const input = make('input', 'form-control form-control-sm');
@@ -239,11 +231,25 @@ const Packing = (() => {
             input._timer = setTimeout(() => { s.search = input.value.trim(); render(kind); focusSearch(); }, 250);
         });
         search.append(input);
-        bar.append(search, filterBar(kind), make('span', 'packing-summary ms-auto', summary(kind)));
-        const under = make('div', 'packing-toolbar packing-toolbar--under');
-        under.append(selectAll);
-        wrap.append(bar, under);
+        bar.append(search, filterBar(kind));
+        wrap.append(bar);
         return wrap;
+    }
+
+    /** The row over the list: "Select all" at its left, the pages at its right (asked
+     *  for: one row, not a row of its own under the search) - there with one page too. */
+    function listHead(kind, shown) {
+        const s = state[kind];
+        const keys = kind === 'compress' ? shown.flatMap(g => g.files.map(f => f.id)) : shown.map(rowKey);
+        const all = keys.length > 0 && keys.every(k => s.picked.has(k));
+        const selectAll = make('label', 'packing-select-all admin-write');
+        selectAll.append(checkbox(all, on => {
+            keys.forEach(k => on ? s.picked.add(k) : s.picked.delete(k));
+            render(kind);
+        }, T.selectAll), document.createTextNode(T.selectAll));
+        const head = make('div', 'packing-listhead');
+        head.append(selectAll, pager(kind, shown.length));
+        return head;
     }
 
     function focusSearch() {
@@ -372,9 +378,14 @@ const Packing = (() => {
         return b;
     }
 
+    /** The action bar, held at the bottom while the list scrolls: what is chosen (the
+     *  count and its size) and what the actions do, then the buttons. */
     function footer(kind) {
-        const bar = make('div', 'surface packing-footer');
-        bar.append(make('span', 'packing-note', kind === 'compress' ? T.compressNote : T.combineNote));
+        const bar = make('div', 'packing-footer');
+        const text = make('div', 'packing-footer__text');
+        text.append(make('div', 'packing-footer__summary', summary(kind)),
+                    make('div', 'packing-footer__note', kind === 'compress' ? T.compressNote : T.combineNote));
+        bar.append(text);
         const buttons = make('div', 'packing-actions');
         const items = picked(kind);
         if (kind === 'compress') {
@@ -429,16 +440,19 @@ const Packing = (() => {
         box.hidden = false;
     }
 
-    const PAGE_GAMES = 100;
+    // Games a page, remembered per browser (one choice for Compress and Combine).
+    const PACK_SIZES = [25, 50, 100, 200];
+    let pageGames = Pager.perPage('packing', PACK_SIZES, 100);
 
-    /** A page of at most PAGE_GAMES games: a long library rendered every game card at once. */
+    /** The short pager above the list (beside Select all): the range and two arrows. A
+     *  page of at most pageGames games: a long library rendered every game card at once. */
     function pager(kind, total) {
         const s = state[kind];
-        const pages = Math.ceil(total / PAGE_GAMES);
+        const pages = Math.ceil(total / pageGames);
         const bar = make('div', 'packing-pager');
         if (pages <= 1) return bar;
-        const first = s.page * PAGE_GAMES + 1;
-        const last = Math.min(total, first + PAGE_GAMES - 1);
+        const first = s.page * pageGames + 1;
+        const last = Math.min(total, first + pageGames - 1);
         const step = (delta, glyph, label) => {
             const b = make('button', 'icon-btn');
             b.type = 'button';
@@ -460,6 +474,27 @@ const Packing = (() => {
         return bar;
     }
 
+    /** The shared pager below the list (pager.js): what is shown, the pages, per page. */
+    function pagesBar(kind, total) {
+        const s = state[kind];
+        const bar = make('div', 'op-pager');
+        Pager.render(bar, {
+            total, page: s.page + 1, perPage: pageGames, sizes: PACK_SIZES,
+            onPage: p => {
+                s.page = p - 1;
+                render(kind);
+                document.getElementById('packingPanel').scrollIntoView({block: 'start'});
+            },
+            onPerPage: n => {
+                pageGames = n;
+                Pager.savePerPage('packing', n);
+                s.page = 0;
+                render(kind);
+            },
+        });
+        return bar;
+    }
+
     function render(kind) {
         const panel = document.getElementById('packingPanel');
         const s = state[kind];
@@ -477,13 +512,13 @@ const Packing = (() => {
             // Another search or filter starts again from the first page.
             const view = JSON.stringify([s.search, s.show, s.format]);
             if (view !== s.view) { s.view = view; s.page = 0; }
-            s.page = Math.max(0, Math.min(s.page, Math.ceil(shown.length / PAGE_GAMES) - 1));
-            const page = shown.slice(s.page * PAGE_GAMES, (s.page + 1) * PAGE_GAMES);
-            nodes.push(toolbar(kind, shown), pager(kind, shown.length));
+            s.page = Math.max(0, Math.min(s.page, Math.ceil(shown.length / pageGames) - 1));
+            const page = shown.slice(s.page * pageGames, (s.page + 1) * pageGames);
+            nodes.push(toolbar(kind, shown), listHead(kind, shown));
             if (!shown.length) nodes.push(make('p', 'text-secondary', I18N.emptyFiltered));
             const list = make('div', 'packing-games');
             page.forEach(g => list.append(kind === 'compress' ? compressGame(g) : combineGame(g)));
-            nodes.push(list, pager(kind, shown.length), footer(kind));
+            nodes.push(list, pagesBar(kind, shown.length), footer(kind));
         }
         panel.replaceChildren(...nodes);
         if (typeof fillTitleIcons === 'function') fillTitleIcons(panel);

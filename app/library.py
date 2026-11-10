@@ -458,6 +458,16 @@ def notify_new_apps_available(known_apps):
         notifications.notify(notifications.EVENT_UPDATE_AVAILABLE, notifications.app_label(
             title_id if app_type == APP_TYPE_UPD else app_id, app_type, app_version), title_id=title_id)
 
+def _install_files(app_data):
+    """The app's row and its files that install on a console - not a NUP's. A NUP is
+    for emulators: its update never makes an update NSP/XCI obsolete, nor the other way
+    round, and it is never deleted as an old update."""
+    app_obj = get_app_by_id_and_version(app_data['app_id'], app_data['app_version'])
+    if not app_obj:
+        return None, []
+    return app_obj, [f for f in app_obj.files if (f.extension or '').lower() != 'nup']
+
+
 def remove_outdated_update_files():
     logger.info("Starting removal of outdated update files...")
     try:
@@ -466,8 +476,9 @@ def remove_outdated_update_files():
         for title in titles:
             title_apps = get_all_title_apps(title.title_id)
             
-            # Filter for owned update apps
-            owned_update_apps = [app for app in title_apps if app.get('app_type') == APP_TYPE_UPD and app.get('owned')]
+            # Owned update apps held by a file that installs (a NUP's update does not count)
+            owned_update_apps = [app for app in title_apps if app.get('app_type') == APP_TYPE_UPD and app.get('owned')
+                                 and _install_files(app)[1]]
             
             # If there's only one or no owned update apps, there's no "greater version available" to compare against.
             if len(owned_update_apps) <= 1:
@@ -487,13 +498,14 @@ def remove_outdated_update_files():
                     )
                     
                     if has_greater_owned_version:
-                        # Get the actual App object from the database
-                        app_obj = get_app_by_id_and_version(app_data['app_id'], app_data['app_version'])
+                        # The App row and its files that install (a NUP is never deleted
+                        # as an old update); a new list, as the collection changes below
+                        app_obj, install_files = _install_files(app_data)
                         
                         if app_obj:
                             # Get files associated with this specific app version
                             # Create a list to iterate over as the original collection might change during deletion
-                            files_to_process = list(app_obj.files) 
+                            files_to_process = install_files
                             for file_obj in files_to_process:
                                 # Check if file meets criteria: identified, not multicontent
                                 if file_obj.identified and not file_obj.multicontent:
@@ -534,29 +546,30 @@ def outdated_update_groups():
     groups = []
     for title in get_all_titles():
         title_apps = get_all_title_apps(title.title_id)
-        owned_update_apps = [a for a in title_apps if a.get('app_type') == APP_TYPE_UPD and a.get('owned')]
-        if len(owned_update_apps) <= 1:
+        # Only versions held by a file that installs compare: an update in a NUP (for
+        # emulators) never makes an update NSP obsolete.
+        held = {}
+        for a in title_apps:
+            if a.get('app_type') == APP_TYPE_UPD and a.get('owned'):
+                app_obj, files = _install_files(a)
+                if files:
+                    held[int(a['app_version'])] = (a, app_obj, files)
+        if len(held) <= 1:
             continue
 
-        newest = max(owned_update_apps, key=lambda a: int(a['app_version']))
-        newest_app_obj = get_app_by_id_and_version(newest['app_id'], newest['app_version'])
-        if not newest_app_obj or not newest_app_obj.files:
-            continue
+        newest_version = max(held)
+        _, newest_app_obj, keep_files = held[newest_version]
 
         remove_entries = []  # (version_str, file)
-        for app_data in owned_update_apps:
-            if int(app_data['app_version']) >= int(newest['app_version']):
+        for version, (app_data, _, files) in held.items():
+            if version >= newest_version:
                 continue
-            app_obj = get_app_by_id_and_version(app_data['app_id'], app_data['app_version'])
-            if not app_obj:
-                continue
-            remove_entries.extend((app_data['app_version'], f) for f in app_obj.files
-                                  if f.identified and not f.multicontent
-                                  and (f.extension or '').lower() != 'nup')
+            remove_entries.extend((app_data['app_version'], f) for f in files
+                                  if f.identified and not f.multicontent)
 
         if not remove_entries:
             continue
-        groups.append((newest_app_obj, list(newest_app_obj.files), remove_entries))
+        groups.append((newest_app_obj, keep_files, remove_entries))
     return groups
 
 # --- Duplicate file resolution -------------------------------------------------------
@@ -815,15 +828,17 @@ def update_title_flags(title_id):
         have_base = len(owned_base_apps) > 0
 
         available_update_apps = [a for a in title_apps if a['app_type'] == APP_TYPE_UPD]
-        owned_update_apps = [a for a in available_update_apps if a['owned']]
+        # A game rebuilt with its update in it (hacBrewPackLZ, some NUPs) carries the
+        # update's version as its own: an owned game of that version is up to date too.
+        owned_versions = [int(a['app_version']) for a in title_apps
+                          if a['owned'] and a['app_type'] in (APP_TYPE_UPD, APP_TYPE_BASE)]
         if not available_update_apps:
             up_to_date = True
-        elif not owned_update_apps:
+        elif not owned_versions:
             up_to_date = False
         else:
             highest_available = max(int(a['app_version']) for a in available_update_apps)
-            highest_owned = max(int(a['app_version']) for a in owned_update_apps)
-            up_to_date = highest_owned >= highest_available
+            up_to_date = max(owned_versions) >= highest_available
 
         cursor.execute(
             "SELECT app_id, app_version, owned FROM apps WHERE title_id = ? AND app_type = ?",

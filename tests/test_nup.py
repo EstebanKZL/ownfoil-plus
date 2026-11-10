@@ -18,13 +18,15 @@ def _tlv(kind, value):
     return struct.pack('<HHI', kind, 0, len(value)) + value
 
 
-def build_nup(path, corrupt_data=False, packages=None):
+def build_nup(path, corrupt_data=False, packages=None, metas=None, file_names=None, dir_children=None):
     """A small, valid NUP: a game (raw file), its update stored with the program id
-    (zstd file) and one DLC, each a root folder with one file."""
+    (zstd file) and one DLC, each a root folder with one file. `metas` replaces the three
+    packages' metadata blocks, `file_names` the three files' names and `dir_children` the
+    (first child, count) of each folder - for the damaged and hostile cases."""
     payloads = [b'game exefs main' * 10, b'update romfs data' * 50, b'dlc romfs' * 7]
     codecs = [0, 1, 0]
     stored = [p if c == 0 else zstandard.ZstdCompressor().compress(p) for p, c in zip(payloads, codecs)]
-    metas = [
+    metas = metas or [
         _tlv(0x0005, b'Test Game [0100ABCD12340000][v0]') + _tlv(0x0006, b'Tester') + _tlv(0x0004, b'1.0.0'),
         _tlv(0x0005, b'Test Game') + _tlv(0x0004, b'1.2.0'),
         b'',
@@ -33,7 +35,7 @@ def build_nup(path, corrupt_data=False, packages=None):
 
     names = b''
     name_refs = []
-    for n in [b'game', b'update', b'dlc', b'main', b'data.bin', b'dlc.bin']:
+    for n in [b'game', b'update', b'dlc'] + (file_names or [b'main', b'data.bin', b'dlc.bin']):
         name_refs.append((len(names), len(n)))
         names += n
 
@@ -65,7 +67,8 @@ def build_nup(path, corrupt_data=False, packages=None):
         struct.pack_into('<QI', toc, o + 0x20, meta_offsets[i] if metas[i] else 0, len(metas[i]))
     for i in range(n_dir):
         o = 0x30 + n_pkg * 0x40 + i * 0x18
-        struct.pack_into('<IIII', toc, o, name_refs[i][0], name_refs[i][1], i, 1)
+        first, count = (dir_children or [(0, 1), (1, 1), (2, 1)])[i]
+        struct.pack_into('<IIII', toc, o, name_refs[i][0], name_refs[i][1], first, count)
     for i in range(n_file):
         o = 0x30 + n_pkg * 0x40 + n_dir * 0x18 + i * 0x50
         struct.pack_into('<IIQQQ', toc, o, name_refs[3 + i][0], name_refs[3 + i][1],
@@ -192,7 +195,10 @@ def test_a_nup_is_never_a_duplicate_of_an_nsp():
     import inspect
     import library
     assert "'nup'" in inspect.getsource(library.duplicate_file_groups)
-    assert "'nup'" in inspect.getsource(library.outdated_update_groups)
+    # Old updates: only files that install compare (test_nup_slmw204.py checks it runs).
+    assert "'nup'" in inspect.getsource(library._install_files)
+    assert "_install_files" in inspect.getsource(library.outdated_update_groups)
+    assert "_install_files" in inspect.getsource(library.remove_outdated_update_files)
 
 
 def test_nup_files_can_be_uploaded():

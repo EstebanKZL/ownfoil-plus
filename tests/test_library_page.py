@@ -437,12 +437,13 @@ def test_the_search_lasts_while_on_the_page_and_list_updates_have_no_date():
 
 def test_sagas_go_by_pages_of_24_and_complete_ones_are_gold():
     js = _read("app", "static", "js", "sagas.js")
-    assert "const SAGAS_PER_PAGE = 24;" in js and "card.classList.toggle('is-complete', complete);" in js
+    assert "Pager.perPage('sagas', SAGA_SIZES, 24)" in js and "card.classList.toggle('is-complete', complete);" in js
     assert "bi-trophy-fill" in js
     css = _read("app", "static", "style.css")
     # Gold at rest, trophy and count always gold - but the frame yields to the hover
     # marking like any other card (asked for after pinning it by mistake).
     assert re.search(r"\.saga-card\.is-complete \{[^}]*--op-fav-rgb", css)
     assert re.search(r"\.saga-card\.is-complete:hover \{[^}]*--op-nav-rgb", css)
-    # 1, 2 or 3 columns: each divides 24, so only the last page has a short row.
+    # 1, 2 or 3 columns: each divides every size offered (12, 24, 48, 96), so only the
+    # last page has a short row.
     assert "repeat(3, minmax(0, 1fr))" in css[css.index(".saga-grid {"):]

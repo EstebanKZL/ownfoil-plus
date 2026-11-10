@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="{{ current_language() }}" data-bs-theme="dark" data-style="{{ default_style|default('joycon') }}"{% if is_collaborator %} data-readonly="true"{% endif %}>
+<html lang="{{ current_language() }}" data-bs-theme="dark" data-style="{{ default_style|default('joycon') }}" data-verification="{{ 'on' if show_verification|default(true) else 'off' }}"{% if is_collaborator %} data-readonly="true"{% endif %}>
 
 <head>
     <meta charset="utf-8">
@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}">
     <script src="{{ url_for('static', filename='vendor/jquery/jquery-3.6.0.min.js') }}"></script>
     <script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/pager.js') }}"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}">
@@ -31,6 +32,9 @@
 </head>
 
 <body>
+    {# The shared pager's strings (static/js/pager.js). #}
+    <script type="application/json" id="pagerI18n">{{ {'showing': t('pager.showing'), 'perPage': t('pager.per_page'),
+        'previous': t('common.previous'), 'next': t('common.next'), 'pages': t('pager.pages')} | tojson }}</script>
     {% block content %}
     {% endblock %}
     <script src="{{ url_for('static', filename='js/pwa.js') }}"></script>

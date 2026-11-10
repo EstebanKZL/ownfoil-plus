@@ -117,7 +117,6 @@
  "users.search_placeholder": "Cerca utenti per nome o email",
  "users.count": "{n} utenti",
  "users.no_match": "Nessun utente corrisponde alla ricerca.",
- "users.page": "Pagina {page} di {pages}",
  "users.perm_yes": "Sì",
  "users.perm_no": "No",
  "sections.registration": "Registrazione utenti",
@@ -1188,5 +1187,16 @@
  "files.pending_stage_decompress": "Decomprimere",
  "files.pending_stage_combine": "Combinare",
  "files.pending_stage_split": "Separare",
- "tasks.queue_more": "… e altri {n} in coda dietro."
+ "tasks.queue_more": "… e altri {n} in coda dietro.",
+ "organizer.show_verification_label": "Mostra i segni di verifica (valido, repack, corrotto)",
+ "organizer.show_verification_help": "L'icona accanto a ogni file nella pagina del gioco e nella vista elenco della Libreria. Ogni utente può scegliere diversamente in Il mio account.",
+ "account.verification_label": "Segni di verifica (valido, repack, corrotto)",
+ "account.verification_default_on": "Come il server (mostrati)",
+ "account.verification_default_off": "Come il server (nascosti)",
+ "account.verification_on": "Mostrarli",
+ "account.verification_off": "Nasconderli",
+ "pager.showing": "Mostrati {first}–{last} di {total}",
+ "pager.per_page": "Per pagina",
+ "pager.pages": "Pagine",
+ "saves.newest": "Più recente"
 }

@@ -117,7 +117,6 @@
  "users.search_placeholder": "Поиск пользователей по имени или email",
  "users.count": "Пользователей: {n}",
  "users.no_match": "Ни один пользователь не соответствует запросу.",
- "users.page": "Страница {page} из {pages}",
  "users.perm_yes": "Да",
  "users.perm_no": "Нет",
  "sections.registration": "Регистрация пользователей",
@@ -1188,5 +1187,16 @@
  "files.pending_stage_decompress": "Распаковать",
  "files.pending_stage_combine": "Объединить",
  "files.pending_stage_split": "Разделить",
- "tasks.queue_more": "… и ещё {n} в очереди за ними."
+ "tasks.queue_more": "… и ещё {n} в очереди за ними.",
+ "organizer.show_verification_label": "Показывать отметки проверки (целый, репак, повреждён)",
+ "organizer.show_verification_help": "Значок рядом с каждым файлом на странице игры и в режиме списка библиотеки. Каждый пользователь может выбрать иначе в разделе «Мой аккаунт».",
+ "account.verification_label": "Отметки проверки (целый, репак, повреждён)",
+ "account.verification_default_on": "Как на сервере (показываются)",
+ "account.verification_default_off": "Как на сервере (скрыты)",
+ "account.verification_on": "Показывать",
+ "account.verification_off": "Скрывать",
+ "pager.showing": "Показано {first}–{last} из {total}",
+ "pager.per_page": "На странице",
+ "pager.pages": "Страницы",
+ "saves.newest": "Последняя"
 }

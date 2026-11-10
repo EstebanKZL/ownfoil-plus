@@ -117,7 +117,6 @@
  "users.search_placeholder": "名前またはメールアドレスでユーザーを検索",
  "users.count": "{n} 人のユーザー",
  "users.no_match": "検索に一致するユーザーがいません。",
- "users.page": "{page} / {pages} ページ",
  "users.perm_yes": "はい",
  "users.perm_no": "いいえ",
  "sections.registration": "ユーザー登録",
@@ -1188,5 +1187,16 @@
  "files.pending_stage_decompress": "展開",
  "files.pending_stage_combine": "結合",
  "files.pending_stage_split": "分割",
- "tasks.queue_more": "… さらに {n} 件が後に待機中。"
+ "tasks.queue_more": "… さらに {n} 件が後に待機中。",
+ "organizer.show_verification_label": "検証マークを表示する（正常・リパック・破損）",
+ "organizer.show_verification_help": "ゲームページとライブラリのリスト表示で、各ファイルの横に出るアイコンです。ユーザーごとにマイアカウントで変更できます。",
+ "account.verification_label": "検証マーク（正常・リパック・破損）",
+ "account.verification_default_on": "サーバーに合わせる（表示）",
+ "account.verification_default_off": "サーバーに合わせる（非表示）",
+ "account.verification_on": "表示する",
+ "account.verification_off": "表示しない",
+ "pager.showing": "{total} 件中 {first}–{last} 件を表示",
+ "pager.per_page": "1ページの件数",
+ "pager.pages": "ページ",
+ "saves.newest": "最新"
 }

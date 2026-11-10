@@ -118,13 +118,7 @@
                         </tbody>
                     </table>
                 </div>
-                <nav class="users-pager" id="userPager" aria-label="{{ t('auth.col_user') }}" hidden>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="userPrev">
-                        <i class="bi bi-chevron-left" aria-hidden="true"></i> {{ t('common.previous') }}</button>
-                    <span class="small text-secondary" id="userPageLabel"></span>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="userNext">
-                        {{ t('common.next') }} <i class="bi bi-chevron-right" aria-hidden="true"></i></button>
-                </nav>
+                <div id="userPager" class="op-pager" hidden></div>
                 {% endcall %}
 
                 <p class="d-inline-flex flex-wrap gap-2">
@@ -513,6 +507,11 @@
                             <input type="checkbox" class="form-check-input" id="showBackgroundImageCheck">
                             <label class="form-check-label" for="showBackgroundImageCheck">{{ t('organizer.show_background_image_label') }}</label>
                             <div class="form-text">{{ t('organizer.show_background_image_help') }}</div>
+                        </div>
+                        <div class="mb-3 form-check form-switch">
+                            <input type="checkbox" class="form-check-input" id="showVerificationCheck">
+                            <label class="form-check-label" for="showVerificationCheck">{{ t('organizer.show_verification_label') }}</label>
+                            <div class="form-text">{{ t('organizer.show_verification_help') }}</div>
                         </div>
                         <div class="mb-3 form-check form-switch">
                             <input type="checkbox" class="form-check-input" id="organizerEnabledCheck">
@@ -1276,7 +1275,6 @@
         deleteTooltip: {{ t('auth.delete_user') | tojson }},
         usersCount: {{ t('users.count') | tojson }},
         usersNoMatch: {{ t('users.no_match') | tojson }},
-        usersPage: {{ t('users.page') | tojson }},
         permYes: {{ t('users.perm_yes') | tojson }},
         usersView: {{ t('users.view') | tojson }},
         scanPath: {{ t('lib.scan_library') | tojson }},

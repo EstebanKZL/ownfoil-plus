@@ -418,9 +418,10 @@ def test_content_change_clears_the_verdicts(env):
     assert f.verification_error is None and f.verified_at is None
 
 
-def test_compression_preserves_the_verdicts(env):
-    """nsz round-trip-verifies NCA content hashes itself, so an NSP that verified good is
-    still good as an NSZ - re-reading every byte again would buy nothing."""
+def test_compression_verifies_the_output_again(env):
+    """The file that came out is verified on its own (asked for: "por las dudas"), rather
+    than carrying the source's verdict - nsz's own round-trip check of the NCA content
+    hashes still guards the conversion itself."""
     from containers import compression
     from test_compression import _stub_produce
     env.monkeypatch.setattr(tasks, "enqueue_task", lambda *a, **k: None)
@@ -432,7 +433,7 @@ def test_compression_preserves_the_verdicts(env):
 
     f = db.session.get(Files, fid)
     assert f.compressed is True
-    assert f.signature_valid is True and f.hash_valid is True
+    assert f.signature_valid is None and f.hash_valid is None and f.verified_at is None
 
 
 def test_reset_file_verification_clears_every_column(env):

@@ -479,7 +479,7 @@ def test_a_migration_adds_the_vault_password_and_avatar_and_is_the_head():
     cfg = Config()
     cfg.set_main_option("script_location", os.path.join(os.path.dirname(__file__), "..", "app", "migrations"))
     script = ScriptDirectory.from_config(cfg)
-    assert script.get_heads() == ["f6a7b8c9d0e2"]
+    assert script.get_heads() == ["a7b8c9d0e1f3"]
     assert script.get_revision("b2c3d4e5f6a8").down_revision == "a1b2c3d4e5f7"
 
 

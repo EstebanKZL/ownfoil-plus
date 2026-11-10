@@ -117,7 +117,6 @@
  "users.search_placeholder": "按用户名或邮箱搜索用户",
  "users.count": "{n} 个用户",
  "users.no_match": "没有匹配的用户。",
- "users.page": "第 {page} / {pages} 页",
  "users.perm_yes": "是",
  "users.perm_no": "否",
  "sections.registration": "用户注册",
@@ -1188,5 +1187,16 @@
  "files.pending_stage_decompress": "解压",
  "files.pending_stage_combine": "合并",
  "files.pending_stage_split": "拆分",
- "tasks.queue_more": "… 后面还有 {n} 个在排队。"
+ "tasks.queue_more": "… 后面还有 {n} 个在排队。",
+ "organizer.show_verification_label": "显示校验标记（有效、重打包、损坏）",
+ "organizer.show_verification_help": "游戏页面和资料库列表视图中每个文件旁的图标。每位用户都可以在“我的账户”中另行选择。",
+ "account.verification_label": "校验标记（有效、重打包、损坏）",
+ "account.verification_default_on": "跟随服务器（显示）",
+ "account.verification_default_off": "跟随服务器（隐藏）",
+ "account.verification_on": "显示",
+ "account.verification_off": "隐藏",
+ "pager.showing": "显示第 {first}–{last} 项，共 {total} 项",
+ "pager.per_page": "每页",
+ "pager.pages": "页码",
+ "saves.newest": "最新"
 }

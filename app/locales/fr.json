@@ -117,7 +117,6 @@
  "users.search_placeholder": "Rechercher des utilisateurs par nom ou e-mail",
  "users.count": "{n} utilisateurs",
  "users.no_match": "Aucun utilisateur ne correspond à la recherche.",
- "users.page": "Page {page} sur {pages}",
  "users.perm_yes": "Oui",
  "users.perm_no": "Non",
  "sections.registration": "Inscription des utilisateurs",
@@ -1188,5 +1187,16 @@
  "files.pending_stage_decompress": "Décompresser",
  "files.pending_stage_combine": "Combiner",
  "files.pending_stage_split": "Séparer",
- "tasks.queue_more": "… et {n} autres en attente derrière."
+ "tasks.queue_more": "… et {n} autres en attente derrière.",
+ "organizer.show_verification_label": "Afficher les marques de vérification (valide, repack, corrompu)",
+ "organizer.show_verification_help": "L'icône à côté de chaque fichier sur la page d'un jeu et dans la vue Liste de la Bibliothèque. Chaque utilisateur peut choisir autrement dans Mon compte.",
+ "account.verification_label": "Marques de vérification (valide, repack, corrompu)",
+ "account.verification_default_on": "Comme le serveur (affichées)",
+ "account.verification_default_off": "Comme le serveur (masquées)",
+ "account.verification_on": "Les afficher",
+ "account.verification_off": "Les masquer",
+ "pager.showing": "Affichage de {first} à {last} sur {total}",
+ "pager.per_page": "Par page",
+ "pager.pages": "Pages",
+ "saves.newest": "La plus récente"
 }

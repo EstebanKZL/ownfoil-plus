@@ -117,7 +117,6 @@
  "users.search_placeholder": "Gebruikers zoeken op naam of e-mail",
  "users.count": "{n} gebruikers",
  "users.no_match": "Geen gebruiker gevonden.",
- "users.page": "Pagina {page} van {pages}",
  "users.perm_yes": "Ja",
  "users.perm_no": "Nee",
  "sections.registration": "Gebruikersregistratie",
@@ -1188,5 +1187,16 @@
  "files.pending_stage_decompress": "Decomprimeren",
  "files.pending_stage_combine": "Combineren",
  "files.pending_stage_split": "Splitsen",
- "tasks.queue_more": "… en nog {n} in de wachtrij erachter."
+ "tasks.queue_more": "… en nog {n} in de wachtrij erachter.",
+ "organizer.show_verification_label": "Verificatietekens tonen (geldig, repack, beschadigd)",
+ "organizer.show_verification_help": "Het pictogram naast elk bestand op de spelpagina en in de lijstweergave van de Bibliotheek. Elke gebruiker kan in Mijn account anders kiezen.",
+ "account.verification_label": "Verificatietekens (geldig, repack, beschadigd)",
+ "account.verification_default_on": "Zoals de server (getoond)",
+ "account.verification_default_off": "Zoals de server (verborgen)",
+ "account.verification_on": "Tonen",
+ "account.verification_off": "Verbergen",
+ "pager.showing": "{first}–{last} van {total}",
+ "pager.per_page": "Per pagina",
+ "pager.pages": "Pagina's",
+ "saves.newest": "Nieuwste"
 }

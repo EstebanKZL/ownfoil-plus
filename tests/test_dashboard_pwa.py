@@ -69,7 +69,7 @@ def test_static_assets_come_from_the_network_first(shop_app):
     # Fresh pages must never wear an older version's CSS or JS: the network answers
     # and the cache only when the server can't be reached (mixed versions used to
     # half-break the layout "for a while" after every update).
-    static_block = js.split("url.pathname.startsWith('/static/')", 1)[1][:500]
+    static_block = js.split("url.pathname.startsWith('/static/')", 1)[1].split("return;", 1)[0]
     assert static_block.index("fetch(request)") < static_block.index("cache.match(request)")
 
 

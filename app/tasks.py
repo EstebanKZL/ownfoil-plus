@@ -1639,12 +1639,25 @@ def verify_file_task(file_id, manual=False, **kwargs):
 
 # --- Compression pipeline ---
 def _finalize_conversion(file_obj, target, new_extension, compressed, keep_source=False):
-    """Flip the Files row onto the verified output, then drop the now-redundant source -
-    or, with `keep_source` (Files > Compress with "delete originals" off), register the
-    kept source as its own file right away, so it shows up without waiting for the next
-    scan (and Duplicates can judge the nsp against the nsz)."""
+    """Record the file a (de)compression made. Returns the id of its Files row.
+
+    With `keep_source` (Files > Compress with "delete originals" off) the original keeps
+    its record as it was - identified, verified - and the output is a new file of its
+    own: added now (listed first, and Duplicates can judge the nsp against the nsz) and
+    identified and verified like any new file. Otherwise the record follows the output,
+    which replaces the source on disk, with its verification cleared to run again."""
     source = file_obj.filepath
-    remove = not keep_source and os.path.abspath(source) != os.path.abspath(target)
+    if keep_source:
+        target = os.path.abspath(target)
+        existing = Files.query.filter_by(filepath=target).first()
+        if existing is not None:
+            return existing.id
+        library = db.session.get(Libraries, file_obj.library_id)
+        new_file = _insert_file(library.path, library.id, target)
+        if new_file is None:
+            raise ValueError(f'Could not add {os.path.basename(target)} to the library')
+        return new_file.id
+    remove = os.path.abspath(source) != os.path.abspath(target)
     if remove:
         add_ignored_event(source, '')  # our own deletion of the source
     file_obj.filepath = target
@@ -1656,45 +1669,42 @@ def _finalize_conversion(file_obj, target, new_extension, compressed, keep_sourc
     file_obj.size = os.path.getsize(target)
     file_obj.mtime = os.path.getmtime(target)
     file_obj.compressed = compressed
+    # Verified again (asked for): the output's own bytes are read, not the source's verdict.
+    reset_file_verification(file_obj)
     db.session.commit()
     if remove:
         os.remove(source)
-    else:
-        # The original stays on disk and the flipped row no longer points at it: add it
-        # back as a fresh file of its own (full pipeline: identify, artwork, ...), once.
-        library = Libraries.query.get(file_obj.library_id)
-        if library:
-            enqueue_task('add_file',
-                         {'library_path': library.path, 'filepath': os.path.abspath(source)})
+    return file_obj.id
 
 
 def _convert_file(file_obj, produce, new_extension, compressed, keep_source=False):
     """Run a (de)compression: produce the verified output at its final path, then finalize.
-    Returns whether the row was flipped onto the new file - a caller that re-drives the
-    pipeline must not do so after a no-op, or it delegates the same stage forever."""
+    Returns the id of the output's Files row, or None when nothing was converted - a
+    caller that re-drives the pipeline must not do so after a no-op, or it delegates the
+    same stage forever."""
     source = file_obj.filepath
     target = compression.conversion_target(file_obj)
     if Files.query.filter(Files.filepath == target, Files.id != file_obj.id).first() is not None:
         logger.warning(f'Skipping conversion of {os.path.basename(source)}: '
                        f'{os.path.basename(target)} is already in the library.')
-        return False
+        return None
     if not claim_temp_file(source):
         logger.debug(f'Skipping conversion of {os.path.basename(source)}: file is busy.')
-        return False
+        return None
     before = file_obj.size
     add_temp_file(target)
     try:
         out = str(produce(source, os.path.dirname(source)))
-        _finalize_conversion(file_obj, out, new_extension, compressed, keep_source)
+        output_id = _finalize_conversion(file_obj, out, new_extension, compressed, keep_source)
     finally:
         remove_temp_file(target)
         remove_temp_file(source)
-    after = file_obj.size
+    after = os.path.getsize(out)
     ratio = after / before if before else 0
     verb = 'compressing' if compressed else 'decompressing'
     logger.info(f'Finished {verb} {os.path.basename(target)}: '
                 f'{human_size(before)} -> {human_size(after)} (ratio {ratio:.1%})')
-    return True
+    return output_id
 
 
 @register_task('compress_file', group='io')
@@ -1713,10 +1723,12 @@ def compress_file_task(file_id, manual=False, keep_original=False, **kwargs):
     if not opts['enabled'] and not manual:
         return
     progress = _task_progress(_current_task_id)
-    if _convert_file(file_obj,
-                     lambda source, out_dir: compression.compress_to(source, out_dir, opts, progress=progress),
-                     COMPRESS_EXT[file_obj.extension], True, keep_source=bool(keep_original)):
-        enqueue_task('process_file', {'file_id': file_id})
+    output_id = _convert_file(
+        file_obj, lambda source, out_dir: compression.compress_to(source, out_dir, opts, progress=progress),
+        COMPRESS_EXT[file_obj.extension], True, keep_source=bool(keep_original))
+    if output_id:
+        # The file that came out goes down the pipeline: identified and verified.
+        enqueue_task('process_file', {'file_id': output_id})
 
 
 @register_task('decompress_file', group='io')
@@ -1728,11 +1740,19 @@ def decompress_file_task(file_id, keep_original=False, **kwargs):
     if not os.path.exists(file_obj.filepath):
         return
     progress = _task_progress(_current_task_id)
-    # Not re-driven through the pipeline: with automatic compression on it would compress
-    # the file right back.
-    _convert_file(file_obj,
-                  lambda source, out_dir: compression.decompress_to(source, out_dir, progress=progress),
-                  DECOMPRESS_EXT[file_obj.extension], False, keep_source=bool(keep_original))
+    output_id = _convert_file(
+        file_obj, lambda source, out_dir: compression.decompress_to(source, out_dir, progress=progress),
+        DECOMPRESS_EXT[file_obj.extension], False, keep_source=bool(keep_original))
+    if not output_id:
+        return
+    if keep_original:
+        # A new file of its own: the whole pipeline. Its compress stage finds the original
+        # NSZ/XCZ in the library and leaves it alone.
+        enqueue_task('process_file', {'file_id': output_id})
+    else:
+        # Verified again, but not re-driven through the pipeline: with automatic
+        # compression on it would compress the file right back.
+        enqueue_task('verify_file', {'file_id': output_id})
 
 
 @register_cleanup('compress_file')

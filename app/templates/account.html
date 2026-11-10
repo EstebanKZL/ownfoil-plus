@@ -68,6 +68,15 @@
             </select>
             <div id="accountBackgroundHelp" class="form-text">{{ t('account.background_help') }}</div>
 
+            {# The verification marks beside the files (game page, List view). #}
+            <label for="accountVerification" class="form-label mt-3">{{ t('account.verification_label') }}</label>
+            {% set ver = current_user.show_verification %}
+            <select class="form-select" id="accountVerification" aria-describedby="accountBackgroundHelp">
+                <option value="default"{% if ver is none %} selected{% endif %}>{{ t('account.verification_default_on') if server_verification else t('account.verification_default_off') }}</option>
+                <option value="on"{% if ver is true %} selected{% endif %}>{{ t('account.verification_on') }}</option>
+                <option value="off"{% if ver is false %} selected{% endif %}>{{ t('account.verification_off') }}</option>
+            </select>
+
             {# The language: of the web on this browser, and of the emails sent to you. #}
             <label for="accountLanguage" class="form-label mt-3">{{ t('account.language_label') }}</label>
             {% set my_lang = current_user.language if chosen_language() != 'auto' else 'auto' %}

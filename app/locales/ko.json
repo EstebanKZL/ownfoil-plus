@@ -117,7 +117,6 @@
  "users.search_placeholder": "이름 또는 이메일로 사용자 검색",
  "users.count": "사용자 {n}명",
  "users.no_match": "검색과 일치하는 사용자가 없습니다.",
- "users.page": "{pages}페이지 중 {page}페이지",
  "users.perm_yes": "예",
  "users.perm_no": "아니요",
  "sections.registration": "사용자 등록",
@@ -1188,5 +1187,16 @@
  "files.pending_stage_decompress": "압축 해제",
  "files.pending_stage_combine": "결합",
  "files.pending_stage_split": "분할",
- "tasks.queue_more": "… 뒤에 {n}개가 더 대기 중입니다."
+ "tasks.queue_more": "… 뒤에 {n}개가 더 대기 중입니다.",
+ "organizer.show_verification_label": "검증 표시 보기 (정상, 리팩, 손상)",
+ "organizer.show_verification_help": "게임 페이지와 라이브러리 목록 보기에서 각 파일 옆에 표시되는 아이콘입니다. 사용자마다 내 계정에서 다르게 선택할 수 있습니다.",
+ "account.verification_label": "검증 표시 (정상, 리팩, 손상)",
+ "account.verification_default_on": "서버 설정대로 (표시)",
+ "account.verification_default_off": "서버 설정대로 (숨김)",
+ "account.verification_on": "표시",
+ "account.verification_off": "숨기기",
+ "pager.showing": "{total}개 중 {first}–{last}",
+ "pager.per_page": "페이지당",
+ "pager.pages": "페이지",
+ "saves.newest": "최신"
 }

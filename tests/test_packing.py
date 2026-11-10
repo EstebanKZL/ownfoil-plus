@@ -2,6 +2,7 @@
 options, and the endpoints (admins run them; collaborators only look)."""
 import hashlib
 import os
+import re
 import struct
 
 import fixture
@@ -144,8 +145,11 @@ def test_keeping_the_source_leaves_it_on_disk(tmp_path, shop_app):
         f = Files.query.first()
         f.filepath = str(src)
         db.session.commit()
-        tasks._finalize_conversion(f, str(out), 'nsz', True, keep_source=True)
-        assert src.exists() and f.filepath == str(out) and f.compressed
+        new_id = tasks._finalize_conversion(f, str(out), 'nsz', True, keep_source=True)
+        # The original keeps its record; the output is a file of its own.
+        assert src.exists() and f.filepath == str(src)
+        new = db.session.get(Files, new_id)
+        assert new.id != f.id and new.filepath == str(out) and new.compressed
 
 
 # --- endpoints -------------------------------------------------------------------------
@@ -306,7 +310,7 @@ def test_multi_label_and_its_contents_listed_without_their_own_download():
 
 def test_packing_pages_of_100_and_the_name_opens_the_file_panel():
     js = open(os.path.join(APP_DIR, 'static', 'js', 'packing.js'), encoding='utf-8').read()
-    assert 'const PAGE_GAMES = 100;' in js and 'shown.slice(s.page * PAGE_GAMES' in js
+    assert "Pager.perPage('packing', PACK_SIZES, 100)" in js and 'shown.slice(s.page * pageGames' in js
     assert "make('button', 'packing-game__name', game.name)" in js and 'openDrawer(' in js
     assert '/game/${game.title_id}' not in js
     html = open(os.path.join(APP_DIR, 'templates', 'files.html'), encoding='utf-8').read()
@@ -357,3 +361,38 @@ def test_the_follow_up_notice_opens_pending_right_here():
     js = open(os.path.join(APP_DIR, 'static', 'js', 'packing.js'), encoding='utf-8').read()
     # "See them on Pending", a link to this page's own tab - not a leave for Tasks.
     assert "link.href = '#pending'" in js and "'/admin/tasks'" not in js
+
+
+def _js_function(js, name):
+    start = js.index(f"function {name}(")
+    depth, i = 0, js.index(") {", start) + 2
+    while True:
+        depth += {"{": 1, "}": -1}.get(js[i], 0)
+        i += 1
+        if depth == 0:
+            return js[start:i]
+
+
+def test_select_all_rides_the_pager_row():
+    # Asked for: "Select all" on the same row as the pages, at its left - one row above
+    # the list in Compress and in Combine, shown even when there is one page only.
+    js = open(os.path.join(APP_DIR, 'static', 'js', 'packing.js'), encoding='utf-8').read()
+    head = _js_function(js, 'listHead')
+    assert 'packing-select-all' in head and 'pager(kind, shown.length)' in head
+    assert 'packing-select-all' not in _js_function(js, 'toolbar')
+    assert 'packing-toolbar--under' not in js
+    render = _js_function(js, 'render')
+    assert 'toolbar(kind, shown), listHead(kind, shown)' in render
+
+
+def test_the_action_bar_is_a_web_card_with_room_below_the_pages():
+    js = open(os.path.join(APP_DIR, 'static', 'js', 'packing.js'), encoding='utf-8').read()
+    footer = _js_function(js, 'footer')
+    # What is chosen leads the bar, the note under it; the buttons on the right.
+    assert 'packing-footer__summary' in footer and 'summary(kind)' in footer
+    assert 'packing-footer__note' in footer
+    css = open(os.path.join(APP_DIR, 'static', 'style.css'), encoding='utf-8').read()
+    assert '.packing-footer.surface {' not in css          # the glowing outline is gone
+    rule = re.search(r"\n\.packing-footer \{([^}]*)\}", css).group(1)
+    assert 'margin-top: 1.25rem' in rule and 'backdrop-filter' in rule
+    assert 'var(--op-border)' in rule

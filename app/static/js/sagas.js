@@ -80,21 +80,16 @@ function sagaCard(saga) {
     fill.style.width = `${Math.round(100 * saga.owned / Math.max(saga.total, 1))}%`;
     bar.append(fill);
     const strip = node('div', 'saga-card__strip');
-    // One row: up to SAGA_THUMBS covers, the rest as "+N" (opening the saga).
+    // Every game of the saga, in as many rows as they take (asked for, Switch Library
+    // Manager style: the "+N" hid most of a long saga).
     const games = saga.games || [];
-    const shown = games.length > SAGA_THUMBS ? games.slice(0, SAGA_THUMBS - 1) : games;
-    shown.forEach(game => {
+    games.forEach(game => {
         const thumb = node('a', 'saga-thumb' + (game.owned ? '' : ' is-missing'));
         thumb.href = `/game/${game.title_id}`;
         thumb.title = `${game.name} - ${game.owned ? I18N.owned : I18N.missing}`;
         thumb.append(cover(game.icon_url));
         strip.append(thumb);
     });
-    if (shown.length < games.length) {
-        const more = node('a', 'saga-thumb saga-thumb--more', `+${games.length - shown.length}`);
-        more.href = link;
-        strip.append(more);
-    }
     const view = node('a', 'btn btn-sm btn-outline-secondary saga-card__view');
     view.href = link;
     view.append(node('i', 'bi bi-grid-3x3-gap'), document.createTextNode(' ' + I18N.view));
@@ -104,12 +99,12 @@ function sagaCard(saga) {
 }
 
 const SAGA_TAB_KEY = 'sagasTab';
-// Cards a page: 24 fills every row at one, two or three columns (the grid's widths), so
-// only the last page can end with a short row.
-const SAGAS_PER_PAGE = 24;
+// Cards a page: each size fills every row at one, two or three columns (the grid's
+// widths), so only the last page can end with a short row. Remembered per browser.
+const SAGA_SIZES = [12, 24, 48, 96];
+let sagasPerPage = Pager.perPage('sagas', SAGA_SIZES, 24);
 let sagaPage = 1;
 let sagaView = '';
-const SAGA_THUMBS = 6;   // covers in a card's row (the last one "+N" when there are more)
 let allSagas = [];
 
 function sagaTab() {
@@ -136,48 +131,25 @@ function renderSagaList() {
     // Another tab or search starts at the first page.
     const view = tab + '\n' + query;
     if (view !== sagaView) { sagaView = view; sagaPage = 1; }
-    const pages = Math.max(1, Math.ceil(shown.length / SAGAS_PER_PAGE));
+    const pages = Math.max(1, Math.ceil(shown.length / sagasPerPage));
     sagaPage = Math.min(sagaPage, pages);
-    const page = shown.slice((sagaPage - 1) * SAGAS_PER_PAGE, sagaPage * SAGAS_PER_PAGE);
+    const page = shown.slice((sagaPage - 1) * sagasPerPage, sagaPage * sagasPerPage);
     document.getElementById('sagasList').replaceChildren(...page.map(sagaCard));
-    renderSagaPager(pages);
+    Pager.render(document.getElementById('sagasPager'), {
+        total: shown.length, page: sagaPage, perPage: sagasPerPage, sizes: SAGA_SIZES,
+        onPage: p => {
+            sagaPage = p;
+            renderSagaList();
+            document.getElementById('sagasToolbar').scrollIntoView({block: 'start', behavior: 'smooth'});
+        },
+        onPerPage: n => {
+            sagasPerPage = n;
+            Pager.savePerPage('sagas', n);
+            sagaPage = 1;
+            renderSagaList();
+        },
+    });
     show('sagasNoMatch', allSagas.length > 0 && !shown.length);
-}
-
-/** The pages under the grid: « 1 2 3 … 9 », as in the Library. */
-function renderSagaPager(pages) {
-    const bar = document.getElementById('sagasPager');
-    bar.replaceChildren();
-    bar.hidden = pages <= 1;
-    if (pages <= 1) return;
-    const item = (label, target, {active = false, disabled = false, aria} = {}) => {
-        const li = node('li', 'page-item' + (active ? ' active' : '') + (disabled ? ' disabled' : ''));
-        const a = node(disabled && target === null ? 'span' : 'a', 'page-link', label);
-        if (a.tagName === 'A') {
-            a.href = '#';
-            a.addEventListener('click', e => {
-                e.preventDefault();
-                if (disabled || target === sagaPage) return;
-                sagaPage = target;
-                renderSagaList();
-                document.getElementById('sagasToolbar').scrollIntoView({block: 'start', behavior: 'smooth'});
-            });
-        }
-        if (aria) a.setAttribute('aria-label', aria);
-        if (active) a.setAttribute('aria-current', 'page');
-        li.append(a);
-        return li;
-    };
-    bar.append(item('«', sagaPage - 1, {disabled: sagaPage === 1, aria: I18N.previous}));
-    const wanted = new Set([1, pages, sagaPage - 1, sagaPage, sagaPage + 1]);
-    let last = 0;
-    for (let p = 1; p <= pages; p++) {
-        if (!wanted.has(p)) continue;
-        if (p - last > 1) bar.append(item('…', null, {disabled: true}));
-        bar.append(item(String(p), p, {active: p === sagaPage}));
-        last = p;
-    }
-    bar.append(item('»', sagaPage + 1, {disabled: sagaPage === pages, aria: I18N.next}));
 }
 
 async function loadList() {

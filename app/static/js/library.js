@@ -1126,14 +1126,18 @@ function renderPageSizeOptions() {
             .toggleClass('active', size === itemsPerPage)
             .attr('aria-pressed', size === itemsPerPage ? 'true' : 'false')
             .text(size)
-            .on('click', () => {
-                pageTarget = target;
-                storageSet('pageTarget', String(target));
-                itemsPerPage = size;
-                renderPageSizeOptions();
-                resetToFirstPage();
-            }));
+            .on('click', () => choosePageSize(size, target)));
     });
+}
+
+/** A page size chosen (the toolbar's menu or the pager's "per page"): remembered as its
+ *  target, so it fits the columns again at another width. */
+function choosePageSize(size, target) {
+    pageTarget = target;
+    storageSet('pageTarget', String(target));
+    itemsPerPage = size;
+    renderPageSizeOptions();
+    resetToFirstPage();
 }
 
 /** Re-fit the page size to the columns now shown (a resize, another view): a different
@@ -1164,61 +1168,16 @@ function pageWindow(totalPages) {
     return out;
 }
 
-/** Builds one set of pagination <li> elements (prev, page numbers, next) with
- *  their click handlers attached, appending clones of it into every target <ul>
- *  given - clones because a single DOM node can only live in one place, but the
- *  top and bottom pagination bars show the exact same state. `.clone(true)`
- *  copies the attached jQuery event handlers along with the markup, so every
- *  clone stays clickable. */
+/** The pager (pager.js), above and below the grid - the same bar twice: what is shown,
+ *  the pages, and "per page" with the sizes that fill whole rows at this width (the
+ *  same ones as the toolbar's menu). */
 function updatePaginationControls(totalPages) {
-    const targets = [$('#paginationControlsTop'), $('#paginationControlsBottom')];
-    targets.forEach(t => t.empty());
-
-    const items = [];
-
-    // Previous button
-    const prevButton = $('<li class="page-item"></li>').addClass(`page-item ${currentPage === 1 ? 'disabled' : ''}`).html(`
-            <a class="page-link" href="#" aria-label="${I18N.previous}">
-                <span aria-hidden="true">&laquo;</span>
-            </a>`);
-    prevButton.click(function (e) {
-        e.preventDefault();
-        if (currentPage > 1) {
-            goToPage(currentPage - 1);
-        }
-    });
-    items.push(prevButton);
-
-    // Page numbers
-    for (const entry of pageWindow(totalPages)) {
-        if (entry === '...') {
-            items.push($('<li class="page-item disabled"></li>').html('<span class="page-link">&hellip;</span>'));
-            continue;
-        }
-        const pageButton = $('<li class="page-item"></li>').addClass(`page-item ${entry === currentPage ? 'active' : ''}`).html(`<a class="page-link" href="#">${entry}</a>`);
-        pageButton.click(function (e) {
-            e.preventDefault();
-            goToPage(entry);
-        });
-        items.push(pageButton);
-    }
-
-    // Next button
-    const nextButton = $('<li class="page-item"></li>').addClass(`page-item ${currentPage === totalPages ? 'disabled' : ''}`).html(`
-            <a class="page-link" href="#" aria-label="${I18N.next}">
-                <span aria-hidden="true">&raquo;</span>
-            </a>`);
-    nextButton.click(function (e) {
-        e.preventDefault();
-        if (currentPage < totalPages) {
-            goToPage(currentPage + 1);
-        }
-    });
-    items.push(nextButton);
-
-    targets.forEach(target => {
-        items.forEach(item => target.append(item.clone(true)));
-    });
+    const sizes = pageSizeOptions(gridColumns());
+    ['paginationControlsTop', 'paginationControlsBottom'].forEach(id => Pager.render(document.getElementById(id), {
+        total: totalItems, page: currentPage, perPage: itemsPerPage, sizes,
+        onPage: goToPage,
+        onPerPage: size => choosePageSize(size, (sizes.indexOf(size) + 1) * 10),
+    }));
 }
 
 /** The Compact view's card width for the size slider: the smallest a card may be, the

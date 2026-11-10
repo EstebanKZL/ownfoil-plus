@@ -6,6 +6,76 @@ see the upstream project for its own history.
 
 ## [6.2.5.56]
 
+- **Game page, third round:**
+  - **A marked fact keeps its title plain.** *Firmware needed* (console too old) and
+    *Latest version* (an update waiting) color their frame and value only; the title
+    stays as plain as *Your version* or *Size*. And each wears its own color: the
+    firmware's violet, the update's amber - the two used to share the violet.
+  - **A DLC's card puts its art on top**, across the window (it was a small thumbnail
+    beside the text), with the name and its badge, the facts as small tiles and the
+    description underneath.
+  - **No more Japanese taglines over a Spanish description.** The regional TitleDB file
+    carries Nintendo's text as Nintendo left it, and some games kept their short intro
+    in Japanese. A store text written mostly in Japanese, Chinese or Korean is left out
+    when TitleDB's language is none of those - on the game page, the Library's views and
+    a DLC's card alike.
+- **The verification marks are a choice.** *Settings > Library > Show the verification
+  marks* sets the default (on); each user can show or hide them for themselves in *My
+  account* (a new `user.show_verification`, migration `a7b8c9d0e1f3`). Rendered on
+  `<html data-verification>`, so every mark - game page, Files dialog, List view - hides
+  at once.
+- **Sagas show every game**, Switch Library Manager style: every cover, a little bigger,
+  in as many rows as they take - no "+N", and nothing cut mid-card when the window
+  narrows.
+- **One pager everywhere**, Switch Library Manager style: "Showing 1–24 of 42" on the
+  left, the pages in the middle, "Per page" on the right, each page remembering its own
+  choice in the browser - the Library (top and bottom, with the sizes that fill whole
+  rows), Sagas, Files > All files, Compress and Combine, the users in Settings and Saves.
+  On a phone the pages take their own row.
+- **Saves, redesigned.** One row a game: its icon, name and totals fixed on the left,
+  its backups as blocks in a strip to the right - the newest first and marked -
+  scrolling sideways when they don't fit (a server keeping every backup made a column
+  that never ended). A block downloads its backup; its bin shows on hover or focus,
+  always on a touch screen. The games go by pages.
+
+- **Files, third round:**
+  - **Select all rides the pages row.** On Compress and Combine, *Select all* sits at
+    the left of the pager, on the same line, instead of a row of its own.
+  - **The action bar is one of the web's cards**: the selection's summary and its note
+    on the left, the buttons on the right, the style's accent on its edge, and room
+    between it and the pages above (it used to sit flush under them).
+  - **A tab reloads only when the files changed.** The server publishes a signature of
+    the files table on the realtime feed; when it moves (a task, a scan, another
+    page), the tiles and the open tab follow and every other tab asks again the next
+    time it is entered - only then. A record cleaned in Duplicates no longer lingers
+    in All files until a page reload, and entering a tab whose files didn't move shows
+    its rows at once, without asking the server.
+- **Compressing with the originals kept: the output is the new file.** With *Delete
+  the originals* off, the NSP used to hand its record to the NSZ and come back as a
+  new file, identified and verified all over again. Now the original keeps its record
+  as it was, and the file that came out (NSZ/XCZ when compressing, NSP/XCI when
+  decompressing) is added as the new one, identified and verified. With the originals
+  deleted the record still follows the output, and is verified again instead of
+  carrying the original's verdict.
+- **NUP files, as Switch Library Manager Web 2.0 reads them:**
+  - **Metadata types counted from 0, second rule.** A build of the format's packer
+    numbered them one below; a block with a type 0 was already read one up. A DLC's
+    block has no NPDM to tell it: a record 0x0007 that isn't the 32 bytes of a build
+    ID does (it is the source dump's name). Such a DLC showed its publisher as its name.
+    It is read right and only told - the file is never rewritten.
+  - **Check the files looks at the metadata no hash covers**: a build ID that isn't 32
+    bytes, text that isn't UTF-8, names or icons by language that run past their
+    record - reported as damage with the package and the record.
+  - **Hostile tables of contents are refused** before anything walks them: names over
+    0x300 bytes or paths over 0x400 (more than the console takes), folders sharing
+    their children, and packages sharing their folders so many times a walk would take
+    hours.
+  - **A game rebuilt with its update in it** (hacBrewPackLZ) carries the update's
+    version as its own: it counts as up to date instead of showing an update available.
+  - **An update in a NUP never makes an update NSP obsolete.** Outdated updates (the
+    list and the cleanup) compare only files that install; the newest update held only
+    by a NUP used to put the NSP of the one before on the list to delete.
+
 - **Files, second round:**
   - **No more half-broken page after an update.** The service worker used to answer
     CSS and JS from its cache while the page itself came fresh from the network - so

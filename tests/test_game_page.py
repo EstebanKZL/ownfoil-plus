@@ -373,6 +373,21 @@ def test_a_dlc_name_opens_its_own_card():
     assert "border-radius: 1rem" in re.search(r"\.game-row__size \{([^}]*)\}", css).group(1)
 
 
+def test_the_dlc_card_puts_its_art_on_top():
+    """Asked for: the art was a small thumbnail beside the text. It spans the window's
+    width on top now, the name, facts and description underneath - both get room."""
+    html = _read("app", "templates", "game.html")
+    start = html.index('id="dlcModal"')
+    modal = html[start:html.index("<script", start)]
+    assert "modal-body d-flex" not in modal
+    assert modal.index('id="dlcModalImg"') < modal.index('id="dlcModalName"')
+    assert "dlc-modal__dialog" in modal
+    css = _read("app", "static", "style.css")
+    img = _rule(css, ".dlc-modal__img")
+    assert "width: 100%" in img and "aspect-ratio" in img
+    assert "grid-template-columns" in _rule(css, ".dlc-modal__facts")
+
+
 def test_dates_read_the_same_way_whatever_shaped_they_come():
     """titledb ships YYYYMMDD, the apps table dashed ISO dates; both are the one
     DD/MM/YYYY every update and DLC row shows."""
@@ -392,11 +407,21 @@ def test_sections_and_rows_wear_the_type_colors():
     assert ".game-section__icon--" not in css
 
 
-def test_latest_version_wears_the_firmware_violet_when_behind():
-    """The firmware fact turns violet when the console is too old; "Latest version"
-    gets the same violet when the owned one is behind it (asked for: one "your
-    console is behind" look for both facts)."""
+def _rule(css, selector):
+    return re.search(rf"(?:^|\n){re.escape(selector)} \{{([^}}]*)\}}", css).group(1)
+
+
+def test_a_marked_fact_keeps_its_title_plain():
+    """The firmware fact turns violet when the console is too old, and "Latest version"
+    turns the update's amber when the owned one is behind it - each with the color of
+    what it tells (asked for: the two used to share the violet). Only the frame and
+    the value take it: the title stays as plain as "Your version" or "Size"."""
     body = _function_body(_js("game.js"), "renderFacts")
     assert "latest > installed ? 'game-fact--update'" in body
     css = _read("app", "static", "style.css")
-    assert "--op-firmware-rgb" in css[css.index(".game-fact--update"):][:200]
+    assert "--op-firmware-rgb" in _rule(css, ".game-fact--firmware")
+    assert "--op-wait-rgb" in _rule(css, ".game-fact--update")
+    assert "--op-firmware" in _rule(css, ".game-fact--firmware .game-fact__value")
+    assert "--op-wait" in _rule(css, ".game-fact--update .game-fact__value")
+    assert ".game-fact--firmware .game-fact__label" not in css
+    assert ".game-fact--update .game-fact__label" not in css

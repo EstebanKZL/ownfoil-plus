@@ -124,13 +124,19 @@ def test_saves_are_searched_by_game():
     assert "g.name" in body and "g.user" not in body and "savesNoMatch" in body
 
 
-def test_saga_cards_keep_one_row_of_covers():
+def test_saga_cards_show_every_game():
+    """Asked for, Switch Library Manager style: every cover of the saga in the card,
+    a little bigger, in as many rows as they take - no "+N", and nothing cut off when
+    the window narrows (the one row used to clip mid-card)."""
     js = _read("app", "static", "js", "sagas.js")
-    assert "const SAGA_THUMBS = 6;" in js and "saga-thumb--more" in js
+    assert "SAGA_THUMBS" not in js and "saga-thumb--more" not in js
+    card = js[js.index("function sagaCard("):js.index("const SAGA_TAB_KEY")]
+    assert "games.forEach(" in card
     css = _read("app", "static", "style.css")
-    # The cap matters: the card's body aligns its children to fit-content, and without
-    # it the row ran past the card's edge on narrow widths instead of clipping.
-    assert re.search(r"\.saga-card__strip \{[^}]*flex-wrap: nowrap;[^}]*overflow: hidden;[^}]*max-width: 100%;", css)
+    strip = re.search(r"\.saga-card__strip \{([^}]*)\}", css).group(1)
+    assert "flex-wrap: wrap" in strip and "width: 100%" in strip and "overflow: hidden" not in strip
+    assert "width: 3.1rem" in re.search(r"\n\.saga-thumb \{([^}]*)\}", css).group(1)
+    assert ".saga-thumb--more" not in css
 
 
 def test_saga_cards_lift_on_hover_like_the_games():

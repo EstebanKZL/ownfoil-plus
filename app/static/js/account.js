@@ -31,6 +31,7 @@ document.getElementById('accountForm').addEventListener('submit', async event =>
             body: JSON.stringify({
                 console_firmware: firmware,
                 show_background_image: document.getElementById('accountBackground').value,
+                show_verification: document.getElementById('accountVerification').value,
                 language: document.getElementById('accountLanguage').value,
                 // Only when offered (the email channel is on in Settings).
                 ...(document.getElementById('accountNotifyEmail')

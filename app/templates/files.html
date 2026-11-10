@@ -149,6 +149,7 @@
                 <tbody></tbody>
             </table>
             <div class="files-groups" id="filesGroups"></div>
+            <div id="filesPages" class="op-pager" hidden></div>
             <div class="files-pager mt-3" id="filesPagerBottom">
                 <span class="files-count"></span>
                 <button type="button" class="icon-btn files-prev" title="{{ t('files.previous_page_title') }}"><i class="bi bi-chevron-left"></i></button>
@@ -367,6 +368,7 @@
     };
 </script>
 <script src="{{ url_for('static', filename='js/title-list.js') }}"></script>
+<script src="{{ url_for('static', filename='js/realtime.js') }}"></script>
 <script src="{{ url_for('static', filename='js/packing.js') }}"></script>
 <script src="{{ url_for('static', filename='js/files.js') }}"></script>
 {% endblock %}

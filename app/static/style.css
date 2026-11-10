@@ -2769,34 +2769,63 @@ a.stat-tile:hover {
 }
 
 /* A DLC's own card (the row's name opens it): the game's art beside its facts. */
+/* The DLC's card: the art across the top (asked for: it was a thumbnail beside the
+   text), then the name and its badge, the facts as small tiles, the description. */
+.dlc-modal__dialog {
+    max-width: 36rem;
+}
+
 .dlc-modal__img {
-    flex: 0 0 auto;
-    width: 9rem;
-    border-radius: var(--op-radius-sm);
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
     object-fit: cover;
-    align-self: flex-start;
+    border-radius: var(--op-radius-sm);
+    background-color: var(--op-surface-2);
+}
+
+.dlc-modal__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem .75rem;
+    margin: 1rem 0 .85rem;
 }
 
 .dlc-modal__facts {
-    margin: 0;
-    font-size: .85rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+    gap: .5rem;
+    margin: 0 0 1rem;
 }
 
 .dlc-modal__fact {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
+    padding: .5rem .7rem;
+    border: 1px solid var(--op-border);
+    border-radius: var(--op-radius-sm);
+    background-color: var(--op-surface-1);
+    min-width: 0;
 }
 
 .dlc-modal__fact dt {
-    flex: 0 0 auto;
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
     color: var(--op-text-muted);
 }
 
 .dlc-modal__fact dd {
+    margin: .15rem 0 0;
     font-family: var(--bs-font-monospace);
+    font-size: .9rem;
     overflow-wrap: anywhere;
-    text-align: right;
+}
+
+.dlc-modal__desc {
+    padding-top: .85rem;
+    border-top: 1px solid var(--op-border);
+    line-height: 1.55;
 }
 
 /* A row that folds out its details (a DLC's description) underneath. */
@@ -3513,29 +3542,33 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     }
 }
 
+/* The verification marks are a choice (Settings > Library, My account): hidden all at
+   once from <html data-verification>, wherever they are drawn. */
+[data-verification="off"] .verification-mark {
+    display: none !important;
+}
+
 /* ============== Console firmware (My account) ============== */
 
 /* A game or update the user's console is too old for: violet, the firmware color, so it
-   is told apart from the amber of a pending update. */
+   is told apart from the amber of a pending update. The frame and the value take it;
+   the title stays as plain as every other fact's (asked for). */
 .game-fact--firmware {
     border-color: rgba(var(--op-firmware-rgb), .6);
 }
 
-.game-fact--firmware .game-fact__label,
 .game-fact--firmware .game-fact__value {
     color: var(--op-firmware);
 }
 
-/* The update counterpart of the firmware fact: "Latest version" gets the same violet
-   treatment when the owned one is behind it (asked for: one "your console is behind"
-   look for both). */
+/* "Latest version" when the owned one is behind it: the update's amber - what it tells
+   is an update waiting, not the console (the two used to share the violet). */
 .game-fact--update {
-    border-color: rgba(var(--op-firmware-rgb), .6);
+    border-color: rgba(var(--op-wait-rgb), .6);
 }
 
-.game-fact--update .game-fact__label,
 .game-fact--update .game-fact__value {
-    color: var(--op-firmware);
+    color: var(--op-wait);
 }
 
 /* The sections' TITLE icons keep the web's own accent (asked for: that is design,
@@ -3905,31 +3938,15 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, .22) 0 6px, transparent 6px 12px);
 }
 
-/* One row of covers, the same in every card (the rest as "+N"), so a saga with many
-   games never makes its card taller than the others. The cap matters: the card's body
-   aligns its children to fit-content, and without it the row ran past the card's edge
-   on narrow widths instead of clipping. */
+/* Every cover of the saga, wrapping into as many rows as it takes (asked for, Switch
+   Library Manager style - the one capped row with a "+N" clipped mid-card when the
+   window narrowed). The full width matters: the card's body aligns its children to
+   fit-content. */
 .saga-card__strip {
     display: flex;
-    flex-wrap: nowrap;
-    gap: .25rem;
-    overflow: hidden;
-    max-width: 100%;
-}
-
-.saga-thumb--more {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 auto;
-    aspect-ratio: 1;
-    border: 1px solid var(--op-border);
-    border-radius: var(--op-radius-sm);
-    background-color: var(--op-surface-2);
-    color: var(--op-text-muted);
-    font-size: .75rem;
-    font-weight: 700;
-    text-decoration: none;
+    flex-wrap: wrap;
+    gap: .3rem;
+    width: 100%;
 }
 
 .saga-card .saga-card__view {
@@ -3938,7 +3955,7 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
 
 .saga-thumb {
     flex: 0 0 auto;
-    width: 2.6rem;
+    width: 3.1rem;
 }
 
 .saga-thumb .release-card__cover {
@@ -4042,44 +4059,141 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     margin-bottom: 1rem;
 }
 
-.saves-game__head .dash-list__row {
-    padding-left: 0;
-}
-
-.saves-backups {
-    list-style: none;
-    margin: .5rem 0 0;
-    padding: 0;
-    border-top: 1px solid var(--op-border);
-}
-
-.saves-backup {
-    display: flex;
+/* A game, one row (asked for): icon, name and totals fixed on the left, the backups as
+   blocks in a strip to the right, newest first, scrolling sideways when they don't fit.
+   On a phone the strip goes under the name. */
+.saves-game {
+    display: grid;
+    grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr);
     align-items: center;
-    gap: .5rem;
-    padding: .55rem 0;
-    border-bottom: 1px solid var(--op-border);
+    gap: 1rem;
 }
 
-.saves-backup:last-child {
-    border-bottom: 0;
-}
-
-.saves-backup__text {
-    flex: 1 1 auto;
+.saves-game__info {
+    margin: 0;
     min-width: 0;
 }
 
-.saves-backup__when {
-    font-weight: 600;
+.saves-game__info .dash-list__row {
+    padding-left: 0;
 }
 
-.saves-backup__file {
-    font-size: .8rem;
-    color: var(--op-text-muted);
+/* The fixed column is narrow: a long name takes a second line instead of an ellipsis. */
+.saves-game__info .dash-list__name {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+}
+
+.saves-strip {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: .6rem;
+    margin: 0;
+    padding: .25rem .1rem .5rem;
+    list-style: none;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(var(--op-nav-rgb), .45) transparent;
+}
+
+.saves-tile {
+    position: relative;
+    flex: 0 0 9.5rem;
+    scroll-snap-align: start;
+}
+
+.saves-tile__main {
+    display: flex;
+    flex-direction: column;
+    gap: .1rem;
+    height: 100%;
+    padding: .6rem .75rem;
+    border: 1px solid var(--op-border);
+    border-radius: var(--op-radius-sm);
+    background-color: var(--op-surface-2);
+    color: var(--op-text);
+    text-decoration: none;
+    transition: border-color var(--op-dur) var(--op-ease), transform var(--op-dur) var(--op-ease);
+}
+
+.saves-tile__main:hover,
+.saves-tile__main:focus-visible {
+    border-color: rgba(var(--op-nav-rgb), .6);
+    color: var(--op-text);
+    transform: translateY(-2px);
+}
+
+/* The newest backup: the style's accent on its edge and a small label. */
+.saves-tile.is-newest .saves-tile__main {
+    border-left: 3px solid var(--op-nav);
+}
+
+.saves-tile__badge {
+    align-self: flex-start;
+    margin-bottom: .2rem;
+    padding: 0 .45rem;
+    border-radius: 999px;
+    background-color: rgba(var(--op-nav-rgb), .15);
+    color: var(--op-nav);
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+}
+
+.saves-tile__day {
+    padding-right: 1.5rem;     /* room for the bin in the corner */
+    font-weight: 700;
+}
+
+.saves-tile__hour {
+    font-size: .85rem;
+    color: var(--op-text-muted);
+}
+
+.saves-tile__foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: .35rem;
+    font-size: .78rem;
+    color: var(--op-text-muted);
+}
+
+.saves-tile__glyph {
+    color: var(--op-nav);
+}
+
+/* The bin: in the block's corner, shown on hover or focus - always where there is no
+   hover (a touch screen). */
+.saves-tile__remove {
+    position: absolute;
+    top: .3rem;
+    right: .3rem;
+    opacity: 0;
+    transition: opacity var(--op-dur) var(--op-ease);
+}
+
+.saves-tile:hover .saves-tile__remove,
+.saves-tile:focus-within .saves-tile__remove {
+    opacity: 1;
+}
+
+@media (hover: none) {
+    .saves-tile__remove {
+        opacity: 1;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .saves-game {
+        grid-template-columns: minmax(0, 1fr);
+        gap: .5rem;
+    }
 }
 
 .icon-btn--danger {
@@ -4397,12 +4511,68 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     }
 }
 
-.users-pager {
+/* The shared pager (pager.js), Switch Library Manager style: what is shown on the left,
+   the pages in the middle, "per page" on the right. On a phone the pages go first, the
+   other two share the row under them. */
+.op-pager {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    grid-template-areas: "range pages size";
+    align-items: center;
+    gap: .5rem 1rem;
+    margin: 1rem 0;
+}
+
+.op-pager[hidden] {
+    display: none;
+}
+
+.op-pager__range {
+    grid-area: range;
+    font-size: .875rem;
+    color: var(--op-text-muted);
+    white-space: nowrap;
+}
+
+.op-pager__nav {
+    grid-area: pages;
+}
+
+.op-pager__pages {
+    margin: 0;
+}
+
+.op-pager__size {
+    grid-area: size;
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: .75rem;
-    margin-top: .75rem;
+    gap: .5rem;
+}
+
+.op-pager__size-label {
+    font-size: .875rem;
+    color: var(--op-text-muted);
+    white-space: nowrap;
+}
+
+.op-pager__select {
+    width: auto;
+}
+
+@media (max-width: 575.98px) {
+    .op-pager {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas: "pages pages" "range size";
+    }
+
+    .op-pager__nav {
+        justify-self: center;
+    }
+
+    .op-pager__pages .page-link {
+        padding: .3rem .6rem;
+    }
 }
 
 .avatar-current {
@@ -4437,12 +4607,6 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
 }
 
 /* Files > Compress / Combine: the bar with the buttons stands out from the page. */
-.packing-footer.surface {
-    background-color: var(--op-surface-2);
-    border: 1px solid rgba(var(--op-nav-rgb), .45);
-    box-shadow: 0 -6px 24px rgba(0, 0, 0, .35), 0 0 0 1px rgba(var(--op-nav-rgb), .12);
-}
-
 .avatar-preview {
     display: grid;
     place-items: center;
@@ -4977,14 +5141,7 @@ html[data-readonly] a[href^="/api/backups/"] {
     margin-bottom: 1rem;
 }
 
-.packing-note {
-    margin: 0;
-    color: var(--op-text-muted);
-    font-size: .85rem;
-}
-
-/* The panel's toolbar block: the search row (shaped like the flat list's) with the
-   "Select all" row riding underneath it. */
+/* The panel's toolbar block: the search row, shaped like the flat list's. */
 .packing-toolbar-wrap {
     display: grid;
     gap: .4rem;
@@ -4996,10 +5153,6 @@ html[data-readonly] a[href^="/api/backups/"] {
     flex-wrap: wrap;
     align-items: center;
     gap: .75rem 1rem;
-}
-
-.packing-toolbar--under {
-    gap: .5rem;
 }
 
 .packing-select-all {
@@ -5027,12 +5180,7 @@ html[data-readonly] a[href^="/api/backups/"] {
     padding-left: 2rem;
 }
 
-.packing-summary {
-    color: var(--op-text-muted);
-    font-size: .9rem;
-}
-
-/* Pages of 100 games: the range and the arrows, right-aligned above and below the list. */
+/* Pages of 100 games: the range and the arrows, in the row over the list and below it. */
 .packing-pager {
     display: flex;
     align-items: center;
@@ -5196,9 +5344,45 @@ html[data-readonly] a[href^="/api/backups/"] {
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: .75rem;
-    padding: .75rem 1rem;
+    gap: .75rem 1.25rem;
+    margin-top: 1.25rem;            /* room under the last page's arrows */
+    padding: .8rem 1rem .8rem 1.15rem;
+    border: 1px solid var(--op-border);
+    border-left: 3px solid var(--op-nav);
+    border-radius: var(--op-radius);
+    background-color: var(--op-surface-1);
+    backdrop-filter: blur(10px);
     box-shadow: var(--op-shadow);
+}
+
+.packing-footer__text {
+    display: grid;
+    gap: .1rem;
+    min-width: 0;
+    flex: 1 1 16rem;
+}
+
+.packing-footer__summary {
+    font-weight: 700;
+}
+
+.packing-footer__note {
+    font-size: .82rem;
+    color: var(--op-text-muted);
+}
+
+/* Over the list: "Select all" at the left, the pages at the right. */
+.packing-listhead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem 1rem;
+    margin-bottom: .6rem;
+}
+
+.packing-listhead .packing-pager {
+    margin-bottom: 0;
 }
 
 .packing-actions {
