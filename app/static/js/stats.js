@@ -27,9 +27,10 @@ function tiles(s) {
          'bi-controller', 'ok', '/'],
         [I18N_FILES_LABEL, count(s.totalFiles), I18N.tileFilesNote.replace('{n}', count(s.identifiedFiles)),
          'bi-file-earmark', 'nav', '/admin/files'],
-        [I18N.tileTotalSize, formatBytes(s.totalSize), I18N.tileTotalSizeNote, 'bi-hdd-stack', 'action', null],
+        // Unidentified before the size (asked for): what needs a look outranks a figure.
         [I18N.tileUnidentified, count(s.unidentifiedFiles), I18N.tileUnidentifiedNote,
          'bi-question-circle', 'wait', '/admin/files#unidentified'],
+        [I18N.tileTotalSize, formatBytes(s.totalSize), I18N.tileTotalSizeNote, 'bi-hdd-stack', 'action', null],
     ];
 }
 
