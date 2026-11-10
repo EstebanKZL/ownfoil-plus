@@ -89,7 +89,8 @@ def test_pending_tab_humanizes_stage_identifiers_instead_of_showing_them_raw(cli
     html = (client.get("/admin/files").get_data(as_text=True)
             + client.get("/static/js/files.js").get_data(as_text=True))  # JS moved in stage 5a
     assert "const PENDING_STAGE_LABEL = {identify: I18N.pendingStageIdentify" in html
-    assert "r._stages.map(humanizeStage).join(' · ')" in html
+    # A folded game row names its file count, then the stages (both humanized).
+    assert ".map(humanizeStage)" in html and "I18N.pendingFilesCount.replace('{count}'" in html
     assert 'pendingStageOrganize: "Organize"' in html
 
     client.set_cookie("ownfoil_lang", "es")

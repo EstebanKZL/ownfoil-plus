@@ -127,7 +127,7 @@ A file taken again by the same address within a minute counts once, so a console
 
 ## My account
 
-Every signed-in user has `My account` (the person icon at the top right): your console's firmware, so games and updates that need a newer one are marked in the Library and on their pages, and whether the Library's List view shows each game's background image for you (or follows the server's setting). Also your profile picture, shown in the top bar and in the users table: one of the gallery's avatars, or a picture you upload (PNG, JPEG, WebP or GIF up to 5 MB, cropped square and shrunk on the server, kept in `data/avatars/`).
+Every signed-in user has `My account` (the person icon at the top right): your console's firmware, so games and updates that need a newer one are marked in the Library and on their pages, whether the Library's List view shows each game's background image for you, and whether the verification marks (valid, repack, corrupt) show beside the files - each one yours or as the server says (`Settings > Library`). Also your profile picture, shown in the top bar and in the users table: one of the gallery's avatars, or a picture you upload (PNG, JPEG, WebP or GIF up to 5 MB, cropped square and shrunk on the server, kept in `data/avatars/`).
 
 ## Upcoming releases and Sagas
 
@@ -135,14 +135,14 @@ Every signed-in user has `My account` (the person icon at the top right): your c
 
 ## Compress / Decompress and Combine / Split (Files)
 
-Two tiles on the Files page, admins only (collaborators see them without the buttons); both need the console keys. Under each, the settings it follows, each linking to its control: the compression level and **Delete the originals** (Settings > Library > Compression; on by default - off, both files stay and the next scan handles them as your duplicate settings say).
+Two tiles on the Files page, admins only (collaborators see them without the buttons); both need the console keys. Under each, the settings it follows, each linking to its control: the compression level and **Delete the originals** (Settings > Library > Compression; on by default - off, both files stay: the original keeps its record, and the new file is added, identified and verified on its own; your duplicate settings decide between them).
 
 - **Compress / Decompress**: each game with its NSP, NSZ, XCI and XCZ files (base, update, DLC or bundle). Filter by *Uncompressed* / *Compressed* or by format, tick files - a game's checkbox ticks all of its own - and press *Compress* (NSP to NSZ, XCI to XCZ) or *Decompress* (back). Each file becomes a task (see Tasks) and is converted in its own folder, checked before its original goes.
 - **Combine / Split**: *To combine* lists each game whose base is a separate NSP/NSZ file and that has its update and/or DLC as separate NSP/NSZ files; each becomes a task that writes one file next to the base, named `Game name [TitleID].nsp` (`.nsz` when a part is already compressed), with the base, the **latest** update and every DLC - older updates and delta fragments are left out. *Combined* lists the combined files; *Split* writes one file per content next to it (`Name [ID][vVersion].nsp`). Nothing is recompressed, and every new file is checked against its source before an original goes. XCI and NUP files aren't offered.
 
 ## Saves page
 
-Users with the `Backup` permission see their own backups JKSV uploaded to the save vault (see [Save vault](#save-vault)), by game, to download or delete - only one's own, admins included. Every user's uploads are on the Dashboard's *Uploaded saves*, for admins and collaborators. An amber notice at the top says what the server keeps: how many backups of each game, and how many different games each user may keep saves of (with how many they already use).
+Users with the `Backup` permission see their own backups JKSV uploaded to the save vault (see [Save vault](#save-vault)), one row a game: the backups as blocks to its right, the newest first, scrolling sideways when they don't fit. A block downloads its backup; its bin (on hover, always on a touch screen) deletes it - only one's own, admins included. Every user's uploads are on the Dashboard's *Uploaded saves*, for admins and collaborators. An amber notice at the top says what the server keeps: how many backups of each game, and how many different games each user may keep saves of (with how many they already use).
 
 ## Services
 
@@ -389,7 +389,9 @@ LAN discovery lets Sphaira and other compatible clients find the shop on your ne
 
 ## NUP files
 
-A NUP (`.nup`) holds a decrypted game, its updates and its DLC in one file. Ownfoil-Plus reads it without console keys: it shows as one file holding each part (in the game page's *Files* dialog), it is verified by checking every file inside against its SHA-256, Organize moves it as one file (the `multi` template when it holds more than one part), and a NUP and an NSP or XCI of the same game are both kept - they are never duplicates of each other, nor outdated updates to remove.
+A NUP (`.nup`) holds a decrypted game, its updates and its DLC in one file. Ownfoil-Plus reads it without console keys: it shows as one file holding each part (in the game page's *Files* dialog), it is verified by checking every file inside against its SHA-256, Organize moves it as one file (the `multi` template when it holds more than one part), and a NUP and an NSP or XCI of the same game are both kept - they are never duplicates of each other, nor outdated updates to remove (an update held only by a NUP never makes an update NSP obsolete).
+
+Checking a NUP also looks at the metadata no hash covers - a build ID that isn't 32 bytes, text that isn't UTF-8, names or icons by language that run past their record - and a NUP whose table of contents is hostile (names longer than a console takes, folders sharing their children) is refused. Metadata whose types an early packer counted from 0 is read one up, as the format means it; the file is never rewritten. A game rebuilt with its update inside (hacBrewPackLZ) counts as up to date.
 
 ### Client access
 

@@ -14,6 +14,7 @@
             <div class="task-scroll" id="queueScroll" style="--task-rows: 10">
                 <ul id="queueTasks" class="task-list"></ul>
                 <p id="queueEmpty" class="text-secondary fst-italic mb-0">{{ t('tasks.nothing_queued') }}</p>
+                <p id="queueMore" class="task-more d-none mb-0"></p>
             </div>
         </section>
 
@@ -88,7 +89,12 @@
         stopped: {{ t('tasks.stopped') | tojson }},
         idle: {{ t('tasks.idle') | tojson }},
         pid: {{ t('tasks.pid') | tojson }},
+        queueMore: {{ t('tasks.queue_more') | tojson }},
     };
+
+    // The server sends the oldest this many open tasks live; a longer queue gets a line
+    // saying how many more wait behind them.
+    const MAX_TASKS = {{ max_tasks }};
 
 </script>
 <script src="{{ url_for('static', filename='js/tasks.js') }}"></script>

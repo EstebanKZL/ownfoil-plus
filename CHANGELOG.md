@@ -4,6 +4,202 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.56]
+
+- **Game page, third round:**
+  - **A marked fact keeps its title plain.** *Firmware needed* (console too old) and
+    *Latest version* (an update waiting) color their frame and value only; the title
+    stays as plain as *Your version* or *Size*. And each wears its own color: the
+    firmware's violet, the update's amber - the two used to share the violet.
+  - **A DLC's card puts its art on top**, across the window (it was a small thumbnail
+    beside the text), with the name and its badge, the facts as small tiles and the
+    description underneath.
+  - **No more Japanese taglines over a Spanish description.** The regional TitleDB file
+    carries Nintendo's text as Nintendo left it, and some games kept their short intro
+    in Japanese. A store text written mostly in Japanese, Chinese or Korean is left out
+    when TitleDB's language is none of those - on the game page, the Library's views and
+    a DLC's card alike.
+- **The verification marks are a choice.** *Settings > Library > Show the verification
+  marks* sets the default (on); each user can show or hide them for themselves in *My
+  account* (a new `user.show_verification`, migration `a7b8c9d0e1f3`). Rendered on
+  `<html data-verification>`, so every mark - game page, Files dialog, List view - hides
+  at once.
+- **Sagas show every game**, Switch Library Manager style: every cover, a little bigger,
+  in as many rows as they take - no "+N", and nothing cut mid-card when the window
+  narrows.
+- **One pager everywhere**, Switch Library Manager style: "Showing 1–24 of 42" on the
+  left, the pages in the middle, "Per page" on the right, each page remembering its own
+  choice in the browser - the Library (top and bottom, with the sizes that fill whole
+  rows), Sagas, Files > All files, Compress and Combine, the users in Settings and Saves.
+  On a phone the pages take their own row.
+- **Saves, redesigned.** One row a game: its icon, name and totals fixed on the left,
+  its backups as blocks in a strip to the right - the newest first and marked -
+  scrolling sideways when they don't fit (a server keeping every backup made a column
+  that never ended). A block downloads its backup; its bin shows on hover or focus,
+  always on a touch screen. The games go by pages.
+
+- **Files, third round:**
+  - **Select all rides the pages row.** On Compress and Combine, *Select all* sits at
+    the left of the pager, on the same line, instead of a row of its own.
+  - **The action bar is one of the web's cards**: the selection's summary and its note
+    on the left, the buttons on the right, the style's accent on its edge, and room
+    between it and the pages above (it used to sit flush under them).
+  - **A tab reloads only when the files changed.** The server publishes a signature of
+    the files table on the realtime feed; when it moves (a task, a scan, another
+    page), the tiles and the open tab follow and every other tab asks again the next
+    time it is entered - only then. A record cleaned in Duplicates no longer lingers
+    in All files until a page reload, and entering a tab whose files didn't move shows
+    its rows at once, without asking the server.
+- **Compressing with the originals kept: the output is the new file.** With *Delete
+  the originals* off, the NSP used to hand its record to the NSZ and come back as a
+  new file, identified and verified all over again. Now the original keeps its record
+  as it was, and the file that came out (NSZ/XCZ when compressing, NSP/XCI when
+  decompressing) is added as the new one, identified and verified. With the originals
+  deleted the record still follows the output, and is verified again instead of
+  carrying the original's verdict.
+- **NUP files, as Switch Library Manager Web 2.0 reads them:**
+  - **Metadata types counted from 0, second rule.** A build of the format's packer
+    numbered them one below; a block with a type 0 was already read one up. A DLC's
+    block has no NPDM to tell it: a record 0x0007 that isn't the 32 bytes of a build
+    ID does (it is the source dump's name). Such a DLC showed its publisher as its name.
+    It is read right and only told - the file is never rewritten.
+  - **Check the files looks at the metadata no hash covers**: a build ID that isn't 32
+    bytes, text that isn't UTF-8, names or icons by language that run past their
+    record - reported as damage with the package and the record.
+  - **Hostile tables of contents are refused** before anything walks them: names over
+    0x300 bytes or paths over 0x400 (more than the console takes), folders sharing
+    their children, and packages sharing their folders so many times a walk would take
+    hours.
+  - **A game rebuilt with its update in it** (hacBrewPackLZ) carries the update's
+    version as its own: it counts as up to date instead of showing an update available.
+  - **An update in a NUP never makes an update NSP obsolete.** Outdated updates (the
+    list and the cleanup) compare only files that install; the newest update held only
+    by a NUP used to put the NSP of the one before on the list to delete.
+
+- **Files, second round:**
+  - **No more half-broken page after an update.** The service worker used to answer
+    CSS and JS from its cache while the page itself came fresh from the network - so
+    after every update the fresh page wore the old styles "for a while", misaligned,
+    until it settled. Static assets come from the network first now; the cache answers
+    only when the server can't be reached (the offline story keeps working).
+  - **Pending is live.** Entering the tab shows what runs right now (its rows used to
+    sit cached until a page reload), and the list follows work as it appears or ends:
+    a combine queued elsewhere shows up on its own, a finished one leaves, and the
+    tile's count had already been re-asking itself every 12 s.
+  - **The follow-up notice opens Pending right here**: "N tasks queued. See them on
+    Pending" links to this page's own Pending tab (it used to leave for the Tasks
+    page).
+- **Game page, second round:** the Updates and DLC rows wear their type colors on
+  their glyphs (the sections' title icons keep the web's own accent - design, not
+  content), and the *Latest version* fact turns the update's amber when the owned one
+  is behind it - the same treatment the firmware fact gives its violet. In the
+  Library's List view the *Latest version* pill is back (green or amber, reading both
+  version names); the state icon beside it was the part that went.
+- **Switch Library Manager touches, on our own shape:**
+  - **The console filter is one stadium bar**: the options sit inside it, the chosen
+    one filled with the style's accent with its count as a nested pill - in the same
+    place it always was.
+  - **The List view is hidden on phones** - a remembered list becomes cards there.
+  - **The List view's titles** carry both version names ("3.0.0 · v1048576", plain
+    text - the green "up to date" pill went), show no date after "Latest version",
+    and their up-to-date/update mark says what it is on hover; its rows say "En la
+    biblioteca" with the check in its circle, like the game page's own badge. Every
+    update row in the sections reads both names too.
+  - **Updates read both names** on the game page as well, and every row gets a
+    release-notes icon - only the icon, opening a web search in its own tab - just
+    after the download arrow.
+  - **A DLC's name opens its own card**: the game's art beside its facts (id with a
+    copy button, release date, size) and its description. The row keeps the size once,
+    in a pill like the List view's, and its id gets a copy button beside it.
+  - **One date format for updates and DLC**: DD/MM/YYYY, whether titledb shipped
+    YYYYMMDD or the row carried a dashed ISO date (those used to show raw).
+- **Statistics' charts keep one palette, the same in every style.** A donut or a share
+  bar used to start from the style's accent (cyan in ownfoil, red in neon); a plain
+  share is the info blue now, and the per-type rows wear the type colors - base coral,
+  update amber, DLC cyan - like every other view of the same thing. The format donut
+  keeps to itself: one hue in steps (info blue toward the track color), never a
+  content-type color, so NSP's blue doesn't read as "update" or NUP's as "DLC".
+- **Files:**
+  - **Synchronize** replaces the header's refresh icon, Switch Library Manager style: a
+    labeled button that downloads the latest TitleDB and analyzes the library again (the
+    scan runs behind the TitleDB task, so new files are identified against the freshest
+    names), spinning while it works and toasting its outcome. A finished task leaves the
+    queue - gone means done, which the toast now says instead of crying failure. The old
+    icon only re-read the database.
+  - **Duplicates' tile counts each file once.** A multi-content file sits beside the
+    game's base, its update and each of its DLC, and the "to free" figure summed it once
+    per group (a 1.7 GiB bundle read as 10 GiB). Deleting it frees its size a single
+    time, which is what the tile says now - the bulk-delete path already worked this way.
+  - **Compressing with "delete the originals" off registers the original right away** -
+    and the drawer's Compress follows that setting now too (it always deleted). The .nsz
+    takes the row and the kept .nsp comes back as a file of its own through the normal
+    pipeline, not whenever the next scan happens to run.
+  - **Pending folds a game into one row - and counts what it shows.** Compressing or
+    combining a whole game listed its base, update and DLC each with a bar of its own;
+    one row carries the game now, its bar the mean of its files' tasks (or the game's
+    own combine task). The tile and the pager count the same processes, not files (a
+    six-file combine is 1 pending, not 6), and the tile re-asks the count on its own -
+    work queued elsewhere used to need a page reload to show up.
+  - **Compress and Combine filter like All files**: no more rows of "All / Uncompressed
+    / Compressed" pills above the list - the toolbar keeps the search, then the chips
+    and the "+" that adds a filter, the same as the flat list.
+- **One color per content type, in every style.** What a file holds no longer follows the
+  style's accent: a base game is coral (a new `--op-base`, its own red apart from the one
+  of errors), an update amber, DLC cyan, a Multi gold and firmware violet - the same in
+  light and dark, ownfoil, neon or joycon, in badges, tiles, chips, tables and dialogs.
+  What used to drift with the style and now doesn't: the game page's missing-DLC badge,
+  the Library's *Games* and *DLC missing* tiles, and the Compress panel's Multi chip
+  (blue before, gold like every Multi now; Base went coral and stopped colliding with
+  DLC's cyan in ownfoil and joycon). And the types are identified by their color in more
+  places: the Files table's Content column shows each type as a colored chip (a
+  multi-content file leads with the gold Multi one), the game's file dialog tints each
+  row's icon, and the List view's Base game / Updates / DLC sections carry their dot.
+- **Library**: no count beside the title (the *Games* tile says it); the search lasts while
+  you stay on the page - views and filters keep it - and starts empty when you come back
+  from another page (it was remembered for good; the filters still are, and Ctrl+K's
+  search still fills it); the List view's updates show no date.
+- **Sagas**: a complete saga is framed in gold with a trophy before its "10 of 10"; pages
+  of 24 cards, in one, two or three columns - each divides 24, so only the last page can
+  end with a short row. The covers' row is capped to the card (it used to run past the
+  edge on narrow windows), and hovering a card lifts and marks it like a game's - the
+  trophy and the count stay gold, the frame joins the hover like any other card.
+
+- **A big library stays responsive while it scans.** SQLite takes one writer at a time,
+  and a scan made thousands of tiny writes the web and the workers queued behind:
+  - **Batches**: a scan commits its new files 200 at a time and queues their tasks in one
+    transaction; the library pass, the verify pass and the artwork do the same. Measured
+    on 3,000 files: the scan went from 18.3 s to 1.7 s, queueing 3,000 tasks from 8.4 s
+    to 0.07 s.
+  - **Artwork**: only the titles still missing an image get a task (it was one per game
+    and DLC, whatever their state).
+  - **No passes for nothing**: an unchanged TitleDB (most runs, every 12 h and at each
+    start) no longer sets off a pass over the whole library; a scan that finds nothing
+    new runs none unless some file still owes a stage; a scan of every library runs one
+    pass at the end instead of one per library.
+  - **The live Tasks view** gets the oldest 1,000 open tasks (10,000 was read four times a
+    second) and reads a long queue once a second; one line under the queue says how many
+    more wait behind.
+  - **Pending** hides the identify and organize stages of a file a task already has in
+    hand (they flickered in and out), and the server builds at most 500 rows (`total`
+    still counts all); the tile asks for the count alone.
+
+- **Duplicates show each copy's real name**: compressing or decompressing moved a file to
+  `.nsz`/`.xcz` (its path) but left its name and folder as they were, so Duplicates listed
+  `game.nsp` twice while the file panel said `.nsz`. Both follow the path now, and every
+  start repairs the rows left behind.
+- **Files > Compress and Combine go by pages of 100 games**, with the range and arrows
+  above and below the list (another search or filter starts at the first page). A game's
+  name opens the file panel on the right, as in the other views, instead of leaving for
+  the game page - the panel now sits beside these lists too.
+- **Files > Pending: a progress bar per file**, from the task working on it: its share
+  while it runs, striped while it waits in the queue, empty before a task has it. It
+  updates every 2 seconds; the files whose task finished leave the list, which is asked
+  again at most every 15 s (during a big scan a task ends every second, and the list is
+  the page's heaviest request).
+- **Pending also lists Files > Compress and Combine work**: a file queued to compress,
+  decompress or split, and every file of a game being combined, with the operation as its
+  stage and the same progress bar (a combine's bar follows its game).
+
 ## [6.2.5.55]
 
 - **The Tasks cards keep their size**: each list sits in a frame of a fixed height - 10

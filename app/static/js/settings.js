@@ -118,7 +118,9 @@ function submitWatcherSettings() {
     });
 }
 
-const USERS_PER_PAGE = 10;
+// Users a page, remembered per browser.
+const USER_SIZES = [10, 25, 50];
+let usersPerPage = Pager.perPage('users', USER_SIZES, 10);
 let usersPage = 0;
 
 function fillUserTable() {
@@ -162,7 +164,7 @@ function filteredUsers() {
 function renderUserTable() {
     const body = $('#userTable tbody').empty();
     const users = filteredUsers();
-    const pages = Math.max(1, Math.ceil(users.length / USERS_PER_PAGE));
+    const pages = Math.max(1, Math.ceil(users.length / usersPerPage));
     usersPage = Math.min(usersPage, pages - 1);
     $('#userCount').text(I18N.usersCount.replace('{n}', users.length));
     $('#usersViewBtn span').text(I18N.usersView.replace('{n}', (allUsers || []).length));
@@ -170,7 +172,7 @@ function renderUserTable() {
         body.append($('<tr>').append($('<td colspan="5" class="text-secondary fst-italic">')
             .text((allUsers || []).length ? I18N.usersNoMatch : '-')));
     }
-    users.slice(usersPage * USERS_PER_PAGE, (usersPage + 1) * USERS_PER_PAGE).forEach(user => {
+    users.slice(usersPage * usersPerPage, (usersPage + 1) * usersPerPage).forEach(user => {
         const name = $('<div class="user-name">');
         if (user['avatar_url']) {
             name.append($('<img class="user-avatar" alt="" width="32" height="32">').attr('src', user['avatar_url']));
@@ -208,15 +210,14 @@ function renderUserTable() {
                        'title': I18N.deleteTooltip, 'aria-label': I18N.deleteTooltip})));
         body.append(row);
     });
-    $('#userPager').prop('hidden', pages < 2);
-    $('#userPageLabel').text(I18N.usersPage.replace('{page}', usersPage + 1).replace('{pages}', pages));
-    $('#userPrev').prop('disabled', usersPage === 0);
-    $('#userNext').prop('disabled', usersPage >= pages - 1);
+    Pager.render(document.getElementById('userPager'), {
+        total: users.length, page: usersPage + 1, perPage: usersPerPage, sizes: USER_SIZES,
+        onPage: p => { usersPage = p - 1; renderUserTable(); },
+        onPerPage: n => { usersPerPage = n; Pager.savePerPage('users', n); usersPage = 0; renderUserTable(); },
+    });
 }
 
 $('#userSearch').on('input', () => { usersPage = 0; renderUserTable(); });
-$('#userPrev').on('click', () => { usersPage -= 1; renderUserTable(); });
-$('#userNext').on('click', () => { usersPage += 1; renderUserTable(); });
 
 function updateKeysElements(titlesSettings) {
     // Verification cannot run without keys: nstools needs them to open a container.
@@ -854,6 +855,7 @@ function submitLibraryManagementSettings() {
             clean_names: getCheckboxStatus("cleanNamesCheck"),
             move_companions: getCheckboxStatus("moveCompanionsCheck"),
             show_background_image: getCheckboxStatus("showBackgroundImageCheck"),
+            show_verification: getCheckboxStatus("showVerificationCheck"),
             name_region: getInputVal("organizerNameRegionSelect"),
             name_language: getInputVal("organizerNameRegionSelect") ? getInputVal("organizerNameLanguageSelect") : "",
             templates: {
@@ -1433,6 +1435,8 @@ $(document).ready(function () {
         $("#moveCompanionsCheck").prop("checked", librarySettings['management']['organizer']['move_companions'] !== false);
         $("#showBackgroundImageCheck").prop("checked",
             librarySettings['management']['organizer']['show_background_image'] !== false);
+        $("#showVerificationCheck").prop("checked",
+            librarySettings['management']['organizer']['show_verification'] !== false);
         setInputVal("baseTemplateInput", librarySettings['management']['organizer']['templates']['base']);
         setInputVal("updateTemplateInput", librarySettings['management']['organizer']['templates']['update']);
         setInputVal("dlcTemplateInput", librarySettings['management']['organizer']['templates']['dlc']);

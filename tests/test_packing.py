@@ -2,6 +2,7 @@
 options, and the endpoints (admins run them; collaborators only look)."""
 import hashlib
 import os
+import re
 import struct
 
 import fixture
@@ -144,8 +145,11 @@ def test_keeping_the_source_leaves_it_on_disk(tmp_path, shop_app):
         f = Files.query.first()
         f.filepath = str(src)
         db.session.commit()
-        tasks._finalize_conversion(f, str(out), 'nsz', True, keep_source=True)
-        assert src.exists() and f.filepath == str(out) and f.compressed
+        new_id = tasks._finalize_conversion(f, str(out), 'nsz', True, keep_source=True)
+        # The original keeps its record; the output is a file of its own.
+        assert src.exists() and f.filepath == str(src)
+        new = db.session.get(Files, new_id)
+        assert new.id != f.id and new.filepath == str(out) and new.compressed
 
 
 # --- endpoints -------------------------------------------------------------------------
@@ -302,3 +306,93 @@ def test_multi_label_and_its_contents_listed_without_their_own_download():
     lib = open(os.path.join(APP_DIR, 'static', 'js', 'library.js'), encoding='utf-8').read()
     assert lib.count('downloadableFile { id size verificationStatus contents }') == 2
     assert 'multi: a.owned && inMulti(a),' in lib and 'multi: inMulti(ownedApp),' in lib
+
+
+def test_packing_pages_of_100_and_the_name_opens_the_file_panel():
+    js = open(os.path.join(APP_DIR, 'static', 'js', 'packing.js'), encoding='utf-8').read()
+    assert "Pager.perPage('packing', PACK_SIZES, 100)" in js and 'shown.slice(s.page * pageGames' in js
+    assert "make('button', 'packing-game__name', game.name)" in js and 'openDrawer(' in js
+    assert '/game/${game.title_id}' not in js
+    html = open(os.path.join(APP_DIR, 'templates', 'files.html'), encoding='utf-8').read()
+    # The panel sits beside the file drawer, so the drawer shows in these views too.
+    body = html[html.index('id="filesBody"'):html.index('id="filesDrawer"')]
+    assert 'id="packingPanel"' in body
+
+
+def test_pending_rows_carry_a_live_progress_bar():
+    js = open(os.path.join(APP_DIR, 'static', 'js', 'files.js'), encoding='utf-8').read()
+    assert "tab.kind === 'pending' ? progressBar(r.id, r.apps, r._ids) : null" in js
+    assert 'setInterval(pollPending, 2000)' in js and 'tasks(status: RUNNING' in js
+    # A Combine names the game: its bar follows the game's id. The list itself is asked
+    # again at most every 5 s, and follows new work too - not just the finished kind.
+    assert 'pendingTitles[bar.dataset.progressTitle]' in js and 'Date.now() - pendingReloaded > 5000' in js
+    assert 'sameKeys(pendingTasks, next)' in js
+    for stage in ('decompress', 'combine', 'split'):
+        assert f'{stage}: I18N.pendingStage' in js
+
+
+def test_kind_badges_wear_the_fixed_type_colors():
+    # Base coral, update amber, DLC cyan, multi gold - never the style's accent, so a
+    # kind is identified the same in every style.
+    js = open(os.path.join(APP_DIR, 'static', 'js', 'packing.js'), encoding='utf-8').read()
+    assert "BASE: 'base'" in js and "MULTI: 'fav'" in js
+    assert "BASE: 'nav'" not in js and "MULTI: 'info'" not in js
+
+
+def test_pending_files_of_one_game_fold_into_one_row():
+    js = open(os.path.join(APP_DIR, 'static', 'js', 'files.js'), encoding='utf-8').read()
+    # Compressing or combining a whole game listed its base, update and DLC each with
+    # a bar; the folded row carries every file id and its bar is the mean of their
+    # tasks (a file without one yet counting as zero), or the game's own combine task.
+    assert "function groupPendingByGame(rows)" in js and "dataset.progressIds" in js
+    assert "Math.round(ids.reduce" in js
+    assert "_files ? I18N.pendingFilesCount.replace('{count}'" in js
+
+
+def test_packing_filters_are_chips_with_a_plus_menu():
+    js = open(os.path.join(APP_DIR, 'static', 'js', 'packing.js'), encoding='utf-8').read()
+    # No rows of pills: the toolbar carries the active chips and the "+" that adds
+    # one, exactly like the flat list (files-filter-chip is its chip class).
+    assert "filterBar(kind)" in js and "files-filter-chip" in js
+    assert "filter-pill" not in js and "packing-filters" not in js
+
+
+def test_the_follow_up_notice_opens_pending_right_here():
+    js = open(os.path.join(APP_DIR, 'static', 'js', 'packing.js'), encoding='utf-8').read()
+    # "See them on Pending", a link to this page's own tab - not a leave for Tasks.
+    assert "link.href = '#pending'" in js and "'/admin/tasks'" not in js
+
+
+def _js_function(js, name):
+    start = js.index(f"function {name}(")
+    depth, i = 0, js.index(") {", start) + 2
+    while True:
+        depth += {"{": 1, "}": -1}.get(js[i], 0)
+        i += 1
+        if depth == 0:
+            return js[start:i]
+
+
+def test_select_all_rides_the_pager_row():
+    # Asked for: "Select all" on the same row as the pages, at its left - one row above
+    # the list in Compress and in Combine, shown even when there is one page only.
+    js = open(os.path.join(APP_DIR, 'static', 'js', 'packing.js'), encoding='utf-8').read()
+    head = _js_function(js, 'listHead')
+    assert 'packing-select-all' in head and 'pager(kind, shown.length)' in head
+    assert 'packing-select-all' not in _js_function(js, 'toolbar')
+    assert 'packing-toolbar--under' not in js
+    render = _js_function(js, 'render')
+    assert 'toolbar(kind, shown), listHead(kind, shown)' in render
+
+
+def test_the_action_bar_is_a_web_card_with_room_below_the_pages():
+    js = open(os.path.join(APP_DIR, 'static', 'js', 'packing.js'), encoding='utf-8').read()
+    footer = _js_function(js, 'footer')
+    # What is chosen leads the bar, the note under it; the buttons on the right.
+    assert 'packing-footer__summary' in footer and 'summary(kind)' in footer
+    assert 'packing-footer__note' in footer
+    css = open(os.path.join(APP_DIR, 'static', 'style.css'), encoding='utf-8').read()
+    assert '.packing-footer.surface {' not in css          # the glowing outline is gone
+    rule = re.search(r"\n\.packing-footer \{([^}]*)\}", css).group(1)
+    assert 'margin-top: 1.25rem' in rule and 'backdrop-filter' in rule
+    assert 'var(--op-border)' in rule

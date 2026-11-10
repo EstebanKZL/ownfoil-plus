@@ -55,9 +55,19 @@ _NO_DIR = 0xFFFFFFFF
 # them after the folders: both read the same.
 _FILE_TAG = 0x80000000
 
+_TLV_NPDM = 0x0001
 _TLV_DISPLAY_VERSION = 0x0004
 _TLV_TITLE_NAME = 0x0005
 _TLV_PUBLISHER = 0x0006
+_TLV_BUILD_ID = 0x0007
+_TLV_SOURCE_DUMP = 0x0008
+_TLV_LOCALIZED_TITLES = 0x0009
+_TLV_LOCALIZED_ICONS = 0x000A
+
+# The console takes paths of 0x300 bytes at most, so no game has longer names; a crafted
+# NUP that gives longer ones is refused, and so is a path past 0x400.
+_MAX_NAME = 0x300
+_MAX_PATH = 0x400
 
 _READ_CHUNK = 4 << 20
 
@@ -87,8 +97,14 @@ def _read_at(f, offset, size):
 
 
 def _tlvs(block):
-    """The first record of each type in a package's metadata block. An early packer
-    numbered the types from 0 (one below the format's): such a block is shifted up."""
+    """The first record of each type in a package's metadata block, and whether its types
+    were counted from 0.
+
+    A build of the format's packer numbered the types one below the format's (NPDM 0, the
+    name 4, the publisher 5): a block with a type 0 is read with each type one up. A block
+    without an NPDM (a DLC's) has no type 0 to tell it: there a record 0x0007 that is not
+    the 32 bytes of a build ID does - the source dump's name, one below its place. The
+    reference packer, NXPress and Switch Library Manager read them by the same two rules."""
     records, pos = {}, 0
     while pos + 8 <= len(block):
         kind, size = _u16(block, pos), _u32(block, pos + 4)
@@ -97,9 +113,85 @@ def _tlvs(block):
             raise NupError('a metadata record runs past its block')
         records.setdefault(kind, block[pos:pos + size])
         pos += size
-    if 0 in records:
-        records = {(k + 1 if k < 0xFF else k): v for k, v in records.items()}
-    return records
+    build_id = records.get(_TLV_BUILD_ID)
+    if 0 not in records and (build_id is None or len(build_id) == 32):
+        return records, False
+    return {(k + 1 if k < 0xFF else k): v for k, v in records.items()}, True
+
+
+def _localized(payload):
+    """Names or icons by language: a tag's length, the tag, the data's length, the data.
+    Raises NupError when a record runs past the block."""
+    result, pos = {}, 0
+    while pos < len(payload):
+        tag_size = payload[pos]
+        pos += 1
+        if not tag_size or tag_size > len(payload) - pos - 4:
+            raise NupError('a record is malformed')
+        tag = payload[pos:pos + tag_size].decode('ascii', 'replace').lower()
+        pos += tag_size
+        size = _u32(payload, pos)
+        pos += 4
+        if size > len(payload) - pos:
+            raise NupError('a record runs past the end of its block')
+        result.setdefault(tag, payload[pos:pos + size])
+        pos += size
+    return result
+
+
+def _utf8(raw):
+    try:
+        raw.decode('utf-8')
+        return True
+    except UnicodeDecodeError:
+        return False
+
+
+def _label(pkg):
+    kind = {KIND_BASE: 'game', KIND_UPDATE: 'update'}.get(pkg['kind'])
+    if kind:
+        return f"{kind} v{pkg['version']}"
+    if pkg['kind'] == KIND_DLC:
+        return f"DLC {pkg['title_id']:016X} v{pkg['version']}"
+    return f"package of kind {pkg['kind']} v{pkg['version']}"
+
+
+def _damaged_meta(container):
+    """The packages' metadata that cannot be what it says - no hash of the format covers
+    it: a build ID that is not 32 bytes, text that is not UTF-8, names or icons by language
+    that run past their record. Types are only sure in a block with an NPDM (a block
+    without one could be counted from 0 unseen), so elsewhere only the by-language records,
+    alike either way, are looked at."""
+    damaged = []
+    for pkg in container['packages']:
+        meta = pkg['meta']
+
+        def bad(record, reason):
+            damaged.append(f"{_label(pkg)}: metadata, {record}: {reason}")
+        names = {}
+        for kind, record in ((_TLV_LOCALIZED_TITLES, 'names by languages'),
+                             (_TLV_LOCALIZED_ICONS, 'icons by languages')):
+            if kind in meta:
+                try:
+                    parsed = _localized(meta[kind])
+                except NupError as e:
+                    bad(record, str(e))
+                    continue
+                if kind == _TLV_LOCALIZED_TITLES:
+                    names = parsed
+        if not (meta.get(_TLV_NPDM) or b'').startswith(b'META'):
+            continue
+        build_id = meta.get(_TLV_BUILD_ID)
+        if build_id is not None and len(build_id) != 32:
+            bad('build ID', f'it is {len(build_id)} bytes instead of 32')
+        for kind, record in ((_TLV_DISPLAY_VERSION, 'display version'), (_TLV_TITLE_NAME, 'name'),
+                             (_TLV_PUBLISHER, 'publisher'), (_TLV_SOURCE_DUMP, 'source dump')):
+            if kind in meta and not _utf8(meta[kind]):
+                bad(record, 'it is not UTF-8 text')
+        for tag in sorted(names):
+            if not _utf8(names[tag]):
+                bad('names by languages', f'the name in {tag} is not UTF-8 text')
+    return damaged
 
 
 def _text(raw, limit):
@@ -160,6 +252,8 @@ def read(path):
             off, length = _u32(rec, 0), _u32(rec, 4)
             if off + length > pool_size:
                 raise NupError('a name is outside the table of contents')
+            if length > _MAX_NAME:
+                raise NupError(f'a name is too long ({length} bytes)')
             return pool[off:off + length].decode('utf-8', 'replace')
 
         packages, meta_total = [], 0
@@ -171,26 +265,33 @@ def read(path):
             root, exefs, romfs = _u32(rec, 0x08), _u32(rec, 0x0C), _u32(rec, 0x10)
             if root >= dir_count or any(d != _NO_DIR and d >= dir_count for d in (exefs, romfs)):
                 raise NupError(f'package {i} has its folders outside the table of contents')
-            meta = {}
+            meta, zero_based = {}, False
             meta_offset, meta_size = _u64(rec, 0x20), _u32(rec, 0x28)
             if meta_size:
                 meta_total += meta_size
                 if meta_size > _MAX_META or meta_total > _MAX_META_TOTAL \
                         or not header_size <= meta_offset <= file_size or meta_size > file_size - meta_offset:
                     raise NupError(f'package {i} has its metadata outside the file')
-                meta = _tlvs(_read_at(f, meta_offset, meta_size))
+                meta, zero_based = _tlvs(_read_at(f, meta_offset, meta_size))
+            # zero_based: told (and read one up), never written back - the file stays as it is.
             packages.append({'title_id': _u64(rec, 0), 'root': root, 'version': _u32(rec, 0x14),
-                             'kind': kind, 'flags': rec[0x19], 'meta': meta})
+                             'kind': kind, 'flags': rec[0x19], 'meta': meta, 'zero_based': zero_based})
 
     pos = _TOC_HEAD + package_count * _PACKAGE
     child_count = (pool_offset - records) // 4
     dirs = []
+    # Each folder has a range of children of its own, as the format lays them out: folders
+    # whose ranges overlap would make every walk go through the same children again and again.
+    slots = 0
     for _ in range(dir_count):
         rec = toc[pos:pos + _DIR]
         pos += _DIR
         first, count = _u32(rec, 0x08), _u32(rec, 0x0C)
         if first + count > child_count:
             raise NupError('a folder has its children outside the table of contents')
+        slots += count
+        if slots > child_count:
+            raise NupError('folders share their children')
         dirs.append((name(rec), first, count))
     files = []
     for _ in range(file_count):
@@ -218,7 +319,40 @@ def read(path):
         if node >= dir_count + file_count:
             raise NupError('a folder holds something that is not in the table of contents')
         children.append(node)
-    return {'packages': packages, 'dirs': dirs, 'files': files, 'children': children}
+    container = {'packages': packages, 'dirs': dirs, 'files': files, 'children': children}
+    _check_walks(container)
+    return container
+
+
+def _check_walks(container):
+    """Refuse a tree whose walks would go through the same children again and again. As
+    packers write a NUP each package has a tree of its own, so all the walks together go
+    through each child once; a crafted NUP whose packages all share one big tree would
+    keep a reader at it for hours. Folders are walked as walk() does, without the paths."""
+    dirs, children = container['dirs'], container['children']
+    budget = 4 * len(children) + 1024
+    stamp = [0] * len(dirs)       # per folder: 2p+1 while package p walks it, 2p+2 once walked
+    for p, pkg in enumerate(container['packages']):
+        open_ = 2 * p + 1
+        stack = [[pkg['root'], 0]]
+        stamp[pkg['root']] = open_
+        while stack:
+            top = stack[-1]
+            _, first, count = dirs[top[0]]
+            if top[1] == count:
+                stamp[top[0]] = open_ + 1
+                stack.pop()
+                continue
+            node = children[first + top[1]]
+            top[1] += 1
+            budget -= 1
+            if budget < 0:
+                raise NupError('the packages share their folders too many times')
+            # A folder inside itself, or too deep, is told by walk().
+            if node >= len(dirs) or stamp[node] >= open_ or len(stack) >= _MAX_DEPTH:
+                continue
+            stamp[node] = open_
+            stack.append([node, 0])
 
 
 def walk(container, package_index):
@@ -239,7 +373,10 @@ def walk(container, package_index):
         top[1] += 1
         if node >= len(dirs):
             index = node - len(dirs)
-            yield top[2] + files[index]['name'], index
+            path = top[2] + files[index]['name']
+            if len(path.encode()) > _MAX_PATH:
+                raise NupError('a path is too long')
+            yield path, index
             continue
         seen = state.get(node)
         if seen == 'open':
@@ -248,8 +385,11 @@ def walk(container, package_index):
             continue
         if len(stack) >= _MAX_DEPTH:
             raise NupError('the folders go too deep')
+        prefix = top[2] + dirs[node][0] + '/'
+        if len(prefix.encode()) > _MAX_PATH:
+            raise NupError('a path is too long')
         state[node] = 'open'
-        stack.append([node, 0, top[2] + dirs[node][0] + '/'])
+        stack.append([node, 0, prefix])
 
 
 def _stored_sizes(container):
@@ -299,6 +439,11 @@ def contents(path):
     entry per game / update / DLC (an update stored twice keeps its newest version),
     each with the name, display version and bytes of the file it takes."""
     container = read(path)
+    shifted = [_label(p) for p in container['packages'] if p['zero_based']]
+    if shifted:
+        # Told, never rewritten: read one up, as the format means it.
+        logger.info(f'{os.path.basename(path)}: metadata types counted from 0 in '
+                    f'{", ".join(shifted)} (an early packer); read one up.')
     sizes = _stored_sizes(container)
     program = _program_id(container['packages'])
     by_app = {}
@@ -337,12 +482,13 @@ def verify(path, progress=None):
         container = read(path)
     except (NupError, OSError) as e:
         return False, str(e)
+    # The metadata no hash covers: told with the files' damage.
+    failed = _damaged_meta(container)
     files = [f for f in container['files'] if f['size']]
     # Data an update shares with its game is stored once: check each extent once.
     unique = {f['offset']: f for f in files}
     total = sum(f['stored'] for f in unique.values()) or 1
     done = 0
-    failed = []
     decompressor = zstandard.ZstdDecompressor()
     with open(path, 'rb') as fh:
         for entry in unique.values():

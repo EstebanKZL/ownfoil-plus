@@ -111,7 +111,8 @@ def update_titledb_files(app_settings):
 
 
 def update_titledb(app_settings):
-    """Download titledb JSON updates and (re)build titles.db if anything changed."""
+    """Download titledb JSON updates and (re)build titles.db if anything changed.
+    Returns whether titles.db was rebuilt (or its organizer names re-imported)."""
     logger.info('Updating titledb...')
     if not os.path.isdir(TITLEDB_DIR):
         os.makedirs(TITLEDB_DIR, exist_ok=True)
@@ -132,6 +133,7 @@ def update_titledb(app_settings):
             from db import reset_files_organized
             reset_files_organized()
 
+    organizer_rebuilt = False
     organizer_locale = get_organizer_locale(app_settings)
     if organizer_locale:
         organizer_path = os.path.join(TITLEDB_DIR, get_organizer_region_titles_file(app_settings))
@@ -139,6 +141,7 @@ def update_titledb(app_settings):
             organizer_locale_changed = store.get_organizer_names_locale() != organizer_locale
             if main_rebuilt or organizer_locale_changed:
                 store.import_organizer_names(organizer_path, organizer_locale)
+                organizer_rebuilt = True
                 if organizer_locale_changed:
                     from db import reset_files_organized
                     reset_files_organized()
@@ -147,3 +150,4 @@ def update_titledb(app_settings):
     with open(os.path.join(TITLEDB_DIR, MARKER_FILE), 'w') as f:
         f.write(remote_commit)
     logger.info('titledb update done.')
+    return bool(main_rebuilt or organizer_rebuilt)

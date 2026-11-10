@@ -2,11 +2,13 @@
 // drawn with CSS (conic-gradient, widths), no chart library - the UI works offline.
 // Colors are design tokens, so every chart follows the style and the mode.
 
-// One color per segment, in order; anything past the list repeats the muted one.
-const CHART_COLORS = [
-    'var(--op-nav)', 'var(--op-action)', 'var(--op-wait)', 'var(--op-ok)', 'var(--op-fav)',
-    'var(--op-text-muted)',
-];
+// One color per segment, in order; anything past the list repeats the last one. The
+// palette is one hue in steps - the same in every style, and deliberately NOT the
+// content-type colors, so a format's segment never reads as "update" or "DLC" (the
+// donut's only user today is Statistics' format donut; type-colored charts pick each
+// row's own token instead).
+const CHART_COLORS = [100, 74, 50, 30, 14].map(
+    share => `color-mix(in srgb, var(--op-info) ${share}%, var(--op-chart-track))`);
 
 /** `part` as a percentage of `total`, one decimal; 0 when there is no total. */
 function percent(part, total) {

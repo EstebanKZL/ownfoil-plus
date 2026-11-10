@@ -114,7 +114,7 @@ def test_the_library_tiles_count_updates_for_games_only():
     # No notes under the updates and missing-DLC figures (asked for: just the number).
     assert "tileUpdatesNote" not in body and "tileMissingDlcNote" not in body
     assert "[pending.toLocaleString(), I18N.tileUpdates, null," in body
-    assert "'bi-controller', 'nav', 'all', null]" in body     # the Games tile applies "All"
+    assert "'bi-controller', 'base', 'all', null]" in body    # the Games tile applies "All", in the base color
     # No total size any more (admins only): an "Up to date" tile with its share instead.
     assert "I18N.tileSize" not in body and "I18N.tileUpToDate" in body
     from i18n import TRANSLATIONS

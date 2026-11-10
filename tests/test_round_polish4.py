@@ -124,11 +124,27 @@ def test_saves_are_searched_by_game():
     assert "g.name" in body and "g.user" not in body and "savesNoMatch" in body
 
 
-def test_saga_cards_keep_one_row_of_covers():
+def test_saga_cards_show_every_game():
+    """Asked for, Switch Library Manager style: every cover of the saga in the card,
+    a little bigger, in as many rows as they take - no "+N", and nothing cut off when
+    the window narrows (the one row used to clip mid-card)."""
     js = _read("app", "static", "js", "sagas.js")
-    assert "const SAGA_THUMBS = 6;" in js and "saga-thumb--more" in js
+    assert "SAGA_THUMBS" not in js and "saga-thumb--more" not in js
+    card = js[js.index("function sagaCard("):js.index("const SAGA_TAB_KEY")]
+    assert "games.forEach(" in card
     css = _read("app", "static", "style.css")
-    assert re.search(r"\.saga-card__strip \{[^}]*flex-wrap: nowrap;[^}]*overflow: hidden;", css)
+    strip = re.search(r"\.saga-card__strip \{([^}]*)\}", css).group(1)
+    assert "flex-wrap: wrap" in strip and "width: 100%" in strip and "overflow: hidden" not in strip
+    assert "width: 3.1rem" in re.search(r"\n\.saga-thumb \{([^}]*)\}", css).group(1)
+    assert ".saga-thumb--more" not in css
+
+
+def test_saga_cards_lift_on_hover_like_the_games():
+    css = _read("app", "static", "style.css")
+    # The games' lift, so a hover says where you are; a complete saga's frame yields to
+    # the hover marking too (asked for), its trophy and count stay gold.
+    assert re.search(r"\.saga-card:hover \{[^}]*transform: translateY\(-3px\);", css)
+    assert re.search(r"\.saga-card\.is-complete:hover \{[^}]*--op-nav-rgb", css)
 
 
 def test_a_saga_inside_a_bigger_one_is_not_listed_apart():

@@ -10,8 +10,8 @@
 const Packing = (() => {
     const T = I18N.pack;
     const state = {
-        compress: {games: null, picked: new Set(), search: '', show: 'all', format: 'all'},
-        combine: {games: null, picked: new Set(), search: '', show: 'all'},
+        compress: {games: null, picked: new Set(), search: '', show: 'all', format: 'all', page: 0, view: ''},
+        combine: {games: null, picked: new Set(), search: '', show: 'all', page: 0, view: ''},
     };
     let keysValid = true;
     // Games shown open (their files listed); every other one is folded to its header.
@@ -67,7 +67,8 @@ const Packing = (() => {
     }
 
     const KIND_LABEL = () => ({BASE: T.kindBase, UPDATE: T.kindUpdate, DLC: T.kindDlc, MULTI: T.kindMulti});
-    const KIND_TONE = {BASE: 'nav', UPDATE: 'wait', DLC: 'dlc', MULTI: 'info'};
+    // Each kind wears its content type's fixed color, the same in every style.
+    const KIND_TONE = {BASE: 'base', UPDATE: 'wait', DLC: 'dlc', MULTI: 'fav'};
 
     function badge(kind) {
         return make('span', `packing-kind packing-kind--${KIND_TONE[kind]}`, KIND_LABEL()[kind]);
@@ -123,58 +124,101 @@ const Packing = (() => {
         }).filter(Boolean);
     }
 
-    function pill(label, count, active, onClick, glyph) {
-        const p = make('button', 'filter-pill');
-        p.type = 'button';
-        p.classList.toggle('active', active);
-        p.setAttribute('aria-pressed', active ? 'true' : 'false');
-        if (glyph) p.append(make('i', `bi ${glyph}`));
-        p.append(make('span', null, label), make('span', 'filter-pill__count', count.toLocaleString()));
-        p.addEventListener('click', onClick);
-        return p;
+    /** The filters, shown the way the flat list shows its own: every active one a chip
+     *  (its choices in a dropdown, an x that clears it back to "all") and a "+" that
+     *  adds one - asked for, in place of the rows of pills that used to sit above the
+     *  list. Single choice per filter, so the menu items are plain buttons. */
+    function filterDefs(kind) {
+        if (kind === 'compress') {
+            const files = (state[kind].games || []).flatMap(g => g.files);
+            const byShow = v => files.filter(f => v === 'all' || (v === 'raw') === !f.compressed);
+            return [
+                {key: 'show', label: T.filterState,
+                 options: () => [['all', T.showAll], ['raw', T.showRaw], ['compressed', T.showCompressed]],
+                 count: v => byShow(v).length},
+                {key: 'format', label: T.filterFormat,
+                 options: () => [['all', T.formatAll], ['nsp', 'NSP'], ['nsz', 'NSZ'], ['xci', 'XCI'], ['xcz', 'XCZ']],
+                 count: v => {
+                     const seen = byShow(state[kind].show);
+                     return v === 'all' ? seen.length : seen.filter(f => f.extension === v).length;
+                 }},
+            ];
+        }
+        const games = state[kind].games || [];
+        return [
+            {key: 'show', label: T.filterState,
+             options: () => [['all', T.showAll], ['loose', T.showLoose], ['combined', T.showCombined]],
+             count: v => games.filter(g => v === 'all' || g.state === v).length},
+        ];
     }
 
-    function filterRows(kind) {
+    function filterChipNode(kind, def) {
         const s = state[kind];
-        const box = make('div', 'packing-filters');
-        if (kind === 'compress') {
-            const files = (s.games || []).flatMap(g => g.files);
-            const byShow = v => files.filter(f => v === 'all' || (v === 'raw') === !f.compressed);
-            const row = make('div', 'pill-row');
-            [['all', T.showAll, null], ['raw', T.showRaw, 'bi-file-earmark'], ['compressed', T.showCompressed, 'bi-file-earmark-zip']]
-                .forEach(([v, label, glyph]) => row.append(pill(label, byShow(v).length, s.show === v, () => {
-                    s.show = v;
-                    render('compress');
-                }, glyph)));
-            const formats = make('div', 'pill-row');
-            const seen = byShow(s.show);
-            [['all', T.formatAll], ['nsp', 'NSP'], ['nsz', 'NSZ'], ['xci', 'XCI'], ['xcz', 'XCZ']].forEach(([v, label]) => {
-                const count = v === 'all' ? seen.length : seen.filter(f => f.extension === v).length;
-                if (!count && v !== 'all' && s.format !== v) return;
-                formats.append(pill(label, count, s.format === v, () => { s.format = v; render('compress'); }));
+        const chip = make('div', 'dropdown files-filter-chip');
+        chip.dataset.key = def.key;
+        const toggle = make('button');
+        toggle.type = 'button';
+        toggle.dataset.bsToggle = 'dropdown';
+        const current = () => def.options().find(([v]) => v === s[def.key]);
+        toggle.replaceChildren(`${def.label}: `, make('b', null, current() ? current()[1] : ''));
+        const menu = make('div', 'dropdown-menu');
+        def.options().forEach(([v, label]) => {
+            const item = make('button', 'dropdown-item');
+            item.type = 'button';
+            item.append(make('span', null, label),
+                         make('span', 'text-secondary ms-2 small', def.count(v).toLocaleString()));
+            item.addEventListener('click', () => { s[def.key] = v; render(kind); });
+            menu.append(item);
+        });
+        const remove = make('button', null);
+        remove.type = 'button';
+        remove.title = T.removeFilterTitle;
+        remove.append(make('i', 'bi bi-x'));
+        remove.addEventListener('click', () => { s[def.key] = 'all'; render(kind); });
+        chip.append(toggle, menu, remove);
+        return chip;
+    }
+
+    /** The chips bar that goes in the toolbar, after the search: active chips first,
+     *  then the "+" with the filters still on "all". */
+    function filterBar(kind) {
+        const s = state[kind];
+        const defs = filterDefs(kind);
+        const bar = make('div', 'files-chips');
+        defs.forEach(def => { if (s[def.key] !== 'all') bar.append(filterChipNode(kind, def)); });
+        const add = make('div', 'dropdown');
+        const addBtn = make('button', 'icon-btn');
+        addBtn.type = 'button';
+        addBtn.dataset.bsToggle = 'dropdown';
+        addBtn.append(make('i', 'bi bi-plus-lg'), document.createTextNode(' '), make('span', null, T.filterButton));
+        const menu = make('div', 'dropdown-menu');
+        const free = defs.filter(def => s[def.key] === 'all');
+        free.forEach(def => {
+            const item = make('button', 'dropdown-item', def.label);
+            item.type = 'button';
+            item.addEventListener('click', () => {
+                // Straight to its first real choice ("Uncompressed", say), with the
+                // chip's own menu open to change it - same feel as the flat list.
+                const first = def.options().find(([v]) => v !== 'all');
+                s[def.key] = first ? first[0] : 'all';
+                render(kind);
+                const toggle = document.querySelector(`#packingPanel .files-filter-chip[data-key="${def.key}"] [data-bs-toggle]`);
+                if (toggle) setTimeout(() => bootstrap.Dropdown.getOrCreateInstance(toggle).show());
             });
-            box.append(row, formats);
-        } else {
-            const games = s.games || [];
-            const row = make('div', 'pill-row');
-            [['all', T.showAll, null], ['loose', T.showLoose, 'bi-files'], ['combined', T.showCombined, 'bi-box-seam']]
-                .forEach(([v, label, glyph]) => row.append(pill(label, games.filter(g => v === 'all' || g.state === v).length,
-                    s.show === v, () => { s.show = v; render('combine'); }, glyph)));
-            box.append(row);
-        }
-        return box;
+            menu.append(item);
+        });
+        addBtn.disabled = !free.length;
+        add.append(addBtn, menu);
+        bar.append(add);
+        return bar;
     }
 
     function toolbar(kind, shown) {
         const s = state[kind];
+        // The search leads, flush left like every other card's toolbar, with the filter
+        // chips after it; what is chosen is told by the action bar at the bottom.
+        const wrap = make('div', 'packing-toolbar-wrap');
         const bar = make('div', 'packing-toolbar');
-        const keys = kind === 'compress' ? shown.flatMap(g => g.files.map(f => f.id)) : shown.map(rowKey);
-        const all = keys.length > 0 && keys.every(k => s.picked.has(k));
-        const selectAll = make('label', 'packing-select-all admin-write');
-        selectAll.append(checkbox(all, on => {
-            keys.forEach(k => on ? s.picked.add(k) : s.picked.delete(k));
-            render(kind);
-        }, T.selectAll), document.createTextNode(T.selectAll));
         const search = make('div', 'packing-search');
         search.append(make('i', 'bi bi-search'));
         const input = make('input', 'form-control form-control-sm');
@@ -187,8 +231,25 @@ const Packing = (() => {
             input._timer = setTimeout(() => { s.search = input.value.trim(); render(kind); focusSearch(); }, 250);
         });
         search.append(input);
-        bar.append(selectAll, search, make('span', 'packing-summary ms-auto', summary(kind)));
-        return bar;
+        bar.append(search, filterBar(kind));
+        wrap.append(bar);
+        return wrap;
+    }
+
+    /** The row over the list: "Select all" at its left, the pages at its right (asked
+     *  for: one row, not a row of its own under the search) - there with one page too. */
+    function listHead(kind, shown) {
+        const s = state[kind];
+        const keys = kind === 'compress' ? shown.flatMap(g => g.files.map(f => f.id)) : shown.map(rowKey);
+        const all = keys.length > 0 && keys.every(k => s.picked.has(k));
+        const selectAll = make('label', 'packing-select-all admin-write');
+        selectAll.append(checkbox(all, on => {
+            keys.forEach(k => on ? s.picked.add(k) : s.picked.delete(k));
+            render(kind);
+        }, T.selectAll), document.createTextNode(T.selectAll));
+        const head = make('div', 'packing-listhead');
+        head.append(selectAll, pager(kind, shown.length));
+        return head;
     }
 
     function focusSearch() {
@@ -213,8 +274,16 @@ const Packing = (() => {
     function gameHead(kind, key, game, sub, checked, onCheck, side) {
         const head = make('div', 'packing-game__head');
         const text = make('div', 'packing-game__text');
-        const name = make('a', 'packing-game__name', game.name);
-        name.href = `/game/${game.title_id}`;
+        // The name opens the file panel on the right, like every other view of the page
+        // (it used to leave for the game page).
+        const name = make('button', 'packing-game__name', game.name);
+        name.type = 'button';
+        name.title = game.name;
+        name.addEventListener('click', () => {
+            const files = game.files || [];
+            const first = files.find(f => f.kind === 'BASE') || files[0];
+            if (first && typeof openDrawer === 'function') openDrawer({id: String(first.id)});
+        });
         text.append(name, make('div', 'packing-game__sub', sub));
         const isOpen = open[kind].has(key);
         const toggle = make('button', 'icon-btn packing-toggle');
@@ -227,7 +296,7 @@ const Packing = (() => {
         if (side) head.append(side);
         head.append(toggle);
         head.addEventListener('click', e => {
-            if (e.target.closest('input, a')) return;
+            if (e.target.closest('input, a, .packing-game__name')) return;
             isOpen ? open[kind].delete(key) : open[kind].add(key);
             render(kind);
         });
@@ -309,9 +378,14 @@ const Packing = (() => {
         return b;
     }
 
+    /** The action bar, held at the bottom while the list scrolls: what is chosen (the
+     *  count and its size) and what the actions do, then the buttons. */
     function footer(kind) {
-        const bar = make('div', 'surface packing-footer');
-        bar.append(make('span', 'packing-note', kind === 'compress' ? T.compressNote : T.combineNote));
+        const bar = make('div', 'packing-footer');
+        const text = make('div', 'packing-footer__text');
+        text.append(make('div', 'packing-footer__summary', summary(kind)),
+                    make('div', 'packing-footer__note', kind === 'compress' ? T.compressNote : T.combineNote));
+        bar.append(text);
         const buttons = make('div', 'packing-actions');
         const items = picked(kind);
         if (kind === 'compress') {
@@ -358,10 +432,67 @@ const Packing = (() => {
         const box = document.getElementById('packingNotice');
         if (!box) return;
         box.replaceChildren(document.createTextNode(text + ' '));
+        // Pending, right here: the follow-up link opens the tab that shows this very
+        // work with its live bars (asked for - it used to leave for the Tasks page).
         const link = make('a', null, T.openTasks);
-        link.href = '/admin/tasks';
+        link.href = '#pending';
         box.append(link);
         box.hidden = false;
+    }
+
+    // Games a page, remembered per browser (one choice for Compress and Combine).
+    const PACK_SIZES = [25, 50, 100, 200];
+    let pageGames = Pager.perPage('packing', PACK_SIZES, 100);
+
+    /** The short pager above the list (beside Select all): the range and two arrows. A
+     *  page of at most pageGames games: a long library rendered every game card at once. */
+    function pager(kind, total) {
+        const s = state[kind];
+        const pages = Math.ceil(total / pageGames);
+        const bar = make('div', 'packing-pager');
+        if (pages <= 1) return bar;
+        const first = s.page * pageGames + 1;
+        const last = Math.min(total, first + pageGames - 1);
+        const step = (delta, glyph, label) => {
+            const b = make('button', 'icon-btn');
+            b.type = 'button';
+            b.title = label;
+            b.setAttribute('aria-label', label);
+            b.disabled = s.page + delta < 0 || s.page + delta >= pages;
+            b.append(make('i', `bi ${glyph}`));
+            b.addEventListener('click', () => {
+                s.page += delta;
+                render(kind);
+                document.getElementById('packingPanel').scrollIntoView({block: 'start'});
+            });
+            return b;
+        };
+        bar.append(make('span', 'packing-pager__text', I18N.pagerRangeTemplate
+            .replace('{first}', first.toLocaleString()).replace('{last}', last.toLocaleString())
+            .replace('{total}', total.toLocaleString())),
+            step(-1, 'bi-chevron-left', I18N.previousPage), step(1, 'bi-chevron-right', I18N.nextPage));
+        return bar;
+    }
+
+    /** The shared pager below the list (pager.js): what is shown, the pages, per page. */
+    function pagesBar(kind, total) {
+        const s = state[kind];
+        const bar = make('div', 'op-pager');
+        Pager.render(bar, {
+            total, page: s.page + 1, perPage: pageGames, sizes: PACK_SIZES,
+            onPage: p => {
+                s.page = p - 1;
+                render(kind);
+                document.getElementById('packingPanel').scrollIntoView({block: 'start'});
+            },
+            onPerPage: n => {
+                pageGames = n;
+                Pager.savePerPage('packing', n);
+                s.page = 0;
+                render(kind);
+            },
+        });
+        return bar;
     }
 
     function render(kind) {
@@ -378,11 +509,16 @@ const Packing = (() => {
             nodes.push(make('p', 'text-secondary', kind === 'compress' ? T.noneCompress : T.noneCombine));
         } else {
             const shown = visibleGames(kind);
-            nodes.push(filterRows(kind), toolbar(kind, shown));
+            // Another search or filter starts again from the first page.
+            const view = JSON.stringify([s.search, s.show, s.format]);
+            if (view !== s.view) { s.view = view; s.page = 0; }
+            s.page = Math.max(0, Math.min(s.page, Math.ceil(shown.length / pageGames) - 1));
+            const page = shown.slice(s.page * pageGames, (s.page + 1) * pageGames);
+            nodes.push(toolbar(kind, shown), listHead(kind, shown));
             if (!shown.length) nodes.push(make('p', 'text-secondary', I18N.emptyFiltered));
             const list = make('div', 'packing-games');
-            shown.forEach(g => list.append(kind === 'compress' ? compressGame(g) : combineGame(g)));
-            nodes.push(list, footer(kind));
+            page.forEach(g => list.append(kind === 'compress' ? compressGame(g) : combineGame(g)));
+            nodes.push(list, pagesBar(kind, shown.length), footer(kind));
         }
         panel.replaceChildren(...nodes);
         if (typeof fillTitleIcons === 'function') fillTitleIcons(panel);

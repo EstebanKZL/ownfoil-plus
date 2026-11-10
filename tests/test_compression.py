@@ -244,11 +244,80 @@ def test_compress_file_success(env, name, comp_ext):
     assert f.compressed is True
     assert f.extension == comp_ext
     assert f.filepath == target
+    # The name and folder follow (Duplicates showed the compressed copy as "Game.nsp").
+    assert f.filename == os.path.basename(target) and f.folder == os.path.dirname(target)
     assert f.size == len(b"COMPRESSEDPAYLOAD")
     assert os.path.exists(target) and not os.path.exists(source)
     # Source deletion is suppressed; the in-progress mark is cleared at the end.
     assert _ignored(source, "")
     assert TempFile.query.count() == 0
+
+
+def _verified(f):
+    import datetime
+    f.verified_at = datetime.datetime(2026, 11, 1, 10, 0)
+    f.hash_valid = True
+    f.signature_valid = True
+    db.session.commit()
+
+
+def _redriven(env):
+    enqueued = []
+    env.monkeypatch.setattr(tasks, "enqueue_task",
+                            lambda name, data=None, **k: enqueued.append((name, (data or {}).get("file_id"))))
+    return enqueued
+
+
+@pytest.mark.parametrize("task,name,produced,out_ext", [
+    ("compress_file_task", "Game.nsp", b"COMPRESSEDPAYLOAD", "nsz"),
+    ("decompress_file_task", "Game.nsz", b"RAWAGAIN", "nsp"),
+])
+def test_with_the_original_kept_the_output_is_the_new_file(env, task, name, produced, out_ext):
+    """Asked for: "delete the originals" off, the original keeps its record as it was -
+    identified and verified - and the file that came out is the new one, added, listed
+    first and identified and verified on its own. It used to be the other way round: the
+    record moved onto the output and the original came back as new, verified again."""
+    enqueued = _redriven(env)
+    env.monkeypatch.setattr(compression, "compress_to", _stub_produce(produced))
+    env.monkeypatch.setattr(compression, "decompress_to", _stub_produce(produced))
+    f = env.seed(name, compressed=name.endswith("nsz"))
+    _verified(f)
+    source, fid = f.filepath, f.id
+
+    getattr(tasks, task)(file_id=fid, keep_original=True)
+
+    original = db.session.get(Files, fid)
+    assert original.filepath == source and original.extension == name.rsplit(".", 1)[1]
+    assert original.hash_valid is True and original.verified_at is not None
+    output = Files.query.filter(Files.id != fid).one()
+    assert output.extension == out_ext and output.filepath == source.rsplit(".", 1)[0] + "." + out_ext
+    assert output.compressed is (out_ext == "nsz") and output.verified_at is None
+    assert os.path.exists(source) and os.path.exists(output.filepath)
+    # The new file goes down the pipeline (identify, verify); the original doesn't.
+    assert enqueued == [("process_file", output.id)]
+    assert Task.query.filter_by(task_name="add_file").count() == 0
+
+
+@pytest.mark.parametrize("task,name,produced,redrive", [
+    ("compress_file_task", "Game.nsp", b"COMPRESSEDPAYLOAD", "process_file"),
+    # Not down the whole pipeline: with automatic compression on it would compress it back.
+    ("decompress_file_task", "Game.nsz", b"RAWAGAIN", "verify_file"),
+])
+def test_with_the_original_deleted_the_output_is_verified_again(env, task, name, produced, redrive):
+    """The record follows the file that came out, as before - and is verified again, by
+    the way (asked for), instead of carrying the original's verdict."""
+    enqueued = _redriven(env)
+    env.monkeypatch.setattr(compression, "compress_to", _stub_produce(produced))
+    env.monkeypatch.setattr(compression, "decompress_to", _stub_produce(produced))
+    f = env.seed(name, compressed=name.endswith("nsz"))
+    _verified(f)
+    fid = f.id
+
+    getattr(tasks, task)(file_id=fid)
+
+    row = db.session.get(Files, fid)
+    assert row.verified_at is None and row.hash_valid is None and row.signature_valid is None
+    assert enqueued == [(redrive, fid)]
 
 
 def test_compress_file_verify_failure_keeps_source(env):
@@ -426,7 +495,8 @@ def test_decompress_file_success(env):
     target = source.rsplit(".", 1)[0] + ".nsp"
     assert f.compressed is False and f.extension == "nsp" and f.filepath == target
     assert os.path.exists(target) and not os.path.exists(source)
-    assert enqueued == []   # no re-drive: the compress stage would undo this immediately
+    # Verified again, but not re-driven: the compress stage would undo this immediately.
+    assert enqueued == ["verify_file"]
 
 
 # --- cleanup hook & startup purge --------------------------------------------------------
@@ -891,3 +961,14 @@ def test_library_maintenance_chains_outdated_updates(env, enabled, expected):
     env.monkeypatch.setattr(tasks, "enqueue_task", lambda name, data=None: enqueued.append(name))
     tasks.library_maintenance_task()
     assert ("remove_outdated_updates" in enqueued) is expected
+
+
+def test_stale_names_are_repaired_from_the_path(env):
+    """Rows compressed before the fix kept their old name: a start puts them right."""
+    f = env.seed("Game.nsp")
+    fid, path = f.id, f.filepath
+    f.filename, f.folder = "Old.nsp", "/nowhere"
+    db.session.commit()
+    tasks._repair_file_names()
+    f = db.session.get(Files, fid)
+    assert f.filename == os.path.basename(path) and f.folder == os.path.dirname(path)

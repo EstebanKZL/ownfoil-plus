@@ -62,8 +62,10 @@ Docker image `estebankzl/ownfoil-plus`.
   `uv pip install -r requirements.txt pytest`).
 - Run tests with `PYTHONUTF8=1` (some tests open files without an encoding and fail
   under cp1252): `PYTHONUTF8=1 python -m pytest -q -p no:cacheprovider -W ignore`.
-  The full suite (~2,300 tests) takes ~20 min on Windows; run the affected test files
-  first, the full suite in the background before committing.
+  The full suite takes ~30 min serially on Windows; with `pytest-xdist` installed,
+  `-n auto` runs the same tests in parallel in ~2 min (same count, all green) - use
+  that locally, CI stays serial. Either way: run the affected test files first, the
+  full suite in the background before committing.
 - Run the app: `python -m ownfoil.cli <data-dir> --no-browser` (serves on port 8465;
   `USER_ADMIN_NAME` / `USER_ADMIN_PASSWORD` env vars create an admin). On Linux/Docker
   the entrypoint is `app/run.py` (gunicorn + worker pool).
@@ -83,7 +85,7 @@ package - `tests/conftest.py` puts `app/` on `sys.path`.
   Basic Auth for console clients.
 - `db.py` - models (`Files`, `Apps`, `Titles`, `Task`, `TaskHistory`, `DownloadEvent`,
   ...) and DB helpers. Schema changes need an **Alembic migration** in
-  `app/migrations/versions/` (current head: `f6a7b8c9d0e2`) *and* the model change
+  `app/migrations/versions/` (current head: `a7b8c9d0e1f3`) *and* the model change
   (new installs use `create_all`). `tests/test_download_history.py` asserts the head.
 - `tasks.py` / `worker.py` / `worker_pool.py` - task registry (`@register_task`),
   enqueue/dedup, scheduled tasks via `run_after` (stored in **UTC**; use
@@ -115,7 +117,10 @@ package - `tests/conftest.py` puts `app/` on `sys.path`.
   `data-style` (joycon/ownfoil/neon; the admin's default from settings, each browser
   can pick its own). Every color is a `--op-*` token in `tokens.css` with one meaning
   (ok green, wait amber, fav gold, danger red, info blue; `--op-nav` is the style's
-  accent) - never hard-code colors. Cards use `.surface`; game cards `game-surface`.
+  accent). What identifies a content type keeps one fixed color in every style and
+  theme - base coral (`--op-base`), update amber, DLC cyan, multi gold, firmware
+  violet - in badges, tiles, chips, tables and dialogs; never hard-code colors. Cards
+  use `.surface`; game cards `game-surface`.
 - Long lists: `limitVisibleRows(container, rowSelector, n)` from `scroll-limit.js`.
 - Settings sections have anchor ids (`#Authentication`, `#Maintenance`,
   `#Notifications`, ...) used by the dashboard and the Ctrl+K search
@@ -179,6 +184,10 @@ Postponed - **remind the maintainer of these when a round of work wraps up**:
 1. **Save backups from Sphaira** - the `backup_access` permission and the handshake's
    `save_backup` / `resumable_upload` features are placeholders; depends on the client
    supporting it.
+2. **An index for the task queue's dedup lookup** (`tasks(task_name, input_hash,
+   status)`): every enqueue searches for a duplicate without an exact index. Needs an
+   Alembic migration; left out of 6.2.5.56's queue work (batches, lighter live view, no
+   double passes), which already helped most. Possibly brought by another user's report.
 
 Not yet verified by a person: the save vault with JKSV on a real console, account
 emails through a real SMTP server and Google sign-in with real credentials, installing the PWA in a real Chrome/Edge (on

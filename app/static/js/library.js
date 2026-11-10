@@ -155,11 +155,11 @@ const LIST_QUERY = `
                 screenshots { url }
                 ownership { haveBase upToDate complete }
                 apps(owned: true) {
-                    appId appType appVersion releaseDate
+                    appId appType appVersion displayVersion releaseDate
                     downloadableFile { id size verificationStatus contents }
                 }
                 updateApps: apps(appType: [UPDATE]) {
-                    appId appVersion releaseDate owned
+                    appId appVersion displayVersion releaseDate owned
                     downloadableFile { id size verificationStatus contents }
                 }
                 availableDlc {
@@ -296,18 +296,19 @@ function renderLibraryStats(stats) {
     const owned = stats.ownedTitles;
     const pending = stats.ownedTitles - stats.upToDateTitles;
 
-    $('#libraryCount').text(owned.toLocaleString()).prop('hidden', false);
 
     // "Up to date" means nothing missing: the latest update and every DLC.
     const pct = Math.round(100 * stats.currentTitles / owned);
 
     // (value, label, note, icon, tone, pill it applies, share for a small bar or null).
     // Pending updates count base games only; DLC count only under missing DLC. The same
-    // for every role: no file figures here (they were admin only).
+    // for every role: no file figures here (they were admin only). The tiles that
+    // identify a content type wear its fixed color, whatever the style: games coral
+    // (base), updates amber, missing DLC cyan; only "up to date" is the green of done.
     const tiles = [
-        [owned.toLocaleString(), I18N.tileGames, null, 'bi-controller', 'nav', 'all', null],
+        [owned.toLocaleString(), I18N.tileGames, null, 'bi-controller', 'base', 'all', null],
         [pending.toLocaleString(), I18N.tileUpdates, null, 'bi-arrow-up-circle', 'wait', 'outdated', null],
-        [stats.missingDlc.toLocaleString(), I18N.tileDlcMissing, null, 'bi-puzzle', 'action', 'missingDlc', null],
+        [stats.missingDlc.toLocaleString(), I18N.tileDlcMissing, null, 'bi-puzzle', 'dlc', 'missingDlc', null],
         [stats.currentTitles.toLocaleString(), I18N.tileUpToDate.replace('{pct}', pct), null,
          'bi-check-circle', 'ok', 'upToDate', pct],
     ];
@@ -811,20 +812,23 @@ function metadataButton(meta) {
         .attr({href: meta.url, title: I18N.detailsTooltip, 'aria-label': I18N.detailsTooltip});
 }
 
-/** One row inside a Base Game / Updates / DLC group: a label on the left, an
- *  Owned/Missing badge, size, verification, metadata and (when enabled) download
- *  controls on the right. All text goes through .text(), never raw HTML, since it
- *  can carry a game's real (untrusted) name. */
-function buildContentRow({label, sub, owned, size, verification, fileId, meta, multi}) {
+/** One row inside a Base Game / Updates / DLC group: a label on the left (with the
+ *  type's colored dot when `tone` names one), an Owned/Missing badge, size,
+ *  verification, metadata and (when enabled) download controls on the right. All text
+ *  goes through .text(), never raw HTML, since it can carry a game's real (untrusted)
+ *  name. */
+function buildContentRow({label, sub, owned, size, verification, fileId, meta, multi, tone}) {
     const li = $('<li class="list-group-item bg-transparent d-flex justify-content-between align-items-center flex-wrap gap-2"></li>');
-    const left = $('<span class="text-break"></span>').text(label);
+    const left = $('<span class="text-break"></span>');
+    if (tone) left.append($('<span aria-hidden="true"></span>').addClass(`list-section-dot list-section-dot--${tone}`));
+    left.append(document.createTextNode(label));
     if (sub) {
         left.append($('<small class="text-secondary ms-1"></small>').text(`(${sub})`));
     }
     const right = $('<span class="d-flex align-items-center gap-2 flex-shrink-0"></span>');
-    right.append($('<span class="badge rounded-pill"></span>')
-        .addClass(owned ? 'text-bg-success' : 'text-bg-warning')
-        .text(owned ? I18N.owned : I18N.missing));
+    // The same badge the game page wears, check in its circle and all.
+    right.append(owned ? statusBadge('ok', 'bi-check-circle', I18N.inLibrary)
+                       : statusBadge('wait', 'bi-dash-circle', I18N.missing));
     if (multi) {
         // An update or DLC inside a Multi file: no size or download of its own (the base
         // game's row, or the Files dialog, downloads the whole file).
@@ -849,17 +853,20 @@ function buildContentRow({label, sub, owned, size, verification, fileId, meta, m
 
 let listSectionSeq = 0;
 
-/** A collapsible "Updates" or "DLC" group: a header row with a count badge and a
- *  chevron that flips on expand (see .list-section-trigger in style.css), holding
- *  the individual content rows underneath. */
-function buildCollapsibleSection(sectionTitle, count, rows) {
+/** A collapsible "Updates" or "DLC" group: a header row with the type's colored dot,
+ *  a count badge and a chevron that flips on expand (see .list-section-trigger in
+ *  style.css), holding the individual contentRows underneath. */
+function buildCollapsibleSection(sectionTitle, count, rows, tone) {
     const id = `listSection${listSectionSeq++}`;
     const li = $('<li class="list-group-item bg-transparent"></li>');
     const trigger = $('<p class="my-1 d-flex justify-content-between align-items-center list-section-trigger" role="button" aria-expanded="false"></p>')
         .attr('data-bs-toggle', 'collapse')
         .attr('data-bs-target', `#${id}`)
         .attr('aria-controls', id);
-    trigger.append($('<strong></strong>').text(sectionTitle));
+    const title = $('<strong></strong>');
+    if (tone) title.append($('<span aria-hidden="true"></span>').addClass(`list-section-dot list-section-dot--${tone}`));
+    title.append(document.createTextNode(sectionTitle));
+    trigger.append(title);
     const right = $('<span class="d-flex align-items-center gap-2"></span>');
     right.append($('<span class="badge text-bg-secondary"></span>').text(count));
     right.append($('<i class="bi bi-chevron-down list-chevron"></i>'));
@@ -966,19 +973,19 @@ function renderListView(titles) {
             headerText.append($('<p class="card-text small text-secondary mb-1"></p>').text(t.intro));
         }
 
-        const latestVersion = updateApps.length ? updateApps[0].appVersion : 0;
-        const latestDate = updateApps.length ? updateApps[0].releaseDate : null;
+        const latest = updateApps[0] || {};
+        const latestVersion = latest.appVersion || 0;
+        // Both ways of naming it, like the game page: "3.0.0 · v1048576". The pill
+        // keeps its green/amber state (asked for); the icon beside it was the part
+        // that went.
+        const versionText = latest.displayVersion
+            ? `${latest.displayVersion} · v${latest.appVersion}` : `v${latest.appVersion}`;
         const versionLine = $('<p class="small mb-0 d-flex align-items-center gap-2"></p>');
         versionLine.append($('<strong></strong>').text(I18N.latestVersion));
         const versionBadge = $('<span class="badge rounded-pill"></span>')
             .addClass(ownership.upToDate ? 'text-bg-success' : 'text-bg-warning')
-            .text(`v${latestVersion}`);
+            .text(versionText);
         versionLine.append(versionBadge);
-        if (latestDate) {
-            versionLine.append($('<span class="text-secondary"></span>').text(`(${latestDate})`));
-        }
-        versionLine.append($('<i class="bi"></i>').addClass(
-            ownership.upToDate ? 'bi-check-circle-fill text-success' : 'bi-arrow-down-circle text-warning'));
         headerText.append(versionLine);
 
         headerRow.append(headerText);
@@ -997,6 +1004,7 @@ function renderListView(titles) {
             verification: appVerification(baseApp),
             fileId: appFileId(baseApp),
             meta: {id: t.titleId, url: `/game/${t.titleId}`},
+            tone: 'base',
         }));
 
         if (updateApps.length) {
@@ -1007,8 +1015,8 @@ function renderListView(titles) {
             const ownedVersionNumbers = updateApps.filter(a => a.owned).map(a => a.appVersion);
             const highestOwned = ownedVersionNumbers.length ? Math.max(...ownedVersionNumbers) : null;
             const buildUpdateRow = a => buildContentRow({
-                label: `v${a.appVersion}`,
-                sub: a.releaseDate,
+                // Both ways of naming it, like the game page's rows: "3.0.0 · v1048576".
+                label: a.displayVersion ? `${a.displayVersion} · v${a.appVersion}` : `v${a.appVersion}`,
                 owned: a.owned,
                 size: appSize(a),
                 verification: appVerification(a),
@@ -1025,7 +1033,7 @@ function renderListView(titles) {
             if (olderApps.length) {
                 updateRows.push(buildOlderVersionsToggle(olderApps.map(buildUpdateRow)));
             }
-            listGroup.append(buildCollapsibleSection(I18N.updatesSection, updateApps.length, updateRows));
+            listGroup.append(buildCollapsibleSection(I18N.updatesSection, updateApps.length, updateRows, 'update'));
         }
 
         if (availableDlc.length || ownedDlcByAppId.size) {
@@ -1057,7 +1065,7 @@ function renderListView(titles) {
                         multi: inMulti(ownedApp),
                         meta: {id: d.appId, url: `/game/${t.titleId}?dlc=${d.appId}`},
                     });
-                })));
+                }), 'dlc'));
         }
 
         body.append(listGroup);
@@ -1118,14 +1126,18 @@ function renderPageSizeOptions() {
             .toggleClass('active', size === itemsPerPage)
             .attr('aria-pressed', size === itemsPerPage ? 'true' : 'false')
             .text(size)
-            .on('click', () => {
-                pageTarget = target;
-                storageSet('pageTarget', String(target));
-                itemsPerPage = size;
-                renderPageSizeOptions();
-                resetToFirstPage();
-            }));
+            .on('click', () => choosePageSize(size, target)));
     });
+}
+
+/** A page size chosen (the toolbar's menu or the pager's "per page"): remembered as its
+ *  target, so it fits the columns again at another width. */
+function choosePageSize(size, target) {
+    pageTarget = target;
+    storageSet('pageTarget', String(target));
+    itemsPerPage = size;
+    renderPageSizeOptions();
+    resetToFirstPage();
 }
 
 /** Re-fit the page size to the columns now shown (a resize, another view): a different
@@ -1156,61 +1168,16 @@ function pageWindow(totalPages) {
     return out;
 }
 
-/** Builds one set of pagination <li> elements (prev, page numbers, next) with
- *  their click handlers attached, appending clones of it into every target <ul>
- *  given - clones because a single DOM node can only live in one place, but the
- *  top and bottom pagination bars show the exact same state. `.clone(true)`
- *  copies the attached jQuery event handlers along with the markup, so every
- *  clone stays clickable. */
+/** The pager (pager.js), above and below the grid - the same bar twice: what is shown,
+ *  the pages, and "per page" with the sizes that fill whole rows at this width (the
+ *  same ones as the toolbar's menu). */
 function updatePaginationControls(totalPages) {
-    const targets = [$('#paginationControlsTop'), $('#paginationControlsBottom')];
-    targets.forEach(t => t.empty());
-
-    const items = [];
-
-    // Previous button
-    const prevButton = $('<li class="page-item"></li>').addClass(`page-item ${currentPage === 1 ? 'disabled' : ''}`).html(`
-            <a class="page-link" href="#" aria-label="${I18N.previous}">
-                <span aria-hidden="true">&laquo;</span>
-            </a>`);
-    prevButton.click(function (e) {
-        e.preventDefault();
-        if (currentPage > 1) {
-            goToPage(currentPage - 1);
-        }
-    });
-    items.push(prevButton);
-
-    // Page numbers
-    for (const entry of pageWindow(totalPages)) {
-        if (entry === '...') {
-            items.push($('<li class="page-item disabled"></li>').html('<span class="page-link">&hellip;</span>'));
-            continue;
-        }
-        const pageButton = $('<li class="page-item"></li>').addClass(`page-item ${entry === currentPage ? 'active' : ''}`).html(`<a class="page-link" href="#">${entry}</a>`);
-        pageButton.click(function (e) {
-            e.preventDefault();
-            goToPage(entry);
-        });
-        items.push(pageButton);
-    }
-
-    // Next button
-    const nextButton = $('<li class="page-item"></li>').addClass(`page-item ${currentPage === totalPages ? 'disabled' : ''}`).html(`
-            <a class="page-link" href="#" aria-label="${I18N.next}">
-                <span aria-hidden="true">&raquo;</span>
-            </a>`);
-    nextButton.click(function (e) {
-        e.preventDefault();
-        if (currentPage < totalPages) {
-            goToPage(currentPage + 1);
-        }
-    });
-    items.push(nextButton);
-
-    targets.forEach(target => {
-        items.forEach(item => target.append(item.clone(true)));
-    });
+    const sizes = pageSizeOptions(gridColumns());
+    ['paginationControlsTop', 'paginationControlsBottom'].forEach(id => Pager.render(document.getElementById(id), {
+        total: totalItems, page: currentPage, perPage: itemsPerPage, sizes,
+        onPage: goToPage,
+        onPerPage: size => choosePageSize(size, (sizes.indexOf(size) + 1) * 10),
+    }));
 }
 
 /** The Compact view's card width for the size slider: the smallest a card may be, the
@@ -1251,9 +1218,11 @@ function loadFiltersFromStorage() {
     }
     updateFilter();
 
-    const savedSearch = storageGet('searchTerm');
-    $('#textFilter').val(savedSearch || '');
-    // ?q= from the global search (Ctrl+K) wins over the remembered search.
+    // The search lasts while you stay on the page (views and filters keep it) and starts
+    // empty when you come back from another one; the filters are the ones remembered.
+    storageRemove('searchTerm');
+    $('#textFilter').val('');
+    // ?q= from the global search (Ctrl+K) fills it.
     const urlSearch = new URLSearchParams(location.search).get('q');
     if (urlSearch) {
         $('#textFilter').val(urlSearch);
@@ -1309,7 +1278,6 @@ function clearAllFilters() {
     storageRemove('libraryFavorites');
     $('#favoriteAll').prop('checked', true);
     $('#textFilter').val('');
-    storageRemove('searchTerm');
     updateFilter();
     saveFiltersToStorage();
     updateFiltersDot();
@@ -1344,7 +1312,11 @@ $(document).ready(function () {
     const savedTarget = parseInt(storageGet('pageTarget'));
     if (savedTarget >= 10 && savedTarget <= 100 && savedTarget % 10 === 0) pageTarget = savedTarget;
 
-    const savedCurrentView = storageGet('currentView');
+    let savedCurrentView = storageGet('currentView');
+    // The List view is hidden on phones: a remembered list becomes cards there.
+    if (savedCurrentView === 'list' && window.matchMedia('(max-width: 575.98px)').matches) {
+        savedCurrentView = 'card';
+    }
     if (['card', 'icon', 'list'].includes(savedCurrentView)) {
         currentView = savedCurrentView;
         $('.view-toggle-btn').removeClass("active");
@@ -1393,8 +1365,6 @@ $(document).ready(function () {
 
     // Listen to input changes in the text filter input
     $("#textFilter").on("input", function () {
-        const attributeText = $(this).val();
-        storageSet('searchTerm', attributeText);
         // Debounced: every keystroke would otherwise be its own query.
         clearTimeout(searchDebounce);
         searchDebounce = setTimeout(resetToFirstPage, 250);

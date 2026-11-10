@@ -37,13 +37,14 @@ async function gqlMutate(query, variables) {
     return body.data;
 }
 
-/** titledb's release_date column is the raw "YYYYMMDD" digit string, with no
- *  formatting applied anywhere upstream - shown as-is it reads as a meaningless
- *  number. Anything that doesn't match that exact shape is shown unchanged rather
- *  than mangled, since the catalogue isn't perfectly consistent about it. */
+/** titledb's release_date column is the raw "YYYYMMDD" digit string, and rows from
+ *  the apps table carry dashed ISO dates - either way shown as-is it reads badly.
+ *  Both shapes become the one date format every update and DLC row uses
+ *  (DD/MM/YYYY); anything else is shown unchanged rather than mangled, since the
+ *  catalogue isn't perfectly consistent about it. */
 function formatTitledbDate(raw) {
     if (!raw) return null;
-    const match = /^(\d{4})(\d{2})(\d{2})$/.exec(String(raw).trim());
+    const match = /^(\d{4})-?(\d{2})-?(\d{2})$/.exec(String(raw).trim());
     if (!match) return raw;
     const [, year, month, day] = match;
     return `${day}/${month}/${year}`;
@@ -111,7 +112,7 @@ const VERIFICATION_BADGES = {
 function verificationBadge(status) {
     if (!status) return null;
     const [icon, cls, label] = VERIFICATION_BADGES[status] || VERIFICATION_BADGES.UNVERIFIED;
-    return $(`<i class="bi ${icon} ${cls}" data-bs-toggle="tooltip" data-bs-placement="top" title="${label}"></i>`);
+    return $(`<i class="bi ${icon} ${cls} verification-mark" data-bs-toggle="tooltip" data-bs-placement="top" title="${label}"></i>`);
 }
 
 /** A download icon-button, only ever built when the caller has already confirmed

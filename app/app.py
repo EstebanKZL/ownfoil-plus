@@ -222,6 +222,7 @@ app.config['SOCK_SERVER_OPTIONS'] = {'ping_interval': 25}
 sock = Sock(app)
 realtime.init_app(app)
 import task_events  # noqa: F401 — registers the tasks/workers topics
+import files_events  # noqa: F401 — registers the files topic (the Files page)
 
 
 @sock.route('/api/ws')
@@ -466,6 +467,20 @@ def index(path=None):
 def inject_shop_name():
     """Templates show the configured shop name, not the product name."""
     return {'shop_name': get_settings()['shop'].get('name') or 'Ownfoil-Plus'}
+
+def show_verification_marks():
+    """Whether the verification marks show for whoever asks: the user's own choice (My
+    account), else the admin's (Settings > Library)."""
+    if current_user.is_authenticated and getattr(current_user, 'show_verification', None) is not None:
+        return current_user.show_verification
+    return get_settings()['library']['management'].get('organizer', {}).get('show_verification', True) is not False
+
+
+@app.context_processor
+def inject_verification_marks():
+    """base.html renders it on <html data-verification>: CSS hides every mark at once."""
+    return {'show_verification': show_verification_marks()}
+
 
 @app.context_processor
 def inject_default_style():
@@ -718,8 +733,18 @@ def combine_titles_api():
 @app.route('/admin/tasks')
 @access_required('admin')
 def tasks_page():
-    return render_template('tasks.html', title='Tasks',
+    import task_events
+    return render_template('tasks.html', title='Tasks', max_tasks=task_events.MAX_TASKS,
                            admin_account_created=admin_account_created())
+
+
+@app.get('/api/tasks/queued')
+@access_required('admin')
+def tasks_queued_api():
+    """How many tasks are open (not failed): the Tasks page gets the oldest MAX_TASKS of
+    them live, and says how many more wait behind."""
+    count = db.session.execute(db.text("SELECT COUNT(*) FROM tasks WHERE status != 'failed'")).scalar()
+    return jsonify({'open': int(count or 0)})
 
 @app.route('/admin/stats')
 @access_required('admin')
@@ -1039,12 +1064,15 @@ def clear_download_history_api():
 @login_required
 def account_page():
     """My account: the signed-in user's own preferences (any user, admin or not)."""
+    server_verification = get_settings()['library']['management'].get('organizer', {}) \
+        .get('show_verification', True) is not False
     server_background = get_settings()['library']['management'].get('organizer', {})         .get('show_background_image', True)
     # The news by email: offered with notifications on in the server and SMTP set up -
     # no channel needed, each user's verified address is enough.
     notif = get_settings().get('notifications', {})
     email_channel = bool(notif.get('enabled')) and accounts.smtp_config() is not None
     return render_template('account.html', title='Account', server_background=server_background,
+                           server_verification=server_verification,
                            email_channel=email_channel,
                            can_use_vault=vault.may_use(current_user), vault_on=vault.enabled(),
                            avatar_gallery=avatars_mod.GALLERY)
@@ -1082,8 +1110,12 @@ def account_api():
     background = data.get('show_background_image', 'default')
     if background not in _BACKGROUND_CHOICES:
         return jsonify({'success': False, 'error': 'invalid_background'}), 400
+    verification = data.get('show_verification', 'default')
+    if verification not in _BACKGROUND_CHOICES:
+        return jsonify({'success': False, 'error': 'invalid_verification'}), 400
     current_user.console_firmware = console_firmware or None
     current_user.show_background_image = _BACKGROUND_CHOICES[background]
+    current_user.show_verification = _BACKGROUND_CHOICES[verification]
     if 'notify_email' in data:
         # Only with a verified email: it is where the messages go.
         current_user.notify_email = bool(data.get('notify_email')) and bool(current_user.email_verified)

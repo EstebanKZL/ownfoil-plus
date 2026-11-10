@@ -9,11 +9,16 @@
  * Every style shares the surfaces, the type and the colors that carry one meaning each:
  *   --op-ok      green  done, up to date
  *   --op-wait    amber  something waits for you: an update, missing DLC, a step to do
- *   --op-fav     gold   favorites
+ *   --op-fav     gold   favorites, and the Multi packages
  *   --op-danger  red    errors, destructive actions
  *   --op-info    blue   neutral facts: a check that passed, work being processed
+ *   --op-dlc     cyan   DLC, wherever one is identified
+ *   --op-firmware violet firmware requirements
+ *   --op-base    coral  base games - its own red, apart from the danger one
  * A style only changes the navigation accent (active page, filters, focus), the action
- * color (primary buttons) and the soft glows behind page headers.
+ * color (primary buttons) and the soft glows behind page headers. What a thing IS keeps
+ * one color in every style: a base game is coral, an update amber, DLC cyan, a Multi
+ * gold and firmware violet - in badges, tiles, chips, tables and dialogs alike.
  *
  * The design language (layered surfaces, rounded components, one meaning per color) is
  * adapted from Switch Library Manager Web by DeLFuS77 (AGPL-3.0) - see NOTICE.md.
@@ -65,6 +70,8 @@
     --op-dlc-rgb: 34, 211, 238;
     --op-firmware: #a78bfa;      /* "needs firmware X": violet, apart from the amber waits */
     --op-firmware-rgb: 167, 139, 250;
+    --op-base: #ff7a72;          /* base games: coral in every style, apart from the danger red */
+    --op-base-rgb: 255, 122, 114;
 }
 
 /* The soft warm light theme Ownfoil-Plus already had, now as tokens. */
@@ -95,6 +102,8 @@
     --op-dlc-rgb: 14, 116, 144;
     --op-firmware: #6d28d9;
     --op-firmware-rgb: 109, 40, 217;
+    --op-base: #a84c44;
+    --op-base-rgb: 168, 76, 68;
 }
 
 /* --- Styles ----------------------------------------------------------------------- */

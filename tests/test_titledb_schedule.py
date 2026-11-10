@@ -48,6 +48,18 @@ def test_success_schedules_the_next_run_at_the_configured_interval(queue, monkey
     assert scheduled()[0] == pytest.approx(12, abs=0.1)
 
 
+def test_then_scan_runs_a_scan_only_when_asked(queue, monkeypatch):
+    """The Files page's Synchronize button asks for a scan behind the TitleDB refresh;
+    the periodic chain must never grow one on its own."""
+    monkeypatch.setattr(tasks_mod.titledb, "update_titledb", lambda settings: None)
+
+    tasks_mod.update_titledb_task()
+    assert Task.query.filter_by(task_name="scan_libraries", status="pending").count() == 0
+
+    tasks_mod.update_titledb_task(then_scan=True)
+    assert Task.query.filter_by(task_name="scan_libraries", status="pending").count() == 1
+
+
 def test_failure_reschedules_instead_of_dropping_the_chain(queue, monkeypatch):
     def boom(settings):
         raise ConnectionError("release unreachable")

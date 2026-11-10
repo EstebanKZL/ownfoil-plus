@@ -65,7 +65,10 @@ def test_chart_helpers_guard_empty_data():
     assert "acc" in donut and "360" in donut
     ring = _function_body(js, "ringGradient")
     assert "conic-gradient(" in ring
-    assert "const CHART_COLORS" in js and "var(--op-nav)" in js
+    # One hue in steps, the same in every style - never the style's accent and never
+    # the content-type colors (a format segment must not read as "update" or "DLC").
+    assert "const CHART_COLORS" in js and "color-mix(in srgb, var(--op-info)" in js
+    assert "var(--op-nav)" not in js and "var(--op-dlc)" not in js
 
 
 @pytest.mark.parametrize("url", ["/admin/stats", "/admin"])

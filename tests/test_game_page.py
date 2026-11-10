@@ -333,3 +333,95 @@ def test_scroll_is_only_restored_when_going_back():
     setup = js[js.rindex("let scrollToRestore", 0, i):i + 600]
     assert "back_forward" in setup
     assert "sessionStorage.removeItem('libraryScroll')" in setup
+
+
+def test_updates_read_both_versions_and_link_their_notes():
+    """Switch Library Manager touches, on our shape: "3.0.0 · v1048576" for a version
+    (the human name when the CNMT gave one), and a release-notes icon - only the icon,
+    opening a web search in its own tab - right before the download arrow."""
+    js = _js("game.js")
+    updates = _function_body(js, "renderUpdates")
+    assert "u.displayVersion ? `${u.displayVersion} · v${u.appVersion}`" in updates
+    assert "newsUrl: updateNotesUrl(t, u)" in updates
+    # contentRow destructures its params (the shared body extractor stops at the
+    # destructuring brace), so these read against the file: the icon opens a new tab,
+    # carries only its tooltip (never a label) and sits AFTER the download button
+    # (asked for - it used to go before).
+    assert 'target="_blank" rel="noopener"' in js and "bi-box-arrow-up-right" in js
+    assert "I18N.updateNotes" in js
+    assert js.index("tail.append(downloadButton(file.id, name))") < js.index("if (newsUrl) {")
+    # Icon only: no text rides along.
+    notes = _function_body(js, "updateNotesUrl")
+    assert "google.com/search" in notes
+
+
+def test_a_dlc_name_opens_its_own_card():
+    """The DLC's name opens a window with the game's art and the DLC's facts; its id
+    gets a copy button beside it, and the size rides in the row's pill once (not again
+    under the name)."""
+    js = _js("game.js")
+    dlc = _function_body(js, "renderDlc")
+    assert "onName: () => openDlcModal(" in dlc and "copyId: d.appId" in dlc
+    assert "formatTitledbSize(meta.size)" not in dlc.split("const sub =")[1].split("join")[0]
+    modal = _function_body(js, "openDlcModal")
+    assert "dlcModalImg" in modal and "ownedBadge(owned)" in modal
+    assert "copyIdButton(d.appId)" in modal
+    html = _read("app", "templates", "game.html")
+    assert 'id="dlcModal"' in html and 'id="dlcModalName"' in html
+    # The row's size is a pill now, like the List view's.
+    css = _read("app", "static", "style.css")
+    assert "border-radius: 1rem" in re.search(r"\.game-row__size \{([^}]*)\}", css).group(1)
+
+
+def test_the_dlc_card_puts_its_art_on_top():
+    """Asked for: the art was a small thumbnail beside the text. It spans the window's
+    width on top now, the name, facts and description underneath - both get room."""
+    html = _read("app", "templates", "game.html")
+    start = html.index('id="dlcModal"')
+    modal = html[start:html.index("<script", start)]
+    assert "modal-body d-flex" not in modal
+    assert modal.index('id="dlcModalImg"') < modal.index('id="dlcModalName"')
+    assert "dlc-modal__dialog" in modal
+    css = _read("app", "static", "style.css")
+    img = _rule(css, ".dlc-modal__img")
+    assert "width: 100%" in img and "aspect-ratio" in img
+    assert "grid-template-columns" in _rule(css, ".dlc-modal__facts")
+
+
+def test_dates_read_the_same_way_whatever_shaped_they_come():
+    """titledb ships YYYYMMDD, the apps table dashed ISO dates; both are the one
+    DD/MM/YYYY every update and DLC row shows."""
+    body = _function_body(_js("library-common.js"), "formatTitledbDate")
+    assert r"/^(\d{4})-?(\d{2})-?(\d{2})$/" in body
+
+
+def test_sections_and_rows_wear_the_type_colors():
+    """The rows' glyphs inside the Updates and DLC sections carry their content type's
+    fixed color; the sections' TITLE icons keep the web's own accent (asked for:
+    that is design, the rows are the content)."""
+    js = _js("game.js")
+    assert "iconTone: 'update'" in js and "iconTone: 'dlc'" in js
+    css = _read("app", "static", "style.css")
+    for cls, token in ((".game-row__icon--update", "--op-wait"), (".game-row__icon--dlc", "--op-dlc")):
+        assert token in re.search(rf"{re.escape(cls)} \{{([^}}]*)\}}", css).group(1), cls
+    assert ".game-section__icon--" not in css
+
+
+def _rule(css, selector):
+    return re.search(rf"(?:^|\n){re.escape(selector)} \{{([^}}]*)\}}", css).group(1)
+
+
+def test_a_marked_fact_keeps_its_title_plain():
+    """The firmware fact turns violet when the console is too old, and "Latest version"
+    turns the update's amber when the owned one is behind it - each with the color of
+    what it tells (asked for: the two used to share the violet). Only the frame and
+    the value take it: the title stays as plain as "Your version" or "Size"."""
+    body = _function_body(_js("game.js"), "renderFacts")
+    assert "latest > installed ? 'game-fact--update'" in body
+    css = _read("app", "static", "style.css")
+    assert "--op-firmware-rgb" in _rule(css, ".game-fact--firmware")
+    assert "--op-wait-rgb" in _rule(css, ".game-fact--update")
+    assert "--op-firmware" in _rule(css, ".game-fact--firmware .game-fact__value")
+    assert "--op-wait" in _rule(css, ".game-fact--update .game-fact__value")
+    assert ".game-fact--firmware .game-fact__label" not in css
+    assert ".game-fact--update .game-fact__label" not in css

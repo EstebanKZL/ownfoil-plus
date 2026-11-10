@@ -293,6 +293,54 @@ def create_child_task(parent_id, task_name, input_data=None):
         connection.close()
 
 
+def create_child_tasks(parent_id, task_name, inputs):
+    """Many children of one task in one transaction - a scan's thousands of file tasks
+    took one write lock each, and the web and the workers waited behind every one. Deduped
+    like create_child_task: an input the parent already has is not added twice."""
+    if task_name not in TASK_REGISTRY:
+        raise ValueError(f"Unknown task: {task_name}")
+    if not inputs:
+        return 0
+    now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    rows, seen = [], set()
+    for data in inputs:
+        data = data or {}
+        digest = compute_input_hash(data)
+        if digest not in seen:
+            seen.add(digest)
+            rows.append((parent_id, task_name, json.dumps(data, sort_keys=True), digest, now))
+    connection = db.engine.raw_connection()
+    try:
+        cursor = connection.cursor()
+        cursor.execute("BEGIN IMMEDIATE")
+        cursor.execute(
+            "SELECT input_hash FROM tasks WHERE parent_id = ? AND task_name = ? "
+            "AND status IN ('pending', 'running', 'waiting_for_children', 'completed')",
+            (parent_id, task_name))
+        have = {r[0] for r in cursor.fetchall()}
+        rows = [r for r in rows if r[3] not in have]
+        cursor.executemany(
+            "INSERT INTO tasks (parent_id, task_name, status, completion_pct, input_json, input_hash, created_at) "
+            "VALUES (?, ?, 'pending', 0, ?, ?, ?)", rows)
+        connection.commit()
+        return len(rows)
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
+
+
+def enqueue_or_children(task_name, inputs):
+    """enqueue_or_child for a list: one transaction inside a task, one by one outside."""
+    inputs = list(inputs)
+    if _current_task_id is not None:
+        return create_child_tasks(_current_task_id, task_name, inputs)
+    for data in inputs:
+        enqueue_or_child(task_name, data)
+    return len(inputs)
+
+
 def enqueue_or_child(task_name, input_data=None):
     """Create as child of the running task, or top-level if called outside a task."""
     if _current_task_id is not None:
@@ -673,6 +721,7 @@ def startup_task(**kwargs):
     # window turned off while the server was down must not leave a stale run behind.
     reschedule_maintenance()
     _cleanup_stale_uploads()
+    _repair_file_names()
     if titles_lib.Keys.keys_loaded:
         enqueue_task('backfill_required_firmware')
     try:
@@ -681,6 +730,22 @@ def startup_task(**kwargs):
         # A retry is already scheduled; scanning must not be held hostage to the network
         logger.exception('titledb update failed at startup')
     scan_libraries_task()
+
+def _repair_file_names():
+    """Rows whose name or folder lag their path: compression used to move a file to
+    .nsz/.xcz without them. Cheap (a pass over the paths), so run on every start."""
+    fixed = 0
+    for file in Files.query.with_entities(Files.id, Files.filepath, Files.filename, Files.folder).all():
+        if not file.filepath:
+            continue
+        name, folder = os.path.basename(file.filepath), os.path.dirname(file.filepath)
+        if file.filename != name or file.folder != folder:
+            Files.query.filter_by(id=file.id).update({'filename': name, 'folder': folder})
+            fixed += 1
+    if fixed:
+        db.session.commit()
+        logger.info(f'Repaired the name and folder of {fixed} file(s) to match their path.')
+
 
 @register_task('backfill_required_firmware')
 def backfill_required_firmware_task(**kwargs):
@@ -718,13 +783,17 @@ def backfill_required_firmware_task(**kwargs):
 def update_titledb_task(**kwargs):
     settings = get_settings()
     try:
-        titledb.update_titledb(settings)
-        enqueue_task('process_library')
-        add_missing_apps_to_db()
-        update_titles()
-        # Artwork URLs are per region/language, so this is the one place that runs
-        # after a locale-driven rebuild as well as after a plain refresh.
-        enqueue_task('download_media')
+        rebuilt = titledb.update_titledb(settings)
+        # Only a rebuilt titles.db changes what the library pass, the titles and the
+        # artwork would find: an unchanged one (most runs, every 12 h and every start)
+        # used to set off a pass over the whole library for nothing.
+        if rebuilt:
+            enqueue_task('process_library')
+            add_missing_apps_to_db()
+            update_titles()
+            # Artwork URLs are per region/language, so this is the one place that runs
+            # after a locale-driven rebuild as well as after a plain refresh.
+            enqueue_task('download_media')
         # The sagas (series.py) at most once a week, from Wikidata.
         enqueue_task('update_series')
     except Exception:
@@ -737,6 +806,11 @@ def update_titledb_task(**kwargs):
     delta = interval_string_to_timedelta(interval_str)
     if delta:
         update_scheduled_task('update_titledb', datetime.datetime.utcnow() + delta)
+    if kwargs.get('then_scan'):
+        # The Files page's Synchronize button: with the freshest TitleDB in place, scan
+        # every root so files added or removed on disk show up right away (a rebuilt
+        # TitleDB has already re-identified the whole library above).
+        enqueue_task('scan_libraries')
 
 
 @register_task('update_series', group='net')
@@ -848,11 +922,39 @@ def download_media_task(**kwargs):
     if not local_media_enabled():
         return
     title_ids = [t.title_id for t in Titles.query.all() if t.title_id]
-    for title_id in title_ids:
-        for media_id in media_title_ids(title_id):
-            enqueue_or_child('download_title_media', {'title_id': media_id})
-    if title_ids:
+    # Only the titles still missing artwork get a task: one per title and DLC whatever
+    # its state filled the queue with thousands that had nothing to do.
+    wanted = [media_id for title_id in title_ids for media_id in media_title_ids(title_id)]
+    todo = [m for m in wanted if _media_missing(m)]
+    if len(todo) < len(wanted):
+        logger.info(f'Artwork: {len(wanted) - len(todo)} title(s) already complete, {len(todo)} to fetch.')
+    enqueue_or_children('download_title_media', ({'title_id': m} for m in todo))
+    if todo:
         set_waiting_for_children()
+
+
+def _media_missing(title_id):
+    """Whether a title's artwork still needs fetching: some slot of its record has no
+    stored copy yet (or a newer image). The same test download_title_media runs per slot,
+    done here so a complete title gets no task at all."""
+    record = titles_lib.get_title_record(title_id)
+    if record is None:
+        return False
+    wanted = [(kind, 0, record.get(key)) for kind, key in MEDIA_SLOTS]
+    wanted += [(media.SCREENSHOT, i, url) for i, url in enumerate(record.get('screenshots') or [])]
+    existing = get_title_media([title_id])
+    # A stored slot the record no longer has (fewer screenshots, say) needs the task too:
+    # it is what deletes it.
+    slots = {(kind, position) for kind, position, url in wanted if url}
+    if any((kind, position) not in slots for (_tid, kind, position) in existing):
+        return True
+    for kind, position, url in wanted:
+        if not url or media.is_local(url):
+            continue
+        row = existing.get((title_id.upper(), kind, position))
+        if row is None or row.filename != media.filename_from_url(url) or not media.have(kind, row.filename):
+            return True
+    return False
 
 
 @register_task('download_title_media', group='net')
@@ -930,6 +1032,18 @@ def scan_libraries_task(**kwargs):
         enqueue_or_child('scan_library', {'library_path': lib.path})
     set_waiting_for_children()
 
+
+@register_continuation('scan_libraries')
+def _scan_libraries_done(**kwargs):
+    # One library pass after every library is scanned (each scan_library leaves it to
+    # this under a scan of all of them): when one of them found new or changed files,
+    # or some file still owes the pipeline a stage.
+    last = (Task.query.filter_by(task_name='scan_libraries', status='completed')
+            .order_by(Task.id.desc()).first())
+    found = bool(last and last.output_json and json.loads(last.output_json).get('found'))
+    if found or _library_has_pending_work():
+        enqueue_task('process_library')
+
 @register_task('scan_library')
 def scan_library_task(library_path, **kwargs):
     """Scan a library path: discover new files, and re-check already-tracked files
@@ -950,11 +1064,7 @@ def scan_library_task(library_path, **kwargs):
     tracked = {f.filepath: f for f in Files.query.filter_by(library_id=library_id).all()}
     new_files = [f for f in files if f not in tracked and f not in temp_paths]
 
-    to_process = []
-    for fp in new_files:
-        new_file = _insert_file(library_path, library_id, fp)
-        if new_file is not None:
-            to_process.append(new_file.id)
+    to_process = _insert_files(library_path, library_id, new_files)
 
     changed = 0
     for filepath, file in tracked.items():
@@ -968,18 +1078,43 @@ def scan_library_task(library_path, **kwargs):
 
     if not to_process:
         logger.info(f'No new or changed files found in {library_path}.')
-        _scan_library_done(library_path=library_path)
+        _scan_library_done(library_path=library_path, found=False)
         return
 
-    for file_id in to_process:
-        enqueue_or_child('process_file', {'file_id': file_id})
+    enqueue_or_children('process_file', ({'file_id': file_id} for file_id in to_process))
     set_waiting_for_children()
 
 
+def _library_has_pending_work():
+    """Whether any file still owes the pipeline a stage (stops at the first one)."""
+    mgmt = get_settings()['library']['management']
+    return any(any(s.applies(f, mgmt) for s in STAGES) for f in Files.query.yield_per(500))
+
+
+def _scan_of_all():
+    """The scan of every library running right now, if any."""
+    return Task.query.filter(Task.task_name == 'scan_libraries',
+                             Task.status.in_(('running', 'waiting_for_children'))).first()
+
+
 @register_continuation('scan_library')
-def _scan_library_done(library_path, **kwargs):
+def _scan_library_done(library_path, found=True, **kwargs):
+    """`found`: the scan found new or changed files (this runs as their tasks'
+    continuation); False when it found nothing and ends here directly."""
     set_library_scan_time(get_library_id(library_path))
     enqueue_task('remove_missing_files')
+    # Under a scan of every library, that scan runs the library pass once at the end
+    # (one per library meant several passes over the whole library back to back).
+    scan_all = _scan_of_all()
+    if scan_all is not None:
+        if found:
+            scan_all.output_json = json.dumps({'found': True})
+            db.session.commit()
+        return
+    # Nothing new and nothing left for any file (the common case once a library is in
+    # order): no pass over the whole library.
+    if not found and not _library_has_pending_work():
+        return
     # A manual/scheduled Scan only discovers files not yet tracked - it never
     # re-examines files that are already in the database. Anything left pending from a
     # settings change (a naming language just enabled, Clean Names toggled, a template
@@ -988,6 +1123,44 @@ def _scan_library_done(library_path, **kwargs):
     # also catch up on that pending identify/organize/verify/compress work, instead of
     # only surfacing it on the next titledb update or container restart.
     enqueue_task('process_library')
+
+
+# New files are committed this many at a time: one commit per file held the write lock
+# thousands of times during a big first scan.
+INSERT_BATCH = 200
+
+
+def _insert_files(library_path, library_id, filepaths):
+    """Insert a Files row per path, committing in batches. Returns the new ids (a file
+    whose info can't be read is logged and skipped, as before)."""
+    from db import Files as _Files
+    ids, pending = [], []
+
+    def flush():
+        if pending:
+            db.session.commit()
+            ids.extend(f.id for f in pending)
+            pending.clear()
+
+    for filepath in filepaths:
+        file_display = filepath.replace(library_path, "").lstrip("/")
+        logger.debug(f'Getting file info: {file_display}')
+        file_info = titles_lib.get_file_info(filepath)
+        if file_info is None:
+            logger.error(f'Failed to get info for file: {file_display}')
+            continue
+        row = _Files(filepath=filepath, library_id=library_id, folder=file_info["filedir"],
+                     filename=file_info["filename"], extension=file_info["extension"],
+                     size=file_info["size"], mtime=file_info["mtime"],
+                     compressed=file_info["compressed"])
+        db.session.add(row)
+        pending.append(row)
+        if len(pending) >= INSERT_BATCH:
+            flush()
+    flush()
+    if ids:
+        logger.info(f'Added {len(ids)} new file(s) from {library_path}.')
+    return ids
 
 
 def _insert_file(library_path, library_id, filepath):
@@ -1270,8 +1443,7 @@ def process_library_task(**kwargs):
     mgmt = get_settings()['library']['management']
     files = [f for f in Files.query.all() if any(s.applies(f, mgmt) for s in ORGANIZE_STAGES)]
     logger.info(f'Processing library (organize phase): {len(files)} file(s).')
-    for f in files:
-        enqueue_or_child('process_file_organize', {'file_id': f.id})
+    enqueue_or_children('process_file_organize', ({'file_id': f.id} for f in files))
     # Unconditional: with zero children this still completes immediately and runs the
     # continuation below, which is what kicks off the verify phase - process_library
     # must not just return when there's nothing to organize, or verification (the far
@@ -1306,8 +1478,8 @@ def verify_library_task(force=False, **kwargs):
     else:
         files = [f for f in Files.query.all() if any(s.applies(f, mgmt) for s in VERIFY_STAGES)]
     logger.info(f'Processing library (verify phase{", forced" if force else ""}): {len(files)} file(s).')
-    for f in files:
-        enqueue_or_child('process_file_verify', {'file_id': f.id, 'force': force} if force else {'file_id': f.id})
+    enqueue_or_children('process_file_verify', ({'file_id': f.id, 'force': force} if force else {'file_id': f.id}
+                                                for f in files))
     set_waiting_for_children()
 
 
@@ -1467,50 +1639,72 @@ def verify_file_task(file_id, manual=False, **kwargs):
 
 # --- Compression pipeline ---
 def _finalize_conversion(file_obj, target, new_extension, compressed, keep_source=False):
-    """Flip the Files row onto the verified output, then drop the now-redundant source -
-    or, with `keep_source` (Files > Compress with "delete originals" off), leave it on
-    disk, untracked: the next scan picks it up and the duplicate settings decide."""
+    """Record the file a (de)compression made. Returns the id of its Files row.
+
+    With `keep_source` (Files > Compress with "delete originals" off) the original keeps
+    its record as it was - identified, verified - and the output is a new file of its
+    own: added now (listed first, and Duplicates can judge the nsp against the nsz) and
+    identified and verified like any new file. Otherwise the record follows the output,
+    which replaces the source on disk, with its verification cleared to run again."""
     source = file_obj.filepath
-    remove = not keep_source and os.path.abspath(source) != os.path.abspath(target)
+    if keep_source:
+        target = os.path.abspath(target)
+        existing = Files.query.filter_by(filepath=target).first()
+        if existing is not None:
+            return existing.id
+        library = db.session.get(Libraries, file_obj.library_id)
+        new_file = _insert_file(library.path, library.id, target)
+        if new_file is None:
+            raise ValueError(f'Could not add {os.path.basename(target)} to the library')
+        return new_file.id
+    remove = os.path.abspath(source) != os.path.abspath(target)
     if remove:
         add_ignored_event(source, '')  # our own deletion of the source
     file_obj.filepath = target
+    # The name and folder too: Duplicates (and every list) show these, so a compressed
+    # copy still read "game.nsp" there while its path said .nsz.
+    file_obj.filename = os.path.basename(target)
+    file_obj.folder = os.path.dirname(target)
     file_obj.extension = new_extension
     file_obj.size = os.path.getsize(target)
     file_obj.mtime = os.path.getmtime(target)
     file_obj.compressed = compressed
+    # Verified again (asked for): the output's own bytes are read, not the source's verdict.
+    reset_file_verification(file_obj)
     db.session.commit()
     if remove:
         os.remove(source)
+    return file_obj.id
 
 
 def _convert_file(file_obj, produce, new_extension, compressed, keep_source=False):
     """Run a (de)compression: produce the verified output at its final path, then finalize.
-    Returns whether the row was flipped onto the new file - a caller that re-drives the
-    pipeline must not do so after a no-op, or it delegates the same stage forever."""
+    Returns the id of the output's Files row, or None when nothing was converted - a
+    caller that re-drives the pipeline must not do so after a no-op, or it delegates the
+    same stage forever."""
     source = file_obj.filepath
     target = compression.conversion_target(file_obj)
     if Files.query.filter(Files.filepath == target, Files.id != file_obj.id).first() is not None:
         logger.warning(f'Skipping conversion of {os.path.basename(source)}: '
                        f'{os.path.basename(target)} is already in the library.')
-        return False
+        return None
     if not claim_temp_file(source):
         logger.debug(f'Skipping conversion of {os.path.basename(source)}: file is busy.')
-        return False
+        return None
     before = file_obj.size
     add_temp_file(target)
     try:
         out = str(produce(source, os.path.dirname(source)))
-        _finalize_conversion(file_obj, out, new_extension, compressed, keep_source)
+        output_id = _finalize_conversion(file_obj, out, new_extension, compressed, keep_source)
     finally:
         remove_temp_file(target)
         remove_temp_file(source)
-    after = file_obj.size
+    after = os.path.getsize(out)
     ratio = after / before if before else 0
     verb = 'compressing' if compressed else 'decompressing'
     logger.info(f'Finished {verb} {os.path.basename(target)}: '
                 f'{human_size(before)} -> {human_size(after)} (ratio {ratio:.1%})')
-    return True
+    return output_id
 
 
 @register_task('compress_file', group='io')
@@ -1529,10 +1723,12 @@ def compress_file_task(file_id, manual=False, keep_original=False, **kwargs):
     if not opts['enabled'] and not manual:
         return
     progress = _task_progress(_current_task_id)
-    if _convert_file(file_obj,
-                     lambda source, out_dir: compression.compress_to(source, out_dir, opts, progress=progress),
-                     COMPRESS_EXT[file_obj.extension], True, keep_source=bool(keep_original)):
-        enqueue_task('process_file', {'file_id': file_id})
+    output_id = _convert_file(
+        file_obj, lambda source, out_dir: compression.compress_to(source, out_dir, opts, progress=progress),
+        COMPRESS_EXT[file_obj.extension], True, keep_source=bool(keep_original))
+    if output_id:
+        # The file that came out goes down the pipeline: identified and verified.
+        enqueue_task('process_file', {'file_id': output_id})
 
 
 @register_task('decompress_file', group='io')
@@ -1544,11 +1740,19 @@ def decompress_file_task(file_id, keep_original=False, **kwargs):
     if not os.path.exists(file_obj.filepath):
         return
     progress = _task_progress(_current_task_id)
-    # Not re-driven through the pipeline: with automatic compression on it would compress
-    # the file right back.
-    _convert_file(file_obj,
-                  lambda source, out_dir: compression.decompress_to(source, out_dir, progress=progress),
-                  DECOMPRESS_EXT[file_obj.extension], False, keep_source=bool(keep_original))
+    output_id = _convert_file(
+        file_obj, lambda source, out_dir: compression.decompress_to(source, out_dir, progress=progress),
+        DECOMPRESS_EXT[file_obj.extension], False, keep_source=bool(keep_original))
+    if not output_id:
+        return
+    if keep_original:
+        # A new file of its own: the whole pipeline. Its compress stage finds the original
+        # NSZ/XCZ in the library and leaves it alone.
+        enqueue_task('process_file', {'file_id': output_id})
+    else:
+        # Verified again, but not re-driven through the pipeline: with automatic
+        # compression on it would compress the file right back.
+        enqueue_task('verify_file', {'file_id': output_id})
 
 
 @register_cleanup('compress_file')

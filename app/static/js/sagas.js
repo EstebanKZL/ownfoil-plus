@@ -67,28 +67,29 @@ function sagaCard(saga) {
     const head = node('div', 'saga-card__head');
     const name = node('a', 'saga-card__name', saga.name);
     name.href = link;
-    head.append(name, node('span', 'saga-card__count',
-                           I18N.count.replace('{owned}', saga.owned).replace('{total}', saga.total)));
+    // A complete saga: a gold frame and a trophy before its "10 of 10".
+    const complete = saga.total > 0 && saga.owned >= saga.total;
+    card.classList.toggle('is-complete', complete);
+    const count = node('span', 'saga-card__count');
+    if (complete) count.append(node('i', 'bi bi-trophy-fill saga-card__trophy'));
+    count.append(document.createTextNode(
+        I18N.count.replace('{owned}', saga.owned).replace('{total}', saga.total)));
+    head.append(name, count);
     const bar = node('div', 'saga-progress__bar saga-progress__bar--striped');
     const fill = node('div', 'saga-progress__fill');
     fill.style.width = `${Math.round(100 * saga.owned / Math.max(saga.total, 1))}%`;
     bar.append(fill);
     const strip = node('div', 'saga-card__strip');
-    // One row: up to SAGA_THUMBS covers, the rest as "+N" (opening the saga).
+    // Every game of the saga, in as many rows as they take (asked for, Switch Library
+    // Manager style: the "+N" hid most of a long saga).
     const games = saga.games || [];
-    const shown = games.length > SAGA_THUMBS ? games.slice(0, SAGA_THUMBS - 1) : games;
-    shown.forEach(game => {
+    games.forEach(game => {
         const thumb = node('a', 'saga-thumb' + (game.owned ? '' : ' is-missing'));
         thumb.href = `/game/${game.title_id}`;
         thumb.title = `${game.name} - ${game.owned ? I18N.owned : I18N.missing}`;
         thumb.append(cover(game.icon_url));
         strip.append(thumb);
     });
-    if (shown.length < games.length) {
-        const more = node('a', 'saga-thumb saga-thumb--more', `+${games.length - shown.length}`);
-        more.href = link;
-        strip.append(more);
-    }
     const view = node('a', 'btn btn-sm btn-outline-secondary saga-card__view');
     view.href = link;
     view.append(node('i', 'bi bi-grid-3x3-gap'), document.createTextNode(' ' + I18N.view));
@@ -98,7 +99,12 @@ function sagaCard(saga) {
 }
 
 const SAGA_TAB_KEY = 'sagasTab';
-const SAGA_THUMBS = 6;   // covers in a card's row (the last one "+N" when there are more)
+// Cards a page: each size fills every row at one, two or three columns (the grid's
+// widths), so only the last page can end with a short row. Remembered per browser.
+const SAGA_SIZES = [12, 24, 48, 96];
+let sagasPerPage = Pager.perPage('sagas', SAGA_SIZES, 24);
+let sagaPage = 1;
+let sagaView = '';
 let allSagas = [];
 
 function sagaTab() {
@@ -122,7 +128,27 @@ function renderSagaList() {
     });
     const shown = allSagas.filter(s => (tab === 'all' || isComplete(s) === (tab === 'complete'))
                                        && (!query || s.name.toLowerCase().includes(query)));
-    document.getElementById('sagasList').replaceChildren(...shown.map(sagaCard));
+    // Another tab or search starts at the first page.
+    const view = tab + '\n' + query;
+    if (view !== sagaView) { sagaView = view; sagaPage = 1; }
+    const pages = Math.max(1, Math.ceil(shown.length / sagasPerPage));
+    sagaPage = Math.min(sagaPage, pages);
+    const page = shown.slice((sagaPage - 1) * sagasPerPage, sagaPage * sagasPerPage);
+    document.getElementById('sagasList').replaceChildren(...page.map(sagaCard));
+    Pager.render(document.getElementById('sagasPager'), {
+        total: shown.length, page: sagaPage, perPage: sagasPerPage, sizes: SAGA_SIZES,
+        onPage: p => {
+            sagaPage = p;
+            renderSagaList();
+            document.getElementById('sagasToolbar').scrollIntoView({block: 'start', behavior: 'smooth'});
+        },
+        onPerPage: n => {
+            sagasPerPage = n;
+            Pager.savePerPage('sagas', n);
+            sagaPage = 1;
+            renderSagaList();
+        },
+    });
     show('sagasNoMatch', allSagas.length > 0 && !shown.length);
 }
 

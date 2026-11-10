@@ -224,10 +224,15 @@ class Query:
         return resolve_outdated_update_groups(ctx=info.context, info=info)
 
     @described_field
-    def pending_files(self, info: Info) -> PendingFileList:
+    def pending_files(
+        self, info: Info,
+        limit: Annotated[int, _arg(
+            "How many entries to return (`total` still counts them all), clamped to "
+            "1-2000. Building each one is the costly part on a big library.")] = 500,
+    ) -> PendingFileList:
         """Every file the automatic pipeline still owes work to, given the current
         settings. Admin only; empty for any other role."""
-        return resolve_pending_files(ctx=info.context, info=info)
+        return resolve_pending_files(ctx=info.context, info=info, limit=limit)
 
     @described_field
     def tasks(

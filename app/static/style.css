@@ -322,6 +322,13 @@ p.game-description {
     background-color: var(--op-text-muted);
 }
 
+.task-more {
+    padding: .35rem 0 .1rem;
+    font-size: .8rem;
+    font-style: italic;
+    color: var(--op-text-muted);
+}
+
 .task-row.task-fading {
     opacity: 0;
 }
@@ -625,6 +632,9 @@ a.stat-tile:hover {
 .stat-tile--wait { --tile: var(--op-wait); --tile-rgb: var(--op-wait-rgb); }
 .stat-tile--nav { --tile: var(--op-nav); --tile-rgb: var(--op-nav-rgb); }
 .stat-tile--action { --tile: var(--op-action); --tile-rgb: var(--op-action-rgb); }
+/* The tiles that identify a content type keep its fixed color in every style. */
+.stat-tile--dlc { --tile: var(--op-dlc); --tile-rgb: var(--op-dlc-rgb); }
+.stat-tile--base { --tile: var(--op-base); --tile-rgb: var(--op-base-rgb); }
 
 .stat-tile__icon {
     grid-row: span 3;
@@ -705,6 +715,37 @@ a.stat-tile:hover {
     opacity: .8;
 }
 
+/* The console filter (Library): one stadium bar holding the options, the chosen one
+   filled - Switch Library Manager's segmented look on our tokens, in our own place.
+   Scoped here so every other .filter-pill row keeps its stand-alone pills; only the
+   resting pills go transparent, the chosen one keeps its accent fill. */
+#libraryConsole {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: .25rem;
+    padding: .28rem;
+    border-radius: 2rem;
+    border: 1px solid var(--op-border);
+    background-color: var(--op-surface-1);
+}
+
+#libraryConsole .filter-pill {
+    border-color: transparent;
+    padding: .3rem .75rem;
+}
+
+#libraryConsole .filter-pill:not(.active) {
+    background-color: transparent;
+}
+
+#libraryConsole .filter-pill.active .filter-pill__count {
+    margin-left: .1rem;
+    padding: 0 .5rem;
+    border-radius: 1rem;
+    background-color: rgba(var(--op-surface-0-rgb), .22);
+    opacity: 1;
+}
+
 /* Toolbar: search, sort and view toggles in one block. */
 .toolbar {
     display: flex;
@@ -750,7 +791,7 @@ a.stat-tile:hover {
 
 .status-badge--ok { --badge: var(--op-ok); --badge-rgb: var(--op-ok-rgb); }
 .status-badge--wait { --badge: var(--op-wait); --badge-rgb: var(--op-wait-rgb); }
-.status-badge--dlc { --badge: var(--op-nav); --badge-rgb: var(--op-nav-rgb); }
+.status-badge--dlc { --badge: var(--op-dlc); --badge-rgb: var(--op-dlc-rgb); }
 .status-badge--fav { --badge: var(--op-fav); --badge-rgb: var(--op-fav-rgb); }
 .status-badge--firmware { --badge: var(--op-firmware); --badge-rgb: var(--op-firmware-rgb); }
 .status-badge--info { --badge: var(--op-info); --badge-rgb: var(--op-info-rgb); }
@@ -1077,8 +1118,7 @@ a.stat-tile:hover {
 /* On a cover the badges stack, one under the other, clear of the star at the top
    right - and always in the same order: firmware, base game missing, bundle. */
 .library-cover-wrap .library-badges,
-.compact-cover .library-badges {
-    right: 3rem;
+.compact-cover .library-badges {    right: 3rem;
     flex-direction: column;
     flex-wrap: nowrap;
     align-items: flex-start;
@@ -1147,7 +1187,8 @@ a.stat-tile:hover {
 
 @media (prefers-reduced-motion: reduce) {
     .library-card:hover,
-    .compact-card:hover {
+    .compact-card:hover,
+    .saga-card:hover {
         transform: none;
     }
 }
@@ -1337,6 +1378,22 @@ a.stat-tile:hover {
 .list-chevron {
     transition: transform .2s ease;
 }
+
+/* The colored dot before a content section's title (the game's list view): the type's
+   fixed color, so the section is identified the same in every style. */
+.list-section-dot {
+    display: inline-block;
+    width: .5rem;
+    height: .5rem;
+    margin-right: .4rem;
+    border-radius: 50%;
+    background-color: var(--op-text-muted);
+    vertical-align: .11rem;
+}
+
+.list-section-dot--base { background-color: var(--op-base); }
+.list-section-dot--update { background-color: var(--op-wait); }
+.list-section-dot--dlc { background-color: var(--op-dlc); }
 
 .list-section-trigger[aria-expanded="true"] .list-chevron {
     transform: rotate(180deg);
@@ -1537,6 +1594,59 @@ a.stat-tile:hover {
     border-radius: 50%;
 }
 
+/* Pending: each file's progress beside its name - its task's share while it runs, a
+   striped track while it waits in line, an empty one before a task has it. */
+.files-progress {
+    flex: 0 1 18rem;
+    min-width: 8rem;
+    margin-left: auto;
+    padding-left: 1rem;
+}
+
+.files-progress__track {
+    height: .45rem;
+    border-radius: 999px;
+    background-color: var(--op-chart-track);
+    overflow: hidden;
+}
+
+.files-progress__fill {
+    display: block;
+    width: 0;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--op-info), var(--op-ok));
+    transition: width .6s var(--op-ease);
+}
+
+.files-progress.is-queued .files-progress__track {
+    background-image: repeating-linear-gradient(-45deg, rgba(var(--op-wait-rgb), .25) 0 6px, transparent 6px 12px);
+}
+
+.files-progress__label {
+    display: block;
+    margin-top: .3rem;
+    font-size: .75rem;
+    color: var(--op-text-muted);
+}
+
+.files-progress.is-running .files-progress__label {
+    color: var(--op-text);
+}
+
+@media (max-width: 575.98px) {
+    .files-row {
+        flex-wrap: wrap;
+    }
+
+    .files-progress {
+        flex-basis: 100%;
+        margin-left: 0;
+        padding-left: 0;
+        margin-top: .4rem;
+    }
+}
+
 /* What the view lists, beside the settings it depends on. */
 .files-status {
     display: flex;
@@ -1671,6 +1781,12 @@ a.stat-tile:hover {
     letter-spacing: .02em;
     text-transform: uppercase;
 }
+
+/* A chip that names a content type wears the type's fixed color, in every style. */
+.files-chip--base { color: var(--op-base); background: rgba(var(--op-base-rgb), .12); }
+.files-chip--update { color: var(--op-wait); background: rgba(var(--op-wait-rgb), .12); }
+.files-chip--dlc { color: var(--op-dlc); background: rgba(var(--op-dlc-rgb), .12); }
+.files-chip--multi { color: var(--op-fav); background: rgba(var(--op-fav-rgb), .12); }
 
 /* Rows separated by a hairline and a hover tint. Fixed layout: the widths come from the
    colgroup alone, so what a cell or a filter holds never resizes a column; a cell clips
@@ -1830,7 +1946,8 @@ a.stat-tile:hover {
     gap: 1.5rem;
 }
 
-.files-main {
+.files-main,
+.files-body > .packing {
     flex: 1;
     min-width: 0;
 }
@@ -2578,6 +2695,12 @@ a.stat-tile:hover {
     font-size: 1.15rem;
 }
 
+/* A glyph that says what the file holds wears the content type's fixed color; anything
+   else keeps the style's accent. */
+.game-row__icon--base { color: var(--op-base); }
+.game-row__icon--update { color: var(--op-wait); }
+.game-row__icon--dlc { color: var(--op-dlc); }
+
 .game-row__text {
     min-width: 0;
 }
@@ -2602,9 +2725,107 @@ a.stat-tile:hover {
     flex: 0 0 auto;
 }
 
+.game-row__name-btn {
+    padding: 0;
+    border: 0;
+    background: none;
+    font-weight: 600;
+    font-size: inherit;
+    font-family: inherit;
+    color: var(--op-text);
+    text-align: inherit;
+    overflow-wrap: anywhere;
+}
+
+.game-row__name-btn:hover {
+    color: var(--op-nav);
+    text-decoration: underline;
+}
+
+/* The file's size as a pill, the same shape the List view's rows wear (asked for:
+ *  Switch Library Manager's look on our tokens). */
 .game-row__size {
-    font-size: .85rem;
+    padding: .1rem .6rem;
+    border-radius: 1rem;
+    border: 1px solid var(--op-border);
+    background-color: var(--op-surface-2);
+    font-size: .78rem;
+    font-weight: 600;
     color: var(--op-text-muted);
+    white-space: nowrap;
+}
+
+.game-row__id-copy {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--op-text-muted);
+    font-size: .75rem;
+    line-height: 1;
+}
+
+.game-row__id-copy:hover {
+    color: var(--op-nav);
+}
+
+/* A DLC's own card (the row's name opens it): the game's art beside its facts. */
+/* The DLC's card: the art across the top (asked for: it was a thumbnail beside the
+   text), then the name and its badge, the facts as small tiles, the description. */
+.dlc-modal__dialog {
+    max-width: 36rem;
+}
+
+.dlc-modal__img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: var(--op-radius-sm);
+    background-color: var(--op-surface-2);
+}
+
+.dlc-modal__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem .75rem;
+    margin: 1rem 0 .85rem;
+}
+
+.dlc-modal__facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+    gap: .5rem;
+    margin: 0 0 1rem;
+}
+
+.dlc-modal__fact {
+    padding: .5rem .7rem;
+    border: 1px solid var(--op-border);
+    border-radius: var(--op-radius-sm);
+    background-color: var(--op-surface-1);
+    min-width: 0;
+}
+
+.dlc-modal__fact dt {
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--op-text-muted);
+}
+
+.dlc-modal__fact dd {
+    margin: .15rem 0 0;
+    font-family: var(--bs-font-monospace);
+    font-size: .9rem;
+    overflow-wrap: anywhere;
+}
+
+.dlc-modal__desc {
+    padding-top: .85rem;
+    border-top: 1px solid var(--op-border);
+    line-height: 1.55;
 }
 
 /* A row that folds out its details (a DLC's description) underneath. */
@@ -2693,16 +2914,20 @@ a.stat-tile:hover {
     overflow: hidden;
 }
 
+/* A chart's colors are the same in every style: a plain share is the info blue, a
+   meaning keeps its token (ok, wait, danger...), a content type its own (base, dlc). */
 .chart-bar__fill {
     height: 100%;
     border-radius: 1rem;
-    background-color: var(--op-nav);
+    background-color: var(--op-info);
 }
 
 .chart-bar--ok .chart-bar__fill { background-color: var(--op-ok); }
 .chart-bar--wait .chart-bar__fill { background-color: var(--op-wait); }
 .chart-bar--danger .chart-bar__fill { background-color: var(--op-danger); }
 .chart-bar--action .chart-bar__fill { background-color: var(--op-action); }
+.chart-bar--base .chart-bar__fill { background-color: var(--op-base); }
+.chart-bar--dlc .chart-bar__fill { background-color: var(--op-dlc); }
 
 /* Statistics: sections in a two-column grid from lg. */
 .stats-page {
@@ -3317,18 +3542,37 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     }
 }
 
+/* The verification marks are a choice (Settings > Library, My account): hidden all at
+   once from <html data-verification>, wherever they are drawn. */
+[data-verification="off"] .verification-mark {
+    display: none !important;
+}
+
 /* ============== Console firmware (My account) ============== */
 
 /* A game or update the user's console is too old for: violet, the firmware color, so it
-   is told apart from the amber of a pending update. */
+   is told apart from the amber of a pending update. The frame and the value take it;
+   the title stays as plain as every other fact's (asked for). */
 .game-fact--firmware {
     border-color: rgba(var(--op-firmware-rgb), .6);
 }
 
-.game-fact--firmware .game-fact__label,
 .game-fact--firmware .game-fact__value {
     color: var(--op-firmware);
 }
+
+/* "Latest version" when the owned one is behind it: the update's amber - what it tells
+   is an update waiting, not the console (the two used to share the violet). */
+.game-fact--update {
+    border-color: rgba(var(--op-wait-rgb), .6);
+}
+
+.game-fact--update .game-fact__value {
+    color: var(--op-wait);
+}
+
+/* The sections' TITLE icons keep the web's own accent (asked for: that is design,
+   not content); the rows' glyphs inside carry the type colors instead. */
 
 .game-fact__note {
     margin-top: .25rem;
@@ -3595,10 +3839,24 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     border-color: rgba(var(--op-nav-rgb), .55);
 }
 
+/* One, two or three columns - each divides the 24 cards of a page, so every row but the
+   last page's is full. */
 .saga-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: 1rem;
+}
+
+@media (min-width: 768px) {
+    .saga-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1200px) {
+    .saga-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
 }
 
 /* A saga: its cover on the left; name and count, the bar, every game, "View the saga". */
@@ -3607,11 +3865,14 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     grid-template-columns: 5.5rem minmax(0, 1fr);
     gap: 1rem;
     color: var(--op-text);
-    transition: border-color var(--op-dur) var(--op-ease);
+    transition: border-color var(--op-dur) var(--op-ease), transform var(--op-dur) var(--op-ease);
 }
 
+/* The games' lift: it says where you are without touching the colors - a complete
+   saga keeps its gold frame, trophy and count (pinned below). */
 .saga-card:hover {
     border-color: rgba(var(--op-nav-rgb), .55);
+    transform: translateY(-3px);
 }
 
 .saga-card__cover .release-card__cover {
@@ -3649,6 +3910,26 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     font-weight: 700;
 }
 
+/* A complete saga: framed in gold (the favourites' color), a trophy before its count.
+   The frame yields to the hover marking like any other card (asked for); the trophy
+   and the count stay gold whatever the hover does. */
+.saga-card.is-complete {
+    border-color: rgba(var(--op-fav-rgb), .75);
+    box-shadow: 0 0 0 1px rgba(var(--op-fav-rgb), .35), 0 0 22px rgba(var(--op-fav-rgb), .12);
+}
+
+.saga-card.is-complete:hover {
+    border-color: rgba(var(--op-nav-rgb), .55);
+}
+
+.saga-card.is-complete .saga-card__count {
+    color: var(--op-fav);
+}
+
+.saga-card__trophy {
+    margin-right: .3rem;
+}
+
 .saga-card .saga-progress__bar {
     width: 100%;
 }
@@ -3657,28 +3938,15 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, .22) 0 6px, transparent 6px 12px);
 }
 
-/* One row of covers, the same in every card (the rest as "+N"), so a saga with many
-   games never makes its card taller than the others. */
+/* Every cover of the saga, wrapping into as many rows as it takes (asked for, Switch
+   Library Manager style - the one capped row with a "+N" clipped mid-card when the
+   window narrowed). The full width matters: the card's body aligns its children to
+   fit-content. */
 .saga-card__strip {
     display: flex;
-    flex-wrap: nowrap;
-    gap: .25rem;
-    overflow: hidden;
-}
-
-.saga-thumb--more {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 auto;
-    aspect-ratio: 1;
-    border: 1px solid var(--op-border);
-    border-radius: var(--op-radius-sm);
-    background-color: var(--op-surface-2);
-    color: var(--op-text-muted);
-    font-size: .75rem;
-    font-weight: 700;
-    text-decoration: none;
+    flex-wrap: wrap;
+    gap: .3rem;
+    width: 100%;
 }
 
 .saga-card .saga-card__view {
@@ -3687,7 +3955,7 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
 
 .saga-thumb {
     flex: 0 0 auto;
-    width: 2.6rem;
+    width: 3.1rem;
 }
 
 .saga-thumb .release-card__cover {
@@ -3791,44 +4059,141 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     margin-bottom: 1rem;
 }
 
-.saves-game__head .dash-list__row {
-    padding-left: 0;
-}
-
-.saves-backups {
-    list-style: none;
-    margin: .5rem 0 0;
-    padding: 0;
-    border-top: 1px solid var(--op-border);
-}
-
-.saves-backup {
-    display: flex;
+/* A game, one row (asked for): icon, name and totals fixed on the left, the backups as
+   blocks in a strip to the right, newest first, scrolling sideways when they don't fit.
+   On a phone the strip goes under the name. */
+.saves-game {
+    display: grid;
+    grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr);
     align-items: center;
-    gap: .5rem;
-    padding: .55rem 0;
-    border-bottom: 1px solid var(--op-border);
+    gap: 1rem;
 }
 
-.saves-backup:last-child {
-    border-bottom: 0;
-}
-
-.saves-backup__text {
-    flex: 1 1 auto;
+.saves-game__info {
+    margin: 0;
     min-width: 0;
 }
 
-.saves-backup__when {
-    font-weight: 600;
+.saves-game__info .dash-list__row {
+    padding-left: 0;
 }
 
-.saves-backup__file {
-    font-size: .8rem;
-    color: var(--op-text-muted);
+/* The fixed column is narrow: a long name takes a second line instead of an ellipsis. */
+.saves-game__info .dash-list__name {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+}
+
+.saves-strip {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: .6rem;
+    margin: 0;
+    padding: .25rem .1rem .5rem;
+    list-style: none;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(var(--op-nav-rgb), .45) transparent;
+}
+
+.saves-tile {
+    position: relative;
+    flex: 0 0 9.5rem;
+    scroll-snap-align: start;
+}
+
+.saves-tile__main {
+    display: flex;
+    flex-direction: column;
+    gap: .1rem;
+    height: 100%;
+    padding: .6rem .75rem;
+    border: 1px solid var(--op-border);
+    border-radius: var(--op-radius-sm);
+    background-color: var(--op-surface-2);
+    color: var(--op-text);
+    text-decoration: none;
+    transition: border-color var(--op-dur) var(--op-ease), transform var(--op-dur) var(--op-ease);
+}
+
+.saves-tile__main:hover,
+.saves-tile__main:focus-visible {
+    border-color: rgba(var(--op-nav-rgb), .6);
+    color: var(--op-text);
+    transform: translateY(-2px);
+}
+
+/* The newest backup: the style's accent on its edge and a small label. */
+.saves-tile.is-newest .saves-tile__main {
+    border-left: 3px solid var(--op-nav);
+}
+
+.saves-tile__badge {
+    align-self: flex-start;
+    margin-bottom: .2rem;
+    padding: 0 .45rem;
+    border-radius: 999px;
+    background-color: rgba(var(--op-nav-rgb), .15);
+    color: var(--op-nav);
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+}
+
+.saves-tile__day {
+    padding-right: 1.5rem;     /* room for the bin in the corner */
+    font-weight: 700;
+}
+
+.saves-tile__hour {
+    font-size: .85rem;
+    color: var(--op-text-muted);
+}
+
+.saves-tile__foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: .35rem;
+    font-size: .78rem;
+    color: var(--op-text-muted);
+}
+
+.saves-tile__glyph {
+    color: var(--op-nav);
+}
+
+/* The bin: in the block's corner, shown on hover or focus - always where there is no
+   hover (a touch screen). */
+.saves-tile__remove {
+    position: absolute;
+    top: .3rem;
+    right: .3rem;
+    opacity: 0;
+    transition: opacity var(--op-dur) var(--op-ease);
+}
+
+.saves-tile:hover .saves-tile__remove,
+.saves-tile:focus-within .saves-tile__remove {
+    opacity: 1;
+}
+
+@media (hover: none) {
+    .saves-tile__remove {
+        opacity: 1;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .saves-game {
+        grid-template-columns: minmax(0, 1fr);
+        gap: .5rem;
+    }
 }
 
 .icon-btn--danger {
@@ -4146,12 +4511,68 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     }
 }
 
-.users-pager {
+/* The shared pager (pager.js), Switch Library Manager style: what is shown on the left,
+   the pages in the middle, "per page" on the right. On a phone the pages go first, the
+   other two share the row under them. */
+.op-pager {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    grid-template-areas: "range pages size";
+    align-items: center;
+    gap: .5rem 1rem;
+    margin: 1rem 0;
+}
+
+.op-pager[hidden] {
+    display: none;
+}
+
+.op-pager__range {
+    grid-area: range;
+    font-size: .875rem;
+    color: var(--op-text-muted);
+    white-space: nowrap;
+}
+
+.op-pager__nav {
+    grid-area: pages;
+}
+
+.op-pager__pages {
+    margin: 0;
+}
+
+.op-pager__size {
+    grid-area: size;
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: .75rem;
-    margin-top: .75rem;
+    gap: .5rem;
+}
+
+.op-pager__size-label {
+    font-size: .875rem;
+    color: var(--op-text-muted);
+    white-space: nowrap;
+}
+
+.op-pager__select {
+    width: auto;
+}
+
+@media (max-width: 575.98px) {
+    .op-pager {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas: "pages pages" "range size";
+    }
+
+    .op-pager__nav {
+        justify-self: center;
+    }
+
+    .op-pager__pages .page-link {
+        padding: .3rem .6rem;
+    }
 }
 
 .avatar-current {
@@ -4186,12 +4607,6 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
 }
 
 /* Files > Compress / Combine: the bar with the buttons stands out from the page. */
-.packing-footer.surface {
-    background-color: var(--op-surface-2);
-    border: 1px solid rgba(var(--op-nav-rgb), .45);
-    box-shadow: 0 -6px 24px rgba(0, 0, 0, .35), 0 0 0 1px rgba(var(--op-nav-rgb), .12);
-}
-
 .avatar-preview {
     display: grid;
     place-items: center;
@@ -4332,7 +4747,7 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     display: block;
     height: 100%;
     border-radius: inherit;
-    background-color: var(--op-nav);
+    background-color: var(--op-info);
 }
 
 .dash-list__chips {
@@ -4722,20 +5137,15 @@ html[data-readonly] a[href^="/api/backups/"] {
 
 /* --- Files > Compress and Files > Combine (static/js/packing.js) ------------------- */
 
-.packing-filters {
-    display: grid;
-    gap: .5rem;
-    margin-bottom: .9rem;
-}
-
 .packing-notice {
     margin-bottom: 1rem;
 }
 
-.packing-note {
-    margin: 0;
-    color: var(--op-text-muted);
-    font-size: .85rem;
+/* The panel's toolbar block: the search row, shaped like the flat list's. */
+.packing-toolbar-wrap {
+    display: grid;
+    gap: .4rem;
+    margin-bottom: .75rem;
 }
 
 .packing-toolbar {
@@ -4743,7 +5153,6 @@ html[data-readonly] a[href^="/api/backups/"] {
     flex-wrap: wrap;
     align-items: center;
     gap: .75rem 1rem;
-    margin-bottom: .75rem;
 }
 
 .packing-select-all {
@@ -4771,9 +5180,23 @@ html[data-readonly] a[href^="/api/backups/"] {
     padding-left: 2rem;
 }
 
-.packing-summary {
+/* Pages of 100 games: the range and the arrows, in the row over the list and below it. */
+.packing-pager {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .35rem;
+    margin-bottom: .6rem;
+    font-size: .85rem;
     color: var(--op-text-muted);
-    font-size: .9rem;
+}
+
+.packing-pager:empty {
+    display: none;
+}
+
+.packing-pager__text {
+    margin-right: .35rem;
 }
 
 .packing-games {
@@ -4809,6 +5232,12 @@ html[data-readonly] a[href^="/api/backups/"] {
 
 .packing-game__name {
     display: block;
+    max-width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    text-align: left;
+    font: inherit;
     font-weight: 600;
     color: var(--op-text);
     text-decoration: none;
@@ -4883,9 +5312,11 @@ html[data-readonly] a[href^="/api/backups/"] {
     border: 1px solid rgba(var(--kind-rgb), .32);
 }
 
+/* Each kind is its content type, in the fixed color every style gives it. */
+.packing-kind--base { --kind: var(--op-base); --kind-rgb: var(--op-base-rgb); }
 .packing-kind--wait { --kind: var(--op-wait); --kind-rgb: var(--op-wait-rgb); }
 .packing-kind--dlc { --kind: var(--op-dlc); --kind-rgb: var(--op-dlc-rgb); }
-.packing-kind--info { --kind: var(--op-info); --kind-rgb: var(--op-info-rgb); }
+.packing-kind--fav { --kind: var(--op-fav); --kind-rgb: var(--op-fav-rgb); }
 
 .packing-format {
     flex: 0 0 auto;
@@ -4913,9 +5344,45 @@ html[data-readonly] a[href^="/api/backups/"] {
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: .75rem;
-    padding: .75rem 1rem;
+    gap: .75rem 1.25rem;
+    margin-top: 1.25rem;            /* room under the last page's arrows */
+    padding: .8rem 1rem .8rem 1.15rem;
+    border: 1px solid var(--op-border);
+    border-left: 3px solid var(--op-nav);
+    border-radius: var(--op-radius);
+    background-color: var(--op-surface-1);
+    backdrop-filter: blur(10px);
     box-shadow: var(--op-shadow);
+}
+
+.packing-footer__text {
+    display: grid;
+    gap: .1rem;
+    min-width: 0;
+    flex: 1 1 16rem;
+}
+
+.packing-footer__summary {
+    font-weight: 700;
+}
+
+.packing-footer__note {
+    font-size: .82rem;
+    color: var(--op-text-muted);
+}
+
+/* Over the list: "Select all" at the left, the pages at the right. */
+.packing-listhead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem 1rem;
+    margin-bottom: .6rem;
+}
+
+.packing-listhead .packing-pager {
+    margin-bottom: 0;
 }
 
 .packing-actions {

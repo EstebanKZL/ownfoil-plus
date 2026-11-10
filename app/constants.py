@@ -73,6 +73,9 @@ DEFAULT_SETTINGS = {
                 # (library.move_companion_files).
                 "move_companions": True,
                 "show_background_image": True,
+                # The verification marks (valid / repack / corrupt ...) beside the files
+                # on the game page and in the List view; each user may choose otherwise.
+                "show_verification": True,
                 "name_region": "",
                 "name_language": "",
                 "templates": {

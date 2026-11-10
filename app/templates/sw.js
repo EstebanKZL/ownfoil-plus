@@ -1,8 +1,8 @@
 // Ownfoil-Plus service worker (served at /sw.js by app.py's service_worker route).
 //
 // What makes the web UI installable as an app, and keeps it pleasant on a flaky LAN:
-//  - static assets (CSS, JS, fonts, icons) are served from a cache and refreshed in
-//    the background, so pages paint instantly;
+//  - static assets (CSS, JS, fonts, icons) come from the network, keeping them in
+//    step with the fresh page, and fall back to the cache when it can't be reached;
 //  - pages always come from the network (they show live data), and fall back to a
 //    small "can't reach the server" page when it's unreachable;
 //  - the API, game downloads, artwork, uploads and anything not a GET are never
@@ -30,13 +30,16 @@ self.addEventListener('fetch', event => {
     if (request.headers.has('range')) return;
 
     if (url.pathname.startsWith('/static/')) {
-        event.respondWith(caches.open(CACHE).then(cache => cache.match(request).then(cached => {
-            const fresh = fetch(request).then(response => {
+        // Network first. Pages always come fresh from the network, and a cached CSS
+        // or JS from an older version used to render the fresh page half-broken "for
+        // a while" after every update (mixed versions, misaligned tiles) - exactly
+        // what the cache-first order below invites. The cache answers only when the
+        // server can't be reached, which keeps the offline story whole.
+        event.respondWith(caches.open(CACHE).then(cache =>
+            fetch(request).then(response => {
                 if (response.ok) cache.put(request, response.clone());
                 return response;
-            }).catch(() => cached);
-            return cached || fresh;
-        })));
+            }).catch(() => cache.match(request)))));
         return;
     }
 

@@ -27,9 +27,10 @@ function tiles(s) {
          'bi-controller', 'ok', '/'],
         [I18N_FILES_LABEL, count(s.totalFiles), I18N.tileFilesNote.replace('{n}', count(s.identifiedFiles)),
          'bi-file-earmark', 'nav', '/admin/files'],
-        [I18N.tileTotalSize, formatBytes(s.totalSize), I18N.tileTotalSizeNote, 'bi-hdd-stack', 'action', null],
+        // Unidentified before the size (asked for): what needs a look outranks a figure.
         [I18N.tileUnidentified, count(s.unidentifiedFiles), I18N.tileUnidentifiedNote,
          'bi-question-circle', 'wait', '/admin/files#unidentified'],
+        [I18N.tileTotalSize, formatBytes(s.totalSize), I18N.tileTotalSizeNote, 'bi-hdd-stack', 'action', null],
     ];
 }
 
@@ -164,7 +165,11 @@ function renderVerification(data) {
 }
 
 /** Content by type: owned out of tracked; a click lists what is missing, when
- *  something is. App types stay as the schema spells them (DLC, not "Dlc"). */
+ *  something is. App types stay as the schema spells them (DLC, not "Dlc"). Each type
+ *  wears its fixed color - base coral, update amber, DLC cyan - so the row is identified
+ *  the same as everywhere else; the share itself says how complete it is. */
+const TYPE_TONES = {BASE: 'base', UPDATE: 'wait', DLC: 'dlc'};
+
 function renderTypes(data) {
     const buckets = data.appsByType || [];
     const list = document.getElementById('byAppType');
@@ -172,7 +177,8 @@ function renderTypes(data) {
     list.innerHTML = '';
     buckets.forEach(b => list.appendChild(chartRow({
         label: b.key, figures: `${count(b.owned)} / ${count(b.count)}`,
-        pct: percent(b.owned, b.count), tone: b.owned >= b.count ? 'ok' : 'action',
+        pct: percent(b.owned, b.count), tone: TYPE_TONES[b.key],
+        swatch: TYPE_TONES[b.key] ? `var(--op-${TYPE_TONES[b.key]})` : undefined,
         onClick: b.count > b.owned ? () => openMissingAppType(b.key) : null,
     })));
 }

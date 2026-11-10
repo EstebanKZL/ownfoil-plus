@@ -38,6 +38,7 @@
     <p id="savesNoMatch" class="text-secondary" hidden>{{ t('saves.no_match') }}</p>
 
     <div id="savesGames" class="saves-games"></div>
+    <div id="savesPager" class="op-pager" hidden></div>
 
 </div>
 
@@ -48,6 +49,7 @@
         download: {{ t('saves.download') | tojson }},
         remove: {{ t('saves.delete') | tojson }},
         deleteConfirm: {{ t('saves.delete_confirm') | tojson }},
+        newest: {{ t('saves.newest') | tojson }},
     };
 </script>
 <script src="{{ url_for('static', filename='js/format.js') }}"></script>

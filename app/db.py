@@ -336,6 +336,7 @@ class User(UserMixin, db.Model):
     # Set by the user in My account (/account). Empty = not set / as the server says.
     console_firmware = db.Column(db.String(16), nullable=True)
     show_background_image = db.Column(db.Boolean, nullable=True)
+    show_verification = db.Column(db.Boolean, nullable=True)
     # Accounts people make themselves (accounts.py). `email` holds only a verified
     # address; one waiting for its link is `pending_email`, a claim that blocks nobody.
     # `pending`: registered and waiting for that link - it can't sign in yet. `password`

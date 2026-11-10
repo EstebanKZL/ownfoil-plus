@@ -40,9 +40,12 @@ def test_coming_back_from_a_game_keeps_the_page_filters_and_scroll():
 
 def test_the_page_state_comes_only_from_what_is_stored():
     """Seen in the browser: back from a game, the browser filled the search box in again
-    by itself (it restores form fields), and the list stayed searched."""
+    by itself (it restores form fields), and the list stayed searched. The search now
+    lasts only while you stay on the page: coming back starts it empty (the filters are
+    the ones remembered), and only ?q= from the global search fills it."""
     body = _function_body(_js("library.js"), "loadFiltersFromStorage")
-    assert "$('#textFilter').val(savedSearch || '')" in body
+    assert "storageRemove('searchTerm')" in body and "$('#textFilter').val('');" in body
+    assert "URLSearchParams(location.search).get('q')" in body
     assert "['#ownershipAll', '#updateAll', '#completionAll'].forEach(" in body
     html = _read("app", "templates", "index.html")
     assert re.search(r'<input type="search" id="textFilter"[^>]*autocomplete="off"', html)
