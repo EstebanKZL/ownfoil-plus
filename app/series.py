@@ -11,8 +11,7 @@ answer in data/series.json:
      "updated": "2026-11-04T10:00:00"}
 
 A game is matched by title ID first, then by name. When Wikidata does not answer, the
-last copy stays. The idea and the queries follow Switch Library Manager Web by DeLFuS77
-(AGPL-3.0, see NOTICE.md).
+last copy stays. Credits: see NOTICE.md.
 """
 import datetime
 import json

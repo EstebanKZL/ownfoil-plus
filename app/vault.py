@@ -14,8 +14,7 @@ DELETE, MOVE), and even with the right password changes stay inside the JKSV fol
 are ZIP files: never a path out of it, never a whole game folder deleted, never a full
 disk. An upload takes the place of a backup only once it arrived whole.
 
-The design follows the save vault of Switch Library Manager Web by DeLFuS77 (AGPL-3.0,
-see NOTICE.md).
+Credits: see NOTICE.md.
 """
 import datetime
 import email.utils

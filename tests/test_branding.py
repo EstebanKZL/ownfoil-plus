@@ -121,8 +121,8 @@ def test_no_bare_old_name_remains_in_the_renamed_templates(client):
 
 
 def test_notice_credits_upstream_and_the_design_inspiration():
-    """Stage 1 design system: the design adapts Switch Library Manager Web (AGPL-3.0,
-    like Ownfoil); both are credited in NOTICE.md, linked from the README."""
+    """The upstream project and every project this fork takes from are credited in
+    NOTICE.md, linked from the README - and only there."""
     root = os.path.join(os.path.dirname(__file__), "..")
     with open(os.path.join(root, "NOTICE.md"), encoding="utf-8") as f:
         notice = f.read()
