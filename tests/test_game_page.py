@@ -381,16 +381,15 @@ def test_dates_read_the_same_way_whatever_shaped_they_come():
 
 
 def test_sections_and_rows_wear_the_type_colors():
-    """The Updates and DLC sections - title icon and row glyphs alike - carry their
-    content type's fixed color, like every other view of the same thing."""
+    """The rows' glyphs inside the Updates and DLC sections carry their content type's
+    fixed color; the sections' TITLE icons keep the web's own accent (asked for:
+    that is design, the rows are the content)."""
     js = _js("game.js")
-    assert "section('gameUpdates', 'bi-arrow-up-circle', I18N.updates, content.append(list), 'update')" in js
-    assert "list, 'dlc')" in js
     assert "iconTone: 'update'" in js and "iconTone: 'dlc'" in js
     css = _read("app", "static", "style.css")
-    for cls, token in ((".game-section__title .game-section__icon--update", "--op-wait"),
-                       (".game-section__title .game-section__icon--dlc", "--op-dlc")):
+    for cls, token in ((".game-row__icon--update", "--op-wait"), (".game-row__icon--dlc", "--op-dlc")):
         assert token in re.search(rf"{re.escape(cls)} \{{([^}}]*)\}}", css).group(1), cls
+    assert ".game-section__icon--" not in css
 
 
 def test_latest_version_wears_the_update_amber_when_behind():

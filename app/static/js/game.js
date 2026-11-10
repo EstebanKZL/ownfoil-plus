@@ -270,14 +270,12 @@ function canDownload() {
     return IS_SHOP && WEB_DOWNLOADS_ENABLED;
 }
 
-/** One section block: a titled .surface, or nothing when it has no content. An
- *  `iconTone` (update, dlc) wears the content type's fixed color on the title icon. */
-function section(id, icon, title, content, iconTone) {
+/** One section block: a titled .surface, or nothing when it has no content. */
+function section(id, icon, title, content) {
     if (!content) return null;
     const block = $('<section class="surface game-section">').attr('id', id);
-    const glyph = $('<i aria-hidden="true">').addClass(`bi ${icon}`);
-    if (iconTone) glyph.addClass(`game-section__icon--${iconTone}`);
-    block.append($('<h2 class="game-section__title">').append(glyph, $('<span>').text(title)));
+    block.append($('<h2 class="game-section__title">')
+        .append($('<i aria-hidden="true">').addClass(`bi ${icon}`), $('<span>').text(title)));
     return block.append(content);
 }
 
@@ -430,7 +428,7 @@ function renderUpdates(t) {
         }
         list.append(row);
     });
-    return section('gameUpdates', 'bi-arrow-up-circle', I18N.updates, content.append(list), 'update');
+    return section('gameUpdates', 'bi-arrow-up-circle', I18N.updates, content.append(list));
 }
 
 function renderDlc(t) {
@@ -465,7 +463,7 @@ function renderDlc(t) {
             details: meta.description || I18N.noDescription,
         }));
     });
-    return section('gameDlc', 'bi-puzzle', `${I18N.dlc} (${ownedIds.size} / ${dlc.length})`, list, 'dlc');
+    return section('gameDlc', 'bi-puzzle', `${I18N.dlc} (${ownedIds.size} / ${dlc.length})`, list);
 }
 
 /** A DLC's own card (the row's name opens it): the game's art beside the DLC's facts

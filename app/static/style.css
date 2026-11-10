@@ -717,7 +717,8 @@ a.stat-tile:hover {
 
 /* The console filter (Library): one stadium bar holding the options, the chosen one
    filled - Switch Library Manager's segmented look on our tokens, in our own place.
-   Scoped here so every other .filter-pill row keeps its stand-alone pills. */
+   Scoped here so every other .filter-pill row keeps its stand-alone pills; only the
+   resting pills go transparent, the chosen one keeps its accent fill. */
 #libraryConsole {
     display: inline-flex;
     flex-wrap: wrap;
@@ -730,8 +731,11 @@ a.stat-tile:hover {
 
 #libraryConsole .filter-pill {
     border-color: transparent;
-    background-color: transparent;
     padding: .3rem .75rem;
+}
+
+#libraryConsole .filter-pill:not(.active) {
+    background-color: transparent;
 }
 
 #libraryConsole .filter-pill.active .filter-pill__count {
@@ -3533,15 +3537,8 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     color: var(--op-wait);
 }
 
-/* A section's title icon, in the content type's fixed color (scoped inside the title
-   to sit above the title's own .bi rule). */
-.game-section__title .game-section__icon--update {
-    color: var(--op-wait);
-}
-
-.game-section__title .game-section__icon--dlc {
-    color: var(--op-dlc);
-}
+/* The sections' TITLE icons keep the web's own accent (asked for: that is design,
+   not content); the rows' glyphs inside carry the type colors instead. */
 
 .game-fact__note {
     margin-top: .25rem;

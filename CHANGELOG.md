@@ -19,12 +19,12 @@ see the upstream project for its own history.
   - **The follow-up notice opens Pending right here**: "N tasks queued. See them on
     Pending" links to this page's own Pending tab (it used to leave for the Tasks
     page).
-- **Game page, second round:** the Updates and DLC sections wear their type colors on
-  the title icon and each row's glyph, and the *Latest version* fact turns the
-  update's amber when the owned one is behind it - the same treatment the firmware
-  fact gives its violet. In the Library's List view the *Latest version* pill is back
-  (green or amber, reading both version names); the state icon beside it was the part
-  that went.
+- **Game page, second round:** the Updates and DLC rows wear their type colors on
+  their glyphs (the sections' title icons keep the web's own accent - design, not
+  content), and the *Latest version* fact turns the update's amber when the owned one
+  is behind it - the same treatment the firmware fact gives its violet. In the
+  Library's List view the *Latest version* pill is back (green or amber, reading both
+  version names); the state icon beside it was the part that went.
 - **Switch Library Manager touches, on our own shape:**
   - **The console filter is one stadium bar**: the options sit inside it, the chosen
     one filled with the style's accent with its count as a nested pill - in the same

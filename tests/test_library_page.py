@@ -99,6 +99,10 @@ def test_the_console_filter_is_one_stadium_bar():
     css = _read("app", "static", "style.css")
     rule = re.search(r"#libraryConsole \{([^}]*)\}", css).group(1)
     assert "border-radius: 2rem" in rule and "var(--op-surface-1)" in rule
+    # Only the resting pills go transparent: the chosen one keeps the accent fill
+    # (an id-scoped rule on every pill used to swallow it).
+    assert "#libraryConsole .filter-pill:not(.active)" in css
+    assert not re.search(r"#libraryConsole \.filter-pill \{[^}]*background", css)
     # The chosen option carries its count as a nested pill, Switch Library style.
     assert re.search(r"#libraryConsole \.filter-pill\.active \.filter-pill__count \{[^}]*border-radius: 1rem", css)
 
