@@ -125,7 +125,7 @@ def test_saves_are_searched_by_game():
 
 
 def test_saga_cards_show_every_game():
-    """Asked for, Switch Library Manager style: every cover of the saga in the card,
+    """Asked for: every cover of the saga in the card,
     a little bigger, in as many rows as they take - no "+N", and nothing cut off when
     the window narrows (the one row used to clip mid-card)."""
     js = _read("app", "static", "js", "sagas.js")

@@ -195,7 +195,7 @@ def test_a_nup_is_never_a_duplicate_of_an_nsp():
     import inspect
     import library
     assert "'nup'" in inspect.getsource(library.duplicate_file_groups)
-    # Old updates: only files that install compare (test_nup_slmw204.py checks it runs).
+    # Old updates: only files that install compare (test_nup_checks.py checks it runs).
     assert "'nup'" in inspect.getsource(library._install_files)
     assert "_install_files" in inspect.getsource(library.outdated_update_groups)
     assert "_install_files" in inspect.getsource(library.remove_outdated_update_files)

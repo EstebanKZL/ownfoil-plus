@@ -675,7 +675,7 @@ def dlc_id_range(title_id):
 
     cnmts.json only has the DLC someone dumped, while the catalogue (titles.json) lists
     every DLC of the eShop: Biomutant's nine language packs are only there. Grouping by
-    id finds them all - the same rule Switch Library Manager Web uses."""
+    id finds them all."""
     try:
         value = int(title_id, 16)
     except (TypeError, ValueError):

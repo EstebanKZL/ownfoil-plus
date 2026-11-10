@@ -614,7 +614,7 @@
  "organizer.move_companions_label": "NFO、SFV、証明ファイルも一緒に移動",
  "organizer.move_companions_help": "ゲームと同じ名前のファイル（game.nspの隣のgame.nfo）は新しい名前になり、メモ、チェックサム、画像、Proofフォルダーだけが残ったフォルダーはそれらを引き渡して空になります。移動先に同じ名前がすでにある場合はそのまま残ります。",
  "organizer.clean_names_label": "名前を整形（™、®、©、+、:、／を削除）",
- "organizer.clean_names_help": "ファイルを整理する際、ゲーム名から商標・登録商標・著作権記号と、「+」およびコロン/スラッシュ（通常・全角の両方）を取り除きます。Switch Library Managerの名前整形オプションと同様です。",
+ "organizer.clean_names_help": "ファイルを整理する際、ゲーム名から商標・登録商標・著作権記号と、「+」およびコロン/スラッシュ（通常・全角の両方）を取り除きます。",
  "organizer.show_background_image_label": "ライブラリのリスト表示にゲームの背景画像を表示",
  "organizer.show_background_image_help": "ライブラリページのリスト表示で、各行の背後に表示されるゲームの背景アートワークをオフにします。左側のカバーアイコンは表示されたままです。この表示のみに影響し、カード表示やゲームの詳細ポップアップには影響しません。",
  "organizer.naming_language": "命名に使う言語",

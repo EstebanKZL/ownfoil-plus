@@ -104,7 +104,7 @@ def _tlvs(block):
     name 4, the publisher 5): a block with a type 0 is read with each type one up. A block
     without an NPDM (a DLC's) has no type 0 to tell it: there a record 0x0007 that is not
     the 32 bytes of a build ID does - the source dump's name, one below its place. The
-    reference packer, NXPress and Switch Library Manager read them by the same two rules."""
+    format's reference packer reads them by the same two rules."""
     records, pos = {}, 0
     while pos + 8 <= len(block):
         kind, size = _u16(block, pos), _u32(block, pos + 4)

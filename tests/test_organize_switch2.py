@@ -102,7 +102,7 @@ def test_a_bundle_takes_any_template_field(env, template):
 
 
 def test_package_contents_and_size_in_the_name(env):
-    """Asked for (as Switch Library Manager Web names them):
+    """Asked for:
     "Nintendo Switch 2 Welcome Tour [Base + Update] [3.23 GB].nup"."""
     from db import db
     f = env.seed("tour.nup", [(S2_ID, "0", APP_TYPE_BASE), (S2_UPD, "65536", APP_TYPE_UPD)])

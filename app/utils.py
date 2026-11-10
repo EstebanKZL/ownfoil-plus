@@ -329,8 +329,8 @@ def replace_char(c, restricted_chars, control_chars):
     return c
 
 
-# Legal/trademark symbols that Switch Library Manager strips outright when generating
-# clean file/folder names - decorations with no separating role, so no replacement
+# Legal/trademark symbols stripped outright when generating clean file/folder names -
+# decorations with no separating role, so no replacement
 # space is needed where they're removed.
 NAME_SYMBOLS_PATTERN = re.compile(r'[™®©+]')
 # Punctuation that separates two parts of a title but isn't wanted in the organized
@@ -345,8 +345,8 @@ SEPARATOR_SYMBOLS_PATTERN = re.compile(r'[:：/／]')
 
 def clean_display_name(name):
     """Strip trademark/copyright symbols (™, ®, ©), '+', and colons/slashes in either
-    their plain or fullwidth form, then tidy the resulting whitespace - mirroring the
-    "clean name" behaviour of Switch Library Manager."""
+    their plain or fullwidth form, then tidy the resulting whitespace (the "clean names"
+    option)."""
     if not name:
         return name
     cleaned = NAME_SYMBOLS_PATTERN.sub('', name)

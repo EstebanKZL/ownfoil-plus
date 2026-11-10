@@ -336,7 +336,7 @@ def test_scroll_is_only_restored_when_going_back():
 
 
 def test_updates_read_both_versions_and_link_their_notes():
-    """Switch Library Manager touches, on our shape: "3.0.0 · v1048576" for a version
+    """Game page touches: "3.0.0 · v1048576" for a version
     (the human name when the CNMT gave one), and a release-notes icon - only the icon,
     opening a web search in its own tab - right before the download arrow."""
     js = _js("game.js")

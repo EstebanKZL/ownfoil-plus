@@ -614,7 +614,7 @@
  "organizer.move_companions_label": "NFO-, SFV- en proof-bestanden meenemen",
  "organizer.move_companions_help": "Een bestand met dezelfde naam als de game (game.nfo naast game.nsp) krijgt de nieuwe naam mee, en een map met alleen notities, checksums, afbeeldingen en een Proof-map geeft die door, zodat hij leeg achterblijft. Als een naam op de bestemming al bezet is, blijft het bestand waar het is.",
  "organizer.clean_names_label": "Namen opschonen (™, ®, ©, +, :, ／ verwijderen)",
- "organizer.clean_names_help": "Verwijdert handelsmerk-, gedeponeerd- en copyrightsymbolen, plus \"+\" en dubbele punten/schuine strepen (in normale of brede vorm), uit gamenamen bij het organiseren van bestanden, vergelijkbaar met de optie voor opgeschoonde namen van Switch Library Manager.",
+ "organizer.clean_names_help": "Verwijdert handelsmerk-, gedeponeerd- en copyrightsymbolen, plus \"+\" en dubbele punten/schuine strepen (in normale of brede vorm), uit gamenamen bij het organiseren van bestanden.",
  "organizer.show_background_image_label": "Achtergrondafbeelding van de game tonen in de lijstweergave van de bibliotheek",
  "organizer.show_background_image_help": "Zet de achtergrondartwork van elke game achter de rij in de lijstweergave van de bibliotheekpagina uit - het hoesicoontje links blijft zichtbaar. Heeft alleen invloed op die ene weergave, niet op het kaartenraster of de detailpopup van een game.",
  "organizer.naming_language": "Taal voor namen",

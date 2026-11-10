@@ -1,5 +1,4 @@
-"""NUP reading as Switch Library Manager Web 2.0.x reads it (containers/nup.py,
-library.py): the second rule for metadata types counted from 0, the metadata no hash
+"""NUP reading, more careful (containers/nup.py, library.py): the second rule for metadata types counted from 0, the metadata no hash
 covers checked, hostile tables of contents refused, a game rebuilt with its update in it
 up to date, and a NUP never making a separate update file obsolete."""
 import struct

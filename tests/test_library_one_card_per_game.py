@@ -114,7 +114,7 @@ def test_the_page_passes_the_new_strings(shop_app):
 # --- the game page's square cover ----------------------------------------------------------
 
 def test_the_game_page_shows_the_square_cover_first():
-    """Like Switch Library Manager Web: the game's square cover (iconUrl), the banner only
+    """The game's square cover (iconUrl), the banner only
     when there's no cover; the banner stays as the blurred backdrop."""
     hero = _function_body(_js("game.js"), "renderHero")
     assert "const art = t.iconUrl || t.bannerUrl;" in hero

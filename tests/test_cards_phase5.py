@@ -110,7 +110,7 @@ def test_the_new_strings_are_translated(shop_app):
 
 def test_the_state_badges_move_to_the_top_of_the_cover():
     """Seen in the browser: "Needs firmware" sat over the format, both bottom left. The
-    bottom is the format's and the update mark's now, as in SLMW."""
+    bottom is the format's and the update mark's now."""
     with open(os.path.join(ROOT, "app", "static", "style.css"), encoding="utf-8") as f:
         css = f.read()
     rule = re.search(r"\n\.library-badges \{([^}]*)\}", css).group(1)

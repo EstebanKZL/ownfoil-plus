@@ -195,8 +195,7 @@ def identify_file(filepath):
                                   display_versions.get((app_id, version)), required))
         except Exception as e:
             # Its contents can't be read (a master key missing for a newer game, a
-            # damaged header): the name may still say what it is ([TitleID][vVersion]),
-            # as Switch Library Manager Web reads it.
+            # damaged header): the name may still say what it is ([TitleID][vVersion]).
             app_id, title_id, app_type, version, name_error = identify_file_from_filename(filename)
             if not name_error:
                 logger.warning(f'Could not read {filepath} ({e}): identified by its name')

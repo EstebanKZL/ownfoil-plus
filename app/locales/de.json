@@ -614,7 +614,7 @@
  "organizer.move_companions_label": "NFO-, SFV- und Proof-Dateien mitnehmen",
  "organizer.move_companions_help": "Eine Datei, die wie das Spiel heißt (game.nfo neben game.nsp), erhält dessen neuen Namen, und ein Ordner, der nur noch Notizen, Prüfsummen, Bilder und einen Proof-Ordner enthält, gibt diese mit ab und bleibt so leer zurück. Ist ein Name am Ziel schon vergeben, bleibt die Datei, wo sie ist.",
  "organizer.clean_names_label": "Namen bereinigen (™, ®, ©, +, :, ／ entfernen)",
- "organizer.clean_names_help": "Entfernt beim Organisieren Marken-, Registered- und Copyright-Symbole sowie \"+\" und Doppelpunkte/Schrägstriche (in normaler oder vollbreiter Form) aus Spielnamen, ähnlich der Option zum Bereinigen von Namen im Switch Library Manager.",
+ "organizer.clean_names_help": "Entfernt beim Organisieren Marken-, Registered- und Copyright-Symbole sowie \"+\" und Doppelpunkte/Schrägstriche (in normaler oder vollbreiter Form) aus Spielnamen.",
  "organizer.show_background_image_label": "Hintergrundbild des Spiels in der Listenansicht der Bibliothek anzeigen",
  "organizer.show_background_image_help": "Schaltet das Hintergrund-Artwork jedes Spiels hinter seiner Zeile in der Listenansicht der Bibliotheksseite ab - das Cover-Icon links bleibt sichtbar. Betrifft nur diese eine Ansicht, nicht das Kartenraster oder das Detail-Popup eines Spiels.",
  "organizer.naming_language": "Sprache für die Benennung",

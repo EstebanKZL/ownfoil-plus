@@ -614,7 +614,7 @@
  "organizer.move_companions_label": "NFO, SFV, proof 파일도 함께 이동",
  "organizer.move_companions_help": "게임과 같은 이름의 파일(game.nsp 옆의 game.nfo)은 새 이름을 따라가고, 메모, 체크섬, 이미지, Proof 폴더만 남은 폴더는 이를 넘겨주어 빈 폴더가 됩니다. 이동할 위치에 같은 이름이 이미 있으면 그대로 둡니다.",
  "organizer.clean_names_label": "이름 정리 (™, ®, ©, +, :, ／ 제거)",
- "organizer.clean_names_help": "파일을 정리할 때 게임 이름에서 상표, 등록 상표, 저작권 기호와 \"+\", 콜론/슬래시(일반 및 전각 모두)를 제거합니다. Switch Library Manager의 이름 정리 옵션과 비슷합니다.",
+ "organizer.clean_names_help": "파일을 정리할 때 게임 이름에서 상표, 등록 상표, 저작권 기호와 \"+\", 콜론/슬래시(일반 및 전각 모두)를 제거합니다.",
  "organizer.show_background_image_label": "라이브러리 목록 보기에 게임 배경 이미지 표시",
  "organizer.show_background_image_help": "라이브러리 페이지 목록 보기에서 각 게임 행 뒤의 배경 아트워크를 끕니다 - 왼쪽의 커버 아이콘은 계속 표시됩니다. 이 보기에만 적용되며 카드 그리드나 게임 상세 팝업에는 영향이 없습니다.",
  "organizer.naming_language": "이름 언어",
