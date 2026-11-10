@@ -4,15 +4,6 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
-## [6.2.5.57]
-
-- **The changelog tells our own work as our own.** Entries, comments and one help
-  text (*Clean names*, in every language) named another project as the model for a
-  change; what this fork takes from other projects is credited once, in NOTICE.md and
-  the README, and the changes stand on their own. NOTICE.md now also lists what the
-  last version took (the NUP checks, the pager's layout, the saga cards' cover strip
-  and Synchronize).
-
 ## [6.2.5.56]
 
 - **Game page, third round:**
