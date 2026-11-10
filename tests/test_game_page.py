@@ -392,10 +392,11 @@ def test_sections_and_rows_wear_the_type_colors():
     assert ".game-section__icon--" not in css
 
 
-def test_latest_version_wears_the_update_amber_when_behind():
+def test_latest_version_wears_the_firmware_violet_when_behind():
     """The firmware fact turns violet when the console is too old; "Latest version"
-    turns the update's amber when the owned one is behind it."""
+    gets the same violet when the owned one is behind it (asked for: one "your
+    console is behind" look for both facts)."""
     body = _function_body(_js("game.js"), "renderFacts")
     assert "latest > installed ? 'game-fact--update'" in body
     css = _read("app", "static", "style.css")
-    assert "--op-wait-rgb" in css[css.index(".game-fact--update"):]
+    assert "--op-firmware-rgb" in css[css.index(".game-fact--update"):][:200]

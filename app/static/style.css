@@ -3526,15 +3526,16 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     color: var(--op-firmware);
 }
 
-/* The update counterpart: "Latest version" wears the update's amber when the owned
-   one is behind it (the fixed type color, like every other update mark). */
+/* The update counterpart of the firmware fact: "Latest version" gets the same violet
+   treatment when the owned one is behind it (asked for: one "your console is behind"
+   look for both). */
 .game-fact--update {
-    border-color: rgba(var(--op-wait-rgb), .6);
+    border-color: rgba(var(--op-firmware-rgb), .6);
 }
 
 .game-fact--update .game-fact__label,
 .game-fact--update .game-fact__value {
-    color: var(--op-wait);
+    color: var(--op-firmware);
 }
 
 /* The sections' TITLE icons keep the web's own accent (asked for: that is design,
@@ -4982,12 +4983,23 @@ html[data-readonly] a[href^="/api/backups/"] {
     font-size: .85rem;
 }
 
+/* The panel's toolbar block: the search row (shaped like the flat list's) with the
+   "Select all" row riding underneath it. */
+.packing-toolbar-wrap {
+    display: grid;
+    gap: .4rem;
+    margin-bottom: .75rem;
+}
+
 .packing-toolbar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: .75rem 1rem;
-    margin-bottom: .75rem;
+}
+
+.packing-toolbar--under {
+    gap: .5rem;
 }
 
 .packing-select-all {

@@ -215,6 +215,10 @@ const Packing = (() => {
 
     function toolbar(kind, shown) {
         const s = state[kind];
+        // The search leads, flush left like every other card's toolbar; "Select all"
+        // rides on its own row underneath (asked for), so the row reads the same as
+        // the flat list's.
+        const wrap = make('div', 'packing-toolbar-wrap');
         const bar = make('div', 'packing-toolbar');
         const keys = kind === 'compress' ? shown.flatMap(g => g.files.map(f => f.id)) : shown.map(rowKey);
         const all = keys.length > 0 && keys.every(k => s.picked.has(k));
@@ -235,8 +239,11 @@ const Packing = (() => {
             input._timer = setTimeout(() => { s.search = input.value.trim(); render(kind); focusSearch(); }, 250);
         });
         search.append(input);
-        bar.append(selectAll, search, filterBar(kind), make('span', 'packing-summary ms-auto', summary(kind)));
-        return bar;
+        bar.append(search, filterBar(kind), make('span', 'packing-summary ms-auto', summary(kind)));
+        const under = make('div', 'packing-toolbar packing-toolbar--under');
+        under.append(selectAll);
+        wrap.append(bar, under);
+        return wrap;
     }
 
     function focusSearch() {
