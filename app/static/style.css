@@ -2328,6 +2328,34 @@ a.stat-tile:hover {
     margin: 2rem auto;
 }
 
+/* A game with only a square icon: the icon whole in the middle of the card's wide
+   cover, over a blurred, darkened copy of itself filling the rest. */
+.library-cover--icon {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    background-color: var(--op-surface-2);
+}
+
+.library-cover__blur {
+    position: absolute;
+    inset: -12%;
+    background-size: cover;
+    background-position: center;
+    filter: blur(18px) brightness(.55);
+}
+
+.library-cover--icon img {
+    position: relative;
+    height: 82%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: var(--op-radius);
+    box-shadow: 0 .4rem 1.2rem rgba(0, 0, 0, .45);
+}
+
 .library-cover--empty {
     display: grid;
     place-items: center;
@@ -4078,12 +4106,30 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     min-width: 0;
 }
 
+/* The game stacked and centred: its icon large on top, the name under it, then how
+   many copies and their size. */
 .saves-game__info .dash-list__row {
-    padding-left: 0;
+    flex-direction: column;
+    gap: .5rem;
+    padding: .25rem 0;
+    text-align: center;
+}
+
+.saves-game__info .dash-list__icon {
+    width: 5.5rem;
+    height: 5.5rem;
+    border-radius: var(--op-radius);
+    font-size: 2rem;
+    box-shadow: 0 .3rem .9rem rgba(0, 0, 0, .3);
+}
+
+.saves-game__info .dash-list__text {
+    width: 100%;
 }
 
 /* The fixed column is narrow: a long name takes a second line instead of an ellipsis. */
 .saves-game__info .dash-list__name {
+    font-size: 1rem;
     white-space: normal;
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -4824,38 +4870,6 @@ h5.settings-subhead { font-size: .95rem; color: var(--op-text-muted); }
     color: var(--op-text);
     font-size: .65rem;
     font-weight: 700;
-}
-
-/* Vista: the page sizes as a small grid of choices. */
-.library-menu--view {
-    min-width: 15rem;
-}
-
-.page-size-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: .35rem;
-    padding: .25rem .75rem .5rem;
-}
-
-.page-size-option {
-    padding: .35rem 0;
-    border: 1px solid var(--op-border);
-    border-radius: var(--op-radius-sm);
-    background-color: var(--op-surface-1);
-    color: var(--op-text);
-    font-size: .85rem;
-    font-weight: 600;
-}
-
-.page-size-option:hover {
-    border-color: rgba(var(--op-nav-rgb), .55);
-}
-
-.page-size-option.active {
-    background-color: var(--op-nav);
-    border-color: var(--op-nav);
-    color: var(--op-surface-0);
 }
 
 /* Filters: a panel of titled groups, each a row of chips. */

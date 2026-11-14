@@ -336,14 +336,14 @@
                 </div>
 
                 <div class="collapse" id="collapseNewPath">
-                    <div class="card card-body mt-2 mb-2">
-                        <label class="form-label">{{ t('lib.add_a_new_directory') }}</label>
+                    <div class="settings-inner mt-2 mb-2">
+                        <label class="form-label" for="libraryPathInput">{{ t('lib.add_a_new_directory') }}</label>
                         <div class="row g-3">
                             <div class="col-12 col-md-6">
                                 <input type="text" class="form-control" id="libraryPathInput" placeholder="{{ t('lib.path_placeholder') }}">
                             </div>
                             <div class="col-auto">
-                                <button type="button" id="submitNewLibraryPathBtn" class="btn btn-primary mb-3"
+                                <button type="button" id="submitNewLibraryPathBtn" class="btn btn-primary"
                                     onClick='submitNewLibraryPath()'>{{ t('lib.submit') }}</button>
                             </div>
                         </div>

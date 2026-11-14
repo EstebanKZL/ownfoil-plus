@@ -50,18 +50,6 @@
                     title="{{ t('library.view_list') }}" aria-label="{{ t('library.view_list') }}"><i class="bi bi-list-ul"></i></button>
         </div>
         <div class="dropdown">
-            <button id="viewMenuBtn" type="button" class="btn btn-outline-secondary dropdown-toggle"
-                    data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                <i class="bi bi-sliders2" aria-hidden="true"></i> <span class="d-none d-md-inline">{{ t('library.view_menu') }}</span>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end library-menu library-menu--view" aria-labelledby="viewMenuBtn">
-                {# Filled by static/js/library.js: 10 to 100, each rounded to fill the rows the
-                   current width shows. #}
-                <li><h6 class="dropdown-header" id="itemsPerPageDropdownBtn">{{ t('library.items_per_page') }}</h6></li>
-                <li><div class="page-size-grid" id="pageSizeOptions" role="group" aria-labelledby="itemsPerPageDropdownBtn"></div></li>
-            </ul>
-        </div>
-        <div class="dropdown">
             <button id="filtersMenuBtn" type="button" class="btn btn-outline-secondary dropdown-toggle position-relative"
                     data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
                 <i class="bi bi-funnel" aria-hidden="true"></i> <span class="d-none d-md-inline">{{ t('library.filters_menu') }}</span>

@@ -749,7 +749,6 @@
  "library.sort_release_date": "发售日期",
  "library.sort_asc": "升序（点击切换）",
  "library.sort_desc": "降序（点击切换）",
- "library.items_per_page": "每页显示",
  "library.details": "详情",
  "library.unrecognized": "未识别",
  "library.not_found_in_titledb": "在 titledb 中未找到",

@@ -749,7 +749,6 @@
  "library.sort_release_date": "発売日",
  "library.sort_asc": "昇順（クリックで反転）",
  "library.sort_desc": "降順（クリックで反転）",
- "library.items_per_page": "1ページの表示件数",
  "library.details": "詳細",
  "library.unrecognized": "認識不可",
  "library.not_found_in_titledb": "titledbに見つかりません",

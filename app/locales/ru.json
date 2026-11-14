@@ -749,7 +749,6 @@
  "library.sort_release_date": "Дата выхода",
  "library.sort_asc": "По возрастанию (нажмите, чтобы изменить)",
  "library.sort_desc": "По убыванию (нажмите, чтобы изменить)",
- "library.items_per_page": "Элементов на странице",
  "library.details": "Подробности",
  "library.unrecognized": "Не распознано",
  "library.not_found_in_titledb": "не найдено в titledb",

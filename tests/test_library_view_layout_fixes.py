@@ -52,9 +52,8 @@ def test_every_filter_group_is_a_titled_row_of_chips(client):
     assert 'id="filtersClearBtn"' in html
 
 
-def test_the_page_sizes_are_buttons_not_a_custom_field(client):
+def test_the_page_size_is_not_a_custom_field(client):
     html = client.get("/").get_data(as_text=True)
-    assert '<div class="page-size-grid" id="pageSizeOptions"' in html
     assert 'type="number" id="customItemsPerPage"' not in html
 
 

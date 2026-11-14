@@ -30,7 +30,6 @@ def test_library_page_renders_in_english_by_default(client):
 
     assert resp.status_code == 200
     assert "Search titles..." in html
-    assert "Items per page" in html
     assert ">Owned<" in html
     assert ">Missing<" in html
     assert "Missing Update" in html
@@ -44,7 +43,6 @@ def test_library_page_renders_in_spanish(client):
 
     assert resp.status_code == 200
     assert "Buscar títulos..." in html
-    assert "Elementos por página" in html
     assert ">Poseído<" in html
     assert ">Faltante<" in html
     assert "Falta update" in html
