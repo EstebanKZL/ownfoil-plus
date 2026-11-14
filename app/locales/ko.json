@@ -749,7 +749,6 @@
  "library.sort_release_date": "출시일",
  "library.sort_asc": "오름차순 (클릭하면 반대로)",
  "library.sort_desc": "내림차순 (클릭하면 반대로)",
- "library.items_per_page": "페이지당 항목 수",
  "library.details": "세부 정보",
  "library.unrecognized": "인식되지 않음",
  "library.not_found_in_titledb": "titledb에 없음",

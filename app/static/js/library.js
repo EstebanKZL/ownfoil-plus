@@ -655,12 +655,23 @@ function renderCardView(games) {
         if (game.title_id) card.attr('data-firmware-title', game.title_id);
 
         const coverWrap = $('<div class="library-cover-wrap">');
-        const cover = game.bannerUrl
-            ? $('<img class="library-cover" loading="lazy" alt="">').attr('src', game.bannerUrl)
-            : $('<div class="library-cover library-cover--empty"><i class="bi bi-controller" aria-hidden="true"></i></div>');
+        // The wide banner when there is one; else the square icon (a Switch 2 game, or
+        // one whose only artwork is the icon read from its file), centred over a
+        // blurred copy of itself; else the placeholder.
+        const emptyCover = () => $('<div class="library-cover library-cover--empty"><i class="bi bi-controller" aria-hidden="true"></i></div>');
+        let cover;
+        if (game.bannerUrl) {
+            cover = $('<img class="library-cover" loading="lazy" alt="">').attr('src', game.bannerUrl);
+        } else if (game.iconUrl) {
+            cover = $('<div class="library-cover library-cover--icon">')
+                .append($('<div class="library-cover__blur" aria-hidden="true">').css('background-image', `url("${game.iconUrl}")`))
+                .append($('<img loading="lazy" alt="">').attr('src', game.iconUrl));
+        } else {
+            cover = emptyCover();
+        }
         // An artwork URL that fails to load shows the same placeholder.
-        cover.filter('img').on('error', function () {
-            $(this).replaceWith($('<div class="library-cover library-cover--empty"><i class="bi bi-controller" aria-hidden="true"></i></div>'));
+        cover.find('img').addBack('img').on('error', function () {
+            cover.replaceWith(emptyCover());
         });
         // The cover is a real link: middle-click and "open in a new tab" work.
         coverWrap.append($('<a class="library-cover-link" tabindex="-1" aria-hidden="true">')
@@ -969,23 +980,20 @@ function renderListView(titles) {
         const titleLine = $('<h5 class="card-title mb-1 d-flex align-items-center gap-2"></h5>');
         titleLine.append($('<a class="list-title-link"></a>').attr('href', `/game/${t.titleId}`)
             .text(t.name || I18N.unrecognized));
-        const titleMetaBtn = metadataButton({
-            id: t.titleId, url: `/game/${t.titleId}`,
-        });
-        if (titleMetaBtn) titleLine.append(titleMetaBtn);
         if (firmwareTooOld(t.requiredFirmware, CONSOLE_FIRMWARE)) titleLine.append(firmwareBadge(t.requiredFirmware));
         headerText.append(titleLine);
         if (t.intro) {
             headerText.append($('<p class="card-text small text-secondary mb-1"></p>').text(t.intro));
         }
 
-        const latest = updateApps[0] || {};
-        const latestVersion = latest.appVersion || 0;
+        // The newest update; a game without any is at its base game's own version.
+        const latest = updateApps[0] || baseApp || {appVersion: 0};
         // Both ways of naming it, like the game page: "3.0.0 · v1048576". The pill
         // keeps its green/amber state (asked for); the icon beside it was the part
         // that went.
+        const latestVersion = latest.appVersion ?? 0;
         const versionText = latest.displayVersion
-            ? `${latest.displayVersion} · v${latest.appVersion}` : `v${latest.appVersion}`;
+            ? `${latest.displayVersion} · v${latestVersion}` : `v${latestVersion}`;
         const versionLine = $('<p class="small mb-0 d-flex align-items-center gap-2"></p>');
         versionLine.append($('<strong></strong>').text(I18N.latestVersion));
         const versionBadge = $('<span class="badge rounded-pill"></span>')
@@ -1123,26 +1131,12 @@ function fittedPageSize(target, columns) {
     return sizes[Math.min(index, sizes.length - 1)];
 }
 
-function renderPageSizeOptions() {
-    const columns = gridColumns();
-    const box = $('#pageSizeOptions').empty();
-    pageSizeOptions(columns).forEach((size, i) => {
-        const target = (i + 1) * 10;
-        box.append($('<button type="button" class="page-size-option">')
-            .toggleClass('active', size === itemsPerPage)
-            .attr('aria-pressed', size === itemsPerPage ? 'true' : 'false')
-            .text(size)
-            .on('click', () => choosePageSize(size, target)));
-    });
-}
-
-/** A page size chosen (the toolbar's menu or the pager's "per page"): remembered as its
+/** A page size chosen in the pager's "per page": remembered as its
  *  target, so it fits the columns again at another width. */
 function choosePageSize(size, target) {
     pageTarget = target;
     storageSet('pageTarget', String(target));
     itemsPerPage = size;
-    renderPageSizeOptions();
     resetToFirstPage();
 }
 
@@ -1152,7 +1146,6 @@ function refitPageSize(reload) {
     const size = fittedPageSize(pageTarget, gridColumns());
     const changed = size !== itemsPerPage;
     itemsPerPage = size;
-    renderPageSizeOptions();
     if (changed && reload) loadPage();
 }
 
@@ -1175,8 +1168,7 @@ function pageWindow(totalPages) {
 }
 
 /** The pager (pager.js), above and below the grid - the same bar twice: what is shown,
- *  the pages, and "per page" with the sizes that fill whole rows at this width (the
- *  same ones as the toolbar's menu). */
+ *  the pages, and "per page" with the sizes that fill whole rows at this width. */
 function updatePaginationControls(totalPages) {
     const sizes = pageSizeOptions(gridColumns());
     ['paginationControlsTop', 'paginationControlsBottom'].forEach(id => Pager.render(document.getElementById(id), {

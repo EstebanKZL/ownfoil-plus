@@ -4,6 +4,21 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.59]
+
+- **Card view shows a game's icon when it has no banner.** Switch 2 games, and any game
+  whose only artwork is the icon read from its file, showed the empty placeholder in the
+  Cards view while the Compact view had their cover: the card now shows the square icon
+  whole in the middle, over a blurred copy of itself.
+- **The Library's View menu is gone**: it only chose the page size, which the pager's
+  *Per page* already does above and below the games.
+- **Saves: the game stacked and centred** - its icon large on top, the name under it,
+  then how many copies and their size.
+- **Settings > Library: the new path box** has the same look as the test email box.
+- **List view: a game without updates reads its base game's version** (`v0`) as its
+  latest, instead of "vundefined"; and the info icon beside each name is gone - the
+  name itself opens the game.
+
 ## [6.2.5.58]
 
 - **A game without a cover in the catalogue shows its own.** The official icon a game

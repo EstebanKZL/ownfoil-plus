@@ -1142,7 +1142,6 @@ TRANSLATIONS = {
     'library.sort_id': {'en': 'ID', 'es': 'ID'},
     'library.sort_asc': {'en': 'Ascending (click to reverse)', 'es': 'Ascendente (clic para invertir)'},
     'library.sort_desc': {'en': 'Descending (click to reverse)', 'es': 'Descendente (clic para invertir)'},
-    'library.items_per_page': {'en': 'Items per page', 'es': 'Elementos por página'},
     'library.details': {'en': 'Details', 'es': 'Detalles'},
     'library.unrecognized': {'en': 'Unrecognized', 'es': 'No reconocido'},
     'library.not_found_in_titledb': {'en': 'not found in titledb', 'es': 'no encontrado en titledb'},

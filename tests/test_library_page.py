@@ -114,7 +114,11 @@ def test_the_list_titles_state_their_mark_and_both_versions():
     # both ways ("3.0.0 · v1048576") - the state ICON beside it was the part that
     # went (asked for), not the pill.
     assert "latestDate" not in body
-    assert "latest.displayVersion" in body and "· v${latest.appVersion}" in body
+    assert "latest.displayVersion" in body and "· v${latestVersion}" in body
+    # A game without updates reads its base game's version, never "vundefined".
+    assert "updateApps[0] || baseApp" in body and "latest.appVersion ?? 0" in body
+    # No info icon beside the name: the name itself opens the game.
+    assert "titleMetaBtn" not in body
     assert "text-bg-success" in body and "text-bg-warning" in body
     assert "bi-check-circle-fill" not in body and "bi-arrow-down-circle" not in body
     # Every update row reads both names too, in the collapsible sections.
@@ -210,13 +214,14 @@ def test_library_header_strings_are_translated(client):
 
 # --- toolbar, View and Filters menus ---------------------------------------------------
 
-def test_toolbar_holds_search_sort_views_and_both_menus(client):
+def test_toolbar_holds_search_sort_views_and_the_filters_menu(client):
     html = client.get("/").get_data(as_text=True)
     bar = html.split('class="toolbar library-toolbar', 1)[1].split('<!-- Pagination controls (top)', 1)[0]
     for needle in ('id="textFilter"', 'id="sortField"', 'sort-direction-btn', 'data-view="card"',
-                   'data-view="icon"', 'data-view="list"', 'id="viewMenuBtn"', 'id="filtersMenuBtn"',
-                   'id="pageSizeOptions"', 'id="filtersActiveDot"'):
+                   'data-view="icon"', 'data-view="list"', 'id="filtersMenuBtn"', 'id="filtersActiveDot"'):
         assert needle in bar, needle
+    # The page size is chosen in the pager's "per page" only: no View menu repeating it.
+    assert 'id="viewMenuBtn"' not in bar and 'id="pageSizeOptions"' not in bar
     # Every filter group lives in the one Filters menu, the same for every view.
     menu = bar.split('id="filtersMenuBtn"', 1)[1]
     for group in ("Ownership filter", "Update filter", "Completion filter", "Favourites"):
@@ -485,3 +490,11 @@ def test_titles_and_apps_filter_by_folder(client, shop_app):
     stats = shop_app.client.post("/api/graphql", json={"query": "{ stats { libraryFolders { id name path games free } } }"}).get_json()
     folder = stats["data"]["stats"]["libraryFolders"][0]
     assert folder["id"] == lib_id and folder["path"] and folder["games"] >= 0
+
+
+def test_a_card_without_a_banner_shows_the_games_icon():
+    # A Switch 2 game (or one whose only artwork is the icon read from its file) has
+    # no wide banner: the card shows its square icon instead of the placeholder.
+    body = _function_body(_library_js(), "renderCardView")
+    assert "game.bannerUrl" in body and "game.iconUrl" in body
+    assert "library-cover--icon" in body and "library-cover__blur" in body

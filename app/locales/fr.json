@@ -749,7 +749,6 @@
  "library.sort_release_date": "Date de sortie",
  "library.sort_asc": "Croissant (clique pour inverser)",
  "library.sort_desc": "Décroissant (clique pour inverser)",
- "library.items_per_page": "Éléments par page",
  "library.details": "Détails",
  "library.unrecognized": "Non reconnu",
  "library.not_found_in_titledb": "introuvable dans titledb",
