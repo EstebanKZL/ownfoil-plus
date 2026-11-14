@@ -86,3 +86,41 @@ def test_covers_are_for_admins_only(shop_app):
     shop_app.client.post("/login", data={"user": "shopper", "password": fixture.PASSWORDS["shopper"]})
     assert shop_app.client.post(f'/api/titles/{TITLE}/cover').status_code in (302, 401, 403)
     assert shop_app.client.get('/api/covers/search?q=x').status_code in (302, 401, 403)
+
+
+class _Redirect:
+    """A Nintendo URL answering with a redirect to somewhere else."""
+    def __init__(self, location):
+        self.status_code = 302
+        self.is_redirect = True
+        self.headers = {'Location': location}
+
+    def close(self):
+        pass
+
+
+def test_the_image_proxy_never_follows_a_redirect_off_nintendo(admin, monkeypatch):
+    asked = []
+
+    def get(url, **kwargs):
+        asked.append(url)
+        assert kwargs.get('allow_redirects') is False
+        return _Redirect('http://127.0.0.1:8465/admin')
+
+    monkeypatch.setattr(covers.requests, 'get', get)
+    resp = admin.get('/api/covers/image?url=https://img-eshop.cdn.nintendo.net/i/abc.jpg')
+    assert resp.status_code == 400
+    # The internal address was never requested: only the Nintendo URL was.
+    assert asked == ['https://img-eshop.cdn.nintendo.net/i/abc.jpg']
+
+
+def test_the_image_proxy_stops_after_a_few_redirects(admin, monkeypatch):
+    asked = []
+
+    def get(url, **kwargs):
+        asked.append(url)
+        return _Redirect('https://img-eshop.cdn.nintendo.net/i/next.jpg')
+
+    monkeypatch.setattr(covers.requests, 'get', get)
+    assert admin.get('/api/covers/image?url=https://img-eshop.cdn.nintendo.net/i/abc.jpg').status_code == 400
+    assert len(asked) <= covers.MAX_REDIRECTS + 1

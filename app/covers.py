@@ -14,7 +14,7 @@ The eShop's images come from Nintendo's own servers: the page reads them through
 import io
 import logging
 import re
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import requests
 from flask import Blueprint, Response, jsonify, request
@@ -41,6 +41,7 @@ RESULTS = 18
 # search answers with nintendo.com images; titledb's covers are on nintendo.net).
 _ALLOWED_HOSTS = re.compile(r'(^|\.)(nintendo\.com|nintendo\.net|nintendo-europe\.com|nintendo\.co\.jp)$')
 MAX_IMAGE = 16 << 20
+MAX_REDIRECTS = 3
 MAX_PIXELS = 40_000_000
 # The cover is saved at most this many pixels a side (the eShop's are 1000 or less).
 MAX_SIDE = 1024
@@ -95,10 +96,19 @@ def image():
     if not _allowed(url):
         return jsonify({'error': 'not allowed'}), 400
     try:
-        response = requests.get(url, timeout=TIMEOUT, stream=True)
+        # Redirects are followed by hand: each new address is checked before it is
+        # asked for, so a Nintendo URL can't send the server on to another host.
+        for _ in range(MAX_REDIRECTS + 1):
+            response = requests.get(url, timeout=TIMEOUT, stream=True, allow_redirects=False)
+            if not response.is_redirect:
+                break
+            response.close()
+            url = urljoin(url, response.headers.get('Location', ''))
+            if not _allowed(url):
+                return jsonify({'error': 'not allowed'}), 400
+        else:
+            return jsonify({'error': 'too many redirects'}), 400
         response.raise_for_status()
-        if not _allowed(response.url):      # a redirect off Nintendo's servers
-            return jsonify({'error': 'not allowed'}), 400
         data = response.raw.read(MAX_IMAGE + 1, decode_content=True)
     except requests.RequestException as e:
         return jsonify({'error': str(e)}), 502
