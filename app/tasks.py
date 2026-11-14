@@ -139,6 +139,8 @@ TASK_DISPLAY = {
     'update_titledb': lambda **kw: 'Update TitleDB',
     'update_series': lambda **kw: 'Update sagas',
     'backfill_required_firmware': lambda **kw: 'Read required firmware',
+    'backfill_file_icons': lambda **kw: 'Read covers from the files',
+    'undo_organize_run': lambda **kw: 'Put back an Organize run',
     'scheduled_maintenance': lambda **kw: 'Daily maintenance',
     'download_media': lambda **kw: 'Download title artwork',
     'download_title_media': lambda title_id=None, **kw: (
@@ -724,6 +726,7 @@ def startup_task(**kwargs):
     _repair_file_names()
     if titles_lib.Keys.keys_loaded:
         enqueue_task('backfill_required_firmware')
+    enqueue_task('backfill_file_icons')
     try:
         update_titledb_task()
     except Exception:
@@ -776,6 +779,28 @@ def backfill_required_firmware_task(**kwargs):
             ).update({'required_system_version': required}, synchronize_session=False)
         db.session.commit()
     logger.info(f'Required firmware read for {updated} base games/updates')
+
+
+@register_task('backfill_file_icons', group='io')
+def backfill_file_icons_task(**kwargs):
+    """Once per install (and once more when keys arrive): the games identified before
+    covers were read from the files, and titledb has none of, take the icon their own
+    file carries - see _store_file_icon."""
+    key = 'file_icons_backfilled' + ('_keys' if titles_lib.Keys.keys_loaded else '')
+    if not settings_lib.mark_once(key):
+        return
+    rows = (db.session.query(Titles.title_id, Files.filepath, Files.identification_type)
+            .join(Apps, Apps.title_id == Titles.id).join(Apps.files)
+            .filter(Apps.app_type.in_([APP_TYPE_BASE, APP_TYPE_UPD]),
+                    Files.identification_type.in_(('cnmt', 'nup')))
+            .order_by(Apps.app_type).all())
+    seen = set()
+    for title_id, filepath, identification in rows:
+        if title_id in seen:
+            continue
+        seen.add(title_id)
+        _store_file_icon(filepath, identification, [title_id])
+    logger.info(f'Covers from the files: {len(seen)} game(s) checked.')
 
 
 # --- Periodic tasks ---
@@ -1273,8 +1298,49 @@ def _identify(file, mgmt):
     file.last_attempt = datetime.datetime.now()
     db.session.commit()
 
+    if identified_title_ids:
+        _store_file_icon(filepath, identification, identified_title_ids)
+
     for title_id in identified_title_ids:
         enqueue_task('add_missing_apps_for_title', {'title_id': title_id})
+
+
+def _store_file_icon(filepath, identification, title_ids):
+    """A game titledb has no cover of (a Switch 2 game, homebrew, one it doesn't know)
+    takes the official icon its own file carries: stored as local artwork, it becomes the
+    title's icon from the file ('extract'), used only while titledb has none. A NUP
+    carries its icon itself; an NSP/XCI needs the console keys, as identifying it did.
+    Never fails the identification: a file without one is simply left as it was."""
+    import titledb
+    from titledb.schema import SOURCE_EXTRACT
+    try:
+        wanted = []
+        for title_id in title_ids:
+            record = titles_lib.get_title_record(title_id) or {}
+            if record.get('iconUrl') and not media.is_local(record.get('iconUrl')):
+                continue        # titledb has its cover
+            if title_id in titledb.store.list_overrides(SOURCE_EXTRACT):
+                continue        # read from a file already
+            wanted.append(title_id)
+        if not wanted:
+            return
+        if identification == 'nup':
+            from containers.nup import read_icon as read_nup_icon
+            icon = read_nup_icon(filepath)
+        elif identification == 'cnmt':
+            from containers.container import read_icon
+            icon = read_icon(filepath)
+        else:
+            return
+        if not icon:
+            return
+        filename, _size = media.store_bytes(media.ICON, icon)
+        for title_id in wanted:
+            url = media.url_for(title_id, media.ICON, 0, media.CLIENT, filename)
+            titledb.store.set_override(title_id, {'iconUrl': url}, source=SOURCE_EXTRACT)
+            logger.info(f'Cover of {title_id} taken from its file (titledb has none).')
+    except Exception as e:
+        logger.warning(f'Could not take the cover of {os.path.basename(filepath)} from the file: {e}')
 
 
 def _verify_eligible(file, mgmt):
@@ -1312,13 +1378,47 @@ def _organize(file, mgmt):
     if not claim_temp_file(claimed):
         return
     library_path = get_library_path(file.library_id)
+    moves = []
     try:
-        if organize_file(file, library_path, mgmt['organizer']):
+        if organize_file(file, library_path, mgmt['organizer'], moves=moves):
             file.organized = True
             db.session.commit()
     finally:
         remove_temp_file(claimed)
+    if moves:
+        try:
+            import organize_history
+            organize_history.record(_organize_run_key(), moves)
+        except Exception as e:
+            # The files are in place: their history is a nice-to-have.
+            logger.warning(f'Could not record the Organize history of {file.filename}: {e}')
     enqueue_task('library_maintenance', {'library_path': library_path})
+
+
+def _organize_run_key():
+    """What groups the moves of one Organize run: the top-level task driving them (a
+    library pass, a scan), else this minute."""
+    task_id = _current_task_id
+    seen = set()
+    while task_id is not None and task_id not in seen:
+        seen.add(task_id)
+        task = db.session.get(Task, task_id)
+        if task is None or task.parent_id is None:
+            break
+        task_id = task.parent_id
+    if task_id is not None:
+        return f'task-{task_id}'
+    return 'at-' + datetime.datetime.utcnow().strftime('%Y%m%d%H%M')
+
+
+@register_task('undo_organize_run', group='io')
+def undo_organize_run_task(run_id, **kwargs):
+    """Put an earlier Organize run's files back to their names and folders."""
+    import organize_history
+    back, skipped = organize_history.undo(int(run_id))
+    for library in get_libraries():
+        enqueue_task('library_maintenance', {'library_path': library.path})
+    return {'moved_back': back, 'skipped': skipped}
 
 
 def _needs_compress(file, mgmt):

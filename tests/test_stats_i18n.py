@@ -167,7 +167,7 @@ def test_library_detail_modal_is_present_and_translated(client):
     assert 'id="libraryDetailNext"' in html
     assert "function openLibraryDetail" in html
     assert "const LIBRARY_DETAIL_QUERY" in html
-    assert "libraryPath:" in html
+    assert "libraryId:" in html          # a folder by its id (a collaborator has no path)
     assert "const CLEAN_APP_MUTATION" in html
     assert "const CLEAN_TITLE_MUTATION" in html
     assert "cleanAppRecord" in html
@@ -236,7 +236,7 @@ def test_all_three_drill_down_modals_have_a_debounced_search_box(client):
     assert "verificationSearchDebounce" in html
 
     # Each query actually threads the term through, not just an unused input sitting there.
-    assert "libraryPath: $path, search: $search" in html
+    assert "libraryId: $path, search: $search" in html   # the folder by id: no path needed
     assert "missingAppType: $type, search: $search" in html
     assert "filename: {contains: $search}" in html
 

@@ -24,6 +24,8 @@ let onlyFavorites = storageGet('libraryFavorites') === '1';
 let favoriteIds = new Set();     // the user's starred title ids (/api/favorites)
 // The console the cards show: '' both, 'switch', 'switch2' (remembered per browser).
 let activeConsole = ['switch', 'switch2'].includes(storageGet('libraryConsole')) ? storageGet('libraryConsole') : '';
+// The library folder the games are in (its id), with two or more folders; null: all.
+let activeFolder = null;
 let totalItems = 0;
 let currentView = 'card'; // Default view is 'card'
 let fetchSeq = 0;    // guards against an older request answering after a newer one
@@ -36,7 +38,7 @@ let activeCompletionFilter = "";
 
 // Sorting: the fields both the `apps` (cards, icons) and `titles` (list) queries sort
 // on. ADDED_AT exists in the schema but only applies to `files`.
-const SORT_FIELDS = ['NAME', 'RELEASE_DATE', 'REGION', 'SIZE', 'ADDED_AT', 'ID'];
+const SORT_FIELDS = ['NAME', 'RELEASE_DATE', 'REGION', 'SIZE', 'ADDED_AT', 'ID', 'FOLDER'];
 const SORT_DIRECTIONS = ['ASC', 'DESC'];
 let librarySort = {field: 'NAME', direction: 'ASC'};
 
@@ -45,7 +47,9 @@ let librarySort = {field: 'NAME', direction: 'ASC'};
 function loadSortFromStorage() {
     try {
         const saved = JSON.parse(storageGet('librarySort') || 'null');
-        if (saved && SORT_FIELDS.includes(saved.field) && SORT_DIRECTIONS.includes(saved.direction)) {
+        // By folder only while there are two or more of them.
+        const known = saved && (saved.field !== 'FOLDER' || LIBRARY_FOLDERS.length > 1);
+        if (known && SORT_FIELDS.includes(saved.field) && SORT_DIRECTIONS.includes(saved.direction)) {
             librarySort = {field: saved.field, direction: saved.direction};
         }
     } catch (e) { /* unreadable or blocked storage: keep the default */ }
@@ -77,10 +81,10 @@ function setSort(field, direction) {
 const CARDS_QUERY = `
     query Cards($page: Int!, $pageSize: Int!, $appType: [AppType!], $search: String,
                 $owned: Boolean, $upToDate: Boolean, $complete: Boolean, $orderBy: OrderBy,
-                $console: String, $favorite: Boolean) {
+                $console: String, $favorite: Boolean, $libraryId: Int) {
         apps(groupByAppId: true, orderBy: $orderBy, page: $page, pageSize: $pageSize,
              appType: $appType, search: $search, owned: $owned,
-             upToDate: $upToDate, complete: $complete, console: $console, favorite: $favorite) {
+             upToDate: $upToDate, complete: $complete, console: $console, favorite: $favorite, libraryId: $libraryId) {
             total
             items {
                 appId
@@ -100,10 +104,10 @@ const CARDS_QUERY = `
 const ICONS_QUERY = `
     query Icons($page: Int!, $pageSize: Int!, $appType: [AppType!], $search: String,
                 $owned: Boolean, $upToDate: Boolean, $complete: Boolean, $orderBy: OrderBy,
-                $console: String, $favorite: Boolean) {
+                $console: String, $favorite: Boolean, $libraryId: Int) {
         apps(groupByAppId: true, orderBy: $orderBy, page: $page, pageSize: $pageSize,
              appType: $appType, search: $search, owned: $owned,
-             upToDate: $upToDate, complete: $complete, console: $console, favorite: $favorite) {
+             upToDate: $upToDate, complete: $complete, console: $console, favorite: $favorite, libraryId: $libraryId) {
             total
             items {
                 appId
@@ -143,9 +147,9 @@ const ICONS_QUERY = `
 // itself considers a real update.
 const LIST_QUERY = `
     query TitlesList($page: Int!, $pageSize: Int!, $search: String, $owned: Boolean, $filter: TitleFilter,
-                     $orderBy: OrderBy, $favorite: Boolean, $console: String) {
+                     $orderBy: OrderBy, $favorite: Boolean, $console: String, $libraryId: Int) {
         titles(owned: $owned, search: $search, filter: $filter, orderBy: $orderBy, favorite: $favorite,
-               console: $console,
+               console: $console, libraryId: $libraryId,
                page: $page, pageSize: $pageSize) {
             total
             items {
@@ -191,6 +195,7 @@ function queryVariables() {
         orderBy: librarySort,
         console: activeConsole || null,
         favorite: onlyFavorites || null,
+        libraryId: activeFolder,
     };
 }
 
@@ -214,6 +219,7 @@ function listQueryVariables() {
         orderBy: librarySort,
         favorite: onlyFavorites || null,
         console: activeConsole || null,
+        libraryId: activeFolder,
     };
 }
 
@@ -354,17 +360,17 @@ const CARD_PILLS = {
 // The console pills' counts (Both / Switch / Switch 2), with the view's own filters.
 const CARD_COUNTS_QUERY = `
     query CardCounts($appType: [AppType!], $search: String, $owned: Boolean, $upToDate: Boolean,
-                     $complete: Boolean, $favorite: Boolean) {
-        consoleAll: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, upToDate: $upToDate, complete: $complete, favorite: $favorite, page: 1, pageSize: 1) { total }
-        consoleSwitch: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, upToDate: $upToDate, complete: $complete, favorite: $favorite, console: "switch", page: 1, pageSize: 1) { total }
-        consoleSwitch2: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, upToDate: $upToDate, complete: $complete, favorite: $favorite, console: "switch2", page: 1, pageSize: 1) { total }
+                     $complete: Boolean, $favorite: Boolean, $libraryId: Int) {
+        consoleAll: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, upToDate: $upToDate, complete: $complete, favorite: $favorite, libraryId: $libraryId, page: 1, pageSize: 1) { total }
+        consoleSwitch: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, upToDate: $upToDate, complete: $complete, favorite: $favorite, libraryId: $libraryId, console: "switch", page: 1, pageSize: 1) { total }
+        consoleSwitch2: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, upToDate: $upToDate, complete: $complete, favorite: $favorite, libraryId: $libraryId, console: "switch2", page: 1, pageSize: 1) { total }
     }`;
 
 const LIST_COUNTS_QUERY = `
-    query ListCounts($search: String, $owned: Boolean, $filter: TitleFilter, $favorite: Boolean) {
-        consoleAll: titles(owned: $owned, search: $search, filter: $filter, favorite: $favorite, page: 1, pageSize: 1) { total }
-        consoleSwitch: titles(owned: $owned, search: $search, filter: $filter, favorite: $favorite, console: "switch", page: 1, pageSize: 1) { total }
-        consoleSwitch2: titles(owned: $owned, search: $search, filter: $filter, favorite: $favorite, console: "switch2", page: 1, pageSize: 1) { total }
+    query ListCounts($search: String, $owned: Boolean, $filter: TitleFilter, $favorite: Boolean, $libraryId: Int) {
+        consoleAll: titles(owned: $owned, search: $search, filter: $filter, favorite: $favorite, libraryId: $libraryId, page: 1, pageSize: 1) { total }
+        consoleSwitch: titles(owned: $owned, search: $search, filter: $filter, favorite: $favorite, libraryId: $libraryId, console: "switch", page: 1, pageSize: 1) { total }
+        consoleSwitch2: titles(owned: $owned, search: $search, filter: $filter, favorite: $favorite, libraryId: $libraryId, console: "switch2", page: 1, pageSize: 1) { total }
     }`;
 
 let pillSeq = 0;      // like fetchSeq: an older count request never overwrites a newer one
@@ -376,11 +382,11 @@ async function loadPillCounts() {
     let vars;
     if (list) {
         const l = listQueryVariables();
-        vars = {search: l.search, owned: l.owned, filter: l.filter, favorite: l.favorite};
+        vars = {search: l.search, owned: l.owned, filter: l.filter, favorite: l.favorite, libraryId: l.libraryId};
     } else {
         const g = queryVariables();
         vars = {appType: g.appType, search: g.search, owned: g.owned, upToDate: g.upToDate,
-                complete: g.complete, favorite: g.favorite};
+                complete: g.complete, favorite: g.favorite, libraryId: g.libraryId};
     }
     let data;
     try {
@@ -1204,6 +1210,9 @@ function loadFiltersFromStorage() {
     // coming back to a page, and that must not bring back filters that were cleared.
     ['#ownershipAll', '#updateAll', '#completionAll'].forEach(id => $(id).prop('checked', true));
     $(onlyFavorites ? '#favoriteOnly' : '#favoriteAll').prop('checked', true);
+    // The folder remembered, while it is still one of the library's.
+    const savedFolder = parseInt(storageGet('libraryFolder'), 10);
+    $(LIBRARY_FOLDERS.some(f => f.id === savedFolder) ? `#folder${savedFolder}` : '#folderAll').prop('checked', true);
     if (filters && typeof filters === 'object') {
 
         $('#ownershipOwned').prop('checked', filters.ownership === 'Owned');
@@ -1247,6 +1256,9 @@ function updateFilter() {
     }
     onlyFavorites = CAN_FAVORITE && $('#favoriteOnly').is(':checked');
     if (onlyFavorites) storageSet('libraryFavorites', '1'); else storageRemove('libraryFavorites');
+    const folder = parseInt($('.folder-toggle:checked').val(), 10);
+    activeFolder = LIBRARY_FOLDERS.some(f => f.id === folder) ? folder : null;
+    if (activeFolder !== null) storageSet('libraryFolder', String(activeFolder)); else storageRemove('libraryFolder');
     if ($('#completionComplete').is(":checked")) {
         activeCompletionFilter = 'Complete';
     } else if ($('#completionMissingDlc').is(":checked")) {
@@ -1277,6 +1289,7 @@ function clearAllFilters() {
     onlyFavorites = false;
     storageRemove('libraryFavorites');
     $('#favoriteAll').prop('checked', true);
+    $('#folderAll').prop('checked', true);
     $('#textFilter').val('');
     updateFilter();
     saveFiltersToStorage();
@@ -1297,8 +1310,11 @@ function onFilterChange() {
 
 /** The Filters button's dot: some filter that applies to the current view is set. */
 function updateFiltersDot() {
-    const active = !!(activeOwnershipFilter || activeUpdateFilter || activeCompletionFilter || onlyFavorites);
+    const active = !!(activeOwnershipFilter || activeUpdateFilter || activeCompletionFilter || onlyFavorites
+                      || activeFolder !== null);
     $('#filtersActiveDot').prop('hidden', !active);
+    // The button itself in the accent while a filter is set (no dot any more).
+    $('#filtersMenuBtn').toggleClass('is-active', active);
 }
 
 /** Every view takes the same filters; the dot says whether one is set. */
@@ -1361,7 +1377,7 @@ $(document).ready(function () {
         resetToFirstPage();
     });
 
-    $('.ownership-toggle, .update-toggle, .completion-toggle, .favorite-toggle').change(onFilterChange);
+    $('.ownership-toggle, .update-toggle, .completion-toggle, .favorite-toggle, .folder-toggle').change(onFilterChange);
 
     // Listen to input changes in the text filter input
     $("#textFilter").on("input", function () {

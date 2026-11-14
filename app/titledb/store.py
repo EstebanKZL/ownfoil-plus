@@ -119,7 +119,14 @@ def _merge_sql(single_id):
     name must not blank out the artwork only titledb has.
     """
     aliases = [_alias(s) for s in SOURCE_PRIORITY]
-    cols = ', '.join(f'COALESCE({", ".join(f"{a}.{c}" for a in aliases)}) AS {c}'
+
+    def order(column):
+        # The artwork a file carries is a fallback: titledb's (the eShop's, bigger) wins
+        # over it, an image chosen in Edit over both.
+        if column in schema.FILE_FALLBACK_COLUMNS:
+            return [_alias(s) for s in schema.ARTWORK_PRIORITY]
+        return aliases
+    cols = ', '.join(f'COALESCE({", ".join(f"{a}.{c}" for a in order(c))}) AS {c}'
                      for c in _META_COLUMNS)
     # Highest-priority source that has a row, and the full list, both in priority order.
     source = 'COALESCE(' + ', '.join(

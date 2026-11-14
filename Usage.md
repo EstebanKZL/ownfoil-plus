@@ -53,7 +53,7 @@ The language menu in the navbar offers **Automatic (browser language)** - the de
 
 ## Library view options
 
-`Vista` sets how many games a page shows: 10 to 100, each rounded to whole rows of the cards that fit at the window's width (with four cards a row: 12, 20, 32 ... 100), so no row is left short; resizing the window refits it. The Cards view shows at most four cards a row, the Compact view more, smaller ones. `Filtros` groups the filters by ownership, updates and DLC (by the state of the files in the List view), with `Clear filters` at the top.
+`Vista` sets how many games a page shows: 10 to 100, each rounded to whole rows of the cards that fit at the window's width (with four cards a row: 12, 20, 32 ... 100), so no row is left short; resizing the window refits it. The Cards view shows at most four cards a row, the Compact view more, smaller ones. `Filtros` groups the filters by ownership, updates and DLC (by the state of the files in the List view), with `Clear filters` at the top. With two or more library folders, `Filtros` also has `Folder` (the folders by name - their paths are never shown) and the sort list a `Folder` order; `Statistics > Space by library` shows each folder with its games, files, size and the free space of its disk.
 
 ## Theme, style and search
 
@@ -100,7 +100,11 @@ Every game has its own page, `/game/<title ID>`, opened from its card in the Lib
 - **The details**: title ID, release date, region, languages, genre, players, rating, size, the version you have and the latest one. Details the catalogue doesn't have aren't shown.
 - **The sections**: the description; the screenshots (click one to see it full size); the updates, with a notice when you don't have the latest; and the DLC, the ones you have and the ones missing. Each update says the firmware it needs: from TitleDB, or, for the updates you have, read from the file itself when TitleDB doesn't know it.
 
-*Edit metadata* corrects the name, developer, publisher, release date or description for this shop; an empty field keeps the catalogue's value, and *Back to the catalogue data* undoes your changes. The *Library* link at the top, or the browser's Back, goes back to the Library as you left it: the same page, filters, search and scroll.
+*Edit metadata* corrects the name, developer, publisher, release date or description for this shop; an empty field keeps the catalogue's value, and *Back to the catalogue data* undoes your changes.
+
+It also changes the game's **cover**: *Search the eShop* finds it in the European eShop by its name (Switch 2 games only among the Switch 2's), *Choose an image* takes one from your computer, and an image pasted with Ctrl+V works too (*Search the web* opens an image search for the games the eShop doesn't have). Each opens in a square that stays still while the image moves under it: drag it, zoom with the wheel, the slider or + and −, *Fit whole* or *Reset*, and *Crop* re-crops the cover you have. It is saved with the rest on *Save*, stored as the server's own copy of the image, and *Use the original* gives back the catalogue's.
+
+A game the catalogue has no cover of (a Switch 2 game, homebrew, one TitleDB doesn't know) shows the **official icon its own file carries**: a NUP brings it inside, and an NSP, NSZ, XCI or XCZ gives it with the console keys, read when the file is identified (and once, at the first start, for the games already in the library). The catalogue's cover always wins when it has one. The *Library* link at the top, or the browser's Back, goes back to the Library as you left it: the same page, filters, search and scroll.
 
 ## Setup page
 
@@ -353,6 +357,10 @@ For example, a multi-content template `{titleName}/{titleName} [{titleId}][{pack
 
 > [!CAUTION]
 > Make sure the templates contain `[{appId}][v{appVersion}]` for Tinfoil to recognize the apps.
+
+#### Earlier organizes
+
+The last 10 times Organize moved files are kept under *Settings > Library > Earlier organizes* - a library pass, the new files of a scan or a file organized on its own each make one, with the game files and their companions (NFO, SFV, proof images) they moved. *Undo* shows first what goes back and what is skipped, and why (no longer where Organize left it, its earlier name taken, moved again since); confirmed, it puts the files back to the names and folders they had, newest first, as a task. Nothing is ever written over. The files stay marked as organized, so Organize leaves them there until the templates change.
 
 ## Titles
 

@@ -9,6 +9,7 @@ const STATS_QUERY = `
             totalApps ownedApps
             filesByExtension { key count size }
             filesByLibrary { key count size }
+            libraryFolders { id name path games files size free total }
             filesByVerificationStatus { status count size }
             appsByType { key count owned }
         }
@@ -120,18 +121,35 @@ function renderFormats(data) {
     });
 }
 
-/** Space by library: one bar each; a click opens the library's detail, as before. */
+/** Space by folder: each library folder with its games and files, what its games take
+ *  and what is left before its disk fills. The bar is the library against the room it
+ *  has (its games plus the free space), leaving out whatever else is on the disk; it
+ *  turns amber below 15 % of the disk free and red below 5 %. A click opens the
+ *  library's detail. A collaborator sees the folders' names only. */
 function renderLibraries(data) {
-    const buckets = data.filesByLibrary || [];
-    const total = buckets.reduce((sum, b) => sum + (b.size || 0), 0);
+    const folders = data.libraryFolders || [];
     const list = document.getElementById('byLibrary');
-    if (!buckets.length) return emptyRow(list);
+    if (!folders.length) return emptyRow(list);
     list.innerHTML = '';
-    buckets.forEach(b => list.appendChild(chartRow({
-        label: b.key, sub: `(${count(b.count)})`,
-        figures: `${formatBytes(b.size)} · ${percent(b.size, total)}%`,
-        pct: percent(b.size, total), onClick: () => openLibraryDetail(b.key),
-    })));
+    folders.forEach(f => {
+        const known = f.total && f.free !== null && f.free !== undefined;
+        const games = f.size || 0;
+        const room = games + (known ? f.free : 0);
+        const freePct = known ? 100 * f.free / f.total : 100;
+        const figures = known
+            ? I18N.folderDisk.replace('{games}', formatBytes(games)).replace('{free}', formatBytes(f.free))
+            : I18N.folderGamesOnly.replace('{games}', formatBytes(games));
+        const row = chartRow({
+            label: f.name,
+            sub: `(${I18N.folderCounts.replace('{games}', count(f.games)).replace('{files}', count(f.files))})`,
+            figures,
+            pct: known && room ? 100 * games / room : 0,
+            tone: !known ? undefined : freePct < 5 ? 'danger' : freePct < 15 ? 'wait' : 'ok',
+            onClick: () => openLibraryDetail(f),
+        });
+        if (f.path) row.title = f.path;
+        list.appendChild(row);
+    });
 }
 
 // One meaning per color: fine, waits for a look, broken, not checked yet.
@@ -496,8 +514,8 @@ document.getElementById('missingAppTypeNext').addEventListener('click', () => {
 // enabled in Settings) a per-item clean-record action. -----------------------
 
 const LIBRARY_DETAIL_QUERY = `
-    query LibraryDetail($path: String!, $page: Int!, $pageSize: Int!, $search: String) {
-        titles(owned: true, libraryPath: $path, search: $search, page: $page, pageSize: $pageSize,
+    query LibraryDetail($path: Int!, $page: Int!, $pageSize: Int!, $search: String) {
+        titles(owned: true, libraryId: $path, search: $search, page: $page, pageSize: $pageSize,
                orderBy: {field: NAME}) {
             total
             items {
@@ -788,12 +806,12 @@ async function loadLibraryDetailPage() {
     nextBtn.disabled = libraryDetailPage >= totalPages;
 }
 
-function openLibraryDetail(path) {
-    libraryDetailPath = path;
+function openLibraryDetail(folder) {
+    libraryDetailPath = folder.id;
     libraryDetailPage = 1;
     libraryDetailSearch = '';
     document.getElementById('libraryDetailSearch').value = '';
-    document.getElementById('libraryDetailModalLabel').textContent = path;
+    document.getElementById('libraryDetailModalLabel').textContent = folder.name;
     if (!libraryDetailModal) {
         libraryDetailModal = new bootstrap.Modal(document.getElementById('libraryDetailModal'));
     }

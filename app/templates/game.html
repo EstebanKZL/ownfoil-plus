@@ -77,6 +77,45 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ t('nav.close') }}"></button>
             </div>
             <div class="modal-body">
+                {# The cover: found in the eShop, chosen or pasted, cropped square here. #}
+                <div class="cover-edit mb-3">
+                    <div class="cover-edit__frame">
+                        <img class="cover-edit__current" id="gameEditCoverImg" alt="" hidden>
+                        <div class="cover-edit__empty" id="gameEditCoverEmpty"><i class="bi bi-image" aria-hidden="true"></i></div>
+                        <div class="cover-crop" id="gameEditCrop" hidden tabindex="0" aria-label="{{ t('game.cover_drag_hint') }}">
+                            <img class="cover-crop__img" id="gameEditCropImg" alt="" draggable="false">
+                        </div>
+                    </div>
+                    <div class="cover-edit__side">
+                        <div class="form-label mb-1">{{ t('game.cover_label') }}</div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="gameEditCoverSearchBtn"><i class="bi bi-search" aria-hidden="true"></i> {{ t('game.cover_search') }}</button>
+                            <label class="btn btn-sm btn-outline-secondary mb-0" for="gameEditCoverFile"><i class="bi bi-upload" aria-hidden="true"></i> {{ t('game.cover_pick') }}</label>
+                            <input type="file" id="gameEditCoverFile" accept="image/*" hidden>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="gameEditCoverCropBtn"><i class="bi bi-crop" aria-hidden="true"></i> {{ t('game.cover_crop') }}</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="gameEditCoverOriginalBtn"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> {{ t('game.cover_original') }}</button>
+                        </div>
+                        <div class="cover-crop__tools" id="gameEditCropTools" hidden>
+                            <input type="range" class="form-range" id="gameEditCropZoom" min="0" max="1000" value="0" aria-label="{{ t('game.cover_zoom') }}">
+                            <div class="d-flex flex-wrap gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="gameEditCropFit">{{ t('game.cover_fit') }}</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="gameEditCropReset">{{ t('game.cover_reset') }}</button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" id="gameEditCropCancel">{{ t('game.cover_cancel') }}</button>
+                            </div>
+                            <div class="form-text">{{ t('game.cover_drag_hint') }}</div>
+                        </div>
+                        <div class="form-text" id="gameEditCoverNote">{{ t('game.cover_paste_hint') }}</div>
+                    </div>
+                </div>
+                <div class="cover-search mb-3" id="gameEditCoverSearch" hidden>
+                    <div class="input-group input-group-sm mb-2">
+                        <input type="search" class="form-control" id="gameEditCoverQuery" aria-label="{{ t('game.cover_search') }}">
+                        <button type="button" class="btn btn-outline-secondary" id="gameEditCoverQueryBtn"><i class="bi bi-search" aria-hidden="true"></i></button>
+                        <a class="btn btn-outline-secondary" id="gameEditCoverWeb" target="_blank" rel="noopener noreferrer">{{ t('game.cover_search_web') }} <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+                    </div>
+                    <p class="form-text mb-2" id="gameEditCoverSearchState" hidden></p>
+                    <div class="cover-search__results" id="gameEditCoverResults"></div>
+                </div>
                 <div class="mb-3">
                     <label class="form-label" for="gameEditName">{{ t('library.metadata_name_label') }}</label>
                     <input type="text" class="form-control" id="gameEditName">
@@ -163,6 +202,12 @@
         library: {{ t('nav.library') | tojson }},
         favoriteAdd: {{ t('library.favorite_add') | tojson }},
         bundle: {{ t('library.bundle') | tojson }},
+        coverNoneFound: {{ t('game.cover_none_found') | tojson }},
+        coverSearchFailed: {{ t('game.cover_search_failed') | tojson }},
+        coverLoadFailed: {{ t('game.cover_load_failed') | tojson }},
+        coverOriginalNote: {{ t('game.cover_original_note') | tojson }},
+        coverPasteHint: {{ t('game.cover_paste_hint') | tojson }},
+        coverSaveFailed: {{ t('game.cover_save_failed') | tojson }},
         favoriteRemove: {{ t('library.favorite_remove') | tojson }},
         unrecognized: {{ t('library.unrecognized') | tojson }},
         inLibrary: {{ t('game.in_library') | tojson }},

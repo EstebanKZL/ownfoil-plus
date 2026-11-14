@@ -78,7 +78,10 @@ def organizer_name_locale(organizer_settings):
     language = organizer_settings.get('name_language')
     return f'{region}.{language}' if region and language else None
 
-def organize_file(file_obj, library_path, organizer_settings):
+def organize_file(file_obj, library_path, organizer_settings, moves=None):
+    """Place a file where the templates say. `moves`, when given, collects every move
+    made - (file_id or None, old path, new path), the game file and its companions - for
+    the Organize history."""
     try:
         templates = organizer_settings['templates']
         
@@ -208,11 +211,14 @@ def organize_file(file_obj, library_path, organizer_settings):
                     raise FileExistsError(candidate)
                 shutil.move(src, candidate)
                 update_file_path(library_path_str, current_filepath, candidate)
+                if moves is not None:
+                    moves.append((file_obj.id, current_filepath, candidate))
                 rel = os.path.relpath(candidate, library_path_str)
                 logger.info(f'Organizing file: {original_filename} → {rel}')
                 if organizer_settings.get('move_companions', True):
                     try:
-                        move_companion_files(current_filepath, candidate, library_path_str)
+                        move_companion_files(current_filepath, candidate, library_path_str,
+                                             pairs=None if moves is None else moves)
                     except Exception as e:
                         # The game itself is in place: its notes are a nice-to-have.
                         logger.warning(f'Could not move the companion files of {original_filename}: {e}')
@@ -244,7 +250,7 @@ def _is_companion(name):
     return os.path.splitext(name)[1][1:].lower() in COMPANION_EXT
 
 
-def move_companion_files(old_path, new_path, library_root):
+def move_companion_files(old_path, new_path, library_root, pairs=None):
     """After a game moved from old_path to new_path: a companion named as the game
     (game.nfo next to game.nsp) takes its new name, and a folder left holding only
     companions (as a release comes: its NFO, SFV, images and Proof folder) hands them all
@@ -266,6 +272,8 @@ def move_companion_files(old_path, new_path, library_root):
         try:
             shutil.move(src, dest)
             moved.append(dest)
+            if pairs is not None:
+                pairs.append((None, src, dest))
         except (shutil.Error, OSError) as e:
             logger.warning(f'Organize: could not move {src}: {e}')
             skipped.append(src)

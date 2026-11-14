@@ -11,16 +11,23 @@
 
 <table>
   <tr>
-    <td><img src="image/foto1.jpg" width="300"></td>
-    <td><img src="image/foto2.jpg" width="300"></td>
+    <td><img src="image/library.jpg" width="400" alt="Library"><br><b>Library</b></td>
+    <td><img src="image/game.jpg" width="400" alt="Game page"><br><b>Game page</b></td>
   </tr>
   <tr>
-    <td><img src="image/foto3.jpg" width="300"></td>
-    <td><img src="image/foto4.jpg" width="300"></td>
+    <td><img src="image/dashboard.jpg" width="400" alt="Dashboard"><br><b>Dashboard</b></td>
+    <td><img src="image/stats.jpg" width="400" alt="Stats"><br><b>Stats</b></td>
   </tr>
   <tr>
-    <td><img src="image/foto5.jpg" width="300"></td>
-    <td><img src="image/foto6.jpg" width="300"></td>
+    <td><img src="image/files.jpg" width="400" alt="Files"><br><b>Files</b></td>
+    <td><img src="image/sagas.jpg" width="400" alt="Sagas"><br><b>Sagas</b></td>
+  </tr>
+  <tr>
+    <td><img src="image/settings.jpg" width="400" alt="Settings"><br><b>Settings</b></td>
+    <td><img src="image/game-light.jpg" width="400" alt="Light theme"><br><b>Light theme</b></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="image/mobile.jpg" width="220" alt="On a phone"><br><b>On a phone</b></td>
   </tr>
 </table>
 

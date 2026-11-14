@@ -541,3 +541,22 @@ class _Window:
         data = self.fh.read(n)
         self.left -= len(data)
         return data
+
+
+def read_icon(path):
+    """The icon a NUP carries (one JPEG per language, in its game's metadata - else in any
+    package's), or None. No keys needed."""
+    from .container import pick_icon
+    container = read(path)
+    packages = sorted(container['packages'], key=lambda p: p['kind'] != KIND_BASE)
+    for pkg in packages:
+        raw = (pkg.get('meta') or {}).get(_TLV_LOCALIZED_ICONS)
+        if not raw:
+            continue
+        try:
+            icon = pick_icon(_localized(raw))
+        except NupError:
+            continue
+        if icon:
+            return icon
+    return None

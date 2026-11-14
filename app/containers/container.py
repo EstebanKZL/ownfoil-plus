@@ -7,7 +7,7 @@ from nsz.Fs import (Nca as _Nca, Nsp as _Nsp, Xci as _Xci, Pfs0 as _Pfs0, Type a
                     factory as _factory)
 from nsz.nut import Print as _nsz_print
 
-from .nacp import read_display_version
+from .nacp import read_display_version, read_romfs_files
 
 logger = logging.getLogger('main')
 
@@ -130,3 +130,67 @@ def read_display_versions(filepath):
                     except Exception as e:
                         logger.warning(f'Could not read Control NCA {entry.ncaId}: {e}')
     return versions
+
+
+# The icons a Control NCA carries, one JPEG per language; the first of these found is
+# taken, else any. A DLC carries none: the game's comes first, then its update's.
+ICON_PREFERENCE = ('AmericanEnglish', 'BritishEnglish', 'LatinAmericanSpanish', 'Spanish',
+                   'French', 'CanadianFrench', 'German', 'Italian', 'Portuguese',
+                   'BrazilianPortuguese', 'Dutch', 'Russian', 'Japanese', 'Korean',
+                   'TraditionalChinese', 'SimplifiedChinese')
+_ICON_PREFERENCE = [f'icon_{lang}.dat'.lower() for lang in ICON_PREFERENCE]
+
+
+def pick_icon(icons):
+    """The preferred one of {name or language: JPEG bytes}, or None."""
+    if not icons:
+        return None
+    by_key = {k.lower(): v for k, v in icons.items() if v}
+    for key in _ICON_PREFERENCE:
+        if key in by_key:
+            return by_key[key]
+        bare = key[len('icon_'):-len('.dat')]
+        if bare in by_key:
+            return by_key[bare]
+    return next(iter(by_key.values()), None)
+
+
+def _romfs_icons(rom):
+    files = read_romfs_files(rom)
+    icons = {}
+    for name, (offset, size) in files.items():
+        if name.lower().startswith('icon_') and name.lower().endswith('.dat') and 0 < size <= (1 << 20):
+            rom.seek(offset)
+            icons[name] = rom.read(size)
+    return icons
+
+
+def read_icon(filepath):
+    """The official icon (a JPEG) a game file carries in its Control NCA: the game's,
+    else its update's. None when there is none (a DLC, a file with no control data).
+    Needs the console keys, as reading the contents does."""
+    found = {}
+    with open_container(filepath, meta_only=True) as container:
+        holder = _nca_holder(container)
+        for nca in holder:
+            if not isinstance(nca, _Nca.Nca) or nca.header.contentType != _Type.Content.META:
+                continue
+            for section in nca:
+                if not isinstance(section, _Pfs0.Pfs0):
+                    continue
+                cnmt = section.getCnmt()
+                for entry in cnmt.contentEntries:
+                    if entry.type != _CNMT_CONTROL:
+                        continue
+                    try:
+                        control_nca = _open_nca(holder, entry.ncaId)
+                        rom = _romfs_of(control_nca) if control_nca is not None else None
+                        icon = pick_icon(_romfs_icons(rom)) if rom is not None else None
+                    except Exception as e:
+                        logger.warning(f'Could not read the icon of Control NCA {entry.ncaId}: {e}')
+                        icon = None
+                    if icon:
+                        # The game's own Control NCA wins over an update's.
+                        rank = 0 if cnmt.titleId.upper().endswith('000') else 1
+                        found.setdefault(rank, icon)
+    return found.get(0) or found.get(1)

@@ -447,3 +447,41 @@ def test_sagas_go_by_pages_of_24_and_complete_ones_are_gold():
     # 1, 2 or 3 columns: each divides every size offered (12, 24, 48, 96), so only the
     # last page has a short row.
     assert "repeat(3, minmax(0, 1fr))" in css[css.index(".saga-grid {"):]
+
+
+def test_two_or_more_folders_give_a_folder_filter_and_sort(client, shop_app):
+    """With two library folders the Library filters and sorts by folder - by its name,
+    never its path - and Statistics shows each with its games and free space."""
+    import os
+    with shop_app.app.app_context():
+        from db import Libraries, db
+        parent = os.path.dirname(Libraries.query.first().path)
+        db.session.add(Libraries(path=os.path.join(parent, 'second-games')))
+        db.session.commit()
+    html = client.get("/").get_data(as_text=True)
+    assert 'name="folderFilter"' in html and '<option value="FOLDER">' in html
+    assert 'second-games' in html and parent not in html.split('LIBRARY_FOLDERS')[1][:400]
+    js = _library_js()
+    assert "libraryId: activeFolder," in js and "$libraryId: Int" in js
+
+
+def test_titles_and_apps_filter_by_folder(client, shop_app):
+    with shop_app.app.app_context():
+        from db import Libraries
+        lib_id = Libraries.query.first().id
+    body = client.post("/api/graphql", json={"query": f"""{{
+        a: titles(owned: true, libraryId: {lib_id}, page: 1, pageSize: 5) {{ total }}
+        b: titles(owned: true, libraryId: 999999, page: 1, pageSize: 5) {{ total }}
+        c: apps(groupByAppId: true, libraryId: 999999, page: 1, pageSize: 5) {{ total }}
+        d: apps(groupByAppId: true, orderBy: {{field: FOLDER}}, page: 1, pageSize: 5) {{ total }}
+        stats {{ libraryFolders {{ id name games files free }} }} }}"""}).get_json()
+    assert not body.get("errors"), body
+    data = body["data"]
+    assert data["b"]["total"] == 0 and data["c"]["total"] == 0
+    assert data["stats"]["libraryFolders"] is None          # a shop user: no stats
+
+    # An admin gets each folder with its games and the free space of its disk.
+    shop_app.client.post("/login", data={"user": "admin", "password": fixture.PASSWORDS["admin"]})
+    stats = shop_app.client.post("/api/graphql", json={"query": "{ stats { libraryFolders { id name path games free } } }"}).get_json()
+    folder = stats["data"]["stats"]["libraryFolders"][0]
+    assert folder["id"] == lib_id and folder["path"] and folder["games"] >= 0

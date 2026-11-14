@@ -30,6 +30,7 @@
                 <option value="SIZE">{{ t('library.sort_size') }}</option>
                 <option value="ADDED_AT">{{ t('library.sort_added') }}</option>
                 <option value="ID">{{ t('library.sort_id') }}</option>
+                {% if library_folders %}<option value="FOLDER">{{ t('library.sort_folder') }}</option>{% endif %}
             </select>
         </div>
         {# Which way: both buttons in view, the one in use lit. #}
@@ -105,6 +106,20 @@
                             <label class="filter-chip" for="completionMissingDlc">{{ t('library.filter_missing_dlc') }}</label>
                         </div>
                     </fieldset>
+                    {% if library_folders %}
+                    {# Two or more library folders: which one the games are in. #}
+                    <fieldset class="filter-group">
+                        <legend class="filter-group__label"><i class="bi bi-folder2" aria-hidden="true"></i> {{ t('library.filter_group_folder') }}</legend>
+                        <div class="filter-chips" role="group" aria-label="{{ t('library.filter_group_folder') }}">
+                            <input type="radio" class="btn-check folder-toggle" name="folderFilter" id="folderAll" value="" autocomplete="off" checked>
+                            <label class="filter-chip" for="folderAll">{{ t('library.filter_all') }}</label>
+                            {% for folder in library_folders %}
+                            <input type="radio" class="btn-check folder-toggle" name="folderFilter" id="folder{{ folder.id }}" value="{{ folder.id }}" autocomplete="off">
+                            <label class="filter-chip" for="folder{{ folder.id }}">{{ folder.name }}</label>
+                            {% endfor %}
+                        </div>
+                    </fieldset>
+                    {% endif %}
                     {% if current_user.is_authenticated %}
                     {# Each user's own favourites (the star on a cover). #}
                     <fieldset class="filter-group">
@@ -178,6 +193,8 @@
     const IS_ADMIN = {{ is_admin | tojson }};
     const IS_SHOP = {{ is_shop | tojson }};
     const CAN_FAVORITE = {{ current_user.is_authenticated | tojson }};
+    // The library folders (two or more: [{id, name}], else empty) for the folder filter.
+    const LIBRARY_FOLDERS = {{ library_folders | tojson }};
     const WEB_DOWNLOADS_ENABLED = {{ web_downloads_enabled | tojson }};
     // Library > Organizer > "Show game background image in Library list view" setting -
     // only gates the .list-banner-strip behind each row in renderListView; the cover

@@ -1663,3 +1663,140 @@ if (document.documentElement.hasAttribute('data-readonly')) {
     new MutationObserver(lock).observe(document.querySelector('.settings-panel'), {childList: true, subtree: true});
 }
 
+
+
+// --- Settings > Library: the last Organize runs, each one can be put back -----------
+
+let organizeUndoRun = null;
+
+function organizeDate(iso) {
+    return new Date(iso).toLocaleString([], {dateStyle: 'medium', timeStyle: 'short'});
+}
+
+async function loadOrganizeRuns() {
+    const list = document.getElementById('organizeRuns');
+    if (!list) return;
+    let runs = [];
+    try {
+        const r = await fetch('/api/organize/history', {credentials: 'same-origin'});
+        if (r.ok) runs = (await r.json()).runs;
+    } catch (e) { console.error(e); }
+    list.replaceChildren(...runs.map(run => {
+        const li = document.createElement('li');
+        li.className = 'organize-run';
+        const text = document.createElement('div');
+        const when = document.createElement('strong');
+        when.textContent = organizeDate(run.started_at);
+        const counts = document.createElement('span');
+        counts.className = 'organize-run__counts';
+        counts.textContent = I18N.historyCounts.replace('{games}', run.games).replace('{files}', run.files);
+        text.append(when, counts);
+        li.append(text);
+        if (!run.pending) {
+            const badge = document.createElement('span');
+            badge.className = 'status-badge';
+            badge.textContent = I18N.historyUndone;
+            li.append(badge);
+        } else {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn btn-sm btn-outline-secondary';
+            btn.innerHTML = '<i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> ';
+            btn.append(document.createTextNode(I18N.historyUndo));
+            btn.addEventListener('click', () => openOrganizeUndo(run));
+            li.append(btn);
+        }
+        return li;
+    }));
+    document.getElementById('organizeRunsEmpty').hidden = runs.length > 0;
+}
+
+async function openOrganizeUndo(run) {
+    const r = await fetch(`/api/organize/history/${run.id}`, {credentials: 'same-origin'});
+    if (!r.ok) return;
+    const preview = await r.json();
+    organizeUndoRun = run.id;
+    const back = preview.items.filter(i => !i.skip);
+    const skip = preview.items.filter(i => i.skip);
+    document.getElementById('organizeUndoTitle').textContent =
+        I18N.historyPreviewTitle.replace('{date}', organizeDate(preview.started_at));
+    document.getElementById('organizeUndoBackHead').textContent = I18N.historyBack.replace('{n}', back.length);
+    document.getElementById('organizeUndoSkipHead').textContent = I18N.historySkipped.replace('{n}', skip.length);
+    document.getElementById('organizeUndoSkipHead').hidden = !skip.length;
+    const row = (item, reason) => {
+        const li = document.createElement('li');
+        li.className = item.game ? 'is-game' : '';
+        const from = document.createElement('div');
+        from.className = 'organize-undo__path';
+        from.textContent = item.new_path;
+        const to = document.createElement('div');
+        to.className = 'organize-undo__to';
+        to.textContent = reason ? reason : '→ ' + item.old_path;
+        li.append(from, to);
+        return li;
+    };
+    const backList = document.getElementById('organizeUndoBack');
+    backList.replaceChildren(...back.map(i => row(i)));
+    if (!back.length) {
+        const li = document.createElement('li');
+        li.className = 'text-secondary fst-italic';
+        li.textContent = I18N.historyNothing;
+        backList.append(li);
+    }
+    document.getElementById('organizeUndoSkip').replaceChildren(...skip.map(i => row(i, I18N.historySkip[i.skip] || i.skip)));
+    document.getElementById('organizeUndoConfirm').disabled = !back.length;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('organizeUndoModal')).show();
+}
+
+async function confirmOrganizeUndo() {
+    if (organizeUndoRun === null) return;
+    const btn = document.getElementById('organizeUndoConfirm');
+    btn.disabled = true;
+    try {
+        const r = await fetch(`/api/organize/history/${organizeUndoRun}/undo`, {method: 'POST', credentials: 'same-origin'});
+        if (r.ok) {
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('organizeUndoModal')).hide();
+            const notice = document.getElementById('organizeRunsNotice');
+            notice.textContent = I18N.historyQueued;
+            notice.hidden = false;
+            setTimeout(loadOrganizeRuns, 3000);
+        }
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+$(function () {
+    if (!document.getElementById('organizeRuns')) return;
+    document.getElementById('organizeUndoConfirm').addEventListener('click', confirmOrganizeUndo);
+    loadOrganizeRuns();
+});
+
+
+// --- Settings: options that only apply while a switch is on, nested under it ---------
+// Dimmed and locked (inert) while it is off, with a line naming the switch.
+function syncDependents() {
+    document.querySelectorAll('.settings-dependent[data-depends-on]').forEach(block => {
+        const toggle = document.getElementById(block.dataset.dependsOn);
+        if (!toggle) return;
+        const on = toggle.checked;
+        block.classList.toggle('is-off', !on);
+        block.inert = !on;
+        const note = block.querySelector('.settings-dependent__note');
+        const label = document.querySelector(`label[for="${toggle.id}"]`);
+        if (note) {
+            note.textContent = I18N.dependsNote.replace('{name}', label ? label.textContent.trim() : '');
+            note.hidden = on;
+        }
+    });
+}
+
+$(function () {
+    document.querySelectorAll('.settings-dependent[data-depends-on]').forEach(block => {
+        const toggle = document.getElementById(block.dataset.dependsOn);
+        if (toggle) toggle.addEventListener('change', syncDependents);
+    });
+    syncDependents();
+    // The settings arrive after the page: follow them once they're in.
+    $(document).ajaxStop(syncDependents);
+});

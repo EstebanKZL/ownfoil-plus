@@ -76,7 +76,13 @@ def test_the_name_people_see_is_ownfoil_plus():
 
 
 def test_planning_notes_are_not_shipped():
-    """The redesign's specs and plans live in git history and the changelog."""
-    tracked = subprocess.run(["git", "ls-files", "docs/superpowers"], cwd=ROOT,
+    """The redesign's specs and plans live in git history and the changelog; the local
+    working notes (project guides for coding assistants, their workspaces, logs) stay
+    on the machine - ignored, never tracked."""
+    local = ["docs/superpowers", "CLAUDE.md", "AGENTS.md", ".claude", ".superpowers"]
+    tracked = subprocess.run(["git", "ls-files", *local], cwd=ROOT,
                              capture_output=True, text=True).stdout.split()
     assert not tracked
+    ignore = _read(".gitignore")
+    for entry in ("CLAUDE.md", "AGENTS.md", ".claude/", ".superpowers/", "docs/superpowers/"):
+        assert entry in ignore.splitlines(), entry
