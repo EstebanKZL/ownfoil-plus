@@ -95,7 +95,7 @@ Head over to [Install.md](./Install.md) for the full instructions:
 
 > [!CAUTION]
 > There is __no website associated with this project__, only this GitHub repo.  
-> Ownfoil-Plus is __not released as an application or an executable file__ - DO NOT download or execute anything related to Ownfoil-Plus outside of this repository and its instructions.
+> Ownfoil-Plus's programs (Docker image, and Windows, macOS and Linux downloads) are published __only from this repository__ - its [releases page](https://github.com/EstebanKZL/ownfoil-plus/releases) and Docker Hub image - DO NOT download or execute anything related to Ownfoil-Plus from anywhere else.
 
 # Usage
 
