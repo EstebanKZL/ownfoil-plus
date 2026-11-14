@@ -443,6 +443,37 @@ class DownloadEvent(db.Model):
 DOWNLOAD_HISTORY_DAYS = 365
 
 
+class OrganizeRun(db.Model):
+    """One Organize run - a library pass, a scan's new files, a file organized on its own
+    - with the moves it made (OrganizeMove), so it can be put back. Only the last
+    ORGANIZE_RUNS_KEPT are kept."""
+    __tablename__ = 'organize_runs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    # What groups the moves of one run: the task that drove them (its top-level task).
+    key = db.Column(db.String, nullable=False, unique=True)
+    started_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    undone_at = db.Column(db.DateTime, nullable=True)
+
+
+class OrganizeMove(db.Model):
+    """One file Organize moved: a game file (`file_id`) or a companion of one (its NFO,
+    SFV, proof images - no file_id), from `old_path` to `new_path`."""
+    __tablename__ = 'organize_moves'
+
+    id = db.Column(db.Integer, primary_key=True)
+    run_id = db.Column(db.Integer, db.ForeignKey('organize_runs.id', ondelete='CASCADE'),
+                       nullable=False, index=True)
+    file_id = db.Column(db.Integer, nullable=True)
+    old_path = db.Column(db.String, nullable=False)
+    new_path = db.Column(db.String, nullable=False)
+    moved_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    undone = db.Column(db.Boolean, nullable=False, default=False)
+
+
+ORGANIZE_RUNS_KEPT = 10
+
+
 class TaskHistory(db.Model):
     """One row per completed top-level operation (a scan, a verify pass, a titledb
     update, a manual action, ...) - not per individual file. A library scan or verify

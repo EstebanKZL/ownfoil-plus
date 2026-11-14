@@ -15,6 +15,11 @@ metadata = sa.MetaData()
 # 'extract' is read out of the files themselves. Everything that merges sources is
 # generated from this tuple, so a new source is an entry here plus a producer.
 SOURCE_PRIORITY = ('custom', 'extract', 'titledb')
+# The artwork read out of a game file is the eShop's icon at a smaller size: titledb's
+# wins when it has one, and the file's fills in when it doesn't (Switch 2 games,
+# homebrew, a title titledb doesn't know).
+ARTWORK_PRIORITY = ('custom', 'titledb', 'extract')
+FILE_FALLBACK_COLUMNS = ('icon_url', 'banner_url')
 SOURCE_TITLEDB = 'titledb'
 SOURCE_CUSTOM = 'custom'
 SOURCE_EXTRACT = 'extract'

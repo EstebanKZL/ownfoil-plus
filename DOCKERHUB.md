@@ -11,6 +11,21 @@ Ownfoil-Plus turns a folder of game files into a fully organized, self-verified,
 
 It's a fork of [Ownfoil](https://github.com/a1ex4/ownfoil) by [@a1ex4](https://github.com/a1ex4), built for people who want a managed shop without babysitting it: an interface in 11 languages, an admin toolkit deep enough to fix problems instead of just reporting them, accounts for family and friends, and a Docker image that keeps itself patched.
 
+## Screenshots
+
+| | |
+|---|---|
+| ![Library: every game with its cover, firmware, updates and DLC](https://raw.githubusercontent.com/EstebanKZL/ownfoil-plus/main/image/library.jpg) | ![A game's page: versions, firmware, saga and files](https://raw.githubusercontent.com/EstebanKZL/ownfoil-plus/main/image/game.jpg) |
+| **Library** - covers, firmware, pending updates and missing DLC at a glance | **Game page** - your version against the latest, the firmware it needs, its saga |
+| ![Dashboard: what needs attention and what happened lately](https://raw.githubusercontent.com/EstebanKZL/ownfoil-plus/main/image/dashboard.jpg) | ![Stats: space by format and library, verification, content by type](https://raw.githubusercontent.com/EstebanKZL/ownfoil-plus/main/image/stats.jpg) |
+| **Dashboard** - what needs attention, storage, latest additions and downloads | **Stats** - space by format and library, verification, content by type |
+| ![Files: verification, duplicates, compression and combining](https://raw.githubusercontent.com/EstebanKZL/ownfoil-plus/main/image/files.jpg) | ![Sagas: the series you own games of and what's missing](https://raw.githubusercontent.com/EstebanKZL/ownfoil-plus/main/image/sagas.jpg) |
+| **Files** - verification, duplicates, outdated updates, compress and combine | **Sagas** - the series you have games of, and what you're missing |
+| ![Settings: every option grouped by topic](https://raw.githubusercontent.com/EstebanKZL/ownfoil-plus/main/image/settings.jpg) | ![Light theme](https://raw.githubusercontent.com/EstebanKZL/ownfoil-plus/main/image/game-light.jpg) |
+| **Settings** - grouped by topic, each option under the switch it depends on | **Light and dark themes**, three styles, 11 languages |
+
+<p align="center"><img src="https://raw.githubusercontent.com/EstebanKZL/ownfoil-plus/main/image/mobile.jpg" alt="The Library on a phone" width="280"></p>
+
 ## Why this image
 
 - **Rebuilt on a schedule, not just on release.** The `latest` tag is rebuilt every week from the newest release, pulling fresh base-image and OS security patches even on weeks with no code changes.

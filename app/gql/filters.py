@@ -543,6 +543,9 @@ class OrderField(Enum):
     ADDED_AT = strawberry.enum_value("added_at", description=(
         "When ownfoil first saw the file - the 'recently added' view, paired with "
         "`direction: DESC`. For `titles` and `apps`, when the title's newest file came in."))
+    FOLDER = strawberry.enum_value("folder", description=(
+        "The library folder the title's files are in (the first, by path), then the "
+        "name. `titles` and `apps`."))
     VERSION = strawberry.enum_value("version", description=(
         "App version, compared numerically. `apps` only; under "
         "`groupByAppId: true` it sorts by the group's highest version."))
@@ -579,7 +582,13 @@ _TITLE_ADDED = ("(SELECT MAX(fl.added_at) FROM apps ap JOIN app_files af ON af.a
 _TITLE_SIZE = ("COALESCE((SELECT SUM(fl.size) FROM apps ap JOIN app_files af ON af.app_id = ap.id "
                "JOIN files fl ON fl.id = af.file_id WHERE ap.title_id = ot.id), CAST(td.size AS INTEGER))")
 
+# The library folder a title's files are in (the first one, by path).
+_TITLE_FOLDER = ("(SELECT MIN(lib.path) FROM apps ap JOIN app_files af ON af.app_id = ap.id "
+                 "JOIN files fl ON fl.id = af.file_id JOIN libraries lib ON lib.id = fl.library_id "
+                 "WHERE ap.title_id = ot.id)")
+
 TITLE_ORDER = {
+    "folder": f"{_TITLE_FOLDER} IS NULL, {_TITLE_FOLDER}, td.name COLLATE NOCASE",
     "name": "td.name IS NULL, td.name COLLATE NOCASE",
     "release_date": "td.release_date IS NULL, td.release_date",
     "size": f"{_TITLE_SIZE} IS NULL, {_TITLE_SIZE}",
@@ -594,7 +603,12 @@ _APP_SIZE = ("COALESCE((SELECT SUM(fl.size) FROM apps ap JOIN app_files af ON af
 _APP_ADDED = ("(SELECT MAX(fl.added_at) FROM apps ap JOIN app_files af ON af.app_id = ap.id "
               "JOIN files fl ON fl.id = af.file_id WHERE ap.title_id = a.title_id)")
 
+_APP_FOLDER = ("(SELECT MIN(lib.path) FROM apps ap JOIN app_files af ON af.app_id = ap.id "
+               "JOIN files fl ON fl.id = af.file_id JOIN libraries lib ON lib.id = fl.library_id "
+               "WHERE ap.title_id = a.title_id)")
+
 APP_ORDER = {
+    "folder": f"{_APP_FOLDER} IS NULL, {_APP_FOLDER}, td.name COLLATE NOCASE",
     "name": "td.name IS NULL, td.name COLLATE NOCASE",
     # The catalogue's date, as RELEASE_DATE documents and TITLE_ORDER does: the app
     # row's own release_date is empty for base games, which left them unsorted.

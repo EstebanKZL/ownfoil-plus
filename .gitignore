@@ -39,3 +39,21 @@ Thumbs.db
 # Build artifacts
 dist/
 build/
+
+# Local working notes and tools - the maintainer's and coding assistants' own (project
+# guides, plans, specs, session workspaces, logs): they stay on the machine they were
+# written on, never in the repository.
+CLAUDE.md
+AGENTS.md
+.claude/
+.superpowers/
+docs/superpowers/
+*.log
+.env
+.env.*
+
+# The server only, built by tools/make_dist.py
+/_dist/
+
+# The script that builds it, which only the maintainer runs
+/tools/

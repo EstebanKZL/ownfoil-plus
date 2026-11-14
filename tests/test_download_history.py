@@ -172,4 +172,4 @@ def test_migration_chain_ends_at_download_events():
     cfg = Config()
     cfg.set_main_option("script_location", os.path.join(os.path.dirname(__file__), "..", "app", "migrations"))
     script = ScriptDirectory.from_config(cfg)
-    assert script.get_heads() == ["a7b8c9d0e1f3"]
+    assert script.get_heads() == ["b8c9d0e1f2a5"]

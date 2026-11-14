@@ -21,3 +21,4 @@ docker-compose.yml
 # titledb download ever completes - excluding the whole directory would silently
 # break that.)
 app/config/
+_dist/

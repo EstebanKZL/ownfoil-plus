@@ -148,6 +148,9 @@ function renderHero(t) {
     } else {
         badges.append(statusBadge('', 'bi-dash-circle', I18N.notInLibrary));
     }
+    // Which console it is for: Switch 2 games have ids starting with 04.
+    badges.append(statusBadge('', 'bi-nintendo-switch', String(t.titleId || TITLE_ID).startsWith('04') ? 'Switch 2' : 'Switch')
+        .addClass('console-badge'));
     body.append(badges);
     body.append($('<h1 class="game-hero__title">').text(name));
     const year = String(t.releaseDate || '').match(/\d{4}/);
@@ -682,7 +685,233 @@ const EDIT_FIELDS = [
 
 function openEdit(t) {
     EDIT_FIELDS.forEach(([key, id]) => $(`#${id}`).val(t[key] || ''));
+    coverOpen(t);
     bootstrap.Modal.getOrCreateInstance(document.getElementById('gameEditModal')).show();
+}
+
+// --- the cover in Edit: eShop search, an image chosen or pasted, a square crop --------
+
+const COVER_OUT = 1024;          // the side of the saved crop, in pixels
+let coverTitle = null;           // the title being edited
+let coverOriginal = false;       // "Use the original" pressed: dropped on Save
+let crop = null;                 // {img, w, h, scale, x, y, min, max} while cropping
+
+function coverOpen(t) {
+    coverTitle = t;
+    coverOriginal = false;
+    cropClose();
+    $('#gameEditCoverSearch').prop('hidden', true);
+    $('#gameEditCoverResults').empty();
+    $('#gameEditCoverNote').text(I18N.coverPasteHint);
+    coverShow(t.iconUrl || t.bannerUrl || '');
+}
+
+function coverShow(url) {
+    $('#gameEditCoverImg').attr('src', url || '').prop('hidden', !url);
+    $('#gameEditCoverEmpty').prop('hidden', !!url);
+}
+
+/** A URL the crop can read: our own, or Nintendo's through the server (a canvas can't
+ *  export an image from another site). */
+function coverReadable(url) {
+    if (!url) return null;
+    if (url.startsWith('/') || url.startsWith(location.origin)) return url;
+    return '/api/covers/image?url=' + encodeURIComponent(url);
+}
+
+function cropStart(src) {
+    const img = new Image();
+    img.onload = () => {
+        const stage = document.getElementById('gameEditCrop');
+        $('#gameEditCoverImg, #gameEditCoverEmpty').prop('hidden', true);
+        stage.hidden = false;
+        $('#gameEditCropTools').prop('hidden', false);
+        const side = stage.clientWidth;
+        const w = img.naturalWidth, h = img.naturalHeight;
+        const fit = Math.min(side / w, side / h), fill = Math.max(side / w, side / h);
+        crop = {img, w, h, side, fit, fill, min: fit, max: fill * 4, scale: fill, x: 0, y: 0};
+        document.getElementById('gameEditCropImg').src = img.src;
+        cropReset();
+        coverOriginal = false;
+    };
+    img.onerror = () => $('#gameEditCoverNote').text(I18N.coverLoadFailed);
+    img.src = src;
+}
+
+function cropClose() {
+    crop = null;
+    $('#gameEditCrop, #gameEditCropTools').prop('hidden', true);
+    if (coverTitle) coverShow(coverOriginal ? '' : (coverTitle.iconUrl || coverTitle.bannerUrl || ''));
+}
+
+/** Keep the square covered (or, zoomed out past it, the image centred in it). */
+function cropClamp() {
+    const c = crop;
+    const w = c.w * c.scale, h = c.h * c.scale;
+    c.x = w >= c.side ? Math.min(0, Math.max(c.side - w, c.x)) : (c.side - w) / 2;
+    c.y = h >= c.side ? Math.min(0, Math.max(c.side - h, c.y)) : (c.side - h) / 2;
+}
+
+function cropPaint() {
+    if (!crop) return;
+    cropClamp();
+    const el = document.getElementById('gameEditCropImg');
+    el.style.width = `${crop.w * crop.scale}px`;
+    el.style.height = `${crop.h * crop.scale}px`;
+    el.style.transform = `translate(${crop.x}px, ${crop.y}px)`;
+    const t = (crop.scale - crop.min) / (crop.max - crop.min);
+    document.getElementById('gameEditCropZoom').value = String(Math.round(Math.sqrt(Math.max(0, t)) * 1000));
+}
+
+/** Zoom to `scale`, keeping the point under (cx, cy) of the square still. */
+function cropZoom(scale, cx = crop.side / 2, cy = crop.side / 2) {
+    const next = Math.min(crop.max, Math.max(crop.min, scale));
+    crop.x = cx - (cx - crop.x) * next / crop.scale;
+    crop.y = cy - (cy - crop.y) * next / crop.scale;
+    crop.scale = next;
+    cropPaint();
+}
+
+function cropReset() {
+    crop.scale = crop.fill;
+    crop.x = (crop.side - crop.w * crop.scale) / 2;
+    crop.y = (crop.side - crop.h * crop.scale) / 2;
+    cropPaint();
+}
+
+function cropFit() {
+    crop.scale = crop.fit;
+    cropPaint();
+}
+
+/** The square as a JPEG blob, COVER_OUT a side (white behind a transparent image). */
+function cropBlob() {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = COVER_OUT;
+    const ctx = canvas.getContext('2d');
+    const r = COVER_OUT / crop.side;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, COVER_OUT, COVER_OUT);
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(crop.img, crop.x * r, crop.y * r, crop.w * crop.scale * r, crop.h * crop.scale * r);
+    return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+}
+
+function coverFromBlob(blob) {
+    if (!blob || !blob.type.startsWith('image/')) return;
+    cropStart(URL.createObjectURL(blob));
+}
+
+async function coverSearch() {
+    const query = ($('#gameEditCoverQuery').val() || '').trim();
+    const results = $('#gameEditCoverResults').empty();
+    const state = $('#gameEditCoverSearchState').prop('hidden', true);
+    $('#gameEditCoverWeb').attr('href', 'https://www.google.com/search?tbm=isch&q='
+        + encodeURIComponent(`${query} Nintendo Switch cover`));
+    if (!query) return;
+    const lang = (document.documentElement.lang || 'en').slice(0, 2);
+    const switch2 = TITLE_ID.startsWith('04') ? '1' : '0';
+    try {
+        const r = await fetch(`/api/covers/search?q=${encodeURIComponent(query)}&lang=${lang}&switch2=${switch2}`,
+                              {credentials: 'same-origin'});
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || r.status);
+        if (!data.results.length) state.text(I18N.coverNoneFound).prop('hidden', false);
+        data.results.forEach(item => {
+            const pick = $('<button type="button" class="cover-search__item">').attr('title', item.title)
+                .append($('<img loading="lazy" alt="">').attr('src', item.image),
+                        $('<span>').text(item.title));
+            pick.on('click', () => cropStart(coverReadable(item.image)));
+            results.append(pick);
+        });
+    } catch (e) {
+        console.error(e);
+        state.text(I18N.coverSearchFailed).prop('hidden', false);
+    }
+}
+
+/** The cover changes made in Edit, before its text is saved. */
+async function coverSave() {
+    if (crop) {
+        const blob = await cropBlob();
+        const form = new FormData();
+        form.append('image', blob, 'cover.jpg');
+        const r = await fetch(`/api/titles/${TITLE_ID}/cover`, {method: 'POST', body: form, credentials: 'same-origin'});
+        if (!r.ok) throw new Error(I18N.coverSaveFailed);
+    } else if (coverOriginal) {
+        const r = await fetch(`/api/titles/${TITLE_ID}/cover`, {method: 'DELETE', credentials: 'same-origin'});
+        if (!r.ok) throw new Error(I18N.coverSaveFailed);
+    }
+}
+
+function wireCover() {
+    $('#gameEditCoverSearchBtn').on('click', () => {
+        const panel = $('#gameEditCoverSearch');
+        const open = panel.prop('hidden');
+        panel.prop('hidden', !open);
+        if (open) {
+            $('#gameEditCoverQuery').val(($('#gameEditName').val() || (coverTitle && coverTitle.name) || '').trim());
+            coverSearch();
+        }
+    });
+    $('#gameEditCoverQueryBtn').on('click', coverSearch);
+    $('#gameEditCoverQuery').on('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); coverSearch(); } });
+    $('#gameEditCoverFile').on('change', function () {
+        coverFromBlob(this.files && this.files[0]);
+        this.value = '';
+    });
+    $('#gameEditCoverCropBtn').on('click', () => {
+        const url = coverTitle && (coverTitle.iconUrl || coverTitle.bannerUrl);
+        if (url) cropStart(coverReadable(url));
+    });
+    $('#gameEditCoverOriginalBtn').on('click', () => {
+        cropClose();
+        coverOriginal = true;
+        coverShow('');
+        $('#gameEditCoverNote').text(I18N.coverOriginalNote);
+    });
+    $('#gameEditCropFit').on('click', cropFit);
+    $('#gameEditCropReset').on('click', cropReset);
+    $('#gameEditCropCancel').on('click', cropClose);
+    $('#gameEditCropZoom').on('input', function () {
+        const t = (Number(this.value) / 1000) ** 2;
+        cropZoom(crop.min + t * (crop.max - crop.min));
+    });
+    const stage = document.getElementById('gameEditCrop');
+    let drag = null;
+    stage.addEventListener('pointerdown', e => {
+        if (!crop) return;
+        drag = {x: e.clientX - crop.x, y: e.clientY - crop.y};
+        stage.setPointerCapture(e.pointerId);
+        stage.classList.add('is-dragging');
+    });
+    stage.addEventListener('pointermove', e => {
+        if (!drag) return;
+        crop.x = e.clientX - drag.x;
+        crop.y = e.clientY - drag.y;
+        cropPaint();
+    });
+    const end = () => { drag = null; stage.classList.remove('is-dragging'); };
+    stage.addEventListener('pointerup', end);
+    stage.addEventListener('pointercancel', end);
+    stage.addEventListener('wheel', e => {
+        if (!crop) return;
+        e.preventDefault();
+        const box = stage.getBoundingClientRect();
+        cropZoom(crop.scale * (e.deltaY < 0 ? 1.1 : 1 / 1.1), e.clientX - box.left, e.clientY - box.top);
+    }, {passive: false});
+    stage.addEventListener('keydown', e => {
+        if (!crop) return;
+        const step = {ArrowLeft: [10, 0], ArrowRight: [-10, 0], ArrowUp: [0, 10], ArrowDown: [0, -10]}[e.key];
+        if (step) { e.preventDefault(); crop.x += step[0]; crop.y += step[1]; cropPaint(); }
+        if (e.key === '+' || e.key === '=') cropZoom(crop.scale * 1.1);
+        if (e.key === '-') cropZoom(crop.scale / 1.1);
+    });
+    // An image pasted anywhere in the dialog (Ctrl+V) goes to the crop.
+    document.getElementById('gameEditModal').addEventListener('paste', e => {
+        const item = [...(e.clipboardData || {}).items || []].find(i => i.type.startsWith('image/'));
+        if (item) { e.preventDefault(); coverFromBlob(item.getAsFile()); }
+    });
 }
 
 async function saveEdit() {
@@ -693,6 +922,7 @@ async function saveEdit() {
         if (value) record[key] = value;
     });
     try {
+        await coverSave();
         await gqlMutate(SET_TITLE_OVERRIDE_MUTATION, {id: TITLE_ID, record: JSON.stringify(record)});
         bootstrap.Modal.getOrCreateInstance(document.getElementById('gameEditModal')).hide();
         loadGame();
@@ -734,6 +964,7 @@ $(function () {
     });
     $('#gameRetryBtn').on('click', loadGame);
     $('#gameEditSaveBtn').on('click', saveEdit);
+    if (document.getElementById('gameEditModal')) wireCover();
     $('#gameEditResetBtn').on('click', resetEdit);
     loadGame();
 });

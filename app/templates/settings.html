@@ -19,6 +19,30 @@
     ('Danger', 'danger.heading', 'bi-exclamation-triangle'),
 ] %}
 {#- A list shown in its own dialog, so the section stays short however long it grows. -#}
+{# Putting an Organize run back: what goes back, what's skipped and why, then confirm. #}
+{%- macro organize_undo_dialog() -%}
+<div class="modal fade" id="organizeUndoModal" tabindex="-1" aria-labelledby="organizeUndoTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="organizeUndoTitle"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ t('nav.close') }}"></button>
+            </div>
+            <div class="modal-body">
+                <h6 class="organize-undo__head" id="organizeUndoBackHead"></h6>
+                <ul class="organize-undo__list" id="organizeUndoBack"></ul>
+                <h6 class="organize-undo__head" id="organizeUndoSkipHead"></h6>
+                <ul class="organize-undo__list organize-undo__list--skip" id="organizeUndoSkip"></ul>
+                <p class="form-text mb-0">{{ t('organizer.history_keep_note') }}</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ t('nav.close') }}</button>
+                <button type="button" class="btn btn-primary" id="organizeUndoConfirm">{{ t('organizer.history_confirm') }}</button>
+            </div>
+        </div>
+    </div>
+</div>
+{%- endmacro %}
 {%- macro list_dialog(id, title, icon) -%}
 <div class="modal fade list-dialog" id="{{ id }}" tabindex="-1" aria-labelledby="{{ id }}Title" aria-hidden="true">
     {# Wide enough for the whole table on a full window; it scrolls when the window is narrow. #}
@@ -274,8 +298,9 @@
                 <section class="surface admin-section settings-section" id="Library" tabindex="-1">
                     {{ section_title('Library') }}
 
-                <h3 class="settings-subhead">{{ t('lib.paths_heading') }}</h3>
-                <p class="mb-2">{{ t('lib.paths_desc') }}</p>
+                <div class="settings-group settings-group--first">
+                <h3 class="settings-subhead"><i class="bi bi-folder2-open" aria-hidden="true"></i> <span>{{ t('lib.paths_heading') }}</span></h3>
+                <p class="settings-group__desc">{{ t('lib.paths_desc') }}</p>
                 {% call list_dialog('pathsDialog', t('lib.paths_heading'), 'bi-folder') %}
                 <div class="table-responsive list-table-wrap">
                     <table class="table list-table align-middle mb-0" id="pathsTable">
@@ -311,7 +336,7 @@
                 </div>
 
                 <div class="collapse" id="collapseNewPath">
-                    <div class="card card-body">
+                    <div class="card card-body mt-2 mb-2">
                         <label class="form-label">{{ t('lib.add_a_new_directory') }}</label>
                         <div class="row g-3">
                             <div class="col-12 col-md-6">
@@ -323,6 +348,8 @@
                             </div>
                         </div>
                     </div>
+                </div>
+
                 </div>
 
                 <!-- Delete User Modal -->
@@ -346,73 +373,121 @@
                     </div>
                 </div>
 
-                <h3 class="settings-subhead">{{ t('lib.watcher_heading') }}</h3>
-                <p>{{ t('lib.watcher_desc') }}</p>
-                <div class="row g-3 align-items-center mb-3">
-                    <div class="col-auto">
-                        <div class="form-check form-switch mb-0">
+                    <div class="settings-group">
+                        <h3 class="settings-subhead"><i class="bi bi-eye" aria-hidden="true"></i> <span>{{ t('lib.watcher_heading') }}</span></h3>
+                        <p class="settings-group__desc">{{ t('lib.watcher_desc') }}</p>
+                        <div class="mb-3 form-check form-switch">
                             <input type="checkbox" class="form-check-input" id="watcherEnabledCheck">
                             <label class="form-check-label" for="watcherEnabledCheck">{{ t('lib.enable_watcher') }}</label>
                         </div>
-                    </div>
-                    <div class="col-auto">
-                        <label class="col-form-label" for="watcherIntervalInput">{{ t('lib.polling_interval') }}</label>
-                    </div>
-                    <div class="col-auto">
-                        <div class="input-group">
-                            <input type="number" min="1" class="form-control" id="watcherIntervalInput" style="width:100px;">
-                            <span class="input-group-text">s</span>
+                        <div class="settings-dependent" data-depends-on="watcherEnabledCheck">
+                            <p class="settings-dependent__note"></p>
+                            <label class="form-label" for="watcherIntervalInput">{{ t('lib.polling_interval') }}</label>
+                            <div class="input-group settings-narrow-input">
+                                <input type="number" min="1" class="form-control" id="watcherIntervalInput">
+                                <span class="input-group-text">s</span>
+                            </div>
+                            <div id="watcherIntervalFeedback"></div>
                         </div>
-                        <div id="watcherIntervalFeedback"></div>
                     </div>
-                </div>
-
-                <h3 class="settings-subhead">{{ t('lib.management_heading') }}</h3>
-                <p>{{ t('lib.management_desc') }}</p>
-                <div class="mb-3 form-check form-switch">
-                    <input type="checkbox" class="form-check-input" id="deleteOlderUpdatesCheck">
-                    <label class="form-check-label" for="deleteOlderUpdatesCheck">{{ t('lib.delete_older_updates') }}</label>
-                    <div class="form-text">{{ t('lib.delete_older_updates_help') }}</div>
-                </div>
-                <div class="mb-3 form-check form-switch">
-                    <input type="checkbox" class="form-check-input" id="webDownloadsEnabledCheck">
-                    <label class="form-check-label" for="webDownloadsEnabledCheck">{{ t('lib.web_downloads_label') }}</label>
-                    <div class="form-text">{{ t('lib.web_downloads_help') }}</div>
-                </div>
-                <div class="mb-3 form-check form-switch">
-                    <input type="checkbox" class="form-check-input" id="autoResolveDuplicatesCheck">
-                    <label class="form-check-label" for="autoResolveDuplicatesCheck">{{ t('lib.auto_resolve_duplicates_label') }}</label>
-                    <div class="form-text">{{ t('lib.auto_resolve_duplicates_help') }}</div>
-                </div>
-                <div class="mb-3 form-check ms-4">
-                    <input type="checkbox" class="form-check-input" id="preferMulticontentCheck">
-                    <label class="form-check-label" for="preferMulticontentCheck">{{ t('lib.prefer_multicontent_label') }}</label>
-                    <div class="form-text">{{ t('lib.prefer_multicontent_help') }}</div>
-                </div>
-                <div class="mb-3 form-check ms-4">
-                    <input type="checkbox" class="form-check-input" id="preferLargerOnTieCheck">
-                    <label class="form-check-label" for="preferLargerOnTieCheck">{{ t('lib.prefer_larger_on_tie_label') }}</label>
-                    <div class="form-text">{{ t('lib.prefer_larger_on_tie_help') }}</div>
-                </div>
-                <div class="mb-3 ms-4">
-                    <label for="compressionPreferenceSelect" class="form-label">{{ t('lib.compression_preference_label') }}</label>
-                    <select class="form-select" id="compressionPreferenceSelect" style="max-width: 22rem;">
-                        <option value="none">{{ t('lib.compression_preference_none') }}</option>
-                        <option value="compressed">{{ t('lib.compression_preference_compressed') }}</option>
-                        <option value="uncompressed">{{ t('lib.compression_preference_uncompressed') }}</option>
-                    </select>
-                    <div class="form-text">{{ t('lib.compression_preference_help') }}</div>
-                </div>
-
-                <h4 class="settings-subhead">{{ t('sections.compression') }}</h4>
-                <p>{{ t('compression.desc') }}</p>
-                <div class="row">
-                    <div class="col-7">
+                    <div class="settings-group">
+                        <h3 class="settings-subhead"><i class="bi bi-display" aria-hidden="true"></i> <span>{{ t('lib.group_display') }}</span></h3>
+                        <p class="settings-group__desc">{{ t('lib.group_display_desc') }}</p>
+                        <div class="mb-3 form-check form-switch">
+                            <input type="checkbox" class="form-check-input" id="showBackgroundImageCheck">
+                            <label class="form-check-label" for="showBackgroundImageCheck">{{ t('organizer.show_background_image_label') }}</label>
+                            <div class="form-text">{{ t('organizer.show_background_image_help') }}</div>
+                        </div>
+                        <div class="mb-3 form-check form-switch">
+                            <input type="checkbox" class="form-check-input" id="showVerificationCheck">
+                            <label class="form-check-label" for="showVerificationCheck">{{ t('organizer.show_verification_label') }}</label>
+                            <div class="form-text">{{ t('organizer.show_verification_help') }}</div>
+                        </div>
+                        <div class="mb-3 form-check form-switch">
+                            <input type="checkbox" class="form-check-input" id="webDownloadsEnabledCheck">
+                            <label class="form-check-label" for="webDownloadsEnabledCheck">{{ t('lib.web_downloads_label') }}</label>
+                            <div class="form-text">{{ t('lib.web_downloads_help') }}</div>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="switch2Check">
+                            <label class="form-check-label" for="switch2Check">{{ t('lib.switch2_label') }}</label>
+                            <div class="form-text">{{ t('lib.switch2_help') }}</div>
+                        </div>
+                    </div>
+                    <div class="settings-group">
+                        <h3 class="settings-subhead"><i class="bi bi-copy" aria-hidden="true"></i> <span>{{ t('lib.group_duplicates') }}</span></h3>
+                        <p class="settings-group__desc">{{ t('lib.group_duplicates_desc') }}</p>
+                        <div class="mb-3 form-check form-switch">
+                            <input type="checkbox" class="form-check-input" id="deleteOlderUpdatesCheck">
+                            <label class="form-check-label" for="deleteOlderUpdatesCheck">{{ t('lib.delete_older_updates') }}</label>
+                            <div class="form-text">{{ t('lib.delete_older_updates_help') }}</div>
+                        </div>
+                        <div class="mb-3 form-check form-switch">
+                            <input type="checkbox" class="form-check-input" id="autoResolveDuplicatesCheck">
+                            <label class="form-check-label" for="autoResolveDuplicatesCheck">{{ t('lib.auto_resolve_duplicates_label') }}</label>
+                            <div class="form-text">{{ t('lib.auto_resolve_duplicates_help') }}</div>
+                        </div>
+                        <div class="settings-dependent" data-depends-on="autoResolveDuplicatesCheck">
+                            <p class="settings-dependent__note"></p>
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="preferMulticontentCheck">
+                                <label class="form-check-label" for="preferMulticontentCheck">{{ t('lib.prefer_multicontent_label') }}</label>
+                                <div class="form-text">{{ t('lib.prefer_multicontent_help') }}</div>
+                            </div>
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="preferLargerOnTieCheck">
+                                <label class="form-check-label" for="preferLargerOnTieCheck">{{ t('lib.prefer_larger_on_tie_label') }}</label>
+                                <div class="form-text">{{ t('lib.prefer_larger_on_tie_help') }}</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="compressionPreferenceSelect" class="form-label">{{ t('lib.compression_preference_label') }}</label>
+                                <select class="form-select" id="compressionPreferenceSelect" style="max-width: 22rem;">
+                                    <option value="none">{{ t('lib.compression_preference_none') }}</option>
+                                    <option value="compressed">{{ t('lib.compression_preference_compressed') }}</option>
+                                    <option value="uncompressed">{{ t('lib.compression_preference_uncompressed') }}</option>
+                                </select>
+                                <div class="form-text">{{ t('lib.compression_preference_help') }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="settings-group">
+                        <h3 class="settings-subhead"><i class="bi bi-shield-check" aria-hidden="true"></i> <span>{{ t('sections.verification') }}</span></h3>
+                        <p class="settings-group__desc">{{ t('verification.desc') }}</p>
+                        <div class="mb-3 form-check form-switch">
+                            <input type="checkbox" class="form-check-input" id="verifyFilesCheck">
+                            <label class="form-check-label" for="verifyFilesCheck">{{ t('verification.enable') }}</label>
+                            <div class="form-text">{{ t('verification.enable_help') | safe }}</div>
+                        </div>
+                        <div class="settings-dependent" data-depends-on="verifyFilesCheck">
+                            <p class="settings-dependent__note"></p>
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="verificationDepth"
+                                           id="verificationDepthSignature" value="signature">
+                                    <label class="form-check-label" for="verificationDepthSignature">{{ t('verification.signature_only') }}</label>
+                                    <div class="form-text">{{ t('verification.signature_only_help') | safe }}</div>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="verificationDepth"
+                                           id="verificationDepthHash" value="hash">
+                                    <label class="form-check-label" for="verificationDepthHash">{{ t('verification.full_hash') }}</label>
+                                    <div class="form-text">{{ t('verification.full_hash_help') | safe }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="alert alert-warning d-none" id="verificationKeysAlert" role="alert">
+                            {{ t('verification.keys_alert') }}
+                        </div>
+                    </div>
+                    <div class="settings-group">
+                        <h3 class="settings-subhead"><i class="bi bi-file-zip" aria-hidden="true"></i> <span>{{ t('sections.compression') }}</span></h3>
+                        <p class="settings-group__desc">{{ t('compression.desc') }}</p>
                         <div class="mb-3 form-check form-switch">
                             <input type="checkbox" class="form-check-input" id="compressFilesCheck">
                             <label class="form-check-label" for="compressFilesCheck">{{ t('compression.enable') }}</label>
                             <div class="form-text">{{ t('compression.enable_help') | safe }}</div>
                         </div>
+                        <p class="settings-group-label">{{ t('lib.compression_all_note') }}</p>
                         <div class="row g-3 align-items-center mb-3">
                             <div class="col-auto">
                                 <label class="col-form-label" for="compressionLevelInput">{{ t('compression.level_label') }}</label>
@@ -468,133 +543,98 @@
                             </div>
                         </div>
                     </div>
-                </div>
-
-                <h4 class="settings-subhead">{{ t('sections.verification') }}</h4>
-                <p>{{ t('verification.desc') }}</p>
-                <div class="row">
-                    <div class="col-7">
-                        <div class="mb-3 form-check form-switch">
-                            <input type="checkbox" class="form-check-input" id="verifyFilesCheck">
-                            <label class="form-check-label" for="verifyFilesCheck">{{ t('verification.enable') }}</label>
-                            <div class="form-text">{{ t('verification.enable_help') | safe }}</div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="verificationDepth"
-                                       id="verificationDepthSignature" value="signature">
-                                <label class="form-check-label" for="verificationDepthSignature">{{ t('verification.signature_only') }}</label>
-                                <div class="form-text">{{ t('verification.signature_only_help') | safe }}</div>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="verificationDepth"
-                                       id="verificationDepthHash" value="hash">
-                                <label class="form-check-label" for="verificationDepthHash">{{ t('verification.full_hash') }}</label>
-                                <div class="form-text">{{ t('verification.full_hash_help') | safe }}</div>
-                            </div>
-                        </div>
-                        <div class="alert alert-warning d-none" id="verificationKeysAlert" role="alert">
-                            {{ t('verification.keys_alert') }}
-                        </div>
-                    </div>
-                </div>
-
-                <h4 class="settings-subhead">{{ t('sections.organizer') }}</h4>
-                <p>{{ t('organizer.desc') }}</p>
-                <div class="row">
-                    <div class="col-7">
-                        <div class="mb-3 form-check form-switch">
-                            <input type="checkbox" class="form-check-input" id="showBackgroundImageCheck">
-                            <label class="form-check-label" for="showBackgroundImageCheck">{{ t('organizer.show_background_image_label') }}</label>
-                            <div class="form-text">{{ t('organizer.show_background_image_help') }}</div>
-                        </div>
-                        <div class="mb-3 form-check form-switch">
-                            <input type="checkbox" class="form-check-input" id="showVerificationCheck">
-                            <label class="form-check-label" for="showVerificationCheck">{{ t('organizer.show_verification_label') }}</label>
-                            <div class="form-text">{{ t('organizer.show_verification_help') }}</div>
-                        </div>
+                    <div class="settings-group">
+                        <h3 class="settings-subhead"><i class="bi bi-folder-symlink" aria-hidden="true"></i> <span>{{ t('sections.organizer') }}</span></h3>
+                        <p class="settings-group__desc">{{ t('organizer.desc') }}</p>
                         <div class="mb-3 form-check form-switch">
                             <input type="checkbox" class="form-check-input" id="organizerEnabledCheck">
                             <label class="form-check-label" for="organizerEnabledCheck">{{ t('organizer.enable') }}</label>
                             <div class="form-text">{{ t('organizer.enable_help') }}</div>
                         </div>
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="removeEmptyFoldersCheck">
-                            <label class="form-check-label" for="removeEmptyFoldersCheck">{{ t('organizer.remove_empty') }}</label>
-                            <div class="form-text">{{ t('organizer.remove_empty_help') }}</div>
-                        </div>
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="windowsCompatibleCheck">
-                            <label class="form-check-label" for="windowsCompatibleCheck">{{ t('organizer.windows_compat') }}</label>
-                            <div class="form-text">{{ t('organizer.windows_compat_help') }}</div>
-                        </div>
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="switch2Check">
-                            <label class="form-check-label" for="switch2Check">{{ t('lib.switch2_label') }}</label>
-                            <div class="form-text">{{ t('lib.switch2_help') }}</div>
-                        </div>
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="moveCompanionsCheck">
-                            <label class="form-check-label" for="moveCompanionsCheck">{{ t('organizer.move_companions_label') }}</label>
-                            <div class="form-text">{{ t('organizer.move_companions_help') }}</div>
-                        </div>
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="cleanNamesCheck">
-                            <label class="form-check-label" for="cleanNamesCheck">{{ t('organizer.clean_names_label') }}</label>
-                            <div class="form-text">{{ t('organizer.clean_names_help') }}</div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-check-label d-block">{{ t('organizer.naming_language') }}</label>
-                            <div class="form-text mb-2">{{ t('organizer.naming_language_help') }}</div>
-                            <div class="row g-2">
-                                <div class="col-12 col-md-6">
-                                    <select id="organizerNameRegionSelect" class="form-select form-select-sm" aria-label="Select organizer naming region">
-                                        <option value="">{{ t('organizer.same_as_library') }}</option>
-                                    </select>
+                        <div class="settings-dependent" data-depends-on="organizerEnabledCheck">
+                            <p class="settings-dependent__note"></p>
+                            <div class="mb-3">
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="removeEmptyFoldersCheck">
+                                    <label class="form-check-label" for="removeEmptyFoldersCheck">{{ t('organizer.remove_empty') }}</label>
+                                    <div class="form-text">{{ t('organizer.remove_empty_help') }}</div>
                                 </div>
-                                <div class="col-12 col-md-6">
-                                    <select id="organizerNameLanguageSelect" class="form-select form-select-sm" aria-label="Select organizer naming language"></select>
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="windowsCompatibleCheck">
+                                    <label class="form-check-label" for="windowsCompatibleCheck">{{ t('organizer.windows_compat') }}</label>
+                                    <div class="form-text">{{ t('organizer.windows_compat_help') }}</div>
                                 </div>
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="moveCompanionsCheck">
+                                    <label class="form-check-label" for="moveCompanionsCheck">{{ t('organizer.move_companions_label') }}</label>
+                                    <div class="form-text">{{ t('organizer.move_companions_help') }}</div>
+                                </div>
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="cleanNamesCheck">
+                                    <label class="form-check-label" for="cleanNamesCheck">{{ t('organizer.clean_names_label') }}</label>
+                                    <div class="form-text">{{ t('organizer.clean_names_help') }}</div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-check-label d-block">{{ t('organizer.naming_language') }}</label>
+                                <div class="form-text mb-2">{{ t('organizer.naming_language_help') }}</div>
+                                <div class="row g-2">
+                                    <div class="col-12 col-md-6">
+                                        <select id="organizerNameRegionSelect" class="form-select form-select-sm" aria-label="Select organizer naming region">
+                                            <option value="">{{ t('organizer.same_as_library') }}</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12 col-md-6">
+                                        <select id="organizerNameLanguageSelect" class="form-select form-select-sm" aria-label="Select organizer naming language"></select>
+                                    </div>
+                                </div>
+                            </div>
+                            <h5 class="settings-subhead">{{ t('templates.heading') }}</h5>
+                            <p>{{ t('templates.desc') }}</p>
+                            <div class="row g-3 mb-2">
+                                {% for id, key in [('baseTemplateInput', 'templates.base'), ('updateTemplateInput', 'templates.update'),
+                                                   ('dlcTemplateInput', 'templates.dlc'), ('multiTemplateInput', 'templates.multi')] %}
+                                <div class="col-12 col-lg-6">
+                                    <label for="{{ id }}" class="form-label">{{ t(key) }}</label>
+                                    <input type="text" class="form-control form-control-code" id="{{ id }}">
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <p class="small text-break mb-3">{{ t('templates.tinfoil_note') | safe }}</p>
+                            {# Every field a template takes, as a grid of name and meaning. #}
+                            <div class="settings-inner template-attrs mb-3">
+                                <h4 class="settings-inner__title"><i class="bi bi-braces" aria-hidden="true"></i> {{ t('templates.attrs_all') }}</h4>
+                                <dl class="template-attrs__grid">
+                                    {% for code, key in [('{titleName}', 'templates.attr_title_name'), ('{appId}', 'templates.attr_app_id'),
+                                                         ('{titleId}', 'templates.attr_title_id'), ('{appVersion}', 'templates.attr_app_version'),
+                                                         ('{appName}', 'templates.attr_app_name'), ('{patchLevel}', 'templates.attr_patch_level'),
+                                                         ('{packageContents}', 'templates.attr_package_counts'),
+                                                         ('{packageNames}', 'templates.attr_package_contents'),
+                                                         ('{sizeGb} {sizeMb}', 'templates.attr_size'), ('{extension}', 'templates.attr_extension')] %}
+                                    <div class="template-attrs__item">
+                                        <dt>{% for c in code.split(' ') %}<code>{{ c }}</code>{% endfor %}</dt>
+                                        <dd>{{ t(key) | safe }}</dd>
+                                    </div>
+                                    {% endfor %}
+                                </dl>
+                                <p class="small text-secondary mb-1">{{ t('templates.attrs_base_update_dlc') }}</p>
+                                <p class="small mb-0">{{ t('templates.example') | safe }}</p>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <h5 class="settings-subhead">{{ t('templates.heading') }}</h5>
-                <p>{{ t('templates.desc') }}</p>
-                <div class="row g-3 mb-2">
-                    {% for id, key in [('baseTemplateInput', 'templates.base'), ('updateTemplateInput', 'templates.update'),
-                                       ('dlcTemplateInput', 'templates.dlc'), ('multiTemplateInput', 'templates.multi')] %}
-                    <div class="col-12 col-lg-6">
-                        <label for="{{ id }}" class="form-label">{{ t(key) }}</label>
-                        <input type="text" class="form-control form-control-code" id="{{ id }}">
-                    </div>
-                    {% endfor %}
-                </div>
-                <p class="small text-break mb-3">{{ t('templates.tinfoil_note') | safe }}</p>
-                {# Every field a template takes, as a grid of name and meaning. #}
-                <div class="settings-inner template-attrs mb-3">
-                    <h4 class="settings-inner__title"><i class="bi bi-braces" aria-hidden="true"></i> {{ t('templates.attrs_all') }}</h4>
-                    <dl class="template-attrs__grid">
-                        {% for code, key in [('{titleName}', 'templates.attr_title_name'), ('{appId}', 'templates.attr_app_id'),
-                                             ('{titleId}', 'templates.attr_title_id'), ('{appVersion}', 'templates.attr_app_version'),
-                                             ('{appName}', 'templates.attr_app_name'), ('{patchLevel}', 'templates.attr_patch_level'),
-                                             ('{packageContents}', 'templates.attr_package_counts'),
-                                             ('{packageNames}', 'templates.attr_package_contents'),
-                                             ('{sizeGb} {sizeMb}', 'templates.attr_size'), ('{extension}', 'templates.attr_extension')] %}
-                        <div class="template-attrs__item">
-                            <dt>{% for c in code.split(' ') %}<code>{{ c }}</code>{% endfor %}</dt>
-                            <dd>{{ t(key) | safe }}</dd>
-                        </div>
-                        {% endfor %}
-                    </dl>
-                    <p class="small text-secondary mb-1">{{ t('templates.attrs_base_update_dlc') }}</p>
-                    <p class="small mb-0">{{ t('templates.example') | safe }}</p>
-                </div>
-
-                <div>
+                <div class="settings-save">
                     <button type="button" id="submitLibraryManagementSettingsBtn" class="btn btn-primary"
                         onClick='submitLibraryManagementSettings()'>{{ t('lib.submit') }}</button>
+                </div>
+
+                {# The last Organize runs, each one can be put back (organize_history.py). #}
+                <div class="settings-group" id="OrganizeHistory">
+                    <h3 class="settings-subhead"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> <span>{{ t('organizer.history_heading') }}</span></h3>
+                    <p class="settings-group__desc">{{ t('organizer.history_desc') }}</p>
+                    <ul class="organize-runs" id="organizeRuns"></ul>
+                    <p class="text-secondary fst-italic mb-0" id="organizeRunsEmpty" hidden>{{ t('organizer.history_empty') }}</p>
+                    <p class="small mb-0" id="organizeRunsNotice" hidden></p>
                 </div>
 
                 </section>
@@ -748,7 +788,7 @@
                 <section class="surface admin-section settings-section" id="Network" tabindex="-1">
                     {{ section_title('Network') }}
                     {# LAN discovery: the same switch as its card under Services. #}
-                    <h3 class="settings-subhead"><i class="bi bi-wifi" aria-hidden="true"></i> {{ t('sections.discovery') }}</h3>
+                    <h3 class="settings-subhead"><i class="bi bi-wifi" aria-hidden="true"></i> <span>{{ t('sections.discovery') }}</span></h3>
                     <p>{{ t('services.discovery_desc') }} {{ t('services.discovery_enabled_help', port=discovery_port) }}</p>
                     <div class="form-check form-switch mb-3">
                         <input class="form-check-input" type="checkbox" role="switch" id="discoverySwitch"{% if discovery_enabled %} checked{% endif %}>
@@ -1257,6 +1297,7 @@
                 </div>{# .settings-layout #}
 
             </div>
+{{ organize_undo_dialog() }}
 {% endblock %}
 
 {% block panel_scripts %}
@@ -1266,6 +1307,18 @@
 
     // Strings the JS below needs but can't hardcode in English.
     const I18N = {
+        dependsNote: {{ t('lib.depends_note') | tojson }},
+        historyCounts: {{ t('organizer.history_counts') | tojson }},
+        historyUndo: {{ t('organizer.history_undo') | tojson }},
+        historyUndone: {{ t('organizer.history_undone') | tojson }},
+        historyPreviewTitle: {{ t('organizer.history_preview_title') | tojson }},
+        historyBack: {{ t('organizer.history_back') | tojson }},
+        historySkipped: {{ t('organizer.history_skipped') | tojson }},
+        historySkip: {gone: {{ t('organizer.history_skip_gone') | tojson }},
+                      taken: {{ t('organizer.history_skip_taken') | tojson }},
+                      moved: {{ t('organizer.history_skip_moved') | tojson }}},
+        historyNothing: {{ t('organizer.history_nothing') | tojson }},
+        historyQueued: {{ t('organizer.history_queued') | tojson }},
         templateUnknownField: {{ t('templates.unknown_field') | tojson }},
         shop: {{ t('auth.shop') | tojson }},
         backup: {{ t('auth.backup') | tojson }},

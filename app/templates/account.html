@@ -51,7 +51,7 @@
         <section class="surface admin-section" id="accountConsole">
             <h2 class="admin-section__title"><i class="bi bi-nintendo-switch" aria-hidden="true"></i> {{ t('account.console_heading') }}</h2>
             <label for="accountFirmware" class="form-label">{{ t('account.firmware_label') }}</label>
-            <input type="text" class="form-control account-firmware" id="accountFirmware" inputmode="decimal"
+            <input type="text" class="form-control account-firmware" id="accountFirmware" inputmode="text"
                    autocomplete="off" placeholder="23.0.1" value="{{ current_user.console_firmware or '' }}"
                    aria-describedby="accountFirmwareHelp">
             <div id="accountFirmwareHelp" class="form-text">{{ t('account.firmware_help') }}</div>

@@ -421,6 +421,11 @@ class Mutation:
             raise MutationFailed(f"record is not valid JSON: {e}")
         if not isinstance(payload, dict):
             raise MutationFailed("record must be a JSON object")
+        # The cover chosen in Edit is saved on its own (covers.py): text edits keep it.
+        current = titledb.store.list_overrides().get(str(title_id).upper()) or {}
+        for key in ('iconUrl', 'bannerUrl'):
+            if key not in payload and current.get(key):
+                payload[key] = current[key]
         ok, err = titledb.store.set_override(str(title_id), payload)
         if not ok:
             raise MutationFailed(err)

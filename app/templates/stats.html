@@ -199,6 +199,9 @@
     // Strings the JS below needs but can't hardcode in English - injected once here
     // rather than threading t() through every render function.
     const I18N = {
+        folderCounts: {{ t('stats.folder_counts') | tojson }},
+        folderDisk: {{ t('stats.folder_disk') | tojson }},
+        folderGamesOnly: {{ t('stats.folder_games_only') | tojson }},
         nothingToReport: {{ t('common.nothing_to_report') | tojson }},
         tileFilesNote: {{ t('stats.tile.files_note') | tojson }},
         tileTotalSize: {{ t('stats.tile.total_size') | tojson }},

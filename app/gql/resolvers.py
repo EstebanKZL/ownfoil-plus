@@ -1,6 +1,7 @@
 """Query resolvers for the GraphQL API."""
 import firmware
 import json
+import os
 from typing import Dict, List, Optional
 
 import strawberry
@@ -198,6 +199,12 @@ def _local_media_urls(title_id: str, icon_url, banner_url, screenshots):
     if not rows:
         return icon_url, banner_url, screenshots, None, None, None
     by_slot = {(r.kind, r.position): r for r in rows}
+    # A value already local is the cover chosen in Edit or read from a file: it stays,
+    # and the slot's row (the catalogue's copy) doesn't speak for it.
+    if media.is_local(icon_url):
+        by_slot.pop((media.ICON, 0), None)
+    if media.is_local(banner_url):
+        by_slot.pop((media.BANNER, 0), None)
     icon_row = by_slot.get((media.ICON, 0))
     banner_row = by_slot.get((media.BANNER, 0))
 
@@ -837,7 +844,8 @@ def resolve_titles(*, owned: Optional[bool], filter: Optional[TitleFilter],
                     missing_app_type: Optional[AppType] = None,
                     library_path: Optional[str] = None,
                     page: int, page_size: int, ctx: GraphQLContext, info,
-                    favorite: Optional[bool] = None, console: Optional[str] = None) -> TitleConnection:
+                    favorite: Optional[bool] = None, console: Optional[str] = None,
+                    library_id: Optional[int] = None) -> TitleConnection:
     if not ctx.can_shop:
         return TitleConnection(total=0, items=[])
     page = max(1, page)
@@ -939,6 +947,9 @@ def resolve_titles(*, owned: Optional[bool], filter: Optional[TitleFilter],
         where.append("COALESCE(ot.title_id, td.id) LIKE '04%'")
     elif console == 'switch':
         where.append("COALESCE(ot.title_id, td.id) NOT LIKE '04%'")
+    if library_id is not None:
+        where.append(_IN_FOLDER.format(title="ot.id"))
+        params["folder_id"] = int(library_id)
     order_by_sql = order_sql(order_by, TITLE_ORDER, default_order)
 
     where_sql = (" WHERE " + " AND ".join(where)) if where else ""
@@ -992,7 +1003,7 @@ def resolve_apps(*, owned: Optional[bool], app_type: Optional[List[AppType]],
                   search: Optional[str] = None, order_by: Optional[OrderBy] = None,
                   group_by_app_id: bool = False,
                   page: int, page_size: int, ctx: GraphQLContext, info,
-                  only_pk: Optional[str] = None, console: Optional[str] = None,
+                  only_pk: Optional[str] = None, console: Optional[str] = None, library_id: Optional[int] = None,
                   favorite: Optional[bool] = None) -> AppConnection:
     if not ctx.can_shop:
         return AppConnection(total=0, items=[])
@@ -1066,6 +1077,9 @@ def resolve_apps(*, owned: Optional[bool], app_type: Optional[List[AppType]],
         where.append("a.app_id LIKE '04%'")
     elif console == 'switch':
         where.append("a.app_id NOT LIKE '04%'")
+    if library_id is not None:
+        where.append(_IN_FOLDER.format(title="a.title_id"))
+        params["folder_id"] = int(library_id)
 
     where_sql = (" WHERE " + " AND ".join(where)) if where else ""
     group_sql = " GROUP BY a.app_id" if group_by_app_id else ""
@@ -1447,6 +1461,12 @@ def _files_in_pipeline() -> set:
     return held
 
 
+# A title with an owned file in one library folder (the Library's folder filter).
+_IN_FOLDER = ("EXISTS (SELECT 1 FROM apps fap JOIN app_files faf ON faf.app_id = fap.id "
+              "JOIN files ffl ON ffl.id = faf.file_id WHERE fap.title_id = {title} "
+              "AND ffl.library_id = :folder_id)")
+
+
 def resolve_pending_files(*, ctx: GraphQLContext, info, limit: int = 500) -> "PendingFileList":
     """Every file the automatic pipeline still owes work to, given the settings
     right now. Admin only - walks every tracked file's identify/organize/verify/
@@ -1716,6 +1736,9 @@ def resolve_stats(*, ctx: GraphQLContext, info) -> LibraryStats:
         FROM libraries l LEFT JOIN files f ON f.library_id = l.id
         GROUP BY l.id, l.path ORDER BY l.id""")
 
+    if sees_admin(ctx) and sel.has("libraryFolders"):
+        stats.library_folders = _library_folders(ctx)
+
     if sees_admin(ctx) and sel.has("filesByVerificationStatus"):
         buckets = {status: [0, 0] for status in VerificationStatus}
         for sig, hashed, modified, count, size in db.session.execute(text("""
@@ -1730,6 +1753,35 @@ def resolve_stats(*, ctx: GraphQLContext, info) -> LibraryStats:
             for status, (count, size) in buckets.items()]
 
     return stats
+
+
+def _library_folders(ctx) -> list:
+    """Statistics > Space: each library folder with its games, files, bytes and the free
+    space of its disk. A collaborator gets the folders' names, never their paths."""
+    import shutil
+    from .types import LibraryFolderStats
+    from app import library_folders
+    names = {f['id']: f['name'] for f in library_folders()}
+    rows = db.session.execute(text("""
+        SELECT l.id, l.path, COUNT(f.id), COALESCE(SUM(f.size), 0),
+               (SELECT COUNT(DISTINCT ap.title_id) FROM apps ap
+                  JOIN app_files af ON af.app_id = ap.id JOIN files fl ON fl.id = af.file_id
+                 WHERE fl.library_id = l.id AND ap.owned = 1)
+        FROM libraries l LEFT JOIN files f ON f.library_id = l.id
+        GROUP BY l.id, l.path ORDER BY l.path""")).all()
+    out = []
+    for lib_id, path, files, size, games in rows:
+        try:
+            usage = shutil.disk_usage(path)
+            free, disk = usage.free, usage.total
+        except OSError:
+            free = disk = None
+        name = names.get(lib_id) or os.path.basename(os.path.normpath(path)) or path
+        out.append(LibraryFolderStats(id=int(lib_id), name=name,
+                                      path=path if ctx.can_admin else None,
+                                      games=int(games or 0), files=int(files), size=int(size),
+                                      free=free, total=disk))
+    return out
 
 
 def _sized_count_by(sql: str) -> List[SizedCountByKey]:

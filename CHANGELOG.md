@@ -4,6 +4,51 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.58]
+
+- **A game without a cover in the catalogue shows its own.** The official icon a game
+  carries inside its file is read when the file is identified - a NUP brings it, an NSP,
+  NSZ, XCI or XCZ gives it with the console keys - and stored as local artwork, so Switch
+  2 games, homebrew and titles TitleDB doesn't know get a cover. The catalogue's wins
+  whenever it has one (a new `extract` order for artwork: chosen, catalogue, file). The
+  games already in the library are read once, at the next start.
+- **Edit sets a game's cover.** *Search the eShop* finds it in the European eShop by its
+  name - Switch 2 games only among the Switch 2's -, *Choose an image* or Ctrl+V takes one
+  of yours, and *Search the web* opens an image search for the rest. It opens in a square
+  that stays still while the image moves and zooms under it (*Fit whole*, *Reset*, *Crop*
+  for the cover you have); saved as the server's own copy of the image, it wins over the
+  catalogue's and the file's, and *Use the original* gives them back. The eShop's images
+  are read through the server, from Nintendo's own hosts only. A cover chosen this way
+  also stopped being swapped back for the catalogue's local copy.
+- **Earlier organizes, and Undo.** The last 10 Organize runs are kept with every file they
+  moved (games and their NFO/SFV/proof companions; migration `b8c9d0e1f2a5`). *Undo*, in
+  *Settings > Library*, shows first what goes back and what is skipped and why, then puts
+  the files back to their names and folders, newest first - never writing over a file.
+- **Two or more library folders**: the Library filters by folder and sorts by it, with
+  the folders' names only (never their paths), and *Statistics > Space by library* gives
+  each folder its games, files, size and the free space of its disk.
+- **Statistics > Space by library says what the library takes and what is left**: "2.5 TiB
+  used · 3.0 TiB free" per folder, and the bar is its games against that room (games plus
+  free space), leaving out whatever else is on the disk - amber below 15 % of the disk
+  free, red below 5 %. It was each folder's share of the library, which read as "full",
+  and then a line with the disk's own totals, which said more than anyone needs.
+- **The console firmware field opens the full keyboard on a phone**: the numeric pad
+  some phones show for decimals has no dot, so "23.0.1" couldn't be typed.
+- **The Filters button turns the style's accent when a filter is set** (the orange dot
+  is gone), and the game page says **Switch** or **Switch 2**.
+- **Settings > Library, reorganized**: one topic after another (paths, watching, what the
+  web shows, duplicates, verification, compression, organizer, earlier organizes), each
+  with its sub-heading and line of explanation, in the same flat look as the other
+  sections - no boxes inside boxes. The options a switch turns on hang under it on an
+  indented line (the watcher's interval too), dimmed and locked while it is off, and
+  *Save* stays at the bottom of the window while the section is on screen (above the
+  bottom bar on a phone) instead of waiting after everything.
+- **New screenshots** in the README and on Docker Hub (library, game page, dashboard,
+  stats, files, sagas, settings, light theme and a phone), taken from this version; the
+  Docker Hub page shows them from GitHub, since it can't serve images of its own.
+- Local working notes (assistant guides and workspaces, logs, `.env`) are kept out of the
+  repository by `.gitignore`.
+
 ## [6.2.5.57]
 
 - Small tidy-ups in the docs, code comments and the *Clean names* help text, in every

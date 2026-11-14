@@ -191,6 +191,22 @@ class SizedCountByKey:
 
 
 @described(strawberry.type)
+class LibraryFolderStats:
+    """One library folder: its games, files, bytes and the free space of its disk."""
+    id: int = desc("The library's id - what the Library's folder filter takes.")
+    name: str = desc("The folder's own name (with its parent's when two share one).")
+    path: Optional[str] = desc("Its path on the server. Admins only: null for a "
+                               "collaborator, who sees the folder's name.", default=None)
+    games: int = desc("Titles with at least one owned file in the folder.", default=0)
+    files: int = desc("Files in the folder.", default=0)
+    size: BigInt = desc("Bytes of those files.", default=0)
+    free: Optional[BigInt] = desc("Free bytes on the folder's disk; null when it can't "
+                                  "be read (an offline mount).", default=None)
+    total: Optional[BigInt] = desc("The size of the folder's disk; null when it can't be "
+                                   "read.", default=None)
+
+
+@described(strawberry.type)
 class VerificationStatusCount:
     """Files sharing one verification verdict. Typed rather than a `SizedCountByKey`
     so the bucket can be handed straight back to `files(filter: {verificationStatus:})`
@@ -243,6 +259,9 @@ class LibraryStats:
         "App count per type (BASE/UPDATE/DLC), owned and total. No byte totals: apps "
         "are metadata rows, and the files behind them are counted by "
         "`filesByExtension`.", default=None)
+    library_folders: Optional[List[LibraryFolderStats]] = desc(
+        "Each library folder with its games, files, bytes and the free space of its disk. "
+        "Admins and collaborators; null for any other role.", default=None)
     files_by_library: Optional[List[SizedCountByKey]] = desc(
         "File count and bytes per configured library root, keyed by path. Includes "
         "roots holding nothing. Admin only; null for any other role.", default=None)

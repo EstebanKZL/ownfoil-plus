@@ -26,6 +26,7 @@ import vault
 import accounts
 from accounts_views import accounts_blueprint
 from avatars import avatars_blueprint
+from covers import covers_blueprint
 import avatars as avatars_mod
 import realtime
 import titledb
@@ -209,6 +210,7 @@ def create_app(db_uri=None):
     app.register_blueprint(auth_blueprint)
     app.register_blueprint(accounts_blueprint)
     app.register_blueprint(avatars_blueprint)
+    app.register_blueprint(covers_blueprint)
     register_i18n(app)
 
     return app
@@ -363,7 +365,25 @@ def library_page_context():
         web_downloads_enabled=settings['library']['management'].get('web_downloads', {}).get('enabled', False),
         show_game_background_image=show_background, console_firmware=console_firmware,
         can_see_saves=current_user.is_authenticated and vault.may_use(current_user),
+        library_folders=library_folders(),
     )
+
+
+def library_folders():
+    """The library folders, when there are two or more, as [{id, name}]: the folder's
+    own name, never its path - every viewer of the Library sees these."""
+    libraries = Libraries.query.order_by(Libraries.path).all()
+    if len(libraries) < 2:
+        return []
+    names = [os.path.basename(os.path.normpath(lib.path)) or lib.path for lib in libraries]
+    # Two folders of one name (/a/games, /b/games) take their parent's name too.
+    out = []
+    for lib, name in zip(libraries, names):
+        if names.count(name) > 1:
+            parent = os.path.basename(os.path.dirname(os.path.normpath(lib.path)))
+            name = f'{parent}/{name}' if parent else name
+        out.append({'id': lib.id, 'name': name})
+    return out
 
 def access_shop():
     return render_template('index.html', title='Library', **library_page_context())
@@ -736,6 +756,36 @@ def tasks_page():
     import task_events
     return render_template('tasks.html', title='Tasks', max_tasks=task_events.MAX_TASKS,
                            admin_account_created=admin_account_created())
+
+
+@app.get('/api/organize/history')
+@access_required('admin')
+def organize_history_api():
+    """The last Organize runs (Settings > Library), newest first."""
+    import organize_history
+    return jsonify({'runs': organize_history.runs()})
+
+
+@app.get('/api/organize/history/<int:run_id>')
+@access_required('admin')
+def organize_history_preview_api(run_id):
+    """What putting a run back would do, before it's done."""
+    import organize_history
+    preview = organize_history.preview(run_id)
+    if preview is None:
+        return jsonify({'error': 'not found'}), 404
+    return jsonify(preview)
+
+
+@app.post('/api/organize/history/<int:run_id>/undo')
+@access_required('admin')
+def organize_history_undo_api(run_id):
+    """Put a run's files back, as a task (it moves files)."""
+    import organize_history
+    if organize_history.preview(run_id) is None:
+        return jsonify({'success': False, 'error': 'not found'}), 404
+    task, _ = tasks_mod.enqueue_task('undo_organize_run', {'run_id': run_id})
+    return jsonify({'success': True, 'task_id': task.id})
 
 
 @app.get('/api/tasks/queued')
