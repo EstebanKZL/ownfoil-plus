@@ -3,12 +3,32 @@
 Ownfoil-Plus is a web server listening on port `8465`, so anything that can run a Docker container or a Python environment will do - a NAS, a Raspberry Pi, an old laptop or your own desktop.
 
 - [Using Docker](#using-docker)
+- [Using the desktop program](#using-the-desktop-program) (Windows, macOS, Linux)
 - [Using the Helm chart](#using-the-helm-chart)
 - [Available versions](#available-versions)
 
 > [!CAUTION]
 > There is __no website associated with this project__, only this GitHub repo.  
-> Ownfoil-Plus is __not released as an application or an executable file__ - DO NOT download or execute anything related to Ownfoil-Plus outside of this repository and its instructions.
+> Ownfoil-Plus's programs are published __only on this repository's [releases page](https://github.com/EstebanKZL/ownfoil-plus/releases)__, with a checksum next to each - DO NOT download or execute anything related to Ownfoil-Plus from anywhere else.
+
+# Using the desktop program
+Each release also brings Ownfoil-Plus as a program, for a computer that holds your games and should share them on your network - no Docker or Python to install. Download the file for your system from the [releases page](https://github.com/EstebanKZL/ownfoil-plus/releases):
+
+| System | File |
+|---|---|
+| Windows (most PCs) | `Ownfoil-Plus-<version>-windows-x64.zip` |
+| Windows on ARM | `Ownfoil-Plus-<version>-windows-arm64.zip` |
+| macOS with Apple chip (M1 or newer) | `Ownfoil-Plus-<version>-macos-apple.tar.gz` |
+| macOS with Intel chip | `Ownfoil-Plus-<version>-macos-intel.tar.gz` |
+| Linux, PC | `Ownfoil-Plus-<version>-linux-x64.tar.gz` |
+| Linux on ARM 64-bit (Raspberry Pi 4/5 with a 64-bit system) | `Ownfoil-Plus-<version>-linux-arm64.tar.gz` |
+
+Unpack it where you want Ownfoil-Plus to live and run `Ownfoil-Plus` (`Ownfoil-Plus.exe` on Windows) in the `Ownfoil-Plus` folder: the server starts on port `8465` and the web UI opens in your browser (`http://localhost:8465`, or the computer's address from another device). Keep the window open while you use it; closing it stops the server.
+
+- **Your settings and library data** are kept in `config/` and `data/` next to the program. To update, unpack the new version over the same folder: they stay. Another folder for them can be given as the first argument (`Ownfoil-Plus D:\ownfoil-data`), and `--no-browser` keeps the browser closed.
+- **The first account**: the setup page asks for it on first open, as in Docker; `USER_ADMIN_NAME` / `USER_ADMIN_PASSWORD` and the other [environment variables](#environment-variables) work too.
+- **Windows and macOS warn** the first time, because the programs aren't signed with a paid certificate: on Windows choose *More info > Run anyway*; on macOS right-click the program, *Open*, and confirm. Compare the file with its `.sha256` checksum if you want to be sure it is the one published here.
+- A Raspberry Pi with a 32-bit system uses the Docker image.
 
 # Using Docker
 Ownfoil-Plus is shipped as a docker container for easy deployment, data persistency and updates. If you are unfamiliar with Docker, check [the installation documentation here](https://docs.docker.com/engine/install/).  

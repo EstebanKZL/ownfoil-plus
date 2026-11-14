@@ -70,3 +70,11 @@ def test_identification_stores_the_files_icon_when_titledb_has_none(monkeypatch,
     monkeypatch.setattr(nup, 'read_icon', lambda path: pytest.fail('read for nothing'))
     tasks._store_file_icon('game.nup', 'nup', ['0100ABCD12340000'])
     assert calls == []
+
+
+def test_the_backfill_flags_survive_a_settings_load():
+    """Unknown server keys are pruned on load: the one-time cover pass must be declared,
+    or it ran again at every start (seen in the desktop build's log)."""
+    from constants import DEFAULT_SETTINGS
+    assert 'file_icons_backfilled' in DEFAULT_SETTINGS['server']
+    assert 'file_icons_backfilled_keys' in DEFAULT_SETTINGS['server']

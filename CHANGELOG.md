@@ -6,6 +6,16 @@ see the upstream project for its own history.
 
 ## [6.2.5.59]
 
+- **Ownfoil-Plus as a program for Windows, macOS and Linux**, from this version on. Each
+  release brings it for Windows (x64 and ARM), macOS (Apple chip and Intel) and Linux
+  (x64 and ARM 64) - no Docker or Python needed: unpack, run, and the web UI opens. Settings and library data
+  live next to the program, so an update is unpacking the new version over it. Built by
+  a new workflow (`desktop.yml`, PyInstaller with `packaging/ownfoil.spec`), one runner
+  per system, and each program is started once and asked for its health before it's
+  attached to the release, with its SHA-256. It serves with the cross-platform server on
+  every system (gunicorn needs fork, which a packed program hasn't).
+- The one-time pass reading covers from the files ran again at every start: its flag was
+  pruned with the unknown settings. It's declared now.
 - **Card view shows a game's icon when it has no banner.** Switch 2 games, and any game
   whose only artwork is the icon read from its file, showed the empty placeholder in the
   Cards view while the Compact view had their cover: the card now shows the square icon

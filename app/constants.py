@@ -138,6 +138,10 @@ DEFAULT_SETTINGS = {
         # Whether tasks.backfill_required_firmware already read the firmware each owned
         # base game / update needs from files identified before that was stored.
         "required_firmware_backfilled": False,
+        # Covers read from the files once for the games already in the library (and once
+        # more when console keys arrive) - tasks.backfill_file_icons.
+        "file_icons_backfilled": False,
+        "file_icons_backfilled_keys": False,
     },
     "services": {
         "discovery": {
