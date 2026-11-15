@@ -33,7 +33,11 @@ def test_every_system_is_built_and_checked_before_it_ships():
     assert '/api/health' in workflow and 'gh release upload' in workflow and '.sha256' in workflow
 
 
-def test_a_release_made_before_the_builds_can_get_its_programs():
-    """6.2.5.59 was released before packaging/ existed: built from main, attached to it."""
+def test_the_programs_go_into_the_draft_before_it_is_published():
+    """Published releases are immutable: the workflow attaches to a draft, built from its
+    target commit, and refuses a release already published."""
     workflow = _read('.github', 'workflows', 'desktop.yml')
-    assert 'ref: ${{ inputs.ref || env.TAG }}' in workflow
+    assert 'types: [published]' not in workflow
+    assert 'ref: ${{ needs.release.outputs.sha }}' in workflow
+    assert '.target_commitish' in workflow and '"$draft" != true' in workflow
+    assert 'macos-14' not in workflow
