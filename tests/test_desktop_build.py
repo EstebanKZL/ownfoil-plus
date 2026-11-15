@@ -41,3 +41,9 @@ def test_the_programs_go_into_the_draft_before_it_is_published():
     assert 'ref: ${{ needs.release.outputs.sha }}' in workflow
     assert '.target_commitish' in workflow and '"$draft" != true' in workflow
     assert 'macos-14' not in workflow
+
+
+def test_the_check_stops_every_process_before_cleaning_up():
+    """On Windows the workers kept the database open after `kill` stopped the main one."""
+    workflow = _read('.github', 'workflows', 'desktop.yml')
+    assert 'taskkill //F //T //IM Ownfoil-Plus.exe' in workflow

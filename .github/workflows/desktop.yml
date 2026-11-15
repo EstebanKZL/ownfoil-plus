@@ -90,9 +90,16 @@ jobs:
             if curl -fs http://127.0.0.1:8465/api/health; then ok=1; break; fi
             sleep 2
           done
+          # Its worker processes too: on Windows, kill stops only the main one, and the
+          # workers keep the database open.
+          if [ -f Ownfoil-Plus.exe ]; then taskkill //F //T //IM Ownfoil-Plus.exe > /dev/null 2>&1 || true; fi
           kill $pid 2>/dev/null || true
-          sleep 2
-          # What the check created (its config and data) doesn't ship.
+          # What the check created (its config and data) doesn't ship; the files are free
+          # once every process has exited.
+          for i in $(seq 1 15); do
+            rm -rf config data ownfoil.bat 2>/dev/null && break
+            sleep 2
+          done
           rm -rf config data ownfoil.bat
           if [ -z "$ok" ]; then tail -50 ../start.log; exit 1; fi
 
