@@ -8,29 +8,45 @@ name: Desktop builds
 # system keeps the Docker image. Each build is started once and asked for its health
 # before it's uploaded, so a release never carries a program that doesn't start.
 #
-# Triggered by publishing a release (the tag the Docker workflow publishes too), or by
-# hand: `tag` is the release to attach the programs to, and `ref` what to build - the tag
-# itself by default, or a branch (a release made before these builds existed has no
-# packaging/ in its tag: built from main, which holds it, then attached to it).
+# Releases are immutable once published (no file can be added or swapped afterwards), so
+# the programs go into the release while it is still a draft:
+#   1. gh release create <version> --draft --target <full SHA> --notes-file <notes>
+#   2. gh workflow run desktop.yml -f tag=<version>
+#   3. when every build is green: gh release edit <version> --draft=false
+# Publishing creates the tag, which starts the Docker workflow. This workflow doesn't
+# publish by itself: a tag made with the workflow's own token starts no other workflow.
 
 on:
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag to attach the programs to'
+        description: 'Draft release to attach the programs to (e.g. 6.2.5.60)'
         required: true
-      ref:
-        description: 'What to build (default: the tag)'
-        required: false
 
 permissions:
   contents: write
 
 jobs:
+  release:
+    name: Find the draft
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.find.outputs.sha }}
+    steps:
+      - id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          found=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=50" --jq ".[] | select(.tag_name == \"$TAG\") | \"\(.draft) \(.target_commitish)\"")
+          if [ -z "$found" ]; then echo "No release $TAG: create it as a draft first."; exit 1; fi
+          read -r draft target <<< "$found"
+          if [ "$draft" != true ]; then echo "$TAG is already published: a published release takes no new files."; exit 1; fi
+          echo "sha=$target" >> "$GITHUB_OUTPUT"
+
   build:
     name: ${{ matrix.name }}
+    needs: release
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -38,19 +54,19 @@ jobs:
         include:
           - {name: windows-x64, os: windows-latest, archive: zip}
           - {name: windows-arm64, os: windows-11-arm, archive: zip}
-          - {name: macos-apple, os: macos-14, archive: tar.gz}
+          - {name: macos-apple, os: macos-15, archive: tar.gz}
           - {name: macos-intel, os: macos-15-intel, archive: tar.gz}
           - {name: linux-x64, os: ubuntu-latest, archive: tar.gz}
           - {name: linux-arm64, os: ubuntu-24.04-arm, archive: tar.gz}
     env:
-      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      TAG: ${{ inputs.tag }}
     defaults:
       run:
         shell: bash
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref || env.TAG }}
+          ref: ${{ needs.release.outputs.sha }}
 
       - uses: actions/setup-python@v5
         with:

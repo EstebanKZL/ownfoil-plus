@@ -4,6 +4,18 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.60]
+
+- **The programs for Windows, macOS and Linux now reach the release.** 6.2.5.59's
+  were built and passed their start-up check on every system, but couldn't be attached:
+  this repository's releases are immutable, and a published release takes no new files
+  (which is what keeps a download from being swapped later). The programs now go in while
+  the release is still a draft - created first, then the build workflow is started for
+  it, and the release is published once every program is attached. The workflow builds
+  the draft's own commit and stops with a clear message for a release already published.
+- The macOS build with Apple chip runs on `macos-15`: the `macos-14` runners no longer
+  start.
+
 ## [6.2.5.59]
 
 - **Ownfoil-Plus as a program for Windows, macOS and Linux**, from this version on. Each
