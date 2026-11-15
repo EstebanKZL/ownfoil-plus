@@ -15,6 +15,9 @@ see the upstream project for its own history.
   the draft's own commit and stops with a clear message for a release already published.
 - The macOS build with Apple chip runs on `macos-15`: the `macos-14` runners no longer
   start.
+- The Windows builds' start-up check stops the program's worker processes too before
+  removing what the check created: `kill` only stopped the main one, and the workers
+  still held the database open on Windows ARM.
 
 ## [6.2.5.59]
 
