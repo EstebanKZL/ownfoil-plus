@@ -154,8 +154,19 @@ function renderHero(t) {
     body.append(badges);
     body.append($('<h1 class="game-hero__title">').text(name));
     const year = String(t.releaseDate || '').match(/\d{4}/);
-    const meta = [t.publisher, year && year[0]].filter(Boolean).join(' · ');
-    if (meta) body.append($('<p class="game-hero__meta">').text(meta));
+    // The publisher leads to its games in the Library.
+    if (t.publisher || year) {
+        const metaLine = $('<p class="game-hero__meta">');
+        if (t.publisher) {
+            metaLine.append($('<a class="game-hero__publisher">')
+                .attr({href: `/?publisher=${encodeURIComponent(t.publisher)}`,
+                       title: I18N.publisherGames.replace('{name}', t.publisher)})
+                .text(t.publisher));
+        }
+        if (t.publisher && year) metaLine.append(document.createTextNode(' · '));
+        if (year) metaLine.append(document.createTextNode(year[0]));
+        body.append(metaLine);
+    }
     // Its DLC or an update without the game: say what's there and what's missing.
     const extras = ownedExtras(t);
     if (!(own && own.haveBase) && (extras.dlc || extras.update !== null)) {

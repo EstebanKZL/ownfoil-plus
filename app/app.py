@@ -366,6 +366,7 @@ def library_page_context():
         show_game_background_image=show_background, console_firmware=console_firmware,
         can_see_saves=current_user.is_authenticated and vault.may_use(current_user),
         library_folders=library_folders(),
+        library_publishers=library_publishers(),
     )
 
 
@@ -384,6 +385,22 @@ def library_folders():
             name = f'{parent}/{name}' if parent else name
         out.append({'id': lib.id, 'name': name})
     return out
+
+def library_publishers():
+    """The publishers of the games in the library, A-Z, with how many games each: the
+    Library's publisher filter."""
+    from sqlalchemy import text
+    try:
+        rows = db.session.execute(text(
+            "SELECT td.publisher AS name, COUNT(DISTINCT ot.id) AS games "
+            "FROM main.titles ot JOIN titledb.titles td ON td.id = ot.title_id "
+            "WHERE ot.have_base = 1 AND COALESCE(td.publisher, '') <> '' "
+            "GROUP BY td.publisher ORDER BY td.publisher COLLATE NOCASE")).all()
+    except Exception as e:  # no catalogue yet
+        logger.debug(f'No publishers for the Library: {e}')
+        return []
+    return [{'name': r.name, 'games': int(r.games)} for r in rows]
+
 
 def access_shop():
     return render_template('index.html', title='Library', **library_page_context())
@@ -1362,6 +1379,7 @@ def get_settings_api():
     settings['titles']['valid_keys'] = valid
     settings['titles']['missing_keys'] = missing
     settings['titles']['corrupt_keys'] = corrupt
+    settings['titles']['keys_firmware'] = keys_firmware(Keys.getLoadedKeysRevisions()) if valid is not None else None
     # Strip hauth values for privacy (don't send to client)
     if 'clients' in settings['shop']:
         for client_name, client_settings in settings['shop']['clients'].items():
@@ -1875,6 +1893,7 @@ def upload_file():
         resp['data']['valid_keys'] = valid_keys
         resp['data']['missing_keys'] = missing_keys
         resp['data']['corrupt_keys'] = corrupt_keys
+        resp['data']['keys_firmware'] = keys_firmware(Keys.getLoadedKeysRevisions())
 
     return jsonify(resp)
 

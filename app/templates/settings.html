@@ -610,7 +610,8 @@
                                                          ('{appName}', 'templates.attr_app_name'), ('{patchLevel}', 'templates.attr_patch_level'),
                                                          ('{packageContents}', 'templates.attr_package_counts'),
                                                          ('{packageNames}', 'templates.attr_package_contents'),
-                                                         ('{sizeGb} {sizeMb}', 'templates.attr_size'), ('{extension}', 'templates.attr_extension')] %}
+                                                         ('{sizeGb} {sizeMb}', 'templates.attr_size'), ('{languages}', 'templates.attr_languages'),
+                                                         ('{extension}', 'templates.attr_extension')] %}
                                     <div class="template-attrs__item">
                                         <dt>{% for c in code.split(' ') %}<code>{{ c }}</code>{% endfor %}</dt>
                                         <dd>{{ t(key) | safe }}</dd>
@@ -1307,6 +1308,17 @@
 
     // Strings the JS below needs but can't hardcode in English.
     const I18N = {
+        keys: {
+            valid: {{ t('keys.valid') | tojson }},
+            noFile: {{ t('keys.no_file') | tojson }},
+            invalidFile: {{ t('keys.invalid_file') | tojson }},
+            missingFile: {{ t('keys.missing_file') | tojson }},
+            firmware: {{ t('keys.firmware') | tojson }},
+            problems: {{ t('keys.problems') | tojson }},
+            corrupt: {{ t('keys.corrupt') | tojson }},
+            missing: {{ t('keys.missing') | tojson }},
+            allGood: {{ t('keys.all_good') | tojson }},
+        },
         dependsNote: {{ t('lib.depends_note') | tojson }},
         historyCounts: {{ t('organizer.history_counts') | tojson }},
         historyUndo: {{ t('organizer.history_undo') | tojson }},

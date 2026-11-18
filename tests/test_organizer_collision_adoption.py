@@ -202,3 +202,41 @@ def test_genuinely_different_size_content_still_gets_a_suffix(env):
     assert f.filepath == str(target_dir / "Costume Pack A [0100000000010001][v0](2).nsp")
     assert (target_dir / correct_name).exists()
     assert (target_dir / "Costume Pack A [0100000000010001][v0](2).nsp").exists()
+
+
+def test_a_name_that_only_changes_case_is_renamed_not_suffixed(env):
+    """On a disk that doesn't tell upper and lower case apart (Windows, macOS, a NAS
+    share), the file and its folder already exist under another case: Organize renames
+    them in place instead of making a "(2)" copy, and a second run finds nothing to do."""
+    probe = env.lib_dir / "CaseProbe"
+    probe.mkdir()
+    insensitive = (env.lib_dir / "caseprobe").exists()
+    probe.rmdir()
+    if not insensitive:
+        pytest.skip("this disk tells upper and lower case apart")
+    (env.lib_dir / "game" / "dlc").mkdir(parents=True)
+    new_file = env.seed_dlc(DLC_A_ID, "game/dlc/costume pack a [0100000000010001][v0].nsp")
+
+    assert organize_file(new_file, str(env.lib_dir), ORGANIZER_SETTINGS) is True
+    db.session.refresh(new_file)
+    expected = env.lib_dir / "Game" / "DLC" / "Costume Pack A [0100000000010001][v0].nsp"
+    assert new_file.filepath == str(expected)
+    assert sorted(p.name for p in env.lib_dir.iterdir()) == ["Game"]
+    assert [p.name for p in (env.lib_dir / "Game").iterdir()] == ["DLC"]
+    assert [p.name for p in (env.lib_dir / "Game" / "DLC").iterdir()] == [expected.name]
+    # A second run: already in place.
+    assert organize_file(new_file, str(env.lib_dir), ORGANIZER_SETTINGS) is True
+    assert [p.name for p in (env.lib_dir / "Game" / "DLC").iterdir()] == [expected.name]
+
+
+def test_the_languages_field_comes_from_the_catalogue(env, monkeypatch):
+    import titles as titles_lib
+    real = titles_lib.get_game_info
+    monkeypatch.setattr(titles_lib, 'get_game_info',
+                        lambda tid: {**real(tid), 'languages': ['ja', 'en']})
+    settings = {**ORGANIZER_SETTINGS, "templates": {**ORGANIZER_SETTINGS["templates"],
+                "dlc": "{titleName}/{appName} ({languages}) [{appId}]"}}
+    new_file = env.seed_dlc(DLC_A_ID, "x.nsp")
+    assert organize_file(new_file, str(env.lib_dir), settings) is True
+    db.session.refresh(new_file)
+    assert new_file.filename == "Costume Pack A (En,Ja) [0100000000010001].nsp"

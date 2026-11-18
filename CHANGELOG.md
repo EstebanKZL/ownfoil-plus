@@ -4,6 +4,26 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.61]
+
+- **Organize on a disk that doesn't tell upper and lower case apart** (Windows, macOS,
+  most NAS shares): a name that only changes its case - `zelda.nsp` to `Zelda.nsp` - was
+  taken for a collision, because the disk says the new name already exists (it is the
+  same file), and the game got a `(2)` copy of its own name. Its folder kept the old case
+  and turned up as a change again on every run. Both are renamed in place now, through a
+  temporary name, and only the folders inside the library are touched.
+- **`.par2` recovery data travels with its game** when Organize moves it, as NFO and SFV
+  files do.
+- **A `{languages}` template field**: the game's languages as game sets write them,
+  English first - `En,Ja,Fr` - from the catalogue.
+- **Filter the Library by publisher**: *Filters > Publisher* takes one from the library's
+  own list (typed to find it, with how many games each has), in every view; the
+  publisher on a game's page leads to the same filter.
+- **Settings > Titles says up to which firmware the console keys open games** (the
+  newest master key revision they hold), and names the revisions that are missing or
+  don't agree with the rest (damaged, or mixed in from another dump). Its messages were
+  fixed English text; they now speak the 11 languages.
+
 ## [6.2.5.60]
 
 - **The programs for Windows, macOS and Linux now reach the release.** 6.2.5.59's

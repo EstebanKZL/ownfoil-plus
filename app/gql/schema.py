@@ -98,6 +98,9 @@ class Query:
         library_id: Annotated[Optional[int], _arg(
             "Only titles with an owned file in this library folder (its id): the "
             "Library's folder filter.")] = None,
+        publisher: Annotated[Optional[str], _arg(
+            "Only titles of this publisher (as the catalogue names it): the Library's "
+            "publisher filter.")] = None,
     ) -> TitleConnection:
         """A page of titles, from the catalogue and the library together. Requires
         shop access; returns an empty page otherwise."""
@@ -106,7 +109,7 @@ class Query:
             library_health=library_health, missing_app_type=missing_app_type,
             library_path=library_path,
             page=page, page_size=page_size, ctx=info.context, info=info, favorite=favorite,
-            console=console, library_id=library_id)
+            console=console, library_id=library_id, publisher=publisher)
 
     @described_field
     def apps(
@@ -140,6 +143,9 @@ class Query:
         library_id: Annotated[Optional[int], _arg(
             "Only titles with an owned file in this library folder (its id): the "
             "Library's folder filter.")] = None,
+        publisher: Annotated[Optional[str], _arg(
+            "Only titles of this publisher (as the catalogue names it): the Library's "
+            "publisher filter.")] = None,
     ) -> AppConnection:
         """A page of apps: base games, updates and DLC, owned or merely known.
         Requires shop access; returns an empty page otherwise.
@@ -156,7 +162,7 @@ class Query:
             up_to_date=up_to_date, complete=complete,
             search=search, order_by=order_by, group_by_app_id=group_by_app_id,
             page=page, page_size=page_size, ctx=info.context, info=info, console=console,
-            favorite=favorite, library_id=library_id,
+            favorite=favorite, library_id=library_id, publisher=publisher,
         )
 
     @described_field

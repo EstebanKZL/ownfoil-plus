@@ -26,6 +26,8 @@ let favoriteIds = new Set();     // the user's starred title ids (/api/favorites
 let activeConsole = ['switch', 'switch2'].includes(storageGet('libraryConsole')) ? storageGet('libraryConsole') : '';
 // The library folder the games are in (its id), with two or more folders; null: all.
 let activeFolder = null;
+// The publisher filter: one of LIBRARY_PUBLISHERS, or null.
+let activePublisher = null;
 let totalItems = 0;
 let currentView = 'card'; // Default view is 'card'
 let fetchSeq = 0;    // guards against an older request answering after a newer one
@@ -81,10 +83,10 @@ function setSort(field, direction) {
 const CARDS_QUERY = `
     query Cards($page: Int!, $pageSize: Int!, $appType: [AppType!], $search: String,
                 $owned: Boolean, $upToDate: Boolean, $complete: Boolean, $orderBy: OrderBy,
-                $console: String, $favorite: Boolean, $libraryId: Int) {
+                $console: String, $favorite: Boolean, $libraryId: Int, $publisher: String) {
         apps(groupByAppId: true, orderBy: $orderBy, page: $page, pageSize: $pageSize,
              appType: $appType, search: $search, owned: $owned,
-             upToDate: $upToDate, complete: $complete, console: $console, favorite: $favorite, libraryId: $libraryId) {
+             upToDate: $upToDate, complete: $complete, console: $console, favorite: $favorite, libraryId: $libraryId, publisher: $publisher) {
             total
             items {
                 appId
@@ -104,10 +106,10 @@ const CARDS_QUERY = `
 const ICONS_QUERY = `
     query Icons($page: Int!, $pageSize: Int!, $appType: [AppType!], $search: String,
                 $owned: Boolean, $upToDate: Boolean, $complete: Boolean, $orderBy: OrderBy,
-                $console: String, $favorite: Boolean, $libraryId: Int) {
+                $console: String, $favorite: Boolean, $libraryId: Int, $publisher: String) {
         apps(groupByAppId: true, orderBy: $orderBy, page: $page, pageSize: $pageSize,
              appType: $appType, search: $search, owned: $owned,
-             upToDate: $upToDate, complete: $complete, console: $console, favorite: $favorite, libraryId: $libraryId) {
+             upToDate: $upToDate, complete: $complete, console: $console, favorite: $favorite, libraryId: $libraryId, publisher: $publisher) {
             total
             items {
                 appId
@@ -147,9 +149,9 @@ const ICONS_QUERY = `
 // itself considers a real update.
 const LIST_QUERY = `
     query TitlesList($page: Int!, $pageSize: Int!, $search: String, $owned: Boolean, $filter: TitleFilter,
-                     $orderBy: OrderBy, $favorite: Boolean, $console: String, $libraryId: Int) {
+                     $orderBy: OrderBy, $favorite: Boolean, $console: String, $libraryId: Int, $publisher: String) {
         titles(owned: $owned, search: $search, filter: $filter, orderBy: $orderBy, favorite: $favorite,
-               console: $console, libraryId: $libraryId,
+               console: $console, libraryId: $libraryId, publisher: $publisher,
                page: $page, pageSize: $pageSize) {
             total
             items {
@@ -196,6 +198,7 @@ function queryVariables() {
         console: activeConsole || null,
         favorite: onlyFavorites || null,
         libraryId: activeFolder,
+        publisher: activePublisher,
     };
 }
 
@@ -220,6 +223,7 @@ function listQueryVariables() {
         favorite: onlyFavorites || null,
         console: activeConsole || null,
         libraryId: activeFolder,
+        publisher: activePublisher,
     };
 }
 
@@ -360,17 +364,17 @@ const CARD_PILLS = {
 // The console pills' counts (Both / Switch / Switch 2), with the view's own filters.
 const CARD_COUNTS_QUERY = `
     query CardCounts($appType: [AppType!], $search: String, $owned: Boolean, $upToDate: Boolean,
-                     $complete: Boolean, $favorite: Boolean, $libraryId: Int) {
-        consoleAll: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, upToDate: $upToDate, complete: $complete, favorite: $favorite, libraryId: $libraryId, page: 1, pageSize: 1) { total }
-        consoleSwitch: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, upToDate: $upToDate, complete: $complete, favorite: $favorite, libraryId: $libraryId, console: "switch", page: 1, pageSize: 1) { total }
-        consoleSwitch2: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, upToDate: $upToDate, complete: $complete, favorite: $favorite, libraryId: $libraryId, console: "switch2", page: 1, pageSize: 1) { total }
+                     $complete: Boolean, $favorite: Boolean, $libraryId: Int, $publisher: String) {
+        consoleAll: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, upToDate: $upToDate, complete: $complete, favorite: $favorite, libraryId: $libraryId, publisher: $publisher, page: 1, pageSize: 1) { total }
+        consoleSwitch: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, upToDate: $upToDate, complete: $complete, favorite: $favorite, libraryId: $libraryId, publisher: $publisher, console: "switch", page: 1, pageSize: 1) { total }
+        consoleSwitch2: apps(groupByAppId: true, appType: $appType, search: $search, owned: $owned, upToDate: $upToDate, complete: $complete, favorite: $favorite, libraryId: $libraryId, publisher: $publisher, console: "switch2", page: 1, pageSize: 1) { total }
     }`;
 
 const LIST_COUNTS_QUERY = `
-    query ListCounts($search: String, $owned: Boolean, $filter: TitleFilter, $favorite: Boolean, $libraryId: Int) {
-        consoleAll: titles(owned: $owned, search: $search, filter: $filter, favorite: $favorite, libraryId: $libraryId, page: 1, pageSize: 1) { total }
-        consoleSwitch: titles(owned: $owned, search: $search, filter: $filter, favorite: $favorite, libraryId: $libraryId, console: "switch", page: 1, pageSize: 1) { total }
-        consoleSwitch2: titles(owned: $owned, search: $search, filter: $filter, favorite: $favorite, libraryId: $libraryId, console: "switch2", page: 1, pageSize: 1) { total }
+    query ListCounts($search: String, $owned: Boolean, $filter: TitleFilter, $favorite: Boolean, $libraryId: Int, $publisher: String) {
+        consoleAll: titles(owned: $owned, search: $search, filter: $filter, favorite: $favorite, libraryId: $libraryId, publisher: $publisher, page: 1, pageSize: 1) { total }
+        consoleSwitch: titles(owned: $owned, search: $search, filter: $filter, favorite: $favorite, libraryId: $libraryId, publisher: $publisher, console: "switch", page: 1, pageSize: 1) { total }
+        consoleSwitch2: titles(owned: $owned, search: $search, filter: $filter, favorite: $favorite, libraryId: $libraryId, publisher: $publisher, console: "switch2", page: 1, pageSize: 1) { total }
     }`;
 
 let pillSeq = 0;      // like fetchSeq: an older count request never overwrites a newer one
@@ -382,11 +386,11 @@ async function loadPillCounts() {
     let vars;
     if (list) {
         const l = listQueryVariables();
-        vars = {search: l.search, owned: l.owned, filter: l.filter, favorite: l.favorite, libraryId: l.libraryId};
+        vars = {search: l.search, owned: l.owned, filter: l.filter, favorite: l.favorite, libraryId: l.libraryId, publisher: l.publisher};
     } else {
         const g = queryVariables();
         vars = {appType: g.appType, search: g.search, owned: g.owned, upToDate: g.upToDate,
-                complete: g.complete, favorite: g.favorite, libraryId: g.libraryId};
+                complete: g.complete, favorite: g.favorite, libraryId: g.libraryId, publisher: g.publisher};
     }
     let data;
     try {
@@ -1205,6 +1209,10 @@ function loadFiltersFromStorage() {
     // The folder remembered, while it is still one of the library's.
     const savedFolder = parseInt(storageGet('libraryFolder'), 10);
     $(LIBRARY_FOLDERS.some(f => f.id === savedFolder) ? `#folder${savedFolder}` : '#folderAll').prop('checked', true);
+    // The publisher: ?publisher= (a game page's publisher link) or the one remembered.
+    const urlPublisher = new URLSearchParams(location.search).get('publisher');
+    const savedPublisher = urlPublisher !== null ? urlPublisher : storageGet('libraryPublisher');
+    $('#publisherFilter').val(LIBRARY_PUBLISHERS.includes(savedPublisher) ? savedPublisher : '');
     if (filters && typeof filters === 'object') {
 
         $('#ownershipOwned').prop('checked', filters.ownership === 'Owned');
@@ -1251,6 +1259,9 @@ function updateFilter() {
     const folder = parseInt($('.folder-toggle:checked').val(), 10);
     activeFolder = LIBRARY_FOLDERS.some(f => f.id === folder) ? folder : null;
     if (activeFolder !== null) storageSet('libraryFolder', String(activeFolder)); else storageRemove('libraryFolder');
+    const publisher = ($('#publisherFilter').val() || '').trim();
+    activePublisher = LIBRARY_PUBLISHERS.includes(publisher) ? publisher : null;
+    if (activePublisher !== null) storageSet('libraryPublisher', activePublisher); else storageRemove('libraryPublisher');
     if ($('#completionComplete').is(":checked")) {
         activeCompletionFilter = 'Complete';
     } else if ($('#completionMissingDlc').is(":checked")) {
@@ -1282,6 +1293,7 @@ function clearAllFilters() {
     storageRemove('libraryFavorites');
     $('#favoriteAll').prop('checked', true);
     $('#folderAll').prop('checked', true);
+    $('#publisherFilter').val('');
     $('#textFilter').val('');
     updateFilter();
     saveFiltersToStorage();
@@ -1303,7 +1315,7 @@ function onFilterChange() {
 /** The Filters button's dot: some filter that applies to the current view is set. */
 function updateFiltersDot() {
     const active = !!(activeOwnershipFilter || activeUpdateFilter || activeCompletionFilter || onlyFavorites
-                      || activeFolder !== null);
+                      || activeFolder !== null || activePublisher !== null);
     $('#filtersActiveDot').prop('hidden', !active);
     // The button itself in the accent while a filter is set (no dot any more).
     $('#filtersMenuBtn').toggleClass('is-active', active);
@@ -1370,6 +1382,12 @@ $(document).ready(function () {
     });
 
     $('.ownership-toggle, .update-toggle, .completion-toggle, .favorite-toggle, .folder-toggle').change(onFilterChange);
+    // The publisher applies once it names one of the list (picked, or typed whole), and
+    // is dropped when the box is emptied.
+    $('#publisherFilter').on('change search', function () {
+        const value = this.value.trim();
+        if (!value || LIBRARY_PUBLISHERS.includes(value)) onFilterChange();
+    });
 
     // Listen to input changes in the text filter input
     $("#textFilter").on("input", function () {

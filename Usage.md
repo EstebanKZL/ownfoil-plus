@@ -53,7 +53,7 @@ The language menu in the navbar offers **Automatic (browser language)** - the de
 
 ## Library view options
 
-`Vista` sets how many games a page shows: 10 to 100, each rounded to whole rows of the cards that fit at the window's width (with four cards a row: 12, 20, 32 ... 100), so no row is left short; resizing the window refits it. The Cards view shows at most four cards a row, the Compact view more, smaller ones. `Filtros` groups the filters by ownership, updates and DLC (by the state of the files in the List view), with `Clear filters` at the top. With two or more library folders, `Filtros` also has `Folder` (the folders by name - their paths are never shown) and the sort list a `Folder` order; `Statistics > Space by library` shows each folder with its games, files, size and the free space of its disk.
+`Por página`, beside the pages above and below the games, sets how many a page shows: 10 to 100, each rounded to whole rows of the cards that fit at the window's width (with four cards a row: 12, 20, 32 ... 100), so no row is left short; resizing the window refits it. The Cards view shows at most four cards a row, the Compact view more, smaller ones. `Filtros` groups the filters by ownership, updates and DLC (by the state of the files in the List view), with `Clear filters` at the top. With two or more library folders, `Filtros` also has `Folder` (the folders by name - their paths are never shown) and the sort list a `Folder` order; `Statistics > Space by library` shows each folder with its games, files, size and the free space of its disk. `Filtros > Publisher` keeps the games of one publisher: type in the box to find it in the list of the library's publishers, with how many games each has. A game's page links its publisher to the same filter.
 
 ## Theme, style and search
 
@@ -318,7 +318,7 @@ Verification is disabled entirely, with the controls greyed out, when no valid [
 | `Enable organizer` | disabled | Move identified files into the paths built from the templates below. |
 | `Remove empty folders` | disabled | Remove folders left empty after files are moved out of them. |
 | `Windows compatible filenames` | disabled | Use filenames a Windows system can read. |
-| `Take NFO, SFV and proof files along` | enabled | A file named as the game (`game.nfo` next to `game.nsp`) takes its new name, and a folder left holding only notes, checksums, images and a `Proof` folder (as a release comes) hands them all over, so it is left empty. A name already taken where it would go stays where it is. |
+| `Take NFO, SFV and proof files along` | enabled | A file named as the game (`game.nfo` next to `game.nsp`) takes its new name, and a folder left holding only notes, checksums, images and a `Proof` folder (as a release comes) hands them all over - `.par2` recovery data included, so it is left empty. A name already taken where it would go stays where it is. |
 
 Once a file is identified, the organizer renders the matching template, and moves the file there if it isn't already. Paths are relative to the library path the file is in, and the extension is added automatically.
 
@@ -352,8 +352,11 @@ Available in every template too - in the multi-content one, for a file holding t
 | `{packageContents}` | What the file holds, counted, games first: `1G+1U+5D` (a part it lacks is left out: `1G+1U`); `{packageCounts}` is the same |
 | `{packageNames}` | What it holds by name: `Base`, `Update`, `DLC`, `Base + Update`, `Base + Update + DLC`... |
 | `{sizeGb}` / `{sizeMb}` | The file's size, e.g. `3.23` (GB) or `3307` (MB) |
+| `{languages}` | The game's languages as game sets write them, English first: `En,Ja,Fr` (empty when the catalogue doesn't know them) |
 
 For example, a multi-content template `{titleName}/{titleName} [{titleId}][{packageContents}] [{sizeGb} GB]` names a bundle `Nintendo Switch 2 Welcome Tour [04...][1G+1U] [3.23 GB].nup` (with `{packageNames}`, `[Base + Update]`) - the extension is the file's own (nsp, nsz, xci, xcz or nup). The size is the one when the file is organized: compressing it later doesn't rename it.
+
+On a disk that doesn't tell upper and lower case apart (Windows, macOS, most NAS shares), a file or folder whose name only changes its case - `zelda` to `Zelda` - is renamed in place, never given a `(2)` copy, and the change doesn't come back on the next run.
 
 > [!CAUTION]
 > Make sure the templates contain `[{appId}][v{appVersion}]` for Tinfoil to recognize the apps.
@@ -373,7 +376,7 @@ This is the region and language of your shop, and for now it is the same for all
 
 The available languages depend on the region you pick.
 
-`Console Keys file` is where you upload your keys - see [Console keys](#console-keys). Below it, `Master key revisions` reports what Ownfoil-Plus found in the file you uploaded, and names any revision that is missing or invalid.
+`Console Keys file` is where you upload your keys - see [Console keys](#console-keys). Below it, `Master key revisions` says up to which firmware the keys open games (the newest revision they hold), and names any revision that is missing or that doesn't agree with the others - damaged, or mixed in from another dump.
 
 ## Shop
 

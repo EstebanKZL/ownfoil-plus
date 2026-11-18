@@ -145,3 +145,12 @@ def test_a_template_with_an_unknown_field_is_named_on_save():
     assert template_errors({'base': '{titleName} [{appId}]', 'multi': '{titleName} [{packageNames}]'}) == []
     assert template_errors({'multi': '{titleName} [{packageNamez}]'}) == [('multi', '{packageNamez}')]
     assert template_errors({'dlc': '{titleName'})[0][0] == 'dlc'
+
+
+def test_languages_are_written_as_game_sets_write_them():
+    from library import language_codes, template_errors
+    assert language_codes(['ja', 'en', 'fr']) == 'En,Ja,Fr'
+    assert language_codes(['zh-Hans', 'zh-Hant', 'ko', 'es', 'de']) == 'De,Es,Ko,Zh'
+    assert language_codes(['en', 'EN', 'sv']) == 'En,Sv'
+    assert language_codes([]) == '' and language_codes(None) == ''
+    assert template_errors({'base': '{titleName} ({languages}) [{appId}]'}) == []

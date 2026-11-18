@@ -593,6 +593,7 @@ def get_game_info(title_id):
         'iconUrl': rec.get('iconUrl'),
         'id': rec.get('id'),
         'category': rec.get('category'),
+        'languages': rec.get('languages') or [],
     }
 
 
