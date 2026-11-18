@@ -845,7 +845,8 @@ def resolve_titles(*, owned: Optional[bool], filter: Optional[TitleFilter],
                     library_path: Optional[str] = None,
                     page: int, page_size: int, ctx: GraphQLContext, info,
                     favorite: Optional[bool] = None, console: Optional[str] = None,
-                    library_id: Optional[int] = None) -> TitleConnection:
+                    library_id: Optional[int] = None,
+                    publisher: Optional[str] = None) -> TitleConnection:
     if not ctx.can_shop:
         return TitleConnection(total=0, items=[])
     page = max(1, page)
@@ -950,6 +951,9 @@ def resolve_titles(*, owned: Optional[bool], filter: Optional[TitleFilter],
     if library_id is not None:
         where.append(_IN_FOLDER.format(title="ot.id"))
         params["folder_id"] = int(library_id)
+    if publisher:
+        where.append("td.publisher = :publisher")
+        params["publisher"] = publisher
     order_by_sql = order_sql(order_by, TITLE_ORDER, default_order)
 
     where_sql = (" WHERE " + " AND ".join(where)) if where else ""
@@ -1004,7 +1008,8 @@ def resolve_apps(*, owned: Optional[bool], app_type: Optional[List[AppType]],
                   group_by_app_id: bool = False,
                   page: int, page_size: int, ctx: GraphQLContext, info,
                   only_pk: Optional[str] = None, console: Optional[str] = None, library_id: Optional[int] = None,
-                  favorite: Optional[bool] = None) -> AppConnection:
+                  favorite: Optional[bool] = None,
+                  publisher: Optional[str] = None) -> AppConnection:
     if not ctx.can_shop:
         return AppConnection(total=0, items=[])
     page = max(1, page)
@@ -1080,6 +1085,9 @@ def resolve_apps(*, owned: Optional[bool], app_type: Optional[List[AppType]],
     if library_id is not None:
         where.append(_IN_FOLDER.format(title="a.title_id"))
         params["folder_id"] = int(library_id)
+    if publisher:
+        where.append("td.publisher = :publisher")
+        params["publisher"] = publisher
 
     where_sql = (" WHERE " + " AND ".join(where)) if where else ""
     group_sql = " GROUP BY a.app_id" if group_by_app_id else ""

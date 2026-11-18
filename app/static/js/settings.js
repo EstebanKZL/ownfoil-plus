@@ -227,7 +227,7 @@ function updateKeysElements(titlesSettings) {
 
     // Keys alert
     if (titlesSettings['valid_keys']) {
-        $('#consoleKeysFeedback').text("Keys are valid!");
+        $('#consoleKeysFeedback').text(I18N.keys.valid);
         $('#consoleKeysFeedback').removeClass('invalid-feedback');
         $('#consoleKeysFeedback').addClass('valid-feedback d-block');
         $('#missingKeysAlert').removeClass('d-block');
@@ -237,36 +237,36 @@ function updateKeysElements(titlesSettings) {
         $('#consoleKeysFeedback').addClass('invalid-feedback d-block');
         $('#missingKeysAlert').removeClass('d-none');
         $("#missingKeysAlert").addClass('d-block');
-        if (titlesSettings['valid_keys'] === null) {
-            $('#consoleKeysFeedback').text("Missing keys file! Use the button above to upload a new file.");
-        } else {
-            $('#consoleKeysFeedback').text("Invalid keys file! At least one master key is incorrect. Use the button above to upload a new file.");
-        }
+        $('#consoleKeysFeedback').text(titlesSettings['valid_keys'] === null ? I18N.keys.noFile : I18N.keys.invalidFile);
     }
 
-    // Missing and invalid master key revisions
+    // Up to which firmware the keys open games, then what is missing or doesn't agree
+    // with the rest (damaged, or mixed in from another dump).
+    const label = $('#keysMissingLabel');
+    label.next('ul').remove();
+    $('#keysFirmware').remove();
+    const missing = titlesSettings['missing_keys'] || [];
+    const corrupt = titlesSettings['corrupt_keys'] || [];
+    const firmware = titlesSettings['keys_firmware'];
     if (titlesSettings['valid_keys'] === null) {
         $('#keysAlert').css("border-color", "var(--bs-danger-border-subtle)");
-        $("#keysMissingLabel").text("Missing console keys file.");
-    } else if ((titlesSettings['missing_keys'] && titlesSettings['missing_keys'].length > 0) || (titlesSettings['corrupt_keys'] && titlesSettings['corrupt_keys'].length > 0)) {
+        label.text(I18N.keys.missingFile);
+        return;
+    }
+    if (firmware) {
+        label.before($('<p id="keysFirmware" class="mb-1 fw-semibold">')
+            .text(I18N.keys.firmware.replace('{version}', firmware)));
+    }
+    if (missing.length || corrupt.length) {
         $('#keysAlert').css("border-color", "var(--bs-warning-border-subtle)");
-        $("#keysMissingLabel").text("Missing/invalid master key revisions:");
-        $("#keysMissingLabel").next('ul').remove(); // Clear existing ul if any
-        var ul = $('<ul class="mb-0">');
-        if (titlesSettings['corrupt_keys'] && titlesSettings['corrupt_keys'].length > 0) {
-            $.each(titlesSettings['corrupt_keys'], function(index, key) {
-                ul.append($('<li>').html('<code>' + key + '</code> is invalid'));
-            });
-        }
-        if (titlesSettings['missing_keys'] && titlesSettings['missing_keys'].length > 0) {
-            $.each(titlesSettings['missing_keys'], function(index, key) {
-                ul.append($('<li>').html('<code>' + key + '</code> is missing'));
-            });
-        }
-        $("#keysMissingLabel").after(ul);
+        label.text(I18N.keys.problems);
+        const ul = $('<ul class="mb-0">');
+        corrupt.forEach(key => ul.append($('<li>').append($('<code>').text(key), ' ', document.createTextNode(I18N.keys.corrupt))));
+        missing.forEach(key => ul.append($('<li>').append($('<code>').text(key), ' ', document.createTextNode(I18N.keys.missing))));
+        label.after(ul);
     } else {
         $('#keysAlert').css("border-color", "var(--bs-form-valid-border-color)");
-        $("#keysMissingLabel").text("All master key revisions are present and valid.");
+        label.text(I18N.keys.allGood);
     }
 }
 

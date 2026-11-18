@@ -34,7 +34,23 @@ def package_contents(app_types):
 # Every field an organizer template may use (Settings > Library > Templates).
 TEMPLATE_FIELDS = frozenset({
     'extension', 'titleId', 'titleName', 'appId', 'appVersion', 'patchLevel', 'appName',
-    'packageContents', 'packageCounts', 'packageNames', 'sizeGb', 'sizeMb'})
+    'packageContents', 'packageCounts', 'packageNames', 'sizeGb', 'sizeMb', 'languages'})
+
+# {languages}: the game's languages as game sets write them - "En,Ja,Fr" - English first
+# and then in this order, any other after them.
+LANGUAGE_ORDER = ('en', 'ja', 'fr', 'de', 'es', 'it', 'nl', 'pt', 'ru', 'ko', 'zh')
+
+
+def language_codes(languages):
+    """["ja", "en", "fr"] -> "En,Ja,Fr"; "" when none are known."""
+    seen = []
+    for lang in languages or []:
+        code = str(lang).strip().lower().split('-')[0].split('_')[0][:2]
+        if len(code) == 2 and code.isalpha() and code not in seen:
+            seen.append(code)
+    rank = {code: i for i, code in enumerate(LANGUAGE_ORDER)}
+    seen.sort(key=lambda c: (rank.get(c, len(rank)), c))
+    return ','.join(c.capitalize() for c in seen)
 
 
 def template_errors(templates):
@@ -107,6 +123,7 @@ def organize_file(file_obj, library_path, organizer_settings, moves=None):
         format_data["extension"] = file_obj.extension
         format_data["titleId"] = app.title.title_id
         format_data["titleName"] = title_info['name']
+        format_data["languages"] = language_codes(title_info.get('languages'))
         # Every template: what the file holds and how big it is, for names like
         # "Game [Base + Update + DLC] [3.23 GB]".
         # {packageContents}: "1G+1U+5D", as file names have always said it ({packageCounts}
@@ -190,6 +207,7 @@ def organize_file(file_obj, library_path, organizer_settings, moves=None):
         # Ensure the directory exists
         new_dir = os.path.dirname(new_full_path)
         try:
+            set_folder_case(library_path, new_dir)
             os.makedirs(new_dir, exist_ok=True)
         except OSError as e:
             logger.error(f"Error creating directory {new_dir} for file {file_obj.filename}: {e}")
@@ -208,8 +226,12 @@ def organize_file(file_obj, library_path, organizer_settings, moves=None):
             try:
                 add_ignored_event(src, candidate)
                 if os.path.exists(candidate):
-                    raise FileExistsError(candidate)
-                shutil.move(src, candidate)
+                    if not same_entry(src, candidate):
+                        raise FileExistsError(candidate)
+                    # The same file under another case: renamed in place.
+                    rename_case_only(src, candidate)
+                else:
+                    shutil.move(src, candidate)
                 update_file_path(library_path_str, current_filepath, candidate)
                 if moves is not None:
                     moves.append((file_obj.id, current_filepath, candidate))
@@ -242,7 +264,63 @@ def organize_file(file_obj, library_path, organizer_settings, moves=None):
 
 # Files that travel with a game when Organize moves it: release notes, checksums and the
 # proof images a scene release comes with.
-COMPANION_EXT = frozenset({'nfo', 'sfv', 'md5', 'sha1', 'sha256', 'diz', 'txt', 'jpg', 'jpeg', 'png'})
+COMPANION_EXT = frozenset({'nfo', 'sfv', 'md5', 'sha1', 'sha256', 'diz', 'txt', 'jpg', 'jpeg', 'png',
+                           'par2'})
+
+
+# A disk that doesn't tell upper and lower case apart (Windows, macOS, a NAS share)
+# says "zelda.nsp" exists when asked for "Zelda.nsp": the same file. Renaming it to
+# only change its case goes through a temporary name, or it would be taken for a
+# collision (and get a "(2)") or be left as it was.
+
+def same_entry(a, b):
+    """True when both paths name the one file or folder on the disk."""
+    try:
+        return os.path.samefile(a, b)
+    except OSError:
+        return False
+
+
+def rename_case_only(src, dest):
+    """Rename src to dest when they only differ in case, through a temporary name."""
+    tmp = f'{src}.case-{os.getpid()}'
+    os.rename(src, tmp)
+    try:
+        os.rename(tmp, dest)
+    except OSError:
+        os.rename(tmp, src)
+        raise
+
+
+def set_folder_case(library_root, new_dir):
+    """Give the folders between library_root and new_dir the case of new_dir's names
+    where the disk already has them under another case. Folders that don't exist yet
+    are left for os.makedirs; library_root and what is above it are never touched."""
+    try:
+        rel = os.path.relpath(new_dir, library_root)
+    except ValueError:
+        return
+    if rel == '.' or rel.startswith('..'):
+        return
+    current = library_root
+    for part in rel.split(os.sep):
+        target = os.path.join(current, part)
+        if not os.path.isdir(target):
+            return
+        try:
+            entries = os.listdir(current)
+        except OSError:
+            return
+        if part not in entries:
+            actual = next((e for e in entries if e.casefold() == part.casefold()), None)
+            if actual is not None:
+                try:
+                    rename_case_only(os.path.join(current, actual), target)
+                    logger.info(f'Organize: folder {actual} renamed to {part}')
+                except OSError as e:
+                    logger.warning(f'Organize: could not rename folder {actual} to {part}: {e}')
+                    return
+        current = target
 PROOF_DIRS = frozenset({'proof', 'proofs'})
 
 

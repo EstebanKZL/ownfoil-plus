@@ -108,6 +108,19 @@
                         </div>
                     </fieldset>
                     {% endif %}
+                    {% if library_publishers %}
+                    {# The publisher: typed or picked from the list of the library's. #}
+                    <fieldset class="filter-group">
+                        <legend class="filter-group__label"><i class="bi bi-building" aria-hidden="true"></i> {{ t('library.filter_group_publisher') }}</legend>
+                        <div class="publisher-filter">
+                            <input type="search" class="form-control form-control-sm" id="publisherFilter" list="publisherList"
+                                   autocomplete="off" placeholder="{{ t('library.publisher_all') }}" aria-label="{{ t('library.filter_group_publisher') }}">
+                            <datalist id="publisherList">
+                                {% for p in library_publishers %}<option value="{{ p.name }}">{{ t('library.publisher_games', n=p.games) }}</option>{% endfor %}
+                            </datalist>
+                        </div>
+                    </fieldset>
+                    {% endif %}
                     {% if current_user.is_authenticated %}
                     {# Each user's own favourites (the star on a cover). #}
                     <fieldset class="filter-group">
@@ -183,6 +196,7 @@
     const CAN_FAVORITE = {{ current_user.is_authenticated | tojson }};
     // The library folders (two or more: [{id, name}], else empty) for the folder filter.
     const LIBRARY_FOLDERS = {{ library_folders | tojson }};
+    const LIBRARY_PUBLISHERS = {{ library_publishers | map(attribute='name') | list | tojson }};
     const WEB_DOWNLOADS_ENABLED = {{ web_downloads_enabled | tojson }};
     // Library > Organizer > "Show game background image in Library list view" setting -
     // only gates the .list-banner-strip behind each row in renderListView; the cover

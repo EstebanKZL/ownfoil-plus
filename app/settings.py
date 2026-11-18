@@ -89,6 +89,33 @@ def get_settings():
 # Retrieve main logger
 logger = logging.getLogger('main')
 
+# The first firmware each master key revision opens: the newest revision of the keys
+# says up to which firmware they decrypt games.
+MASTER_KEY_FIRMWARE = (
+    '1.0.0', '3.0.0', '3.0.1', '4.0.0', '5.0.0', '6.0.0', '6.2.0', '7.0.0', '8.1.0',
+    '9.0.0', '9.1.0', '12.1.0', '13.0.0', '14.0.0', '15.0.0', '16.0.0', '17.0.0',
+    '18.0.0', '19.0.0', '20.0.0', '21.0.0',
+)
+
+
+def keys_firmware(revisions):
+    """The firmware the newest of these master key revisions ("master_key_12") opens:
+    "19.0.0", or None when there is none. A revision newer than the table says so with
+    a "+" after the newest firmware it knows."""
+    indexes = []
+    for name in revisions or []:
+        try:
+            indexes.append(int(str(name).rsplit('_', 1)[1], 16))
+        except (IndexError, ValueError):
+            continue
+    if not indexes:
+        return None
+    newest = max(indexes)
+    if newest < len(MASTER_KEY_FIRMWARE):
+        return MASTER_KEY_FIRMWARE[newest]
+    return MASTER_KEY_FIRMWARE[-1] + '+'
+
+
 def load_keys(key_file=KEYS_FILE):
     with keys_lock:
         valid = None

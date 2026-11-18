@@ -2475,6 +2475,31 @@ a.stat-tile:hover {
     color: var(--op-text-muted);
 }
 
+/* The publisher: a link to its games in the Library, quiet until pointed at. */
+.game-hero__publisher {
+    color: inherit;
+    text-decoration: underline dotted;
+    text-underline-offset: .2em;
+}
+
+.game-hero__publisher:hover,
+.game-hero__publisher:focus-visible {
+    color: var(--op-nav);
+}
+
+/* Library > Filters > Publisher: the box takes the panel's width. */
+.publisher-filter .form-control {
+    width: 100%;
+    border: 1px solid var(--op-border-strong);
+    background-color: var(--op-surface-2);
+    color: var(--op-text);
+}
+
+.publisher-filter .form-control:focus {
+    border-color: var(--op-nav);
+    box-shadow: 0 0 0 .15rem rgba(var(--op-nav-rgb), .25);
+}
+
 .game-hero__actions {
     display: flex;
     flex-wrap: wrap;

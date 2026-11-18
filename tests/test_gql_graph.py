@@ -753,3 +753,23 @@ def test_a_missing_id_resolves_to_null(library):
     data = query(library, 'query { app(id: "99999") { appId } file(id: "99999") { filename } task(id: "99999") { taskName } }')
 
     assert data == {"app": None, "file": None, "task": None}
+
+
+# ---- the Library's publisher filter ----
+
+def test_titles_and_apps_filter_by_publisher(library):
+    data = query(library, """
+        query {
+            mine: titles(owned: true, publisher: "Nintendo", page: 1, pageSize: 10) { total }
+            other: titles(owned: true, publisher: "Capcom", page: 1, pageSize: 10) { total }
+            cards: apps(appType: [BASE], groupByAppId: true, publisher: "Nintendo", page: 1, pageSize: 10) { total }
+            none: apps(appType: [BASE], groupByAppId: true, publisher: "Capcom", page: 1, pageSize: 10) { total }
+        }""")
+    assert (data["mine"]["total"], data["other"]["total"]) == (1, 0)
+    assert (data["cards"]["total"], data["none"]["total"]) == (1, 0)
+
+
+def test_the_library_lists_its_publishers(library):
+    import app as app_mod
+    with library.app.app_context():
+        assert app_mod.library_publishers() == [{"name": "Nintendo", "games": 1}]
