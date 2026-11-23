@@ -21,7 +21,7 @@ const GAME_QUERY = `
             }
             updateApps: apps(appType: [UPDATE]) {
                 appId appVersion displayVersion releaseDate owned
-                downloadableFile { id size verificationStatus format contents }
+                downloadableFile { id size verificationStatus format contents keep }
             }
             availableDlc {
                 appId version
@@ -106,7 +106,8 @@ function ownedExtras(t) {
 
 function missingDlcCount(t) {
     const owned = ownedDlcIds(t);
-    return (t.availableDlc || []).filter(d => !owned.has(d.appId)).length;
+    // A DLC not out yet isn't missing until the day it comes.
+    return (t.availableDlc || []).filter(d => !owned.has(d.appId) && !isUpcoming((d.titledb || {}).releaseDate)).length;
 }
 
 // --- hero -----------------------------------------------------------------------------
@@ -293,9 +294,21 @@ function section(id, icon, title, content) {
     return block.append(content);
 }
 
-function ownedBadge(owned) {
-    return owned ? statusBadge('ok', 'bi-check-circle', I18N.owned)
-                 : statusBadge('wait', 'bi-dash-circle', I18N.missing);
+function ownedBadge(owned, comingOn) {
+    if (owned) return statusBadge('ok', 'bi-check-circle', I18N.owned);
+    // Not out yet: the day it comes, not "missing".
+    if (comingOn) return statusBadge('info', 'bi-calendar-event', I18N.comingOn.replace('{date}', comingOn));
+    return statusBadge('wait', 'bi-dash-circle', I18N.missing);
+}
+
+/** A catalogue date ("2027-03-12" or "20270312") still ahead of today. */
+function isUpcoming(raw) {
+    const m = /^(\d{4})-?(\d{2})-?(\d{2})$/.exec(String(raw || '').trim());
+    if (!m) return false;
+    const today = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const now = `${today.getFullYear()}${pad(today.getMonth() + 1)}${pad(today.getDate())}`;
+    return `${m[1]}${m[2]}${m[3]}` > now;
 }
 
 function renderSections(t) {
@@ -350,7 +363,7 @@ function updateNotesUrl(t, u) {
  *  `onName` opens something (a DLC's card); `newsUrl` adds the release-notes icon
  *  before the download; `copyId` puts a copy button beside the id in the sub line.
  *  All text goes through .text(): names are real (untrusted) catalogue data. */
-function contentRow({icon, iconUrl, name, sub, owned, file, dataAttrs, details, onName, newsUrl, copyId, iconTone}) {
+function contentRow({icon, iconUrl, name, sub, owned, file, dataAttrs, details, onName, newsUrl, copyId, iconTone, comingOn, extra}) {
     const row = $('<li class="game-row">');
     if (dataAttrs) row.attr(dataAttrs);
     const lead = $('<div class="game-row__lead">');
@@ -373,7 +386,7 @@ function contentRow({icon, iconUrl, name, sub, owned, file, dataAttrs, details, 
     }
     lead.append(text);
     const multi = owned && file && file.contents && file.contents.length > 1;
-    const tail = $('<div class="game-row__tail">').append(ownedBadge(owned));
+    const tail = $('<div class="game-row__tail">').append(ownedBadge(owned, comingOn));
     if (multi) {
         // Inside a Multi file: listed, but downloaded with the whole file.
         tail.append(multiChip(I18N.bundle));
@@ -382,6 +395,7 @@ function contentRow({icon, iconUrl, name, sub, owned, file, dataAttrs, details, 
         const ver = verificationBadge(file.verificationStatus);
         if (ver) tail.append(ver);
     }
+    if (extra) tail.append(extra);
     if (owned && file && !multi && canDownload()) tail.append(downloadButton(file.id, name));
     if (newsUrl) {
         // The release notes, after the download (asked for) - only the icon.
@@ -407,6 +421,26 @@ function contentRow({icon, iconUrl, name, sub, owned, file, dataAttrs, details, 
     return row;
 }
 
+/** Keep / kept: an older update kept on purpose is never deleted as old. */
+function keepUpdateToggle(file) {
+    const btn = $('<button type="button" class="btn btn-sm game-keep">');
+    const paint = kept => btn.toggleClass('is-kept', kept).attr('aria-pressed', String(kept))
+        .attr('title', kept ? I18N.keptHelp : I18N.keepHelp)
+        .empty().append($('<i aria-hidden="true">').addClass(kept ? 'bi bi-bookmark-check-fill' : 'bi bi-bookmark'),
+                        document.createTextNode(' ' + (kept ? I18N.kept : I18N.keep)));
+    paint(Boolean(file.keep));
+    btn.on('click', async () => {
+        const want = !btn.hasClass('is-kept');
+        btn.prop('disabled', true);
+        try {
+            const r = await fetch(`/api/files/${file.id}/keep`, {method: 'POST', credentials: 'same-origin',
+                headers: {'Content-Type': 'application/json'}, body: JSON.stringify({keep: want})});
+            if (r.ok) { file.keep = want; paint(want); }
+        } finally { btn.prop('disabled', false); }
+    });
+    return btn;
+}
+
 function renderUpdates(t) {
     const updates = (t.updateApps || []).slice()
         .sort((a, b) => (Number(b.appVersion) || 0) - (Number(a.appVersion) || 0));
@@ -425,7 +459,13 @@ function renderUpdates(t) {
                 .replace('{installed}', `v${installedVersion(t) || 0}`))));
     }
     const list = $('<ul class="game-rows">');
+    // An older update you have can be kept on purpose (its cheats, say): it is then
+    // never deleted as old. Admins only.
+    const ownedVersions = updates.filter(u => u.owned && u.downloadableFile).map(u => Number(u.appVersion) || 0);
+    const newestOwned = ownedVersions.length ? Math.max(...ownedVersions) : null;
     updates.forEach(u => {
+        const older = IS_ADMIN && u.owned && u.downloadableFile && newestOwned !== null
+            && (Number(u.appVersion) || 0) < newestOwned;
         // Each update tells the firmware it needs, marked when the console is older.
         const needs = versionFirmware(t, u.appVersion);
         const sub = [formatTitledbDate(u.releaseDate), needs && I18N.firmwareVersion.replace('{version}', needs)]
@@ -435,7 +475,8 @@ function renderUpdates(t) {
         const label = u.displayVersion ? `${u.displayVersion} · v${u.appVersion}` : `v${u.appVersion}`;
         const row = contentRow({icon: 'bi-arrow-up-circle', name: label, sub,
                                 owned: u.owned, file: u.downloadableFile,
-                                newsUrl: updateNotesUrl(t, u), iconTone: 'update'});
+                                newsUrl: updateNotesUrl(t, u), iconTone: 'update',
+                                extra: older ? keepUpdateToggle(u.downloadableFile) : null});
         if (firmwareTooOld(needs, CONSOLE_FIRMWARE)) {
             $(row).addClass('game-row--firmware').attr('title', I18N.firmwareTooOld
                 .replace('{mine}', CONSOLE_FIRMWARE).replace('{needed}', needs));
@@ -470,6 +511,7 @@ function renderDlc(t) {
         list.append(contentRow({
             icon: 'bi-puzzle', iconUrl: meta.iconUrl, name: meta.name || d.appId, sub, owned,
             iconTone: 'dlc',
+            comingOn: !owned && isUpcoming(meta.releaseDate) ? formatTitledbDate(meta.releaseDate) : null,
             file: owned ? (ownedApps[d.appId] || {}).downloadableFile : null,
             dataAttrs: {'data-dlc': d.appId},
             onName: () => openDlcModal(t, d, owned, (ownedApps[d.appId] || {}).downloadableFile),
@@ -477,7 +519,9 @@ function renderDlc(t) {
             details: meta.description || I18N.noDescription,
         }));
     });
-    return section('gameDlc', 'bi-puzzle', `${I18N.dlc} (${ownedIds.size} / ${dlc.length})`, list);
+    // The count leaves out the DLC not out yet, as the Library card does.
+    const counted = dlc.filter(d => ownedIds.has(d.appId) || !isUpcoming((d.titledb || {}).releaseDate)).length;
+    return section('gameDlc', 'bi-puzzle', `${I18N.dlc} (${ownedIds.size} / ${counted})`, list);
 }
 
 /** A DLC's own card (the row's name opens it): the game's art beside the DLC's facts

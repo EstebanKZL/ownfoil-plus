@@ -5887,3 +5887,60 @@ html[data-readonly] a[href^="/api/backups/"] {
         bottom: calc(3.6rem + env(safe-area-inset-bottom));
     }
 }
+
+/* Game page: keep an older update on purpose - quiet until kept, then the ok green. */
+.game-keep {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    padding: .1rem .5rem;
+    border: 1px solid var(--op-border-strong);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--op-text-muted);
+    font-size: .75rem;
+    font-weight: 600;
+}
+
+.game-keep:hover,
+.game-keep:focus-visible {
+    color: var(--op-text);
+    border-color: var(--op-nav);
+}
+
+.game-keep.is-kept {
+    color: var(--op-ok);
+    border-color: rgba(var(--op-ok-rgb), .55);
+    background-color: rgba(var(--op-ok-rgb), .12);
+}
+
+/* Settings: the ⓘ beside an option whose explanation is long, and its popover. */
+.help-info {
+    display: inline-grid;
+    place-items: center;
+    margin-left: .35rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--op-text-muted);
+    font-size: .9rem;
+    line-height: 1;
+    vertical-align: middle;
+    cursor: help;
+}
+
+.help-info:hover,
+.help-info:focus-visible {
+    color: var(--op-nav);
+}
+
+.help-popover {
+    --bs-popover-max-width: 22rem;
+    --bs-popover-bg: var(--op-surface-2);
+    --bs-popover-border-color: var(--op-border-strong);
+    --bs-popover-body-color: var(--op-text);
+    --bs-popover-body-padding-x: .85rem;
+    --bs-popover-body-padding-y: .65rem;
+    font-size: .85rem;
+    line-height: 1.45;
+}

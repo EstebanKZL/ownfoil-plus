@@ -219,3 +219,45 @@ def test_pending_files_lists_compress_decompress_combine_and_split_on_their_way(
     data = gql(client, "{ pendingFiles { items { stages file { filename } } } }")
     entry = next(e for e in data["pendingFiles"]["items"] if e["file"]["filename"] == "ops_fixture_file.nsz")
     assert "decompress" in entry["stages"] and "combine" in entry["stages"]
+
+
+def test_an_older_update_kept_on_purpose_is_never_listed_or_deleted(client, shop_app, tmp_path):
+    """Kept on purpose (POST /api/files/<id>/keep): an older update is neither offered
+    by Files > Outdated updates nor deleted by the automatic cleanup."""
+    old_path = tmp_path / "kept_old_update.nsp"
+    old_path.write_bytes(b"old")
+    with shop_app.app.app_context():
+        from db import Apps, Files, Libraries, db
+        lib = Libraries.query.first()
+        newest_app = Apps.query.filter_by(app_id="0100000000010800").first()
+        f = Files(library_id=lib.id, filepath=str(old_path), folder="Test Game",
+                 filename="kept_old_update.nsp", extension="nsp", size=3,
+                 identified=True, multicontent=False)
+        db.session.add(f)
+        db.session.flush()
+        older_app = Apps(title_id=newest_app.title_id, app_id="0100000000010800",
+                         app_version="0", app_type="UPDATE", owned=True)
+        db.session.add(older_app)
+        db.session.flush()
+        older_app.files.append(f)
+        db.session.commit()
+        file_id = f.id
+
+    resp = client.post(f"/api/files/{file_id}/keep", json={"keep": True})
+    assert resp.status_code == 200 and resp.get_json()["keep"] is True
+    assert gql(client, "{ outdatedUpdateGroups { titleId } }")["outdatedUpdateGroups"] == []
+    with shop_app.app.app_context():
+        from library import remove_outdated_update_files
+        remove_outdated_update_files()
+    assert old_path.exists()
+
+    # Let go: offered again.
+    assert client.post(f"/api/files/{file_id}/keep", json={"keep": False}).get_json()["keep"] is False
+    groups = gql(client, "{ outdatedUpdateGroups { remove { file { id keep } } } }")["outdatedUpdateGroups"]
+    assert [r["file"] for g in groups for r in g["remove"]] == [{"id": str(file_id), "keep": False}]
+
+
+def test_only_an_admin_keeps_a_file(shop_app):
+    resp = shop_app.client.post("/login", data={"user": "shopper", "password": fixture.PASSWORDS["shopper"]})
+    assert resp.status_code in (302, 303)
+    assert shop_app.client.post("/api/files/1/keep", json={"keep": True}).status_code in (302, 401, 403)

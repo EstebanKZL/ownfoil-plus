@@ -499,8 +499,21 @@ function copyHeader(c, g, tab) {
     const pillNode = recommended ? pill('success', I18N.pillKeep) : (g.decided ? pill('danger', I18N.pillDelete) : pill('secondary', I18N.pillUndecided));
     const reasonText = !recommended && c.reason ? REASONS[c.reason][1] : null;
     const keepBtn = recommended ? null : el('button', {type: 'button',
-        className: 'btn btn-sm btn-outline-success', textContent: I18N.keepThisCopyButton});
-    if (keepBtn) keepBtn.addEventListener('click', async () => {
+        className: 'btn btn-sm btn-outline-success',
+        textContent: g.kind === 'outdated' ? I18N.keepUpdateButton : I18N.keepThisCopyButton});
+    // An older update: kept on purpose (never deleted as old), not a duplicate settled.
+    if (keepBtn && g.kind === 'outdated') keepBtn.addEventListener('click', async () => {
+        try {
+            const r = await fetch(`/api/files/${c.file.id}/keep`, {method: 'POST', credentials: 'same-origin',
+                headers: {'Content-Type': 'application/json'}, body: JSON.stringify({keep: true})});
+            if (!r.ok) throw new Error(r.statusText);
+            notice(I18N.keptUpdate.replace('{name}', c.file.filename));
+            tab.rows = null;
+            loadStats();
+            loadTab(true);
+        } catch (e) { notice(e.message); }
+    });
+    else if (keepBtn) keepBtn.addEventListener('click', async () => {
         if (!confirm(I18N.keepThisCopyConfirmTemplate.replace('{name}', c.file.filename))) return;
         try {
             await gql('mutation ($id: ID!) { resolveDuplicateFiles(keepFileId: $id) }', {id: c.file.id}, true);

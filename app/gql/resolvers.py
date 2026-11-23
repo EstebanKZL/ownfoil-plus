@@ -102,8 +102,11 @@ def _title_cols(driver: str, sel: "Selection") -> str:
         # The DLC counts a card shows ("DLC 1/2"): only when asked, one lookup each.
         own_sel = sel.child("ownership")
         if own_sel.has("dlcOwned") or own_sel.has("dlcTotal"):
+            # A DLC not out yet (its release date still ahead) isn't counted until that
+            # day, unless it is already in the library.
             cols.append("(SELECT COUNT(DISTINCT a.app_id) FROM main.apps a "
-                        "WHERE a.title_id = ot.id AND a.app_type = 'DLC') AS dlc_total")
+                        "WHERE a.title_id = ot.id AND a.app_type = 'DLC' "
+                        f"AND (a.owned OR NOT {_DLC_UPCOMING})) AS dlc_total")
             cols.append("(SELECT COUNT(DISTINCT a.app_id) FROM main.apps a "
                         "WHERE a.title_id = ot.id AND a.app_type = 'DLC' AND a.owned) AS dlc_owned")
     return ", ".join(cols)
@@ -119,13 +122,16 @@ f.identification_attempts AS identification_attempts,
 f.organized AS organized, f.signature_valid AS signature_valid,
 f.hash_valid AS hash_valid, f.hash_modified AS hash_modified,
 f.verification_error AS verification_error,
-f.verified_at AS verified_at, f.mtime AS mtime, f.added_at AS added_at
+f.verified_at AS verified_at, f.mtime AS mtime, f.added_at AS added_at,
+f.keep AS keep
 """
 
 # `titledb.titles` already holds one row per id, merged across the metadata sources by
 # titledb.store, so this join needs no dedup predicate. `td.source` is the
 # highest-priority source that contributed a field.
 _TITLEDB = "titledb.titles"
+# A DLC app row whose release date is still ahead: not out yet, so not missing.
+_DLC_UPCOMING = "(COALESCE(a.release_date, '') > date('now', 'localtime'))"
 
 # Is the highest known version of this app id owned? Correlated so it reads the same
 # whether or not the outer query groups, and NULL-safe: an app with nothing owned is
@@ -311,6 +317,7 @@ def _build_file(row, *, include_filepath: bool) -> File:
         verified_at=_iso(row.verified_at),
         mtime=row.mtime,
         added_at=_iso(row.added_at),
+        keep=bool(getattr(row, 'keep', False)),
     )
 
 
@@ -1711,9 +1718,11 @@ def resolve_stats(*, ctx: GraphQLContext, info) -> LibraryStats:
 
     if sel.has("outdatedDlc") or sel.has("missingDlc"):
         r = db.session.execute(text("""
-        SELECT COALESCE(SUM(owned_v IS NULL), 0), COALESCE(SUM(owned_v IS NOT NULL AND known > owned_v), 0)
+        SELECT COALESCE(SUM(owned_v IS NULL AND NOT upcoming), 0),
+               COALESCE(SUM(owned_v IS NOT NULL AND known > owned_v), 0)
         FROM (SELECT MAX(CAST(a.app_version AS INTEGER)) AS known,
-                     MAX(CASE WHEN a.owned THEN CAST(a.app_version AS INTEGER) END) AS owned_v
+                     MAX(CASE WHEN a.owned THEN CAST(a.app_version AS INTEGER) END) AS owned_v,
+                     MIN(""" + _DLC_UPCOMING + """) AS upcoming
               FROM apps a JOIN main.titles t ON t.id = a.title_id
               WHERE a.app_type = :dlc AND t.have_base = 1
               GROUP BY a.app_id)"""), {"dlc": "DLC"}).first()

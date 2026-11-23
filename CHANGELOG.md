@@ -4,6 +4,23 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.62]
+
+- **A DLC not out yet isn't missing.** The catalogue lists DLC as soon as they are
+  announced, with their release date: one still ahead counted in *Missing DLC*, kept its
+  game from being complete and showed as *Missing* on the game page, though there was
+  nothing to get yet. It now counts from its release day on, and the game page says
+  *Out on 12/03/2027* in its place; the card's and the page's DLC counts leave it out
+  too.
+- **Keep an older update on purpose.** With *Delete older updates* on, every older update
+  went, even one wanted for the cheats that only work with that version. An older
+  update now has a *Keep* button on its game's page (and *Keep this update* in *Files >
+  Outdated updates*): kept, it is never deleted as old, automatically or by hand, until
+  it is let go. Stored per file (migration `c9d0e1f2a3b6`).
+- **Settings reads as its options**: an explanation of more than a line or two is folded
+  into an ⓘ beside the option's name, opened on hover with a mouse or on a tap on a
+  phone; short ones stay in view.
+
 ## [6.2.5.61]
 
 - **Organize on a disk that doesn't tell upper and lower case apart** (Windows, macOS,

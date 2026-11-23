@@ -1800,3 +1800,45 @@ $(function () {
     // The settings arrive after the page: follow them once they're in.
     $(document).ajaxStop(syncDependents);
 });
+
+
+// --- Settings: a long explanation folded into an ⓘ beside its option ------------------
+// A help text of more than a line or two goes into a popover behind an info button next
+// to the option's name - shown on hover or focus with a mouse, on a tap on a touch
+// screen - so the page reads as its options. Short help stays where it was.
+const LONG_HELP = 120;
+
+function foldLongHelp(root) {
+    const touch = window.matchMedia('(hover: none)').matches;
+    root.querySelectorAll('.form-text').forEach(help => {
+        if (help.dataset.folded || help.textContent.trim().length <= LONG_HELP) return;
+        const holder = help.parentElement && help.parentElement.closest('.form-check, .mb-3, .col-12, .row, div');
+        const label = holder && holder.querySelector('.form-check-label, .form-label, .col-form-label');
+        if (!label) return;
+        help.dataset.folded = '1';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'help-info';
+        btn.setAttribute('aria-label', I18N.moreInfo);
+        btn.innerHTML = '<i class="bi bi-info-circle" aria-hidden="true"></i>';
+        label.after(btn);
+        help.hidden = true;
+        // The text is this page's own (the translations), so its <code> marks stay.
+        new bootstrap.Popover(btn, {
+            content: help.innerHTML, html: true, placement: 'top', container: 'body',
+            trigger: touch ? 'click' : 'hover focus', customClass: 'help-popover',
+        });
+    });
+}
+
+$(function () {
+    foldLongHelp(document.querySelector('.settings-page') || document.body);
+    // A tap elsewhere closes an open one on a touch screen.
+    document.addEventListener('click', event => {
+        if (event.target.closest('.help-info, .popover')) return;
+        document.querySelectorAll('.help-info').forEach(b => {
+            const p = bootstrap.Popover.getInstance(b);
+            if (p) p.hide();
+        });
+    });
+});
