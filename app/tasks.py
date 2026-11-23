@@ -1234,7 +1234,8 @@ def _identify(file, mgmt):
     """Identify one file and upsert its Apps/Titles."""
     identified_title_ids = []
     # A re-identify pass (filename -> keys) is not a new arrival worth announcing.
-    was_identified = bool(file.identified)
+    # Nor is a file only being linked to its game again (see migration d0e1f2a3b4c7).
+    was_identified = bool(file.identified) or file.identification_type == 'relink'
     filepath = file.filepath
     logger.info(f'Identifying file: {file.filename}')
     identification, success, file_contents, error = titles_lib.identify_file(filepath)

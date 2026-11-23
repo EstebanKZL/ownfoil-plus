@@ -16,7 +16,12 @@ see the upstream project for its own history.
   went, even one wanted for the cheats that only work with that version. An older
   update now has a *Keep* button on its game's page (and *Keep this update* in *Files >
   Outdated updates*): kept, it is never deleted as old, automatically or by hand, until
-  it is let go. Stored per file (migration `c9d0e1f2a3b6`).
+  it is let go. Stored per file (migration `c9d0e1f2a3b6`). The first build of this
+  version added that column by rebuilding the files table, which, with the foreign keys
+  on, dropped every file's link to its game: games, covers and counts went missing until
+  each file was identified again. The column is now added in place, and migration
+  `d0e1f2a3b4c7` puts a library that was hit right - its files are identified again at
+  the next start, quietly (no "file added" messages).
 - **Settings reads as its options**: an explanation of more than a line or two is folded
   into an ⓘ beside the option's name, opened on hover with a mouse or on a tap on a
   phone; short ones stay in view.
