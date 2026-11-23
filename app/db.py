@@ -152,6 +152,9 @@ class Files(db.Model):
     # When ownfoil first saw the file. Distinct from mtime, which a re-organize or a
     # copy rewrites - only this one can answer "recently added".
     added_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, index=True)
+    # Kept on purpose (an older update wanted for its cheats, say): never deleted as an
+    # old update, automatically or from Files > Outdated updates.
+    keep = db.Column(db.Boolean, nullable=False, default=False, server_default='0')
 
     library = db.relationship('Libraries', backref=db.backref('files', lazy=True, cascade="all, delete-orphan"))
 

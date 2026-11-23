@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 from utils import *
 from db import update_file_path
+from datetime import date as _date
 
 def prepare_template_names(format_data, windows_compatible):
     """Sanitize the names before formatting, so they cannot introduce path separators, and cap their length."""
@@ -593,7 +594,11 @@ def remove_outdated_update_files():
                             # Create a list to iterate over as the original collection might change during deletion
                             files_to_process = install_files
                             for file_obj in files_to_process:
-                                # Check if file meets criteria: identified, not multicontent
+                                # Check if file meets criteria: identified, not multicontent,
+                                # and not kept on purpose
+                                if file_obj.keep:
+                                    logger.info(f"Keeping outdated update file on purpose: {file_obj.filepath}")
+                                    continue
                                 if file_obj.identified and not file_obj.multicontent:
                                     logger.info(f"Removing outdated update file: {file_obj.filepath} (App ID: {app_obj.app_id}, Version: {app_obj.app_version}) - Greater owned version available.")
                                     
@@ -651,7 +656,7 @@ def outdated_update_groups():
             if version >= newest_version:
                 continue
             remove_entries.extend((app_data['app_version'], f) for f in files
-                                  if f.identified and not f.multicontent)
+                                  if f.identified and not f.multicontent and not f.keep)
 
         if not remove_entries:
             continue
@@ -927,15 +932,20 @@ def update_title_flags(title_id):
             up_to_date = max(owned_versions) >= highest_available
 
         cursor.execute(
-            "SELECT app_id, app_version, owned FROM apps WHERE title_id = ? AND app_type = ?",
+            "SELECT app_id, app_version, owned, release_date FROM apps WHERE title_id = ? AND app_type = ?",
             (title_db_id, APP_TYPE_DLC)
         )
         # A DLC is in the library when any version of it is: a newer one is a pending
         # update of it (counted apart, see gql's stats.outdatedDlc), not a missing DLC.
-        dlc_owned = {}
-        for dlc_app_id, _version, owned in cursor.fetchall():
+        # One not out yet (its release date still ahead) doesn't keep the game from
+        # being complete until that day.
+        today = _date.today().isoformat()
+        dlc_owned, dlc_upcoming = {}, {}
+        for dlc_app_id, _version, owned, release_date in cursor.fetchall():
             dlc_owned[dlc_app_id] = dlc_owned.get(dlc_app_id, False) or bool(owned)
-        complete = all(dlc_owned.values())
+            upcoming = bool(release_date) and str(release_date) > today
+            dlc_upcoming[dlc_app_id] = dlc_upcoming.get(dlc_app_id, True) and upcoming
+        complete = all(owned or dlc_upcoming[app_id] for app_id, owned in dlc_owned.items())
 
         cursor.execute(
             "UPDATE titles SET have_base = ?, up_to_date = ?, complete = ? WHERE id = ?",

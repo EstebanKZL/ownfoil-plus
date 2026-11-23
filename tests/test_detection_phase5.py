@@ -120,3 +120,52 @@ def test_the_library_tiles_count_updates_for_games_only():
     from i18n import TRANSLATIONS
     for key in ("library.tile_dlc_missing",):
         assert TRANSLATIONS[key]["en"] and TRANSLATIONS[key]["es"], key
+
+
+# --- a DLC not out yet -----------------------------------------------------------------------
+
+def test_a_dlc_not_out_yet_is_not_missing(tmp_path, monkeypatch):
+    """A DLC the catalogue lists with a release date still ahead doesn't make the game
+    incomplete, isn't counted as missing, and doesn't count in the card's "DLC 0/1"."""
+    import datetime
+    config = tmp_path / "config"
+    config.mkdir()
+    monkeypatch.setattr(db_mod, "DB_FILE", str(config / "ownfoil.db"))
+    monkeypatch.setattr(db_mod, "TITLES_DB_FILE", str(config / "titles.db"))
+    monkeypatch.setattr(titledb.store, "TITLES_DB_FILE", str(config / "titles.db"))
+    monkeypatch.setattr(titledb.store, "DB_FILE", str(config / "ownfoil.db"))
+    app = create_app(f"sqlite:///{config / 'ownfoil.db'}")
+    app.add_url_rule("/api/graphql", view_func=graphql_dispatch, methods=["GET", "POST"])
+    init_db(app)
+    titledb.store.create_titledb(str(config / "titles.db"))
+    future = (datetime.date.today() + datetime.timedelta(days=30)).isoformat()
+    past = (datetime.date.today() - datetime.timedelta(days=30)).isoformat()
+    with app.app_context():
+        title = Titles(title_id=GAME, have_base=True)
+        db.session.add(title)
+        db.session.flush()
+        db.session.add_all([
+            Apps(title_id=title.id, app_id=GAME, app_version="0", app_type=APP_TYPE_BASE, owned=True),
+            Apps(title_id=title.id, app_id=DLC_OLD, app_version="0", app_type=APP_TYPE_DLC, owned=True,
+                 release_date=past),
+            Apps(title_id=title.id, app_id=DLC_MISSING, app_version="0", app_type=APP_TYPE_DLC, owned=False,
+                 release_date=future),
+        ])
+        db.session.commit()
+        from library import update_titles
+        update_titles()
+        db.session.expire_all()   # the flags are written on their own connection
+        assert Titles.query.filter_by(title_id=GAME).one().complete is True
+    client = app.test_client()
+    stats = client.get("/api/graphql", query_string={"query": "{ stats { missingDlc } }"}).get_json()
+    assert stats["data"]["stats"]["missingDlc"] == 0
+    # Once the day has come, it is missing.
+    with app.app_context():
+        dlc = Apps.query.filter_by(app_id=DLC_MISSING).one()
+        dlc.release_date = past
+        db.session.commit()
+        update_titles()
+        db.session.expire_all()
+        assert Titles.query.filter_by(title_id=GAME).one().complete is False
+    stats = client.get("/api/graphql", query_string={"query": "{ stats { missingDlc } }"}).get_json()
+    assert stats["data"]["stats"]["missingDlc"] == 1

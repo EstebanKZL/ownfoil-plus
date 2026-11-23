@@ -738,6 +738,20 @@ def compress_files_api():
         queued += 1
     return jsonify({'success': True, 'queued': queued})
 
+@app.post('/api/files/<int:file_id>/keep')
+@access_required('admin')
+def keep_file_api(file_id):
+    """Keep a file on purpose ({"keep": true}) or not: a kept older update is never
+    deleted as old, automatically or from Files > Outdated updates."""
+    data = request.get_json(silent=True) or {}
+    f = db.session.get(Files, file_id)
+    if f is None:
+        return jsonify({'success': False, 'error': 'not found'}), 404
+    f.keep = bool(data.get('keep', True))
+    db.session.commit()
+    logger.info(f"{'Keeping' if f.keep else 'No longer keeping'} {f.filename} on purpose")
+    return jsonify({'success': True, 'keep': f.keep})
+
 @app.get('/api/files/combine')
 @access_required('admin')
 def combine_candidates_api():

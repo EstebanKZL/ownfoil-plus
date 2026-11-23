@@ -299,6 +299,7 @@ class DownloadableFile:
     contents: Optional[List[str]] = desc(
         "For a file holding several contents (a bundle), one entry per content: BASE, "
         "UPDATE, then each DLC. Null for an ordinary file.", default=None)
+    keep: bool = desc("Kept on purpose: an older update never deleted as old.", default=False)
 
 
 @described(strawberry.type)
@@ -341,6 +342,9 @@ class File:
     organized: bool = desc(
         "The file sits where the configured naming template says it should. False "
         "means a re-organize would move or rename it.", default=False)
+    keep: bool = desc(
+        "Kept on purpose: an older update that is never deleted as old, automatically "
+        "or from Files > Outdated updates.", default=False)
     signature_valid: Optional[bool] = desc(
         "Whether every NCA header signature checked out, and the container decrypted "
         "with the configured keys. `true` means the signature is Nintendo's, "
@@ -539,7 +543,8 @@ class App:
         return DownloadableFile(id=f.id, size=f.size,
                                 verification_status=VerificationStatus(verification_status(f)),
                                 format=(f.extension or '').upper() or None,
-                                contents=_bundle_contents(f) if getattr(f, 'multicontent', False) else None)
+                                contents=_bundle_contents(f) if getattr(f, 'multicontent', False) else None,
+                                keep=bool(getattr(f, 'keep', False)))
 
     @described_field
     def titledb(self) -> Optional["Title"]:

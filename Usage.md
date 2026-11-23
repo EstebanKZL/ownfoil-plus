@@ -82,7 +82,7 @@ The landing page of `Admin`. At the top, what needs attention, each linking to w
 
 The landing page: your whole library as cards, a compact grid or a list.
 
-- **At the top**, four tiles: the number of games, pending updates, missing DLC, and the games **up to date** with their share (*Up to date · 64%*, with a small bar). Each tile shows its games when clicked.
+- **At the top**, four tiles: the number of games, pending updates, missing DLC, and the games **up to date** with their share (*Up to date · 64%*, with a small bar). Each tile shows its games when clicked. A DLC announced with a release date still ahead isn't counted as missing until that day: its game's page says *Out on 12/03/2027* instead.
 - **The toolbar**: search (by name or title ID), sort by **name**, **release date**, **region**, **size**, **date added** or **ID**, with a button for each direction, the view (cards, compact, list), the **View** menu (games per page - one for every view - and the card size, which Cards and Compact each remember) and the **Filters** menu (ownership, update, DLC, favourites). A dot on *Filters* means some filter is on. Every view, the list too, takes the same filters.
 - **The pills** under it pick the console - *All*, *Switch*, *Switch 2* - each with how many games it gives, in every view. The other filters are in the Filters menu; the tiles at the top apply the common ones in one click.
 - **Favourites**: the star at the top right of a cover (or *Add to favourites* on the game's page) marks a game. Each user has their own list; *Favourites only* in the Filters menu shows just those games, on top of the other filters.
@@ -154,7 +154,7 @@ Users with the `Backup` permission see their own backups JKSV uploaded to the sa
 
 ## Settings page
 
-Admin only, and a single scrolling page with its sections as cards. An index beside them (a row of chips under the top bar on phones) marks the section you're reading and takes you to any of them; the address follows, so `/admin/settings#Notifications` - or any other section's name - opens the page right there.
+Admin only, and a single scrolling page with its sections as cards. A long explanation of an option is folded into an ⓘ beside its name: it opens on hover with a mouse, or on a tap on a phone; short ones stay in view. An index beside them (a row of chips under the top bar on phones) marks the section you're reading and takes you to any of them; the address follows, so `/admin/settings#Notifications` - or any other section's name - opens the page right there.
 
 # Clients
 
@@ -259,7 +259,7 @@ Automated library management. Everything in this section shares the `Submit` but
 
 | Setting | Default | Description |
 | --- | --- | --- |
-| `Delete older updates` | disabled | Deletes older update files when a newer version of the same update is in your library. |
+| `Delete older updates` | disabled | Deletes older update files when a newer version of the same update is in your library. An older update marked *Keep* on its game's page (or with *Keep this update* in *Files > Outdated updates*) is never deleted - for the cheats that only work with that version, say. |
 
 #### File compression
 

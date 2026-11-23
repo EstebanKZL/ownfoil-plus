@@ -302,3 +302,11 @@ def test_local_artworks_disk_usage_table_reports_all_four_renditions(client):
     assert "const MEDIA_SIZES = ['original', 'thumb', 'client', 'screen'];" in js
     assert '"/api/settings/local_media"' in js
     assert '"/api/settings/local_media/usage"' in js
+
+
+def test_long_explanations_fold_into_an_info_button():
+    import os
+    js = open(os.path.join(os.path.dirname(__file__), "..", "app", "static", "js", "settings.js"),
+              encoding="utf-8").read()
+    assert "function foldLongHelp" in js and "new bootstrap.Popover" in js
+    assert "I18N.moreInfo" in js
