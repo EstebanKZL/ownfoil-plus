@@ -2,6 +2,10 @@
 
 Revision ID: c9d0e1f2a3b6
 Revises: b8c9d0e1f2a5
+
+A plain ALTER TABLE ADD COLUMN - never Alembic's batch mode here: on SQLite that
+rebuilds `files` (copy, drop, rename), and with the foreign keys on, dropping the old
+table cascades into `app_files` and every file loses its link to its game.
 """
 from alembic import op
 import sqlalchemy as sa
@@ -14,10 +18,10 @@ depends_on = None
 
 
 def upgrade():
-    with op.batch_alter_table('files') as batch:
-        batch.add_column(sa.Column('keep', sa.Boolean(), nullable=False, server_default=sa.false()))
+    columns = [c['name'] for c in sa.inspect(op.get_bind()).get_columns('files')]
+    if 'keep' not in columns:
+        op.add_column('files', sa.Column('keep', sa.Boolean(), nullable=False, server_default='0'))
 
 
 def downgrade():
-    with op.batch_alter_table('files') as batch:
-        batch.drop_column('keep')
+    op.drop_column('files', 'keep')

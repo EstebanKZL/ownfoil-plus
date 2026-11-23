@@ -38,7 +38,7 @@ def test_a_migration_adds_it_and_is_the_new_head():
     cfg = Config()
     cfg.set_main_option("script_location", os.path.join(ROOT, "app", "migrations"))
     script = ScriptDirectory.from_config(cfg)
-    assert script.get_heads() == ["c9d0e1f2a3b6"]
+    assert script.get_heads() == ["d0e1f2a3b4c7"]
     assert script.get_revision("a7b8c9d0e1f3").down_revision == "f6a7b8c9d0e2"
 
 
