@@ -81,6 +81,9 @@ def main():
 
     options = {
         'bind': '0.0.0.0:8465',
+        # Room for a long GET (a GraphQL query in the URL): the default 4094 refused
+        # some with "Request Line is too large"; the pages send long ones by POST now.
+        'limit_request_line': 8190,
         'workers': 1,
         'worker_class': 'gthread',
         # Each open realtime WebSocket pins a thread for its lifetime, so the pool has to

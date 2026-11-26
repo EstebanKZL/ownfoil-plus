@@ -4,6 +4,48 @@ All notable changes to Ownfoil-Plus are documented here, version by version. Thi
 only covers this fork's own changes on top of [Ownfoil](https://github.com/a1ex4/ownfoil) -
 see the upstream project for its own history.
 
+## [6.2.5.63]
+
+- **The server no longer restart-loops on a task queue with failed work under finished
+  tasks.** Each start clears the finished and queued tasks with one bulk delete; a task
+  points at its parent (`tasks.parent_id`, no ON DELETE rule) and SQLite checks it, so
+  a completed parent with a failed child under it - task 6881 (failed) under 5166
+  (completed) - failed the whole statement with "FOREIGN KEY constraint failed", and
+  the error stopped the start. Now a finished or queued task only goes when no task that
+  stays hangs under it, at any depth (one recursive query); a queued task that belongs
+  to a pipeline is marked failed ("interrupted by the restart") and kept instead of
+  being left to run on its own. The cleanup can no longer stop a start: it is rolled
+  back and logged, and the server starts with the queue as it was. The same bulk delete
+  when a parent task finishes - which is how 5166 was left behind - now takes the
+  parent and everything under it in one statement.
+- **Organize no longer renames the library there and back at start.** The library pass
+  ran alongside the titledb update; a titledb rebuild empties the organizer's own names
+  (Settings > Library > naming language) before importing them again, so files were
+  named in the display language (US.es) mid-import and back in the naming language
+  (US.en) by the next pass. The pass now starts after the titledb update, and while
+  the naming language's names are being imported a file waits instead of taking the
+  display language's name.
+- **Two contents a template names alike keep apart by their id.** Two different DLC
+  named the same without `{appId}` in the template (01002CC003FE700F and
+  01002CC003FE7013, both "Eli Arborwood") got "(2)" - depending on which got there
+  first. The second now takes its id: `Eli Arborwood [01002CC003FE7013].nsp`, the same
+  on every run; a true duplicate of the same content still gets "(n)".
+- **A long name is cut in its title, not its ids.** The cut with "…" for Windows-length
+  paths took the end of the name, where `[TitleID][vVersion]` are, so two files of one
+  game could be cut to the same name. The tags at the end now stay whole.
+- **The watcher no longer queues Organize's own moves as new files.** A disk that reports
+  a move as a delete plus a separate create (network shares, polling) used up the move's
+  ignore mark on the delete, so the create was queued as "New file" and failed later
+  with "No such file or directory" once Organize had moved it again. The create half is
+  ignored too now, and a file event whose file is gone by the time its task runs is
+  skipped (logged at DEBUG), not failed.
+- **Long GraphQL queries go by POST.** Gunicorn refused some requests with "Request Line is
+  too large (4789 > 4094)": Files batches one alias per task it is watching into a
+  single query (dozens while compressing or verifying many files), and the lists that
+  fetch icons do the same per title - all sent by GET. Every page now sends a query by
+  POST once its URL would pass 2000 characters (`static/js/graphql.js`), short ones
+  still by GET for the ETag cache, and gunicorn's `limit_request_line` is 8190.
+
 ## [6.2.5.62]
 
 - **A DLC not out yet isn't missing.** The catalogue lists DLC as soon as they are

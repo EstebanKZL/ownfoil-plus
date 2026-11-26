@@ -5,7 +5,7 @@ import datetime
 import logging
 import os
 from collections import namedtuple
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 import titles as titles_lib
 import titledb
@@ -365,6 +365,24 @@ def on_task_completed(task_id, parent_id):
     _try_complete_parent(parent_id)
 
 
+_SUBTREE = """
+    WITH RECURSIVE sub(id) AS (
+        SELECT id FROM tasks WHERE parent_id = :root
+        UNION
+        SELECT t.id FROM tasks t JOIN sub s ON t.parent_id = s.id
+    )
+"""
+
+
+def _delete_subtree(root_id):
+    """Delete a task and every task below it, in one statement (foreign keys are checked
+    at its end); a running task below is unparented first and left to finish."""
+    db.session.execute(text(_SUBTREE + "UPDATE tasks SET parent_id = NULL "
+                            "WHERE id IN (SELECT id FROM sub) AND status = 'running'"), {'root': root_id})
+    db.session.execute(text(_SUBTREE + "DELETE FROM tasks WHERE (id IN (SELECT id FROM sub) "
+                            "AND status != 'running') OR id = :root"), {'root': root_id})
+
+
 def _try_complete_parent(parent_id):
     """Atomically update parent progress and complete if all children are done."""
     connection = db.engine.raw_connection()
@@ -414,9 +432,12 @@ def _try_complete_parent(parent_id):
         if grandparent_id is None:
             _record_task_history(task_name, json.loads(row[2]), datetime.datetime.utcnow())
 
-        # Delete parent and its children
-        Task.query.filter_by(parent_id=parent_id).delete()
-        Task.query.filter_by(id=parent_id).delete()
+        # Delete the parent and everything under it - children, and their own children
+        # (a failed child can have some). A bulk delete of the children alone failed the
+        # parent_id foreign key whenever one of them had children, leaving a completed
+        # parent behind with rows still pointing at it. A task still running somewhere
+        # below (only reachable under a failed child) is let go instead: unparented.
+        _delete_subtree(parent_id)
         db.session.commit()
 
         # Propagate completion up the chain
@@ -581,27 +602,95 @@ def reap_worker_task(worker_id):
 
 # --- Startup cleanup ---
 
+# `tasks.parent_id` points at `tasks.id` with no ON DELETE rule, and SQLite checks it
+# (PRAGMA foreign_keys=ON): a row can only go once nothing still points at it. A bulk
+# DELETE of every completed (or pending) row took out parents whose children stayed -
+# a failed child under a completed parent - and failed the whole statement, which at
+# startup kept the server from starting at all. So a row of the statuses being cleared
+# only goes when no row that stays descends from it, at any depth.
+
+# Ancestors (at any depth) of every row whose status is not among :removable. SQLite
+# checks a DELETE's foreign keys at the end of the statement, so a parent and its
+# children going together in one statement is fine.
+_KEPT_ANCESTORS = """
+    WITH RECURSIVE keep(id) AS (
+        SELECT parent_id FROM tasks
+         WHERE status NOT IN ({removable}) AND parent_id IS NOT NULL
+        UNION
+        SELECT t.parent_id FROM tasks t JOIN keep k ON t.id = k.id
+         WHERE t.parent_id IS NOT NULL
+    )
+"""
+
+
+def _statuses_sql(statuses):
+    return ', '.join(f"'{s}'" for s in statuses)
+
+
+def _delete_unreferenced(statuses):
+    """Delete the rows of these statuses that no remaining row descends from.
+    Returns how many went."""
+    removable = _statuses_sql(statuses)
+    result = db.session.execute(text(
+        _KEPT_ANCESTORS.format(removable=removable) +
+        f"DELETE FROM tasks WHERE status IN ({removable}) "
+        f"AND id NOT IN (SELECT id FROM keep WHERE id IS NOT NULL)"))
+    # SQLite reports -1 for a statement opened by WITH.
+    return max(result.rowcount or 0, 0)
+
+
 def cleanup_tasks():
-    """Startup cleanup: clear the pending queue and fail interrupted tasks."""
-    # Remove completed tasks
-    Task.query.filter_by(status='completed').delete()
+    """Startup cleanup: clear finished and queued tasks and fail interrupted ones.
 
-    # Clear the entire pending queue
-    Task.query.filter_by(status='pending').delete()
+    Never raises: a cleanup that can't finish is logged and rolled back, and the
+    server starts with the queue as it was - the rows left over are harmless."""
+    try:
+        _cleanup_tasks()
+    except Exception:
+        db.session.rollback()
+        logger.exception('Startup task cleanup failed; starting with the task queue as it was')
+        return
+    try:
+        # Sweep leftover output from any (de)compression interrupted by the restart.
+        purge_temp_files()
+    except Exception:
+        db.session.rollback()
+        logger.exception('Could not sweep the temporary files of interrupted tasks')
 
-    # Mark running/waiting tasks as failed — they can't survive a restart
+
+def _cleanup_tasks():
+    now = datetime.datetime.utcnow()
+
+    # Running/waiting tasks can't survive a restart: failed, so they stay to be seen.
     stale = Task.query.filter(Task.status.in_(['running', 'waiting_for_children'])).all()
     for task in stale:
         task.status = 'failed'
         task.error_message = 'Interrupted by application restart'
         task.exit_code = 1
-        task.completed_at = datetime.datetime.utcnow()
+        task.completed_at = now
         logger.info(f"Reset stale task {task.id} ({task.task_name})")
+    db.session.flush()
 
+    # The pending queue is cleared. A pending row that belongs to a pipeline (it has a
+    # parent) or that something still hangs under is failed the same way instead: kept,
+    # with its ancestors, and never left to run on its own after the restart.
+    interrupted = db.session.execute(text(
+        _KEPT_ANCESTORS.format(removable=_statuses_sql(('completed', 'pending'))) +
+        "UPDATE tasks SET status = 'failed', exit_code = 1, completed_at = :now, "
+        "error_message = 'Interrupted by application restart' "
+        "WHERE status = 'pending' AND (parent_id IS NOT NULL "
+        "OR id IN (SELECT id FROM keep WHERE id IS NOT NULL))"),
+        {'now': now}).rowcount
+    if interrupted and interrupted > 0:
+        logger.info(f'{interrupted} queued task(s) with work still under them marked failed')
+
+    # Completed and pending rows go, except a completed one that still has a failed (or
+    # otherwise kept) row somewhere below it: it stays until that row is dismissed.
+    removed = _delete_unreferenced(('completed', 'pending'))
+    kept = Task.query.filter_by(status='completed').count()
     db.session.commit()
-
-    # Sweep leftover output from any (de)compression interrupted by the restart.
-    purge_temp_files()
+    logger.debug(f'Startup cleanup removed {removed or "the"} finished/queued task(s)'
+                 + (f', kept {kept} completed with failed work under them' if kept else ''))
 
 
 # --- Helpers ---
@@ -715,9 +804,6 @@ def get_task(task_id):
 @register_task('startup')
 def startup_task(**kwargs):
     """Startup task: resume interrupted per-file work, then kick off the titledb update."""
-    # Enqueued here rather than only from update_titledb_task, whose network fetch can fail:
-    # recovery of an interrupted pipeline must not wait for the next scheduled titledb run.
-    enqueue_task('process_library')
     enqueue_task('download_media')
     # Recomputed on every start: the server's clock or timezone may have changed, and a
     # window turned off while the server was down must not leave a stale run behind.
@@ -732,6 +818,12 @@ def startup_task(**kwargs):
     except Exception:
         # A retry is already scheduled; scanning must not be held hostage to the network
         logger.exception('titledb update failed at startup')
+    # The library pass only now, after the titledb update: run alongside it, it named
+    # files from a titles.db being rebuilt (the organizer's names emptied mid-import)
+    # and the pass after the import renamed them all back. Enqueued here whatever the
+    # update did - its network fetch can fail, and recovering an interrupted pipeline
+    # must not wait for the next scheduled run; a rebuild's own enqueue dedups with it.
+    enqueue_task('process_library')
     scan_libraries_task()
 
 def _repair_file_names():
@@ -1205,6 +1297,8 @@ def add_file_task(library_path, filepath, **kwargs):
     library_id = get_library_id(library_path)
     # Runs once per file of a scan: an indexed lookup, not every path of the library.
     if file_path_in_db(filepath):
+        return
+    if _gone(filepath, 'Add'):
         return
 
     new_file = _insert_file(library_path, library_id, filepath)
@@ -2074,10 +2168,21 @@ def _reconcile_existing_file(file, filepath):
     return True
 
 
+def _gone(filepath, what):
+    """A file event's path that no longer exists by the time its task runs - most often
+    a file Organize moved again in between. Nothing to do: the task is done, not failed."""
+    if os.path.exists(filepath):
+        return False
+    logger.debug(f'{what}: {filepath} is no longer there (moved or removed since); skipped')
+    return True
+
+
 @register_task('handle_file_added')
 def handle_file_added_task(library_path, filepath, **kwargs):
     file = Files.query.filter_by(filepath=filepath).first()
     if file is None:
+        if _gone(filepath, 'New file'):
+            return
         enqueue_task('add_file', {'library_path': library_path, 'filepath': filepath})
         return
     if _reconcile_existing_file(file, filepath):
@@ -2086,6 +2191,8 @@ def handle_file_added_task(library_path, filepath, **kwargs):
 
 @register_task('handle_file_moved')
 def handle_file_moved_task(library_path, src_path, dest_path, **kwargs):
+    if _gone(dest_path, 'Moved file'):
+        return
     if file_exists_in_db(src_path):
         update_file_path(library_path, src_path, dest_path)
     else:

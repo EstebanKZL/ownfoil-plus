@@ -240,3 +240,60 @@ def test_the_languages_field_comes_from_the_catalogue(env, monkeypatch):
     assert organize_file(new_file, str(env.lib_dir), settings) is True
     db.session.refresh(new_file)
     assert new_file.filename == "Costume Pack A (En,Ja) [0100000000010001].nsp"
+
+
+# --- 6.2.5.63: names that don't flip, ids that keep names apart ------------------------
+
+DLC_B_ID = "0100000000010002"
+
+
+def test_two_contents_named_alike_get_their_own_id_not_a_number(env):
+    """Two different DLC a template names the same (no {appId} in it) - the real case
+    01002CC003FE700F / 01002CC003FE7013, both "Eli Arborwood": the second takes its id,
+    the same on every run, instead of a "(2)" that depended on which came first."""
+    settings = {**ORGANIZER_SETTINGS, "templates": {**ORGANIZER_SETTINGS["templates"],
+                "dlc": "{titleName}/DLC/{titleName}"}}
+    first = env.seed_dlc(DLC_A_ID, "a.nsp", content=b"A")
+    second = env.seed_dlc(DLC_B_ID, "b.nsp", content=b"B")
+    assert organize_file(first, str(env.lib_dir), settings) is True
+    assert organize_file(second, str(env.lib_dir), settings) is True
+    db.session.refresh(first)
+    db.session.refresh(second)
+    assert first.filename == "Game.nsp"
+    assert second.filename == f"Game [{DLC_B_ID}].nsp"
+    # A second pass finds both in place.
+    assert organize_file(second, str(env.lib_dir), settings) is True
+    db.session.refresh(second)
+    assert second.filename == f"Game [{DLC_B_ID}].nsp"
+    assert sorted(p.name for p in (env.lib_dir / "Game" / "DLC").iterdir()) == sorted(["Game.nsp", f"Game [{DLC_B_ID}].nsp"])
+
+
+def test_organize_waits_while_its_own_naming_locale_is_being_imported(env, monkeypatch, tmp_path):
+    """A titledb rebuild empties the organizer's names before importing them again: a
+    file organized in that window took the display language's name and the next pass
+    renamed it back. Now it waits."""
+    import library
+    import constants
+    titledb_dir = tmp_path / "td"
+    titledb_dir.mkdir()
+    (titledb_dir / "titles.US.en.json").write_text("{}")
+    monkeypatch.setattr(library, "TITLEDB_DIR", str(titledb_dir))
+    settings = {**ORGANIZER_SETTINGS, "name_region": "US", "name_language": "en"}
+    f = env.seed_dlc(DLC_A_ID, "waiting.nsp")
+    assert library.organizer_names_pending("US.en") is True
+    assert not organize_file(f, str(env.lib_dir), settings)
+    db.session.refresh(f)
+    assert f.filename == "waiting.nsp"           # not moved
+    # With no file for that locale at all, there is nothing to wait for.
+    (titledb_dir / "titles.US.en.json").unlink()
+    assert library.organizer_names_pending("US.en") is False
+    assert constants.TITLEDB_DIR  # the real one is untouched
+
+
+def test_a_long_name_is_cut_in_its_title_not_its_ids():
+    from utils import truncate_path_parts
+    title = "A Very Long Game Title That Goes On And On And On For Ever And Ever " * 4
+    a = truncate_path_parts(["Game", f"{title}[0100000000010001][v0].nsp"], 120)
+    b = truncate_path_parts(["Game", f"{title}[0100000000010002][v0].nsp"], 120)
+    assert a[-1] != b[-1]
+    assert a[-1].endswith("[0100000000010001][v0].nsp") and "…" in a[-1]

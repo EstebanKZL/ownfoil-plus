@@ -108,7 +108,7 @@ def test_title_rows_and_icons_are_shared_by_dashboard_and_stats(admin_client):
     shared = _js("title-list.js")
     assert "function titleListRow(" in shared and "function fillTitleIcons(" in shared
     icons = _function_body(shared, "fillTitleIcons")
-    assert icons.count("fetch(") == 1              # one request for every icon on screen
+    assert icons.count("gqlRequest(") == 1 and "fetch(" not in icons              # one request for every icon on screen
     assert "[0-9A-F]{16}" in icons                 # ids validated before going into the query
     for page, script in (("/admin", "dashboard.js"), ("/admin/stats", "stats.js")):
         html = admin_client.get(page).get_data(as_text=True)

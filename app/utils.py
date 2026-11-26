@@ -388,6 +388,25 @@ def trim_name(name, length):
     return name[:length - 1].rstrip('. ') + TRUNCATION_MARKER
 
 
+# The bracketed tags a name ends with ("[0100...][v65536]", "[1G+1U]") are what tells
+# two files of one game apart: a cut keeps them whole and shortens the title before them.
+_TRAILING_TAGS = re.compile(r'(?:\s*\[[^\[\]]*\])+$')
+
+
+def _trim_keeping_tags(stem, length):
+    """Cut a name to length like trim_name, but from its title: the tags it ends with
+    stay whole (when the title can still keep a few characters), so two names that only
+    differ there never end up cut to the same one."""
+    if len(stem) <= length:
+        return stem
+    match = _TRAILING_TAGS.search(stem)
+    tags = match.group(0) if match else ''
+    head = stem[:len(stem) - len(tags)]
+    if tags and head and length - len(tags) >= MIN_PART_WINDOWS:
+        return trim_name(head, length - len(tags)) + tags
+    return trim_name(stem, length)
+
+
 def truncate_path_parts(parts, prefix_len):
     """Shorten path parts, directories first, so that prefix + path fits within MAX_PATH."""
     *dirs, filename = parts
@@ -409,7 +428,7 @@ def truncate_path_parts(parts, prefix_len):
         longest = max(range(len(dirs)), key=lambda i: len(dirs[i]))
         dirs[longest] = trim_name(dirs[longest], len(dirs[longest]) - 1)
 
-    stem = trim_name(stem, stem_room())
+    stem = _trim_keeping_tags(stem, stem_room())
     filename = f'{stem}.{ext}' if ext else stem
     if prefix_len + dirs_len() + 1 + len(filename) > MAX_PATH_WINDOWS:
         logging.getLogger('main').warning(f"Path too long for Windows even after truncation: {os.path.join(*dirs, filename)}")
