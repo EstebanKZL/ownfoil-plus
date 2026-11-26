@@ -521,6 +521,22 @@ def pop_ignored_event(src_path=None, dest_path=None):
     return False
 
 
+def pop_ignored_move_source(src_path):
+    """The delete half of one of our own moves, seen on its own: some disks (network
+    shares, polling observers) report a move as a delete and a separate create. Pops the
+    move's mark and leaves one for its create half, returning the destination (or None
+    when src_path is no move of ours)."""
+    event = IgnoredEvent.query.filter(IgnoredEvent.src_path == src_path,
+                                      IgnoredEvent.dest_path != '').first()
+    if event is None:
+        return None
+    dest = event.dest_path
+    db.session.delete(event)
+    db.session.add(IgnoredEvent(src_path='', dest_path=dest))
+    db.session.commit()
+    return dest
+
+
 class TempFile(db.Model):
     """A path a background task is actively writing that is not a library file yet."""
     __tablename__ = 'temp_files'

@@ -3,17 +3,8 @@
 // either page's own script.
 
 async function gqlFetch(query, variables) {
-    // GET (not POST) so the browser's HTTP cache automatically revalidates
-    // via If-None-Match against the ETag the server sets on every response.
-    const params = new URLSearchParams({query});
-    if (variables && Object.keys(variables).length) {
-        params.set('variables', JSON.stringify(variables));
-    }
-    const r = await fetch('/api/graphql?' + params.toString(), {
-        method: 'GET',
-        headers: {'Accept': 'application/json'},
-        credentials: 'same-origin',
-    });
+    // GET while the URL is short (cached by ETag), POST when long - see graphql.js.
+    const r = await gqlRequest(query, variables);
     if (!r.ok) throw new Error(`GraphQL HTTP ${r.status}`);
     const body = await r.json();
     if (body.errors && body.errors.length) {

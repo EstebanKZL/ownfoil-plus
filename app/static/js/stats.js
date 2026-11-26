@@ -252,12 +252,8 @@ async function loadStats() {
     let data;
     try {
         // GET, like the library grid: the endpoint ETags its responses, so a refresh
-        // that changes nothing costs a 304.
-        const params = new URLSearchParams({query: STATS_QUERY});
-        const r = await fetch('/api/graphql?' + params.toString(), {
-            headers: {'Accept': 'application/json'},
-            credentials: 'same-origin',
-        });
+        // that changes nothing costs a 304 (POST only for a long query, graphql.js).
+        const r = await gqlRequest(STATS_QUERY);
         if (!r.ok) throw new Error(`GraphQL HTTP ${r.status}`);
         const body = await r.json();
         if (body.errors && body.errors.length) {
@@ -367,11 +363,7 @@ async function loadVerificationFilesPage() {
 }
 
 async function gqlFetchStats(query, variables) {
-    const params = new URLSearchParams({query, variables: JSON.stringify(variables)});
-    const r = await fetch('/api/graphql?' + params.toString(), {
-        headers: {'Accept': 'application/json'},
-        credentials: 'same-origin',
-    });
+    const r = await gqlRequest(query, variables);
     if (!r.ok) throw new Error(`GraphQL HTTP ${r.status}`);
     const body = await r.json();
     if (body.errors && body.errors.length) {

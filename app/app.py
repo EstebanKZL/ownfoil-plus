@@ -123,8 +123,9 @@ def on_library_change(events):
                 # the temp mark: a converted source carries both, and a mark left unpopped leaks.
                 if pop_ignored_event(src_path=event.src_path, dest_path=''):
                     continue
-                # Also check if this delete is part of a move (dest_path != '')
-                if pop_ignored_event(src_path=event.src_path):
+                # Also check if this delete is part of one of our moves (an Organize):
+                # its create half, if the disk reports one apart, is ignored too.
+                if pop_ignored_move_source(event.src_path):
                     continue
                 # A path a task is writing is not a library file - unless it is a committed row,
                 # in which case the file really is gone and has to leave the library.

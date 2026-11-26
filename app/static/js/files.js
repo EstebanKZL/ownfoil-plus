@@ -27,11 +27,7 @@ async function gql(query, variables, post) {
             credentials: 'same-origin',
             body: JSON.stringify({query: query, variables: variables || {}}),
         })
-        : await fetch('/api/graphql?' + new URLSearchParams(
-            {query: query, variables: JSON.stringify(variables || {})}), {
-            headers: {'Accept': 'application/json'},
-            credentials: 'same-origin',
-        });
+        : await gqlRequest(query, variables);   // GET, or POST when long (graphql.js)
     if (!r.ok) throw new Error(`GraphQL HTTP ${r.status}`);
     const body = await r.json();
     if (body.errors && body.errors.length) throw new Error(body.errors.map(e => e.message).join('; '));

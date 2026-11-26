@@ -99,7 +99,8 @@ async function fillTitleIcons(root) {
     const query = '{ ' + ids.map((id, i) => `t${i}: title(titleId: "${id}") { titleId iconUrl }`).join(' ') + ' }';
     let data;
     try {
-        const r = await fetch('/api/graphql?' + new URLSearchParams({query}), {credentials: 'same-origin'});
+        // One alias per title: a long list goes by POST (graphql.js).
+        const r = await gqlRequest(query);
         data = (await r.json()).data || {};
     } catch (e) {
         return;   // the glyph stays: icons are a nicety

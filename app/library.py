@@ -87,6 +87,23 @@ def size_fields(size):
     return {'sizeGb': f'{size / 1024 ** 3:.2f}', 'sizeMb': f'{size / 1024 ** 2:.0f}'}
 
 
+def _holds_other_content(path, app_id):
+    """True when the library file at `path` holds content other than `app_id`."""
+    other = Files.query.filter_by(filepath=path).first()
+    return bool(other and other.apps and app_id not in {a.app_id for a in other.apps})
+
+
+def organizer_names_pending(locale):
+    """True while the organizer's own naming locale has its titledb file on disk but
+    its names aren't imported yet (the window a titledb rebuild opens). With no file for
+    it at all the display language's names are the only ones there are, so it isn't
+    pending."""
+    from titledb import store as titledb_store
+    if not os.path.isfile(os.path.join(TITLEDB_DIR, f'titles.{locale}.json')):
+        return False
+    return titledb_store.get_organizer_names_locale() != locale
+
+
 def organizer_name_locale(organizer_settings):
     """The organizer's naming locale (e.g. 'US.en'), or None when it should just use
     the library's display language - both `name_region` and `name_language` must be
@@ -160,6 +177,12 @@ def organize_file(file_obj, library_path, organizer_settings, moves=None):
         # name whenever the alternate locale has no entry for that id yet - a fresh
         # locale switch that titledb hasn't finished importing, for instance.
         name_locale = organizer_name_locale(organizer_settings)
+        if name_locale and organizer_names_pending(name_locale):
+            # Its names are being imported (a titledb rebuild empties them first): named
+            # now, the file would take the display language's name and be renamed back
+            # once the import lands. It waits for the pass that follows the import.
+            logger.debug(f'Organize: {file_obj.filename} waits for the {name_locale} names')
+            return
         if name_locale:
             alt_title_name = titles_lib.get_organizer_name(app.title.title_id, name_locale)
             if alt_title_name:
@@ -200,7 +223,7 @@ def organize_file(file_obj, library_path, organizer_settings, moves=None):
         current_dir = os.path.dirname(current_filepath)
         current_name = os.path.basename(current_filepath)
         if current_dir == new_dir_norm and os.path.exists(new_full_path) and re.fullmatch(
-            rf"{re.escape(base_name)}\(\d+\)\.{re.escape(file_obj.extension)}",
+            rf"{re.escape(base_name)}(\(\d+\)| \[{re.escape(app.app_id)}\])\.{re.escape(file_obj.extension)}",
             current_name,
         ):
             return True
@@ -252,6 +275,15 @@ def organize_file(file_obj, library_path, organizer_settings, moves=None):
                 # the next iteration must move from there, not from the original.
                 if os.path.exists(candidate) and not os.path.exists(src):
                     src = candidate
+                # Another content took the name (two DLC the template names alike, without
+                # their id): this one takes its own id, which is the same on every run -
+                # a "(2)" depended on which file got there first. A copy of the same
+                # content (a true duplicate) still gets "(n)".
+                with_id = os.path.join(new_dir, f"{base_name} [{app.app_id}].{file_obj.extension}")
+                if (candidate != with_id and app.app_id not in base_name
+                        and _holds_other_content(candidate, app.app_id)):
+                    candidate = with_id
+                    continue
                 counter += 1
                 candidate = os.path.join(new_dir, f"{base_name}({counter}).{file_obj.extension}")
             except (shutil.Error, OSError) as e:

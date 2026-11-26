@@ -172,7 +172,7 @@ def test_recent_rows_link_to_the_game_and_icons_come_in_one_request():
     shared = _js("title-list.js")
     assert "`/game/${titleId}`" in shared
     icons = _function_body(shared, "fillTitleIcons")
-    assert icons.count("fetch(") == 1
+    assert icons.count("gqlRequest(") == 1 and "fetch(" not in icons
     assert "[0-9A-F]{16}" in icons      # ids are validated before going into the query
 
 
